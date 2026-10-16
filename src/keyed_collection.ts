@@ -80,6 +80,17 @@ export type KeyedCollectionReader<T> = Readonly<{
   detach(): void;
 }>;
 
+type ReaderAcknowledgement = (version: number) => (() => void) | null;
+const readerAcknowledgements = new WeakMap<object, ReaderAcknowledgement>();
+
+/** @internal Stage exact native-reader acceptance before any group member publishes. */
+export function prepareCollectionReaderAcknowledgement(
+  reader: KeyedCollectionReader<unknown>,
+  version: number,
+): (() => void) | null {
+  return readerAcknowledgements.get(reader)?.(version) ?? null;
+}
+
 export type KeyedCollectionListener<T> = (
   batch: KeyedCollectionBatch<T>,
 ) => void;
@@ -408,7 +419,7 @@ export function createKeyedCollection<T>(
       const ensureAttached = () => {
         if (reader.detached) throw new Error("Keyed collection reader is detached");
       };
-      return Object.freeze({
+      const handle = Object.freeze({
         read(): KeyedCollectionRead<T> {
           ensureAttached();
           const oldestAvailableVersion = history[0]?.fromVersion ?? version;
@@ -454,6 +465,17 @@ export function createKeyedCollection<T>(
           pruneAcknowledged();
         },
       });
+      readerAcknowledgements.set(handle, (ackVersion) => {
+        if (
+          reader.detached || !Number.isSafeInteger(ackVersion) ||
+          ackVersion < reader.version || ackVersion > reader.readThrough
+        ) return null;
+        return () => {
+          reader.version = Math.max(reader.version, ackVersion);
+          pruneAcknowledged();
+        };
+      });
+      return handle;
     },
     stats(): KeyedCollectionStats {
       return Object.freeze({

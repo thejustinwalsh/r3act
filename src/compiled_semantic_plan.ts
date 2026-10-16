@@ -37,11 +37,30 @@ export type CompiledSemanticPlan = Readonly<{
 export type CompiledSemanticRevisionChange = Readonly<{
   sourceFile: string;
   previousRevision: string;
-  nextRevision: string;
+  nextRevision: string | null;
 }>;
 
 const currentPlans = new Map<string, CompiledSemanticPlan>();
 const revisionListeners = new Set<(change: CompiledSemanticRevisionChange) => void>();
+const notifyRevisionListeners = (change: CompiledSemanticRevisionChange) => {
+  const errors: unknown[] = [];
+  for (const listener of [...revisionListeners]) {
+    try {
+      listener(change);
+    } catch (error) {
+      errors.push(error);
+    }
+  }
+  if (errors.length === 1) throw errors[0];
+  if (errors.length > 1) throw new AggregateError(errors, "Compiled semantic revision listeners failed");
+};
+const planIdentity = Symbol("compiled-semantic-plan-identity");
+
+export type CompiledSemanticRevisionToken = Readonly<{
+  sourceFile: string;
+  moduleRevision: string;
+  [planIdentity]: CompiledSemanticPlan;
+}>;
 
 const snapshotPlan = (plan: CompiledSemanticPlan): CompiledSemanticPlan => Object.freeze({
   schema_version: 1 as const,
@@ -87,7 +106,7 @@ export function registerCompiledSemanticPlan(input: CompiledSemanticPlan): Compi
       previousRevision: previous.module_revision,
       nextRevision: plan.module_revision,
     });
-    for (const listener of [...revisionListeners]) listener(change);
+    notifyRevisionListeners(change);
   }
   return plan;
 }
@@ -99,6 +118,47 @@ export function inspectCompiledSemanticPlan(sourceFile: string): CompiledSemanti
 
 export function compiledSemanticRevision(sourceFile: string): string | undefined {
   return currentPlans.get(sourceFile)?.module_revision;
+}
+
+/** Capture the registered plan identity before preparing work from its module. */
+export function captureCompiledSemanticRevision(
+  sourceFile: string,
+  expectedRevision?: string,
+): CompiledSemanticRevisionToken | undefined {
+  const plan = currentPlans.get(sourceFile);
+  if (!plan || (expectedRevision !== undefined && plan.module_revision !== expectedRevision)) {
+    return undefined;
+  }
+  return Object.freeze({
+    sourceFile,
+    moduleRevision: plan.module_revision,
+    [planIdentity]: plan,
+  });
+}
+
+/** A retired plan stays stale even if the same revision string registers again. */
+export function isCompiledSemanticRevisionCurrent(
+  token: CompiledSemanticRevisionToken,
+): boolean {
+  return currentPlans.get(token.sourceFile) === token[planIdentity];
+}
+
+/** Revoke work compiled before a module edit, prior to conservative full reload. */
+export function invalidateCompiledSemanticPlan(
+  sourceFile: string,
+  expectedRevision?: string,
+): boolean {
+  const previous = currentPlans.get(sourceFile);
+  if (!previous ||
+    (expectedRevision !== undefined && previous.module_revision !== expectedRevision)) return false;
+  currentPlans.delete(sourceFile);
+  const change = Object.freeze({
+    sourceFile,
+    previousRevision: previous.module_revision,
+    nextRevision: null,
+  });
+  notifyRevisionListeners(change);
+  return true;
 }
 
 export function subscribeCompiledSemanticRevision(

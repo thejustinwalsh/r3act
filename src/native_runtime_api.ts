@@ -151,6 +151,7 @@ export {
   compiledSemanticRevision,
   inspectCompiledSemanticPlan,
   registerCompiledSemanticPlan,
+  invalidateCompiledSemanticPlan,
   subscribeCompiledSemanticRevision,
 } from "./compiled_semantic_plan.ts";
 export type {

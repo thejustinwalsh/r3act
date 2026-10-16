@@ -485,11 +485,13 @@ export type OwnerPreparation = {
   validatePublicationInputs(): boolean;
   /** Validate and stage fallible work before grouped accepted publication. */
   preparePublication(): void;
+  /** Route host-time setters for existing cells to their live identities. */
+  beginHostApplication(): void;
   /** Stage after host callbacks while preserving newer live cell actions. */
   preparePublicationAfterHost(): void;
   /** Install the already prepared owner and cell state without callbacks. */
   publishAccepted(): void;
-  /** Finish derived numeric lane setup after accepted owner publication. */
+  /** Compatibility hook after accepted owner publication. */
   notifyPublished(): void;
   /** Compatibility path for one owner publication. */
   publish(): void;
@@ -649,30 +651,66 @@ export class OwnerStateWorld {
     if (existing) this.#releaseNumericLane(owner, site, cell);
     let row = storage.rowsByOwner.get(owner);
     if (!row) {
-      const rowIndex = storage.freeRows.pop() ?? storage.nextRow++;
+      const recycled = storage.freeRows.pop();
+      const rowIndex = recycled ?? storage.nextRow;
       const generation = storage.generations[rowIndex] ?? 1;
+      try {
+        for (const column of storage.columns) column.reserve(rowIndex + 1);
+        row = {
+          row: rowIndex,
+          generation,
+          cells: 0,
+          lease: new NumericRowLease(owner, layout, rowIndex, generation, storage.columns),
+        };
+      } catch (error) {
+        if (recycled !== undefined) storage.freeRows.push(recycled);
+        throw error;
+      }
       storage.generations[rowIndex] = generation;
-      for (const column of storage.columns) column.reserve(rowIndex + 1);
-      row = {
-        row: rowIndex,
-        generation,
-        cells: 0,
-        lease: new NumericRowLease(owner, layout, rowIndex, generation, storage.columns),
-      };
+      if (recycled === undefined) storage.nextRow++;
       storage.rowsByOwner.set(owner, row);
     }
-    const column = storage.columns[slot];
-    column.reserve(row.row + 1);
-    const lane: NumericLaneAddress = Object.freeze({
-      column,
-      row: row.row,
-      generation: row.generation,
-      owner,
-      site,
-    });
-    row.cells++;
-    attachNumericLane(cell, lane, row.lease, layout, slot);
-    return lane;
+    let counted = false;
+    try {
+      const column = storage.columns[slot];
+      column.reserve(row.row + 1);
+      const lane: NumericLaneAddress = Object.freeze({
+        column,
+        row: row.row,
+        generation: row.generation,
+        owner,
+        site,
+      });
+      row.cells++;
+      counted = true;
+      attachNumericLane(cell, lane, row.lease, layout, slot);
+      return lane;
+    } catch (error) {
+      if (cell.lane) this.#releaseNumericLane(owner, site, cell);
+      else if (counted) row.cells--;
+      if (row.cells === 0 && storage.rowsByOwner.get(owner) === row) {
+        NumericRowLease.retire(row.lease);
+        storage.rowsByOwner.delete(owner);
+        storage.generations[row.row] = row.generation + 1;
+        storage.freeRows.push(row.row);
+      }
+      throw error;
+    }
+  }
+
+  #attachOptionalNumericLane(
+    owner: OwnerId,
+    site: StateSiteId,
+    cell: StateCell<unknown>,
+  ): void {
+    if (!cell.stateLayout || cell.promoted ||
+      typeof cell.value !== "number") return;
+    try {
+      this.#ensureNumericLane(owner, site, cell);
+    } catch {
+      this.#releaseNumericLane(owner, site, cell);
+      cell.promoted = true;
+    }
   }
 
   #releaseNumericLane(
@@ -711,6 +749,7 @@ export class OwnerStateWorld {
   beginPreparation(): OwnerPreparation {
     let state: "open" | "published" | "discarded" = "open";
     let publicationPrepared = false;
+    let hostApplication = false;
     let preserveNewerCells = false;
     let publicationRecords: OwnerRecord[] = [];
     const publicationSiteMaps = new Map<OwnerId, Map<StateSiteId, StateCell<unknown>>>();
@@ -719,7 +758,6 @@ export class OwnerStateWorld {
     const publicationLayoutSlots = new Map<StateCell<unknown>, number | undefined>();
     const publicationSources = new Map<StateCell<unknown>, ScalarSource>();
     const publicationDispatches = new Map<StateCell<unknown>, (action: StateAction<unknown>) => boolean>();
-    let publicationNotified = false;
     let hasStateWrites = false;
     const privateOwners = new Map<OwnerId, OwnerRecord>();
     const privateSlots = new Map<
@@ -1199,6 +1237,7 @@ export class OwnerStateWorld {
           control.dispatch = (action: StateAction<unknown>): boolean => {
             if (control!.discarded) return false;
             if (control!.forward) return control!.forward(action);
+            if (hostApplication) return false;
             const candidate = control!.candidateCell as StateCell<T> | null;
             if (!candidate) return false;
             const typedAction = action as StateAction<T>;
@@ -1554,6 +1593,22 @@ export class OwnerStateWorld {
         preserveNewerCells = false;
         prepareAcceptedData();
       },
+      beginHostApplication: () => {
+        assertOpen();
+        if (hostApplication) return;
+        if (!preparation.validate() || hasStateWrites) {
+          throw new Error("Owner preparation is stale before host application");
+        }
+        for (const [owner, dispatches] of candidateDispatches) {
+          for (const [site, control] of dispatches) {
+            const captured = expectedCells.get(owner)?.get(site)?.cell;
+            if (captured && this.#stateByOwner.get(owner)?.get(site) === captured) {
+              control.forward = captured.dispatch;
+            }
+          }
+        }
+        hostApplication = true;
+      },
       preparePublicationAfterHost: () => {
         if (publicationPrepared && state === "open") return;
         assertOpen();
@@ -1630,6 +1685,12 @@ export class OwnerStateWorld {
             }
           }
         }
+        for (const [owner, sites] of candidateCells) {
+          for (const site of sites.keys()) {
+            const cell = this.#stateByOwner.get(owner)?.get(site);
+            if (cell) this.#attachOptionalNumericLane(owner, site, cell);
+          }
+        }
         state = "published";
         for (const [owner, dispatches] of candidateDispatches) {
           for (const [site, control] of dispatches) {
@@ -1655,28 +1716,9 @@ export class OwnerStateWorld {
         publicationLayoutSlots.clear();
         publicationSources.clear();
         publicationDispatches.clear();
-      },
-      notifyPublished: () => {
-        if (state !== "published" || publicationNotified) return;
-        publicationNotified = true;
-        const errors: unknown[] = [];
-        for (const [owner, sites] of candidateCells) {
-          for (const site of sites.keys()) {
-            const cell = this.#stateByOwner.get(owner)?.get(site);
-            if (!cell?.stateLayout || cell.promoted ||
-              typeof cell.value !== "number") continue;
-            try {
-              this.#ensureNumericLane(owner, site, cell);
-            } catch (error) {
-              errors.push(error);
-            }
-          }
-        }
         candidateCells.clear();
-        if (errors.length) {
-          throw new AggregateError(errors, "Numeric lane setup failed after publication");
-        }
       },
+      notifyPublished: () => {},
       publish: () => {
         preparation.preparePublication();
         preparation.publishAccepted();
@@ -1795,22 +1837,43 @@ export class OwnerStateWorld {
     return id;
   }
 
-  /** Publish a prepared incarnation only over its expected previous slot. */
-  activateStagedOwner(owner: OwnerId, previousOwner?: OwnerId): void {
+  /** Validate a staged slot and allocate its missing maps before acceptance. */
+  prepareStagedOwnerActivation(
+    owner: OwnerId,
+    previousOwner?: OwnerId,
+  ): () => void {
     this.#assertOwner(owner);
     if (!this.#stagedOwners.has(owner)) throw new Error("Owner is not staged");
     const record = this.#owners.get(owner)!;
-    let bySite = this.#childrenBySlot.get(record.parent);
-    let byKey = bySite?.get(record.componentSiteId);
+    const bySite = this.#childrenBySlot.get(record.parent);
+    const byKey = bySite?.get(record.componentSiteId);
     const current = byKey?.get(record.key);
     if (current !== previousOwner) {
       throw new Error("Staged owner slot changed before publication");
     }
-    if (!bySite) this.#childrenBySlot.set(record.parent, bySite = new Map());
-    if (!byKey) bySite.set(record.componentSiteId, byKey = new Map());
-    byKey.set(record.key, owner);
-    this.#stagedOwners.delete(owner);
-    this.#bumpParentChildrenVersion(record.parent);
+    const preparedSite = bySite ?? new Map<string, Map<OwnerKey, OwnerId>>();
+    const preparedKey = byKey ?? new Map<OwnerKey, OwnerId>();
+    let installed = false;
+    return () => {
+      if (installed) return;
+      installed = true;
+      const installedSite = this.#childrenBySlot.get(record.parent) ?? preparedSite;
+      if (!this.#childrenBySlot.has(record.parent)) {
+        this.#childrenBySlot.set(record.parent, installedSite);
+      }
+      const installedKey = installedSite.get(record.componentSiteId) ?? preparedKey;
+      if (!installedSite.has(record.componentSiteId)) {
+        installedSite.set(record.componentSiteId, installedKey);
+      }
+      installedKey.set(record.key, owner);
+      this.#stagedOwners.delete(owner);
+      this.#bumpParentChildrenVersion(record.parent);
+    };
+  }
+
+  /** Publish a prepared incarnation only over its expected previous slot. */
+  activateStagedOwner(owner: OwnerId, previousOwner?: OwnerId): void {
+    this.prepareStagedOwnerActivation(owner, previousOwner)();
   }
 
   findOwner(
@@ -1880,7 +1943,7 @@ export class OwnerStateWorld {
     }
     if (layout) this.#ensureCellLayout(owner, site, cell as StateCell<unknown>, layout);
     if (cell.stateLayout && !cell.promoted && typeof cell.value === "number") {
-      this.#ensureNumericLane(owner, site, cell as StateCell<unknown>);
+      this.#attachOptionalNumericLane(owner, site, cell as StateCell<unknown>);
     }
     return [this.#readStateValue(owner, site, cell), cell.dispatch] as const;
   }
@@ -2262,10 +2325,6 @@ export class OwnerStateWorld {
     cell.value = next;
     cell.version++;
     if (typeof next === "number") {
-      if (!cell.lane && cell.numericLaneSlot !== undefined &&
-        !cell.promoted) {
-        this.#ensureNumericLane(owner, site, cell as StateCell<unknown>);
-      }
       cell.source ??= new ScalarSource(OwnerStateWorld.#nextSourceId++, next);
       cell.source.value = next;
       if (cell.rowLease && cell.numericLaneSlot !== undefined) {
@@ -2284,6 +2343,10 @@ export class OwnerStateWorld {
       }
     }
     this.#markCellDirty(owner, site, cell as StateCell<unknown>);
+    if (typeof next === "number" && !cell.lane &&
+      cell.numericLaneSlot !== undefined && !cell.promoted) {
+      this.#attachOptionalNumericLane(owner, site, cell as StateCell<unknown>);
+    }
     let cellIdentity = cell.cellIdentity;
     if (!cellIdentity) {
       cellIdentity = new CommittedCellCapability(

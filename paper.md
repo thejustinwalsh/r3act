@@ -31,6 +31,12 @@ presentation remain part of its proof burden. The historical evidence and
 current counterevidence are kept distinct in the [empirical appendix](./empirical-appendix.md)
 and [notebook](./research.ipynb).
 
+## Source continuation — 16 October 2026
+
+The publication continuation repairs accepted VNode isolation, numeric storage ordering and fallback, exact collection acceptance, cleanup error preservation, host-callback action forwarding and conservative compiler revision/HMR invalidation. The current source passes 749 runtime tests with a documented isolated frozen lock, 40 Rust tests and a fresh Rust/OXC plus React Compiler production build. Earlier failed gates and toolchain failures are retained in the [verification record](implementation/2026-10-16-publication/verification/gate-results.md). The original workspace lock remains unchanged and fails its own frozen check.
+
+No current-source browser timing comparison has run; the required Portless skill is missing. These are semantic/build results, with no new speed, presentation, cold/memory or maintainability claim. Dependency-scoped coherent admission is specified but remains unimplemented; full-tree candidates still require whole-root bases. Historical timing results below refer to their original locked sources.
+
 ## Current dense qualification and diagnostic method
 
 The frozen [30-page original qualification](./results/current-owner-kernel-headless-v1/analysis.json)

@@ -208,7 +208,7 @@ Deno.test("lane host failure remains terminal and disposal releases owners", () 
   assertEquals(root.diagnostics().ownerCount, 0);
 });
 
-Deno.test("disposal inside a lane writer releases captured column buffers", () => {
+Deno.test("disposal inside a lane writer rejects after application and releases buffers", () => {
   let root!: ComponentStateRoot<MemoryNode>;
   let setter!: (action: StateAction<number>) => boolean;
   let disposeOnWrite = false;
@@ -249,7 +249,10 @@ Deno.test("disposal inside a lane writer releases captured column buffers", () =
     root.mount(jsx(Output, {}));
     setter(4);
     disposeOnWrite = true;
-    assertEquals(root.flush(), true);
+    let failure = "";
+    try { root.flush(); } catch (error) { failure = String(error); }
+    assertEquals(failure.includes("Root disposal was requested during host application"), true,
+      "disposal rejects after the host callback exits");
     assertEquals(container.children.length, 0);
     assertEquals(root.diagnostics().ownerCount, 0);
     assertEquals(root.diagnostics().pendingChangeCount, 0);

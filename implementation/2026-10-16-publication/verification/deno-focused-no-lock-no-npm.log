@@ -1,0 +1,126 @@
+Check src/vdom_snapshot_isolation_test.ts
+Check src/collection_acceptance_contract_test.ts
+Check src/publication_cleanup_contract_test.ts
+Check src/compiled_semantic_revision_test.ts
+Check src/compiled_root_revision_test.ts
+Check src/numeric_publication_storage_test.ts
+Check src/publication_lifecycle_contract_test.ts
+Check src/owner_numeric_layout_test.ts
+Check src/owner_prepared_identity_test.ts
+Check src/prepared_dirty_membership_test.ts
+Check src/native_root_work_queue_test.ts
+Check src/native_collection_runtime_test.ts
+Check src/keyed_collection_test.ts
+running 2 tests from ./src/vdom_snapshot_isolation_test.ts
+clean accepted snapshot and retained nested VNodes survive keyed publication ... ok (1ms)
+dirty accepted snapshot survives nested delta and partial host failure ... ok (723µs)
+running 2 tests from ./src/collection_acceptance_contract_test.ts
+staged native collection acknowledgement keeps later batches pending ... ok (520µs)
+staging rejects forged, detached, and uncaptured collection readers ... ok (91µs)
+running 2 tests from ./src/publication_cleanup_contract_test.ts
+candidate host failure retains original error and deferred disposal errors ... ok (4ms)
+group failure continues cleanup after another member cleanup throws ... ok (2ms)
+running 2 tests from ./src/compiled_semantic_revision_test.ts
+compiled revision tokens revoke pending work across replacement and HMR invalidation ... ok (313µs)
+one failing revision listener cannot hide invalidation from another root ... ok (130µs)
+running 2 tests from ./src/compiled_root_revision_test.ts
+a prepared compiled owner cannot publish after its module revision changes ... ok (2ms)
+HMR invalidates mounted nonnumeric owners before direct root work ... ok (2ms)
+running 3 tests from ./src/numeric_publication_storage_test.ts
+group members have numeric storage before any notification ... ok (1ms)
+failed optional lane setup retains boxed state, source, and exact dirty work ... ok (841µs)
+direct activation falls back after lane allocation failure and reuses the row ... ok (249µs)
+running 5 tests from ./src/publication_lifecycle_contract_test.ts
+host reentry defers root teardown until application exits ... ok (4ms)
+effect failure follows publication without terminal host quarantine ... ok (587µs)
+newer host callback state survives exact candidate acknowledgement ... FAILED (1ms)
+accepted structural snapshot remains visible through partial host failure ... ok (791µs)
+dirty accepted keyed snapshot is reconstructed on inspection ... ok (573µs)
+running 8 tests from ./src/owner_numeric_layout_test.ts
+committed numbers use the authoritative lane and preserve scalar mirrors ... ok (999µs)
+layout columns grow in place and share one generation-checked row per owner ... ok (277µs)
+nonnumber promotion is sticky, including an initially boxed value ... ok (219µs)
+owner removal clears lane, rejects retained setter, and advances row generation ... ok (547µs)
+candidate writes and rollback stay private; stale candidates cannot publish ... ok (843µs)
+private replacement gets a row only at publish and preserves old row until removal ... ok (301µs)
+same-shape layout reactivation keeps canonical address and shared cell identity ... ok (417µs)
+warm numeric dispatch does not inspect compiled layout slots ... ok (61µs)
+running 5 tests from ./src/owner_prepared_identity_test.ts
+identity resolution rejects forged fields and stale versions ... ok (1ms)
+identity resolution rejects destroyed owners and reused rows ... ok (485µs)
+candidate setters remain private on discard and forward after publish ... ok (860µs)
+reentrant writes keep the same identity but invalidate the old cut ... ok (124µs)
+promotion keeps identity live but removes lane eligibility ... ok (91µs)
+running 6 tests from ./src/prepared_dirty_membership_test.ts
+prepared dirty nodes preserve ordering and reject foreign/stale tokens ... ok (458µs)
+World native acknowledgement uses the exact prepared owner/site node ... ok (6ms)
+captured acknowledgement preserves future-version and row-reuse semantics ... ok (532µs)
+updaters that destroy their owner cannot dirty a dead cell ... ok (206µs)
+destroying an updater owner before numeric row reuse cannot touch the replacement ... ok (117µs)
+private candidate writes never borrow or activate a committed journal node ... ok (700µs)
+running 19 tests from ./src/native_root_work_queue_test.ts
+native queue coexists on one root and rebases reverse-ready store work ... ok (7ms)
+native group publishes two roots and two stores before observers or effects ... ok (1ms)
+native disposal cancels pending included work and leaves unrelated root usable ... ok (397µs)
+native queue group host failure poisons every native root ... ok (1ms)
+effect disposal detaches native queue after publication without leaking later work ... ok (327µs)
+native resource candidates wait across every root and publish as one group ... ok (2ms)
+pending frontier store leases survive replacement until grouped publication ... ok (1ms)
+store invalidation replaces a pending resource frontier ... ok (737µs)
+resource settlement refreshes a blocked retained-primary candidate ... ok (6ms)
+cancelling resource work releases its retained store dependency lease ... ok (366µs)
+detaching a root and disposing the queue release resource observers ... ok (732µs)
+independent resource works overlap one root and a fork with reverse readiness ... ok (3ms)
+transition scopes finish for stores read only by an earlier pending wave ... ok (533µs)
+task-only store freshness rejects a stale resource candidate before host writes ... ok (370µs)
+external cut going stale at final pre-host validation does not poison roots ... ok (229µs)
+task-only freshness change during grouped host writes fails terminally ... ok (282µs)
+task-only publication dependencies finish scopes before subscribers ... ok (258µs)
+task-only publication dependencies reject roots outside the work ... ok (135µs)
+a dependency lease transfers pending-only scope ownership between works ... ok (523µs)
+running 12 tests from ./src/native_collection_runtime_test.ts
+native collection delta renders only changed rows and preserves surviving owner and host identity ... ok (8ms)
+collection delta work stays bounded at 1k, 10k, and 50k rows ... ok (1s)
+mixed collection and numeric writes commit together without starving collection work ... ok (2ms)
+collection readers are root-local and detach on source switch, conditional removal, and disposal ... ok (566µs)
+failed historical row preparation falls back to a fresh snapshot and rolls back candidate owners ... ok (2ms)
+same-batch remove and reinsert creates a fresh owner; transient rows run no effects ... ok (661µs)
+seeded collection operations match an array oracle and full-render baseline ... ok (5ms)
+multiple collection regions use the explicit generic full-render fallback ... ok (376µs)
+compiler-declared parent collection reads refresh through a full render ... ok (208µs)
+intrinsic keyed collection rows stay live through generic full-render fallback ... ok (912µs)
+collection effect setup can enqueue a later collection batch without losing it ... ok (298µs)
+host failure during sparse delta rolls back candidate owners and makes the root terminal ... ok (835µs)
+running 14 tests from ./src/keyed_collection_test.ts
+keyed collection sparse operations replay against array oracle ... ok (8ms)
+keyed collection supports independent cursors and releases acknowledged history ... ok (235µs)
+keyed collection retention overflow requests generic fallback ... ok (70µs)
+keyed collection rejects stale and invalid batches transactionally ... ok (57µs)
+keyed collection validates anchor sequences before publishing changes ... ok (42µs)
+keyed collection notifies subscribers after commit and cleans subscriptions ... ok (201µs)
+keyed collection aggregates listener failures after notifying all listeners ... ok (522µs)
+keyed collection freezes copied operation descriptors in retained history ... ok (103µs)
+keyed collection reader can reset after a version-checked fallback snapshot ... ok (91µs)
+keyed collection queues reentrant notifications in version order ... ok (131µs)
+keyed collection releases history when its last reader detaches ... ok (201µs)
+keyed collection map is a value-only full snapshot in order ... ok (117µs)
+keyed collection exposes current boundary and adjacency keys ... ok (71µs)
+keyed collection adjacency lookup work stays constant at 10k rows ... ok (2ms)
+
+ ERRORS 
+
+newer host callback state survives exact candidate acknowledgement => ./src/publication_lifecycle_contract_test.ts:161:6
+error: Error: Native root candidate became stale after host commit
+          const error = new Error(
+                        ^
+    at Object.preparePublication (file:///Volumes/Depot/Developer/r3act/src/component_state_runtime.ts:1273:25)
+    at Object.publish (file:///Volumes/Depot/Developer/r3act/src/component_state_runtime.ts:1286:51)
+    at file:///Volumes/Depot/Developer/r3act/src/publication_lifecycle_contract_test.ts:197:15
+
+ FAILURES 
+
+newer host callback state survives exact candidate acknowledgement => ./src/publication_lifecycle_contract_test.ts:161:6
+
+FAILED | 81 passed | 1 failed (1s)
+
+error: Test failed

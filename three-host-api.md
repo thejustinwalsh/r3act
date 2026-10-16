@@ -87,6 +87,14 @@ The exported property registry contains reserved lifecycle policies; it is no
 longer an exhaustive property inventory. Factory/property overrides are optional
 escape hatches for custom semantics.
 
+## Coherent dependent updates
+
+The target contract uses dependencies to select consumers and explicit transactions to group outputs. For example, position can update a mesh and its outline together while an unrelated health resource remains pending. A consumer reading position and camera must validate both inputs. Sharing a parent or a store alone does not make every branch wait together.
+
+The current queues still validate whole-root candidate bases. Dependency-scoped admission needs mergeable prop/structure/cache deltas with complete read and controlling dependencies, owner incarnations, module revision and live writer validation. Removing whole-root version checks from full replacement candidates would lose intervening commits. This capability remains a required implementation slice; the ordinary declarative prop path and generic fallback remain available today.
+
+A Three transaction must finish its required writes before the application calls `renderer.render`. Custom property setters can observe intermediate writes, and a thrown setter may leave partial physical mutations. Accepted native history stays old and the affected root requires disposal/remount. DOM and Three roots can share state and native publication coordination; visually atomic presentation across those renderers or a React island is not established.
+
 ## Extension seam
 
 ```ts
@@ -146,3 +154,5 @@ to reach the caller, all four disposal attempts, an empty scene, zero live handl
 resources and event registrations, and no repeated attempt on a second disposal.
 The frozen Sol report and prior checkpoint describe the pre-fix source; this
 follow-up does not change their observations or establish comparative maintenance.
+
+Final current-source, compiler-binary, authored-fixture, new raw-result and production-asset hashes are recorded in `final-source-build-inventory.json`. It preserves separate v1–v3 gate source snapshots and does not rebind historical measurements.

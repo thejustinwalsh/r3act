@@ -22,7 +22,7 @@ const program = (sinkId: string, sourceSites: readonly string[]) => ({
   sourceSites,
 });
 
-Deno.test("program host disposal stops later writers and releases root buffers", () => {
+Deno.test("program host disposal waits for admitted writers and releases root buffers", () => {
   let root!: ComponentStateRoot<MemoryNode, MemoryNode>;
   let update!: (value: number) => boolean;
   const writes: string[] = [];
@@ -63,11 +63,14 @@ Deno.test("program host disposal stops later writers and releases root buffers",
   root.mount(jsx(Output, {}));
   host.disposeDuringWrite = true;
   update(2);
-  root.flush();
+  let failure = "";
+  try { root.flush(); } catch (error) { failure = String(error); }
+  assertEquals(failure.includes("Root disposal was requested during host application"), true,
+    "disposal rejects the batch after host application");
   assertEquals(
     writes.join(","),
-    "first",
-    "disposed hosts receive no later writer",
+    "first,second",
+    "admitted writers finish before teardown",
   );
   assertEquals(container.children.length, 0, "host tree is removed");
   assertEquals(

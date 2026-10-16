@@ -1282,6 +1282,12 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     this.flushRefs();
   }
 
+  /** Stop pending attaches without tearing down the active host batch. */
+  cancelPendingRefAttachments() {
+    this.#refPublicationEpoch++;
+    this.#pendingRefs.clear();
+  }
+
   /** Publish ref changes staged by a completed host commit. */
   flushRefs() {
     const publicationEpoch = this.#refPublicationEpoch;
@@ -1838,7 +1844,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     // so removed rows are released immediately.
     acceptedJournal?.capture(parent);
     const releasedChildVNodeCount = parent.vnode.children.length;
-    parent.vnode.children = [];
+    parent.vnode = { ...parent.vnode, children: [] };
     this.#snapshot = [];
     this.#snapshotDirty = true;
     if (incrementVersion) this.#version++;

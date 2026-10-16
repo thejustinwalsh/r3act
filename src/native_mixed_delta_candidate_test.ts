@@ -718,7 +718,7 @@ Deno.test("stale mixed candidate leaves host, effects, and collection cut untouc
   root.dispose();
 });
 
-Deno.test("post-host reentry makes a mixed candidate terminal before effects", () => {
+Deno.test("post-host same-identity reentry preserves the newer action after mixed acceptance", () => {
   const collection = createKeyedCollection<RowData>(
     [{ id: "a", value: 1 }],
     (row) => row.id,
@@ -785,24 +785,17 @@ Deno.test("post-host reentry makes a mixed candidate terminal before effects", (
   if (!candidate) throw new Error("mixed pending work did not prepare");
   armed = true;
   candidate.commitHost();
-  let publishFailed = false;
-  try {
-    candidate.publish();
-  } catch {
-    publishFailed = true;
-  }
-  assert(
-    publishFailed,
-    "post-host reentry did not invalidate candidate publication",
-  );
-  equal(setups, ["a"], "candidate effects ran after stale host commit");
-  let terminal = false;
-  try {
-    root.flush();
-  } catch {
-    terminal = true;
-  }
-  assert(terminal, "post-host stale root was not terminal");
+  candidate.publish();
+  equal(container.children[0].children[0].props["data-value"], 2,
+    "captured mixed output publishes before the newer action");
+  assert(root.diagnostics().pendingChangeCount > 0,
+    "host reentry must leave the newer action pending");
+  candidate.runEffects();
+  equal(setups, ["a", "b"], "accepted inserted row effect runs once");
+  assert(root.flush(), "newer same-identity action needs a later flush");
+  equal(container.children[0].children[0].props["data-value"], 3,
+    "later flush publishes the newer action");
+  equal(root.diagnostics().pendingChangeCount, 0, "later flush acknowledges newer action");
   root.dispose();
 });
 

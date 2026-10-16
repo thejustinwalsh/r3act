@@ -150,7 +150,7 @@ Deno.test("owner-row host failure is terminal and never acknowledges the failed 
   } finally { f.root.dispose(); }
 });
 
-Deno.test("owner-row accepted no-write cut acknowledges without retry or publication", () => {
+Deno.test("owner-row accepted no-write cut acknowledges and advances logical publication", () => {
   const site = "prepared-row.noop";
   let setter!: (value: number) => boolean;
   let calls = 0;
@@ -176,7 +176,7 @@ Deno.test("owner-row accepted no-write cut acknowledges without retry or publica
     setter(2); root.flush(); setter(4); root.flush();
     equal(calls, 2, "two accepted cuts never retry");
     equal(container.children[0].props.value, 0, "stable primitive skips writer");
-    equal(root.publicationVersion, publication, "no writes means no publication");
+    equal(root.publicationVersion, publication + 2, "each accepted no-write cut advances logical publication");
     equal(root.diagnostics().pendingChangeCount, 0, "both no-write versions acknowledged");
   } finally {
     VDOMSnapshotRoot.prototype.executePreparedNumericRows = execute;
@@ -184,7 +184,7 @@ Deno.test("owner-row accepted no-write cut acknowledges without retry or publica
   }
 });
 
-Deno.test("owner-row dispose during first writer cancels remaining writes and releases cut", () => {
+Deno.test("owner-row disposal waits for admitted writers and releases cut", () => {
   let f!: ReturnType<typeof fixture>;
   let dispose = false;
   const writes: string[] = [];
@@ -200,8 +200,12 @@ Deno.test("owner-row dispose during first writer cancels remaining writes and re
   }
   f = fixture(new Host());
   try {
-    dispose = true; f.controls[0](8); f.root.flush();
-    equal(writes, ["position"], "disposal cancels later repeated-input writer");
+    dispose = true; f.controls[0](8);
+    let failure = "";
+    try { f.root.flush(); } catch (error) { failure = String(error); }
+    equal(failure.includes("Root disposal was requested during host application"), true,
+      "disposal rejects after the host batch");
+    equal(writes, ["position", "repeat"], "admitted repeated-input writer finishes before teardown");
     equal(f.container.children.length, 0, "disposed host root is empty");
     equal(f.root.diagnostics().pendingChangeCount, 0, "disposal releases pending cut");
   } finally { f.root.dispose(); }

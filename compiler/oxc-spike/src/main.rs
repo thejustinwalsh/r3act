@@ -6046,6 +6046,16 @@ mod native_module_tests {
         })
     }
 
+    fn emitted_state_layout_revision(code: &str, program_id: &str) -> String {
+        let marker = format!(
+            "stateLayout: {{ schemaVersion: 1, programId: {}, moduleRevision: ",
+            serde_json::to_string(program_id).unwrap()
+        );
+        let rest = code.split_once(&marker).expect("state layout metadata missing").1;
+        let literal = rest.split_once(", slots:").expect("state layout slots missing").0;
+        serde_json::from_str(literal).expect("state layout revision is not a JSON string")
+    }
+
     fn utf16_to_byte(source: &str, target: usize) -> usize {
         if target == 0 {
             return 0;
@@ -6777,7 +6787,11 @@ export function Example() {
         assert!(!prop_sites.contains("state-layout-eligibility.tsx#component:Example#state:3"));
         assert!(!prop_sites.contains("state-layout-eligibility.tsx#component:Example#state:4"));
         let code = plan.component_module.unwrap();
-        assert!(code.contains("stateLayout: { schemaVersion: 1, programId: \"state-layout-eligibility.tsx#component:Example\", slots: [{ siteId: \"state-layout-eligibility.tsx#component:Example#state:0\", slot: 0 }, { siteId: \"state-layout-eligibility.tsx#component:Example#state:1\", slot: 1 }, { siteId: \"state-layout-eligibility.tsx#component:Example#state:2\", slot: 2 }] }"));
+        assert_eq!(
+            emitted_state_layout_revision(&code, "state-layout-eligibility.tsx#component:Example"),
+            plan.module_revision
+        );
+        assert!(code.contains("slots: [{ siteId: \"state-layout-eligibility.tsx#component:Example#state:0\", slot: 0 }, { siteId: \"state-layout-eligibility.tsx#component:Example#state:1\", slot: 1 }, { siteId: \"state-layout-eligibility.tsx#component:Example#state:2\", slot: 2 }] }"));
         assert!(code.contains("sourceSites: [\"state-layout-eligibility.tsx#component:Example#state:1\", \"state-layout-eligibility.tsx#component:Example#state:2\"] }"), "{code}");
     }
 
@@ -6989,7 +7003,11 @@ export function Collision() { const [x] = useState(0); return <div style={{ left
             code.contains("defineComponent as __nativeDefineComponent_"),
             "{code}"
         );
-        assert!(code.contains("stateLayout: { schemaVersion: 1, programId: \"state-layout-collision.tsx#component:Collision\", slots: [{ siteId: \"state-layout-collision.tsx#component:Collision#state:0\", slot: 0 }] }"));
+        assert_eq!(
+            emitted_state_layout_revision(&code, "state-layout-collision.tsx#component:Collision"),
+            plan.module_revision
+        );
+        assert!(code.contains("slots: [{ siteId: \"state-layout-collision.tsx#component:Collision#state:0\", slot: 0 }] }"));
 
         let repeated_read = compile_state(
             "state-layout-empty.tsx",
@@ -7008,7 +7026,11 @@ export function Collision() { const [x] = useState(0); return <div style={{ left
             1
         );
         let repeated_code = repeated_read.component_module.unwrap();
-        assert!(repeated_code.contains("stateLayout: { schemaVersion: 1, programId: \"state-layout-empty.tsx#component:Empty\", slots: [{ siteId: \"state-layout-empty.tsx#component:Empty#state:0\", slot: 0 }] }"));
+        assert_eq!(
+            emitted_state_layout_revision(&repeated_code, "state-layout-empty.tsx#component:Empty"),
+            repeated_read.module_revision
+        );
+        assert!(repeated_code.contains("slots: [{ siteId: \"state-layout-empty.tsx#component:Empty#state:0\", slot: 0 }] }"));
         assert!(repeated_code.contains(
             "schemaVersion: 2, ownerProgramId: \"state-layout-empty.tsx#component:Empty\", sinkId:"
         ));

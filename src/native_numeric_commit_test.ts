@@ -356,7 +356,7 @@ Deno.test("candidate batches compound numeric sources before writing a shared pr
   equal(store.diagnostics().roots, 0, "compound store root cleanup");
 });
 
-Deno.test("state mutation during a staged host writer preserves the newer source and prevents publication", () => {
+Deno.test("state mutation during a staged host writer publishes captured output and preserves the newer source", () => {
   let setValue!: (value: number) => boolean;
   let setShow!: (value: boolean) => boolean;
   let source!: ScalarSource;
@@ -393,12 +393,17 @@ Deno.test("state mutation during a staged host writer preserves the newer source
   setValue(2);
   setShow(true);
   reenter = true;
-  let failure = "";
-  try { root.flush(); } catch (error) { failure = String(error); }
-  equal(failure.includes("stale after host commit"), true, "post-host mutation invalidates publication");
-  equal(source.value, 9, "writer cleanup must not overwrite reentrant state");
-  equal(effects, 0, "invalid candidate effect stayed inactive");
-  equal(refs, 0, "invalid candidate ref stayed unpublished");
+  equal(root.flush(), true, "captured structural candidate publishes");
+  equal(source.value, 9, "captured acknowledgement must not overwrite reentrant state");
+  equal(container.children[0].props["data-value"], 2,
+    "accepted host output retains the captured value");
+  equal(effects, 1, "accepted candidate effect runs");
+  equal(refs, 1, "accepted candidate ref attaches");
+  equal(root.diagnostics().pendingChangeCount, 1, "newer host action stays pending");
+  equal(root.flush(), true, "newer host action publishes on a later pass");
+  equal(container.children[0].props["data-value"], 9,
+    "later pass displays the newer value");
+  equal(root.diagnostics().pendingChangeCount, 0, "later pass acknowledges newer action");
   root.dispose();
-  equal(container.children.length, 0, "invalid candidate root releases its host tree");
+  equal(container.children.length, 0, "disposed root releases its host tree");
 });

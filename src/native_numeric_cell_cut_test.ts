@@ -161,7 +161,7 @@ Deno.test("native numeric cut leaves state pending after a host writer throws", 
   }
 });
 
-Deno.test("disposing during a native cell writer clears its queued cut", () => {
+Deno.test("disposal during a native cell writer waits for the host batch and releases its cut", () => {
   let root!: ComponentStateRoot<MemoryNode, MemoryNode>;
   let setValue!: (value: number) => boolean;
   const writes: string[] = [];
@@ -191,8 +191,11 @@ Deno.test("disposing during a native cell writer clears its queued cut", () => {
   root.mount(jsx(Output, {}));
   host.disposeDuringWrite = true;
   setValue(4);
-  root.flush();
-  equal(writes.join(","), "first", "disposed host receives no later writer");
+  let failure = "";
+  try { root.flush(); } catch (error) { failure = String(error); }
+  equal(failure.includes("Root disposal was requested during host application"), true,
+    "disposal rejects the batch after host application");
+  equal(writes.join(","), "first,second", "admitted writers finish before teardown");
   equal(root.diagnostics().pendingChangeCount, 0, "disposal drops the root queue");
   equal(root.diagnostics().ownerCount, 0, "disposal releases the owner graph");
 });

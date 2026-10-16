@@ -5,7 +5,7 @@ import * as THREE from "three";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { PendingStateChanges } from "../src/pending_state_changes.ts";
-import { jsx } from "../src/native_runtime_api.ts";
+import { jsx, inspectCompiledSemanticPlan } from "../src/native_runtime_api.ts";
 import { VDOMSnapshotRoot } from "../src/vdom_snapshot_runtime.ts";
 import { createThreeNativeRoot } from "../src/three_host.ts";
 import { nativeModulePlugin } from "./vite_native_plugin.ts";
@@ -161,11 +161,11 @@ try {
   const componentMatch = transformed.code.match(/__nativeDefineComponent\("([^"]+#component:SceneComponent)",\s*SceneComponent/);
   assert.ok(componentMatch, "component registration has a stable owner ID");
   const ownerProgramId = componentMatch[1];
-  const layoutMatch = transformed.code.match(/stateLayout:\s*\{\s*schemaVersion:\s*1,\s*programId:\s*"([^"]+)",\s*slots:\s*\[([^\]]*)\]/s);
+  const layoutMatch = transformed.code.match(/stateLayout:\s*\{\s*schemaVersion:\s*1,\s*programId:\s*"([^"]+)",\s*moduleRevision:\s*"([^"]+)",\s*slots:\s*\[([^\]]*)\]/s);
   assert.ok(layoutMatch, "SceneComponent emits a compiled layout");
   assert.equal(layoutMatch[1], ownerProgramId, "layout programId equals component registration ID");
   const stateSites = [0, 1, 2, 3, 4].map((slot) => `${ownerProgramId}#state:${slot}`);
-  const layoutEntries = [...layoutMatch[2].matchAll(/\{\s*siteId:\s*"([^"]+)",\s*slot:\s*(\d+)\s*\}/g)];
+  const layoutEntries = [...layoutMatch[3].matchAll(/\{\s*siteId:\s*"([^"]+)",\s*slot:\s*(\d+)\s*\}/g)];
   assert.equal(layoutEntries.length, 5, "SceneComponent has exactly five numeric state layout slots");
   assert.deepEqual(layoutEntries.map((entry) => [entry[1], Number(entry[2])]), stateSites.map((site, slot) => [site, slot]));
   const descriptorEntries = [...transformed.code.matchAll(/schemaVersion:\s*2,\s*ownerProgramId:\s*"([^"]+)",\s*sinkId:\s*"[^"]+",\s*sourceSites:\s*\[([^\]]*)\]/g)];
@@ -179,6 +179,9 @@ try {
 
   await writeFile(emittedPath, transformed.code, { flag: "wx" });
   app = await import(`${pathToFileURL(emittedPath).href}?attempt=${attemptId}`);
+  const moduleSource = layoutMatch[1].slice(0, layoutMatch[1].lastIndexOf("#component:"));
+  assert.equal(layoutMatch[2], inspectCompiledSemanticPlan(moduleSource)?.module_revision,
+    "emitted layout and registered semantic plan share one module revision");
   const scene = new THREE.Scene();
   const rootId = `compiled-owner-three-${attemptId}`;
   rootBundle = createThreeNativeRoot(scene, {

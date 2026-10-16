@@ -596,9 +596,16 @@ export const nativeModuleCompilerPlugin = (
         : "compiledAsyncTaskPlan";
       let registrar = "__registerNativeSemanticPlan";
       while (new RegExp(`\\b${registrar}\\b`).test(source)) registrar += "_";
-      const registryModule = componentModule || helperModule;
+      let invalidator = "__invalidateNativeSemanticPlan";
+      while (new RegExp(`\\b${invalidator}\\b`).test(source)) invalidator += "_";
+      let hotListener = "__onNativeModuleRevision";
+      while (new RegExp(`\\b${hotListener}\\b`).test(source)) hotListener += "_";
+      const registryModule = componentModule ||
+        (/(?:^|[\\/])async_task_plan\.ts$/.test(helperModule)
+          ? helperModule.replace(/async_task_plan\.ts$/, "compiled_semantic_plan.ts")
+          : helperModule);
       const semanticJson = JSON.stringify(response.plan.semantic_plan).replace(/</g, "\\u003c");
-      const registration = `import { registerCompiledSemanticPlan as ${registrar} } from ${JSON.stringify(registryModule)};\n${registrar}(${semanticJson});\n`;
+      const registration = `import { registerCompiledSemanticPlan as ${registrar}, invalidateCompiledSemanticPlan as ${invalidator} } from ${JSON.stringify(registryModule)};\n${registrar}(${semanticJson});\nif (import.meta.hot) {\n  const ${hotListener} = (event: { sourceFile?: string }) => { if (event?.sourceFile === ${JSON.stringify(sourcePath)}) ${invalidator}(${JSON.stringify(sourcePath)}, ${JSON.stringify(response.plan.module_revision)}); };\n  import.meta.hot.on("r3act:invalidate-native-module", ${hotListener});\n  import.meta.hot.dispose(() => import.meta.hot?.off("r3act:invalidate-native-module", ${hotListener}));\n}\n`;
       compiledNativeFiles.add(absolutePath);
       if (response.plan.schema_version === 2) {
         if (!componentModule || !Array.isArray(response.component_edits) ||
@@ -640,6 +647,12 @@ export const nativeModuleCompilerPlugin = (
     },
     handleHotUpdate(context) {
       if (!compiledNativeFiles.has(path.resolve(context.file))) return;
+      const sourceFile = path.relative(sourceRoot, path.resolve(context.file)).split(path.sep).join("/");
+      context.server.ws.send({
+        type: "custom",
+        event: "r3act:invalidate-native-module",
+        data: { sourceFile },
+      });
       context.server.ws.send({ type: "full-reload" });
       return [];
     },

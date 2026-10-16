@@ -239,7 +239,15 @@ export class NativeRootWorkQueue {
             for (const { value } of candidates) value.preparePublication();
             for (const { value } of candidates) value.publish();
           } catch (error) {
-            for (const { value } of candidates) value.failGroup(error);
+            const errors: unknown[] = [error];
+            for (const { value } of candidates) {
+              try { value.failGroup(error); } catch (cleanupError) {
+                errors.push(cleanupError);
+              }
+            }
+            if (errors.length > 1) {
+              throw new AggregateError(errors, "Grouped publication and cleanup failed");
+            }
             throw error;
           }
         },

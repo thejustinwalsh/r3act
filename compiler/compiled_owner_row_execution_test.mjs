@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { PendingStateChanges } from "../src/pending_state_changes.ts";
-import { createNativeRoot, jsx } from "../src/native_runtime_api.ts";
+import { createNativeRoot, jsx, inspectCompiledSemanticPlan } from "../src/native_runtime_api.ts";
 import { MemoryVDOMHost, VDOMSnapshotRoot } from "../src/vdom_snapshot_runtime.ts";
 import { nativeModulePlugin } from "./vite_native_plugin.ts";
 
@@ -208,11 +208,11 @@ try {
   const rowSite = componentSite(transformed.code, "Row");
   const boardSite = componentSite(transformed.code, "Board");
   const stateSites = [0, 1, 2].map((slot) => `${rowSite}#state:${slot}`);
-  const layoutPattern = /stateLayout:\s*\{\s*schemaVersion:\s*1,\s*programId:\s*"([^"]+)",\s*slots:\s*\[([^\]]*)\]/s;
+  const layoutPattern = /stateLayout:\s*\{\s*schemaVersion:\s*1,\s*programId:\s*"([^"]+)",\s*moduleRevision:\s*"([^"]+)",\s*slots:\s*\[([^\]]*)\]/s;
   const layoutMatch = transformed.code.match(layoutPattern);
   assert.ok(layoutMatch, "Row carries one compiled owner layout");
   assert.equal(layoutMatch[1], rowSite, "layout programId equals defineComponent's first argument");
-  const layoutEntries = [...layoutMatch[2].matchAll(/\{\s*siteId:\s*"([^"]+)",\s*slot:\s*(\d+)\s*\}/g)];
+  const layoutEntries = [...layoutMatch[3].matchAll(/\{\s*siteId:\s*"([^"]+)",\s*slot:\s*(\d+)\s*\}/g)];
   assert.deepEqual(layoutEntries.map((entry) => [entry[1], Number(entry[2])]), stateSites.map((site, slot) => [site, slot]));
   const v2Owners = [...transformed.code.matchAll(/schemaVersion:\s*2,\s*ownerProgramId:\s*"([^"]+)",\s*sinkId:/g)].map((match) => match[1]);
   assert.ok(v2Owners.length >= 5, "vector, repeat, and unary style sinks each have a compiled descriptor");
@@ -229,6 +229,9 @@ try {
   );
   await writeFile(emittedPath, transformed.code, { flag: "wx" });
   app = await import(`${pathToFileURL(emittedPath).href}?attempt=${attemptId}`);
+  const moduleSource = layoutMatch[1].slice(0, layoutMatch[1].lastIndexOf("#component:"));
+  assert.equal(layoutMatch[2], inspectCompiledSemanticPlan(moduleSource)?.module_revision,
+    "emitted layout and registered semantic plan share one module revision");
 
   const host = new MemoryVDOMHost();
   const container = host.createContainer();

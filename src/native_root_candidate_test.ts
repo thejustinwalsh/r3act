@@ -505,22 +505,13 @@ Deno.test("host callbacks cannot reenter root commits during candidate host muta
     updateBlocked,
     "host callback synchronously updated the root during candidate host mutation",
   );
-  let terminal = false;
-  try {
-    candidate.publish();
-  } catch {
-    terminal = true;
-  }
-  assert(
-    terminal,
-    "host callback's urgent state write was silently dropped during publication",
-  );
-  let rootRejected = false;
-  try {
-    root.update(jsx(Counter, { label: "retry" }));
-  } catch {
-    rootRejected = true;
-  }
-  assert(rootRejected, "root accepted a retry after host state became partial");
+  candidate.publish();
+  equal(container.children[0].children[0].text, "0", "captured candidate output accepted");
+  assert(root.diagnostics().pendingChangeCount > 0, "urgent host action stays pending");
+  candidate.runEffects();
+  equal(container.children[0].children[0].text, "1", "deferred scheduler publishes newer action");
+  equal(root.diagnostics().pendingChangeCount, 0, "newer action acknowledged by later pass");
+  root.update(jsx(Counter, { label: "retry" }));
+  equal(container.children[0].props["data-label"], "retry", "successful publication stays usable");
   root.dispose();
 });

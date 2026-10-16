@@ -1,4 +1,10 @@
 import {
+  captureCompiledSemanticRevision,
+  type CompiledSemanticRevisionToken,
+  isCompiledSemanticRevisionCurrent,
+  subscribeCompiledSemanticRevision,
+} from "./compiled_semantic_plan.ts";
+import {
   type AnyAsyncStore,
   AsyncStore,
   StoreRenderTransaction,
@@ -68,10 +74,25 @@ import {
   type DerivedRegionGraph,
 } from "./derived_region_runtime.ts";
 import {
+  prepareCollectionReaderAcknowledgement,
   type KeyedCollection,
   type KeyedCollectionBatch,
   type KeyedCollectionOperation,
 } from "./keyed_collection.ts";
+
+const collectCleanupErrors = (actions: readonly (() => void)[]): unknown[] => {
+  const errors: unknown[] = [];
+  for (const action of actions) {
+    try { action(); } catch (error) { errors.push(error); }
+  }
+  return errors;
+};
+const throwWithCleanup = (error: unknown, errors: readonly unknown[]): never => {
+  if (errors.length) {
+    throw new AggregateError([error, ...errors], "Publication and cleanup failed");
+  }
+  throw error;
+};
 
 const componentSite = Symbol("compiled-component-site");
 class SparseCandidateIneligible extends Error {}
@@ -149,6 +170,7 @@ type CandidateLifecycleSpec<H, Parent> = {
   transitions: readonly string[];
   pendingResources: readonly AsyncResource<any>[];
   blocked: boolean;
+  codeCurrent(): boolean;
   validatePrepared(): boolean;
   validatePostHost(): boolean;
   commitHost(): void;
@@ -289,15 +311,22 @@ export const defineComponent = <P extends Record<string, unknown>>(
     throw new Error("Component site ID must not be empty");
   }
   Object.defineProperty(render, componentSite, { value: siteId });
-  if (metadata) {
-    const propOnlySites = [...metadata.propOnlySites];
+  const moduleEnd = siteId.lastIndexOf("#component:");
+  const revision = moduleEnd < 0 ? undefined : captureCompiledSemanticRevision(
+    siteId.slice(0, moduleEnd), metadata?.stateLayout?.moduleRevision,
+  );
+  if (moduleEnd >= 0 && metadata?.stateLayout?.moduleRevision && !revision) {
+    throw new Error("Compiled state layout has no matching module revision");
+  }
+  if (metadata || revision) {
+    const propOnlySites = [...(metadata?.propOnlySites ?? [])];
     if (propOnlySites.some((site) => typeof site !== "string" || !site)) {
       throw new Error(
         "Component prop-only metadata contains an invalid state site ID",
       );
     }
     let stateLayout: CompiledStateLayout | undefined;
-    if (metadata.stateLayout !== undefined) {
+    if (metadata?.stateLayout !== undefined) {
       const layout = metadata.stateLayout;
       if (layout.programId !== undefined && layout.programId !== siteId) {
         throw new Error(
@@ -312,7 +341,7 @@ export const defineComponent = <P extends Record<string, unknown>>(
       }
       stateLayout = normalized;
     }
-    if (metadata.ownerUpdateProgram !== undefined) {
+    if (metadata?.ownerUpdateProgram !== undefined) {
       const program = metadata.ownerUpdateProgram;
       if (
         !stateLayout || program.programId !== siteId ||
@@ -327,7 +356,8 @@ export const defineComponent = <P extends Record<string, unknown>>(
     Object.defineProperty(render, componentMetadata, {
       value: Object.freeze({
         propOnlySites: Object.freeze(propOnlySites),
-        hostLeafOutput: metadata.hostLeafOutput === true,
+        hostLeafOutput: metadata?.hostLeafOutput === true,
+        ...(revision ? { revision } : {}),
         ...(stateLayout ? { stateLayout } : {}),
       }),
     });
@@ -338,9 +368,25 @@ export const defineComponent = <P extends Record<string, unknown>>(
 const componentMetadata = Symbol("compiled-component-metadata");
 const emptyCompiledPropSites: ReadonlySet<string> = new Set();
 type ComponentMetadata = {
+  readonly revision?: CompiledSemanticRevisionToken;
   readonly propOnlySites: readonly string[];
   readonly hostLeafOutput?: boolean;
   readonly stateLayout?: CompiledStateLayout;
+};
+
+const componentRevision = (component: unknown) =>
+  typeof component === "function"
+    ? (component as SiteComponent<unknown> & {
+      [componentMetadata]?: ComponentMetadata;
+    })[componentMetadata]?.revision
+    : undefined;
+const componentCodeCurrent = (component: unknown): boolean => {
+  const revision = componentRevision(component);
+  return !revision || isCompiledSemanticRevisionCurrent(revision);
+};
+const cacheCodeCurrent = (caches: Iterable<ComponentCache>): boolean => {
+  for (const cache of caches) if (!componentCodeCurrent(cache.type)) return false;
+  return true;
 };
 
 const compiledStateLayoutFor = (
@@ -923,6 +969,8 @@ export class ComponentStateRoot<H, Parent = H> {
   #sourceValueSyncVisits = 0;
   readonly #scheduleCommit: (commit: () => void) => void;
   readonly #unsubscribe: () => void;
+  readonly #unsubscribeRevision: () => void;
+  #codeInvalidated = false;
   readonly #profile?: RuntimeProfileCallback;
   readonly #profileCounter?: RuntimeCounterCallback;
   readonly #keyedOwnerReuse: boolean;
@@ -998,6 +1046,14 @@ export class ComponentStateRoot<H, Parent = H> {
         componentSites: plan.region_component_site_ids,
       };
     }
+    this.#unsubscribeRevision = subscribeCompiledSemanticRevision((change) => {
+      for (const cache of this.#componentCache.values()) {
+        if (componentRevision(cache.type)?.sourceFile === change.sourceFile) {
+          this.#codeInvalidated = true;
+          break;
+        }
+      }
+    });
     this.#rootOwner = this.world.claimRootId(rootId);
     this.#unsubscribe = this.world.subscribeDirtyCells((handle, version) => {
       if (!this.world.isWithin(handle.owner, this.#rootOwner)) return;
@@ -1133,14 +1189,29 @@ export class ComponentStateRoot<H, Parent = H> {
     };
     const finishUnpublished = (next: "discarded" | "failed") => {
       phase = next;
-      try {
-        spec.discard();
-      } finally {
-        releaseStores();
-        this.#preparedCandidates.delete(candidate);
-        this.#releasePublicationBarrier(candidate);
-        release(false);
-      }
+      const errors = collectCleanupErrors([
+        () => spec.discard(),
+        releaseStores,
+        () => { this.#preparedCandidates.delete(candidate); },
+        () => release(false),
+        () => this.#releasePublicationBarrier(candidate),
+      ]);
+      if (errors.length === 1) throw errors[0];
+      if (errors.length) throw new AggregateError(errors, "Candidate cleanup failed");
+    };
+    const failUnpublished = (error: unknown): never => {
+      phase = "failed";
+      this.#terminalHostFailure ??= error;
+      this.#terminalHostFailed = true;
+      const errors = collectCleanupErrors([
+        () => this.#vdom.failPublication(),
+        () => spec.discard(),
+        releaseStores,
+        () => { this.#preparedCandidates.delete(candidate); },
+        () => release(false),
+        () => this.#releasePublicationBarrier(candidate),
+      ]);
+      return throwWithCleanup(error, errors);
     };
     const candidate: NativeRootCandidate<H, Parent> = {
       rootId: this.#rootId,
@@ -1156,10 +1227,11 @@ export class ComponentStateRoot<H, Parent = H> {
       },
       validate: () =>
         phase === "prepared" && !released && !this.#disposed &&
-        !this.#terminalHostFailed &&
+        !this.#terminalHostFailed && !this.#codeInvalidated &&
+        spec.codeCurrent() &&
         this.#publicationVersion === spec.baseVersion &&
         this.#vdom.version === spec.baseVDOMVersion &&
-        spec.validatePrepared(),
+        spec.validatePrepared() && !this.#codeInvalidated && spec.codeCurrent(),
       commitHost: () => {
         if (phase !== "prepared") throw new Error(`Candidate is ${phase}`);
         this.#assertNoPublicationBarrier("commit another candidate");
@@ -1181,19 +1253,7 @@ export class ComponentStateRoot<H, Parent = H> {
           }
           phase = "host-committed";
         } catch (error) {
-          this.#vdom.failPublication();
-          phase = "failed";
-          this.#terminalHostFailure ??= error;
-          this.#terminalHostFailed = true;
-          try {
-            spec.discard();
-          } finally {
-            releaseStores();
-            this.#preparedCandidates.delete(candidate);
-            release(false);
-            this.#releasePublicationBarrier(candidate);
-          }
-          throw error;
+          failUnpublished(error);
         } finally {
           this.#candidateHostCommit = false;
         }
@@ -1201,9 +1261,10 @@ export class ComponentStateRoot<H, Parent = H> {
       validatePostHost: () =>
         phase === "host-committed" && !this.#disposed &&
         !this.#disposeRequested && !this.#terminalHostFailed &&
+        !this.#codeInvalidated && spec.codeCurrent() &&
         this.#publicationVersion === spec.baseVersion &&
         this.#vdom.appliedVersion === spec.baseVDOMVersion + 1 &&
-        spec.validatePostHost(),
+        spec.validatePostHost() && !this.#codeInvalidated && spec.codeCurrent(),
       preparePublication: () => {
         if (phase !== "host-committed") {
           throw new Error(`Candidate is ${phase}`);
@@ -1212,26 +1273,13 @@ export class ComponentStateRoot<H, Parent = H> {
           const error = new Error(
             "Native root candidate became stale after host commit",
           );
-          phase = "failed";
-          this.#terminalHostFailure ??= error;
-          this.#terminalHostFailed = true;
-          try {
-            spec.discard();
-          } finally {
-            this.#vdom.failPublication();
-            releaseStores();
-            this.#preparedCandidates.delete(candidate);
-            release(false);
-            this.#releasePublicationBarrier(candidate);
-          }
-          throw error;
+          failUnpublished(error);
         }
         try {
           spec.preparePublication();
           phase = "publication-ready";
         } catch (error) {
-          candidate.failGroup(error);
-          throw error;
+          failUnpublished(error);
         }
       },
       publish: () => {
@@ -1240,24 +1288,15 @@ export class ComponentStateRoot<H, Parent = H> {
           throw new Error(`Candidate is ${phase}`);
         }
         try {
+          if (this.#codeInvalidated || !spec.codeCurrent()) {
+            throw new Error("Compiled module changed before publication");
+          }
           spec.publish();
           this.#vdom.publishAccepted();
           phase = "published";
         } catch (error) {
-          this.#vdom.failPublication();
-          phase = "failed";
-          this.#terminalHostFailure ??= error;
-          this.#terminalHostFailed = true;
           this.#terminalFailureKind = "publication";
-          try {
-            spec.discard();
-          } finally {
-            releaseStores();
-            this.#preparedCandidates.delete(candidate);
-            release(false);
-            this.#releasePublicationBarrier(candidate);
-          }
-          throw error;
+          failUnpublished(error);
         }
       },
       installSubscriptions: () => {
@@ -1279,10 +1318,12 @@ export class ComponentStateRoot<H, Parent = H> {
           errors.push(error);
         } finally {
           if (phase === "published") phase = "finished";
-          this.#preparedCandidates.delete(candidate);
-          releaseStores();
-          release(true);
-          this.#releasePublicationBarrier(candidate);
+          errors.push(...collectCleanupErrors([
+            () => { this.#preparedCandidates.delete(candidate); },
+            releaseStores,
+            () => release(true),
+            () => this.#releasePublicationBarrier(candidate),
+          ]));
         }
         if (errors.length) {
           throw new AggregateError(errors, spec.effectFailureMessage);
@@ -1305,15 +1346,15 @@ export class ComponentStateRoot<H, Parent = H> {
         this.#terminalHostFailure ??= error;
         this.#terminalHostFailed = true;
         if (wasPublished) this.#terminalFailureKind = "publication";
-        this.#vdom.failPublication();
-        try {
-          if (!wasPublished) spec.discard();
-        } finally {
-          releaseStores();
-          this.#preparedCandidates.delete(candidate);
-          this.#releasePublicationBarrier(candidate);
-          release(wasPublished);
-        }
+        const errors = collectCleanupErrors([
+          () => this.#vdom.failPublication(),
+          () => { if (!wasPublished) spec.discard(); },
+          releaseStores,
+          () => { this.#preparedCandidates.delete(candidate); },
+          () => release(wasPublished),
+          () => this.#releasePublicationBarrier(candidate),
+        ]);
+        if (errors.length) throwWithCleanup(error, errors);
       },
     };
     candidateHandle = candidate;
@@ -1533,6 +1574,7 @@ export class ComponentStateRoot<H, Parent = H> {
       transitions: [],
       pendingResources: [],
       blocked: false,
+      codeCurrent: () => cacheCodeCurrent(cachePatches.values()),
       validatePrepared: () =>
         this.#storeNotificationGeneration === storeGenerationAtPrepare &&
         preparation.validate() && !preparation.hasStateWrites() &&
@@ -1549,6 +1591,7 @@ export class ComponentStateRoot<H, Parent = H> {
         stores.preparePublicationAfterHost();
       },
       commitHost: () => {
+        preparation.beginHostApplication();
         for (const item of capturedBindings) {
           const canonical = item.sites.map((site, index) =>
             this.world.isAlive(item.owner)
@@ -1888,6 +1931,7 @@ export class ComponentStateRoot<H, Parent = H> {
       transitions: options.transitions ?? [],
       pendingResources: candidatePendingResources,
       blocked: boundaryState.blocked,
+      codeCurrent: () => cacheCodeCurrent(artifacts.nextCache?.values() ?? []),
       validatePrepared: () =>
         artifacts.preparation !== null && artifacts.preparation.validate() &&
         !artifacts.preparation.hasStateWrites() &&
@@ -1908,6 +1952,7 @@ export class ComponentStateRoot<H, Parent = H> {
         artifacts.stores!.preparePublicationAfterHost();
       },
       commitHost: () => {
+        artifacts.preparation!.beginHostApplication();
         for (const item of artifacts.capturedBindings ?? []) {
           const canonical = item.sites.map((site, index) =>
             this.world.isAlive(item.owner)
@@ -2409,18 +2454,23 @@ export class ComponentStateRoot<H, Parent = H> {
       this.#hostApplicationDepth > 0
     ) {
       this.#disposeRequested = true;
+      this.#vdom.cancelPendingRefAttachments();
       return;
     }
     this.#disposing = true;
+    const disposeErrors: unknown[] = [];
     for (const candidate of [...this.#preparedCandidates]) {
-      candidate.failGroup(
-        new Error("Component root disposed during candidate preparation"),
-      );
+      try {
+        candidate.failGroup(
+          new Error("Component root disposed during candidate preparation"),
+        );
+      } catch (error) {
+        disposeErrors.push(error);
+      }
     }
     this.#disposed = true;
     this.#disposing = false;
     this.#deferredFlush = false;
-    const disposeErrors: unknown[] = [];
     for (const listener of this.#disposeListeners) {
       try {
         listener();
@@ -2430,6 +2480,7 @@ export class ComponentStateRoot<H, Parent = H> {
     }
     this.#disposeListeners.clear();
     this.#unsubscribe();
+    this.#unsubscribeRevision();
     this.#scheduled = false;
     this.#pendingChanges.clear();
     this.#lastSourceValues.clear();
@@ -4101,6 +4152,7 @@ export class ComponentStateRoot<H, Parent = H> {
       }
 
       const touchedCollections = [...stages.values()];
+      let collectionAcknowledgements: Array<() => void> = [];
       const validateCollections = () =>
         touchedCollections.every((stage) =>
           stage.region.collection.version === stage.read.toVersion
@@ -4123,6 +4175,7 @@ export class ComponentStateRoot<H, Parent = H> {
           stage.operations.length = 0;
         }
         stages.clear();
+        collectionAcknowledgements = [];
         rowsByOwner.clear();
         capturedBindings.length = 0;
         leafCaches.clear();
@@ -4141,6 +4194,10 @@ export class ComponentStateRoot<H, Parent = H> {
         transitions: options.transitions,
         pendingResources: [],
         blocked: false,
+        codeCurrent: () => cacheCodeCurrent(leafCaches.values()) &&
+          touchedCollections.every((stage) =>
+            [...stage.rows.values()].every((row) => !row || componentCodeCurrent(row.cache.type))
+          ),
         validatePrepared: () =>
           this.#storeNotificationGeneration === storeGenerationAtPrepare &&
           preparation.validate() && !preparation.hasStateWrites() &&
@@ -4157,8 +4214,20 @@ export class ComponentStateRoot<H, Parent = H> {
         preparePublication: () => {
           preparation.preparePublicationAfterHost();
           stores.preparePublicationAfterHost();
+          collectionAcknowledgements = touchedCollections.map((stage) => {
+            const acknowledge = stage.region.reader &&
+              prepareCollectionReaderAcknowledgement(
+                stage.region.reader,
+                stage.read.toVersion,
+              );
+            if (!acknowledge) {
+              throw new Error("Collection reader cannot accept captured publication");
+            }
+            return acknowledge;
+          });
         },
         commitHost: () => {
+          preparation.beginHostApplication();
           for (const item of capturedBindings) {
             const canonical = item.sites.map((site, index) =>
               privateOwners.has(item.owner)
@@ -4189,6 +4258,8 @@ export class ComponentStateRoot<H, Parent = H> {
         publish: () => {
           preparation.publishAccepted();
           stores.publishAccepted();
+          for (const acknowledge of collectionAcknowledgements) acknowledge();
+          collectionAcknowledgements = [];
           for (const [owner, cache] of leafCaches) {
             this.#componentCache.set(owner, cache);
           }
@@ -4254,11 +4325,6 @@ export class ComponentStateRoot<H, Parent = H> {
               }
             }
             if (stage.region.collection.version === stage.read.toVersion) {
-              if (!stage.region.reader?.acknowledge(stage.read.toVersion)) {
-                throw new Error(
-                  "Collection reader lost its validated version after mixed VDOM commit",
-                );
-              }
               this.#pendingCollectionRegionKeys.delete(stage.key);
             }
             for (
@@ -4686,6 +4752,10 @@ export class ComponentStateRoot<H, Parent = H> {
         sites.set(site, source.value);
       }
     }
+    if (!prepareCollectionReaderAcknowledgement(region.reader, read.toVersion)) {
+      discardCandidate();
+      return false;
+    }
     let deltaCommitted: boolean;
     try {
       deltaCommitted = this.#commitHostMutation(
@@ -4709,11 +4779,35 @@ export class ComponentStateRoot<H, Parent = H> {
     const effectErrors: unknown[] = [];
     const deferredEffects: Array<() => void> = [];
     try {
-      if (!region.reader.acknowledge(read.toVersion)) {
-        throw new Error(
-          "Collection reader lost its validated version after VDOM commit",
-        );
+      const acknowledge = prepareCollectionReaderAcknowledgement(
+        region.reader,
+        read.toVersion,
+      );
+      if (!acknowledge) {
+        throw new Error("Collection reader cannot accept captured publication");
       }
+      if (!this.world.isAlive(region.parentOwner)) {
+        throw new Error("Collection parent was removed during host application");
+      }
+      for (const previous of originalRows.values()) {
+        if (!this.world.isAlive(previous.owner)) {
+          throw new Error("Collection owner was removed during host application");
+        }
+      }
+      const activations = new Map<OwnerId, () => void>();
+      for (const candidate of overlay.values()) {
+        if (!candidate) continue;
+        if (!this.world.isAlive(candidate.owner) || !componentCodeCurrent(candidate.cache.type)) {
+          throw new Error("Collection owner changed during host application");
+        }
+        if (candidate.staged) {
+          activations.set(candidate.owner, this.world.prepareStagedOwnerActivation(
+            candidate.owner,
+            candidate.previousOwner,
+          ));
+        }
+      }
+      acknowledge();
 
       for (const [key, candidate] of overlay) {
         const previous = originalRows.get(key);
@@ -4732,10 +4826,7 @@ export class ComponentStateRoot<H, Parent = H> {
           continue;
         }
         if (candidate.staged) {
-          this.world.activateStagedOwner(
-            candidate.owner,
-            candidate.previousOwner,
-          );
+          activations.get(candidate.owner)!();
           if (candidate.previousOwner !== undefined) {
             this.#retireCollectionRow(
               candidate.previousOwner,
@@ -4910,6 +5001,7 @@ export class ComponentStateRoot<H, Parent = H> {
 
   #commitHostMutation<T>(commit: () => T, deferPublication = false): T {
     const direct = !this.#candidateHostCommit;
+    if (this.#codeInvalidated) throw new Error("Compiled module changed; remount the root");
     if (direct) this.#vdom.beginPublication();
     let failed = false;
     let primaryFailure: unknown;
@@ -4919,6 +5011,7 @@ export class ComponentStateRoot<H, Parent = H> {
       if (this.#disposeRequested) {
         throw new Error("Root disposal was requested during host application");
       }
+      if (this.#codeInvalidated) throw new Error("Compiled module changed during host application");
       if (direct) {
         if (deferPublication) {
           this.#directPublicationPending = true;
@@ -4956,6 +5049,9 @@ export class ComponentStateRoot<H, Parent = H> {
   #publishDirectHostMutation() {
     if (!this.#directPublicationPending) {
       throw new Error("No direct host publication is pending");
+    }
+    if (this.#codeInvalidated) {
+      this.#failDirectHostMutation(new Error("Compiled module changed before publication"));
     }
     this.#vdom.publishAccepted();
     this.#publicationVersion++;
@@ -6215,6 +6311,9 @@ export class ComponentStateRoot<H, Parent = H> {
       }
     }
     if (typeof node.type === "function") {
+      if (!componentCodeCurrent(node.type)) {
+        throw new Error("Compiled component revision is obsolete; remount with current code");
+      }
       if (this.#activeCounters) this.#count("owner.component-visits");
       const siteId = getComponentSiteId(node.type);
       const lastSegment = path.slice(path.lastIndexOf("/") + 1);
@@ -6509,6 +6608,7 @@ export class ComponentStateRoot<H, Parent = H> {
   }
 
   #assertActive() {
+    if (this.#codeInvalidated) throw new Error("Compiled module changed; remount the root");
     if (this.#disposed) throw new Error("ComponentStateRoot is disposed");
     if (this.#disposeRequested) {
       throw new Error("ComponentStateRoot disposal is pending publication");

@@ -21,6 +21,7 @@ Deno.test("compiled layout cache shares original and normalized aliases", () => 
 
   const expected = JSON.stringify([
     "card",
+    null,
     [["card#state:0", 0], ["card#state:1", 1]],
   ]);
   assertEquals(compiledStateLayoutSignature(input), expected);

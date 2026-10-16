@@ -308,14 +308,14 @@ Deno.test("accepted prepared false result is acknowledged without retry", () => 
     equal(container.children[0].props.value, 0, "equal projected value keeps the host prop unchanged");
     equal(executeCalls, 1, "the first supported cut executes once");
     equal(prepareCalls, 1, "the first cut prepares one token");
-    equal(root.publicationVersion, before, "no host write means no publication increment");
+    equal(root.publicationVersion, before + 1, "accepted no-write cut advances logical publication");
     equal(root.diagnostics().pendingChangeCount, 0, "accepted no-write cut is acknowledged");
 
     setter(4);
     root.flush();
     equal(executeCalls, 2, "accepted false is not retried as stale");
     equal(prepareCalls, 1, "cached token is reused on the second cut");
-    equal(root.publicationVersion, before, "repeated equal output still does not publish");
+    equal(root.publicationVersion, before + 2, "second accepted no-write cut advances logical publication");
     equal(root.diagnostics().pendingChangeCount, 0, "second accepted no-write cut is acknowledged");
   } finally {
     VDOMSnapshotRoot.prototype.prepareNumericCellProgram = originalPrepare;
@@ -419,7 +419,7 @@ Deno.test("prepared cut host failure stays terminal with the dirty version pendi
   }
 });
 
-Deno.test("disposing inside a prepared writer clears captured token buffers", () => {
+Deno.test("disposal inside a prepared writer waits for the host batch and clears token buffers", () => {
   let root!: ComponentStateRoot<MemoryNode>;
   let setter!: (value: number) => boolean;
   let disposeDuringWrite = false;
@@ -428,7 +428,6 @@ Deno.test("disposing inside a prepared writer clears captured token buffers", ()
     override setProp(node: MemoryNode, name: string, value: unknown, previous?: unknown) {
       super.setProp(node, name, value, previous);
       if (disposeDuringWrite && name === "first") {
-        disposeDuringWrite = false;
         writes.push(name);
         root.dispose();
       } else if (disposeDuringWrite) writes.push(name);
@@ -447,8 +446,11 @@ Deno.test("disposing inside a prepared writer clears captured token buffers", ()
   root.mount(jsx(Output, {}));
   disposeDuringWrite = true;
   setter(4);
-  root.flush();
-  equal(writes.join(","), "first", "disposed host receives no later writer");
+  let failure = "";
+  try { root.flush(); } catch (error) { failure = String(error); }
+  equal(failure.includes("Root disposal was requested during host application"), true,
+    "disposal rejects the batch after host application");
+  equal(writes.join(","), "first,second", "admitted writers finish before teardown");
   equal(root.diagnostics().pendingChangeCount, 0, "disposal drops the root cut");
   equal(root.diagnostics().ownerCount, 0, "disposal releases owner state");
 });
