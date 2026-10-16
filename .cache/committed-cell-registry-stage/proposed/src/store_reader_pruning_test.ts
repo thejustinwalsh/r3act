@@ -1,0 +1,1 @@
+../../../../src/store_reader_pruning_test.ts

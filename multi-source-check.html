@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Multi-source runtime parity check</title>
+    <style>
+      :root { color-scheme: dark; font: 16px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+      body { margin: 0; padding: 3rem; background: #111827; color: #e5e7eb; }
+      main { max-width: 54rem; margin: 0 auto; }
+      h1 { font: 600 1.7rem/1.2 system-ui, sans-serif; }
+      #result { padding: 1.25rem; border: 1px solid #475569; border-radius: 0.75rem; white-space: pre-wrap; }
+      #result[data-status="pass"] { border-color: #34d399; color: #a7f3d0; }
+      #result[data-status="fail"] { border-color: #fb7185; color: #fecdd3; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>OXC multi-source runtime parity</h1>
+      <p>Exercises item-local <code>x</code>/<code>y</code> slots and shared-source fan-out through dense and CSR dispatch.</p>
+      <pre id="result" data-status="running">Running…</pre>
+      <div id="dense" hidden></div>
+      <div id="csr" hidden></div>
+      <div id="dense-shared" hidden></div>
+      <div id="csr-shared" hidden></div>
+    </main>
+    <script type="module" src="/src/browser/multi_source_check.ts"></script>
+  </body>
+</html>

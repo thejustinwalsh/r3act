@@ -1,0 +1,2951 @@
+{
+  "schemaVersion": "snake-sparse-frame-browser-v1-preregistration",
+  "status": "PREREGISTERED",
+  "frozenAt": "2026-10-11T03:09:02.827Z",
+  "purpose": "Measure a declarative per-frame UI workload when only a fraction of entity props changes, including the cost of constructing dirty-row and bucket worklists.",
+  "relation": "Browser follow-up to columnar-dispatch-v1; compare mechanism results against React 19.3 + React Compiler using stable per-entity subscriptions.",
+  "totalPageLoads": 288,
+  "sizes": [
+    512,
+    4096
+  ],
+  "dirtyPercentages": [
+    1,
+    10,
+    50,
+    100
+  ],
+  "localities": [
+    "clustered",
+    "scattered"
+  ],
+  "arms": [
+    "react",
+    "dense-vdom",
+    "dirty-rows-vdom",
+    "bucket-32-vdom",
+    "bucket-128-vdom",
+    "direct"
+  ],
+  "replicationsPerCell": 3,
+  "warmupFrames": 30,
+  "measuredFrames": 60,
+  "replicationUnit": "isolated visible browser page load; RAF samples are nested within a page",
+  "buildMode": "Vite production",
+  "protocols": {
+    "react": "React 19.3 + React Compiler, per-entity useSyncExternalStore with scalar point snapshots; only dirty rows notify subscribers; flushSync commits each RAF update",
+    "dense": "OXC compiled binding IDs over retained JSX/VDOM; x/y numeric columns; scans all bound rows and skips unchanged values",
+    "dirtyRows": "same retained JSX, columns, compiler IDs, and host; reusable dirty row buffer built inside the timed frame callback",
+    "bucket32": "same retained JSX and columns; construct a deduplicated 32-row bucket list in the timed callback, then scan those rows",
+    "bucket128": "same retained JSX and columns; construct a deduplicated 128-row bucket list in the timed callback, then scan those rows",
+    "direct": "cached DOM nodes and dirty-row left/top writes; worklist construction remains timed"
+  },
+  "workload": "At each RAF, update deterministic x/y values for a clustered prefix or a seeded scattered permutation. Non-dirty rows retain their prior values. Each dirty entity gets two style-property updates. VDOM strategies share the same numeric columns and compiled binding IDs. The frame timer includes worklist construction, value computation, dispatch, host writes, and React synchronous commit.",
+  "primaryMetric": "Per-page median and nearest-rank p95 updateCpuMs; the page is the replication unit. Report each page's RAF interval p95 separately as a frame-cadence proxy.",
+  "secondaryMetrics": [
+    "mount time",
+    "median paired ratio to React within each replication/workload",
+    "direction counts",
+    "dirty rows and unique buckets per frame"
+  ],
+  "contracts": [
+    "each page records exactly 30 warmup and 60 measured RAF updates",
+    "all DOM nodes retain identity and count across the run",
+    "final DOM left/top values match the deterministic per-entity expected arrays",
+    "React's final commit marker covers the last measured update",
+    "only visible production-build pages enter the archive",
+    "all six arms appear exactly once per size/density/locality/replication cell"
+  ],
+  "exclusions": [
+    "initial bundle parse/evaluation",
+    "layout, paint, GPU work, and physical display presentation",
+    "dynamic node creation/removal"
+  ],
+  "limitations": [
+    "The browser workload is particle-like rather than a faithful game simulation; it isolates frequently changing declarative entity props.",
+    "Final output parity is checked after the measured run; Deno mechanism replay validates every scheduled update in its own protocol.",
+    "React uses a strong per-entity external-store baseline and explicit synchronous commits; results do not compare every possible React state architecture."
+  ],
+  "pages": [
+    {
+      "sequence": 0,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "react",
+      "trialId": "sparse-v1-n512-d1-clustered-r1-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=512&density=1&locality=clustered&replication=1&trial=sparse-v1-n512-d1-clustered-r1-react&autoplay=1&archive=1&sequence=0"
+    },
+    {
+      "sequence": 1,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n512-d1-clustered-r1-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=512&density=1&locality=clustered&replication=1&trial=sparse-v1-n512-d1-clustered-r1-dirty-rows-vdom&autoplay=1&archive=1&sequence=1"
+    },
+    {
+      "sequence": 2,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n512-d1-clustered-r1-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=512&density=1&locality=clustered&replication=1&trial=sparse-v1-n512-d1-clustered-r1-dense-vdom&autoplay=1&archive=1&sequence=2"
+    },
+    {
+      "sequence": 3,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n512-d1-clustered-r1-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=512&density=1&locality=clustered&replication=1&trial=sparse-v1-n512-d1-clustered-r1-bucket-32-vdom&autoplay=1&archive=1&sequence=3"
+    },
+    {
+      "sequence": 4,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n512-d1-clustered-r1-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=512&density=1&locality=clustered&replication=1&trial=sparse-v1-n512-d1-clustered-r1-direct&autoplay=1&archive=1&sequence=4"
+    },
+    {
+      "sequence": 5,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n512-d1-clustered-r1-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=512&density=1&locality=clustered&replication=1&trial=sparse-v1-n512-d1-clustered-r1-bucket-128-vdom&autoplay=1&archive=1&sequence=5"
+    },
+    {
+      "sequence": 6,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n512-d1-scattered-r1-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=512&density=1&locality=scattered&replication=1&trial=sparse-v1-n512-d1-scattered-r1-dirty-rows-vdom&autoplay=1&archive=1&sequence=6"
+    },
+    {
+      "sequence": 7,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n512-d1-scattered-r1-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=512&density=1&locality=scattered&replication=1&trial=sparse-v1-n512-d1-scattered-r1-dense-vdom&autoplay=1&archive=1&sequence=7"
+    },
+    {
+      "sequence": 8,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n512-d1-scattered-r1-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=512&density=1&locality=scattered&replication=1&trial=sparse-v1-n512-d1-scattered-r1-bucket-32-vdom&autoplay=1&archive=1&sequence=8"
+    },
+    {
+      "sequence": 9,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n512-d1-scattered-r1-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=512&density=1&locality=scattered&replication=1&trial=sparse-v1-n512-d1-scattered-r1-direct&autoplay=1&archive=1&sequence=9"
+    },
+    {
+      "sequence": 10,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n512-d1-scattered-r1-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=512&density=1&locality=scattered&replication=1&trial=sparse-v1-n512-d1-scattered-r1-bucket-128-vdom&autoplay=1&archive=1&sequence=10"
+    },
+    {
+      "sequence": 11,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "react",
+      "trialId": "sparse-v1-n512-d1-scattered-r1-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=512&density=1&locality=scattered&replication=1&trial=sparse-v1-n512-d1-scattered-r1-react&autoplay=1&archive=1&sequence=11"
+    },
+    {
+      "sequence": 12,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n512-d10-clustered-r1-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=512&density=10&locality=clustered&replication=1&trial=sparse-v1-n512-d10-clustered-r1-dirty-rows-vdom&autoplay=1&archive=1&sequence=12"
+    },
+    {
+      "sequence": 13,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n512-d10-clustered-r1-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=512&density=10&locality=clustered&replication=1&trial=sparse-v1-n512-d10-clustered-r1-dense-vdom&autoplay=1&archive=1&sequence=13"
+    },
+    {
+      "sequence": 14,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n512-d10-clustered-r1-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=512&density=10&locality=clustered&replication=1&trial=sparse-v1-n512-d10-clustered-r1-bucket-32-vdom&autoplay=1&archive=1&sequence=14"
+    },
+    {
+      "sequence": 15,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n512-d10-clustered-r1-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=512&density=10&locality=clustered&replication=1&trial=sparse-v1-n512-d10-clustered-r1-direct&autoplay=1&archive=1&sequence=15"
+    },
+    {
+      "sequence": 16,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n512-d10-clustered-r1-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=512&density=10&locality=clustered&replication=1&trial=sparse-v1-n512-d10-clustered-r1-bucket-128-vdom&autoplay=1&archive=1&sequence=16"
+    },
+    {
+      "sequence": 17,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "react",
+      "trialId": "sparse-v1-n512-d10-clustered-r1-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=512&density=10&locality=clustered&replication=1&trial=sparse-v1-n512-d10-clustered-r1-react&autoplay=1&archive=1&sequence=17"
+    },
+    {
+      "sequence": 18,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n512-d10-scattered-r1-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=512&density=10&locality=scattered&replication=1&trial=sparse-v1-n512-d10-scattered-r1-dense-vdom&autoplay=1&archive=1&sequence=18"
+    },
+    {
+      "sequence": 19,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n512-d10-scattered-r1-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=512&density=10&locality=scattered&replication=1&trial=sparse-v1-n512-d10-scattered-r1-bucket-32-vdom&autoplay=1&archive=1&sequence=19"
+    },
+    {
+      "sequence": 20,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n512-d10-scattered-r1-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=512&density=10&locality=scattered&replication=1&trial=sparse-v1-n512-d10-scattered-r1-direct&autoplay=1&archive=1&sequence=20"
+    },
+    {
+      "sequence": 21,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n512-d10-scattered-r1-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=512&density=10&locality=scattered&replication=1&trial=sparse-v1-n512-d10-scattered-r1-bucket-128-vdom&autoplay=1&archive=1&sequence=21"
+    },
+    {
+      "sequence": 22,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "react",
+      "trialId": "sparse-v1-n512-d10-scattered-r1-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=512&density=10&locality=scattered&replication=1&trial=sparse-v1-n512-d10-scattered-r1-react&autoplay=1&archive=1&sequence=22"
+    },
+    {
+      "sequence": 23,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n512-d10-scattered-r1-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=512&density=10&locality=scattered&replication=1&trial=sparse-v1-n512-d10-scattered-r1-dirty-rows-vdom&autoplay=1&archive=1&sequence=23"
+    },
+    {
+      "sequence": 24,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n512-d50-clustered-r1-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=512&density=50&locality=clustered&replication=1&trial=sparse-v1-n512-d50-clustered-r1-dense-vdom&autoplay=1&archive=1&sequence=24"
+    },
+    {
+      "sequence": 25,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n512-d50-clustered-r1-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=512&density=50&locality=clustered&replication=1&trial=sparse-v1-n512-d50-clustered-r1-bucket-32-vdom&autoplay=1&archive=1&sequence=25"
+    },
+    {
+      "sequence": 26,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n512-d50-clustered-r1-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=512&density=50&locality=clustered&replication=1&trial=sparse-v1-n512-d50-clustered-r1-direct&autoplay=1&archive=1&sequence=26"
+    },
+    {
+      "sequence": 27,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n512-d50-clustered-r1-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=512&density=50&locality=clustered&replication=1&trial=sparse-v1-n512-d50-clustered-r1-bucket-128-vdom&autoplay=1&archive=1&sequence=27"
+    },
+    {
+      "sequence": 28,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "react",
+      "trialId": "sparse-v1-n512-d50-clustered-r1-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=512&density=50&locality=clustered&replication=1&trial=sparse-v1-n512-d50-clustered-r1-react&autoplay=1&archive=1&sequence=28"
+    },
+    {
+      "sequence": 29,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n512-d50-clustered-r1-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=512&density=50&locality=clustered&replication=1&trial=sparse-v1-n512-d50-clustered-r1-dirty-rows-vdom&autoplay=1&archive=1&sequence=29"
+    },
+    {
+      "sequence": 30,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n512-d50-scattered-r1-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=512&density=50&locality=scattered&replication=1&trial=sparse-v1-n512-d50-scattered-r1-bucket-32-vdom&autoplay=1&archive=1&sequence=30"
+    },
+    {
+      "sequence": 31,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n512-d50-scattered-r1-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=512&density=50&locality=scattered&replication=1&trial=sparse-v1-n512-d50-scattered-r1-direct&autoplay=1&archive=1&sequence=31"
+    },
+    {
+      "sequence": 32,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n512-d50-scattered-r1-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=512&density=50&locality=scattered&replication=1&trial=sparse-v1-n512-d50-scattered-r1-bucket-128-vdom&autoplay=1&archive=1&sequence=32"
+    },
+    {
+      "sequence": 33,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "react",
+      "trialId": "sparse-v1-n512-d50-scattered-r1-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=512&density=50&locality=scattered&replication=1&trial=sparse-v1-n512-d50-scattered-r1-react&autoplay=1&archive=1&sequence=33"
+    },
+    {
+      "sequence": 34,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n512-d50-scattered-r1-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=512&density=50&locality=scattered&replication=1&trial=sparse-v1-n512-d50-scattered-r1-dirty-rows-vdom&autoplay=1&archive=1&sequence=34"
+    },
+    {
+      "sequence": 35,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n512-d50-scattered-r1-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=512&density=50&locality=scattered&replication=1&trial=sparse-v1-n512-d50-scattered-r1-dense-vdom&autoplay=1&archive=1&sequence=35"
+    },
+    {
+      "sequence": 36,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n512-d100-clustered-r1-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=512&density=100&locality=clustered&replication=1&trial=sparse-v1-n512-d100-clustered-r1-bucket-32-vdom&autoplay=1&archive=1&sequence=36"
+    },
+    {
+      "sequence": 37,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n512-d100-clustered-r1-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=512&density=100&locality=clustered&replication=1&trial=sparse-v1-n512-d100-clustered-r1-direct&autoplay=1&archive=1&sequence=37"
+    },
+    {
+      "sequence": 38,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n512-d100-clustered-r1-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=512&density=100&locality=clustered&replication=1&trial=sparse-v1-n512-d100-clustered-r1-bucket-128-vdom&autoplay=1&archive=1&sequence=38"
+    },
+    {
+      "sequence": 39,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "react",
+      "trialId": "sparse-v1-n512-d100-clustered-r1-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=512&density=100&locality=clustered&replication=1&trial=sparse-v1-n512-d100-clustered-r1-react&autoplay=1&archive=1&sequence=39"
+    },
+    {
+      "sequence": 40,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n512-d100-clustered-r1-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=512&density=100&locality=clustered&replication=1&trial=sparse-v1-n512-d100-clustered-r1-dirty-rows-vdom&autoplay=1&archive=1&sequence=40"
+    },
+    {
+      "sequence": 41,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n512-d100-clustered-r1-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=512&density=100&locality=clustered&replication=1&trial=sparse-v1-n512-d100-clustered-r1-dense-vdom&autoplay=1&archive=1&sequence=41"
+    },
+    {
+      "sequence": 42,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n512-d100-scattered-r1-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=512&density=100&locality=scattered&replication=1&trial=sparse-v1-n512-d100-scattered-r1-direct&autoplay=1&archive=1&sequence=42"
+    },
+    {
+      "sequence": 43,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n512-d100-scattered-r1-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=512&density=100&locality=scattered&replication=1&trial=sparse-v1-n512-d100-scattered-r1-bucket-128-vdom&autoplay=1&archive=1&sequence=43"
+    },
+    {
+      "sequence": 44,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "react",
+      "trialId": "sparse-v1-n512-d100-scattered-r1-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=512&density=100&locality=scattered&replication=1&trial=sparse-v1-n512-d100-scattered-r1-react&autoplay=1&archive=1&sequence=44"
+    },
+    {
+      "sequence": 45,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n512-d100-scattered-r1-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=512&density=100&locality=scattered&replication=1&trial=sparse-v1-n512-d100-scattered-r1-dirty-rows-vdom&autoplay=1&archive=1&sequence=45"
+    },
+    {
+      "sequence": 46,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n512-d100-scattered-r1-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=512&density=100&locality=scattered&replication=1&trial=sparse-v1-n512-d100-scattered-r1-dense-vdom&autoplay=1&archive=1&sequence=46"
+    },
+    {
+      "sequence": 47,
+      "replication": 1,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n512-d100-scattered-r1-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=512&density=100&locality=scattered&replication=1&trial=sparse-v1-n512-d100-scattered-r1-bucket-32-vdom&autoplay=1&archive=1&sequence=47"
+    },
+    {
+      "sequence": 48,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n4096-d1-clustered-r1-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=4096&density=1&locality=clustered&replication=1&trial=sparse-v1-n4096-d1-clustered-r1-dirty-rows-vdom&autoplay=1&archive=1&sequence=48"
+    },
+    {
+      "sequence": 49,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n4096-d1-clustered-r1-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=4096&density=1&locality=clustered&replication=1&trial=sparse-v1-n4096-d1-clustered-r1-dense-vdom&autoplay=1&archive=1&sequence=49"
+    },
+    {
+      "sequence": 50,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n4096-d1-clustered-r1-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=4096&density=1&locality=clustered&replication=1&trial=sparse-v1-n4096-d1-clustered-r1-bucket-32-vdom&autoplay=1&archive=1&sequence=50"
+    },
+    {
+      "sequence": 51,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n4096-d1-clustered-r1-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=4096&density=1&locality=clustered&replication=1&trial=sparse-v1-n4096-d1-clustered-r1-direct&autoplay=1&archive=1&sequence=51"
+    },
+    {
+      "sequence": 52,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n4096-d1-clustered-r1-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=4096&density=1&locality=clustered&replication=1&trial=sparse-v1-n4096-d1-clustered-r1-bucket-128-vdom&autoplay=1&archive=1&sequence=52"
+    },
+    {
+      "sequence": 53,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "react",
+      "trialId": "sparse-v1-n4096-d1-clustered-r1-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=4096&density=1&locality=clustered&replication=1&trial=sparse-v1-n4096-d1-clustered-r1-react&autoplay=1&archive=1&sequence=53"
+    },
+    {
+      "sequence": 54,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n4096-d1-scattered-r1-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=4096&density=1&locality=scattered&replication=1&trial=sparse-v1-n4096-d1-scattered-r1-dense-vdom&autoplay=1&archive=1&sequence=54"
+    },
+    {
+      "sequence": 55,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n4096-d1-scattered-r1-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=4096&density=1&locality=scattered&replication=1&trial=sparse-v1-n4096-d1-scattered-r1-bucket-32-vdom&autoplay=1&archive=1&sequence=55"
+    },
+    {
+      "sequence": 56,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n4096-d1-scattered-r1-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=4096&density=1&locality=scattered&replication=1&trial=sparse-v1-n4096-d1-scattered-r1-direct&autoplay=1&archive=1&sequence=56"
+    },
+    {
+      "sequence": 57,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n4096-d1-scattered-r1-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=4096&density=1&locality=scattered&replication=1&trial=sparse-v1-n4096-d1-scattered-r1-bucket-128-vdom&autoplay=1&archive=1&sequence=57"
+    },
+    {
+      "sequence": 58,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "react",
+      "trialId": "sparse-v1-n4096-d1-scattered-r1-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=4096&density=1&locality=scattered&replication=1&trial=sparse-v1-n4096-d1-scattered-r1-react&autoplay=1&archive=1&sequence=58"
+    },
+    {
+      "sequence": 59,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n4096-d1-scattered-r1-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=4096&density=1&locality=scattered&replication=1&trial=sparse-v1-n4096-d1-scattered-r1-dirty-rows-vdom&autoplay=1&archive=1&sequence=59"
+    },
+    {
+      "sequence": 60,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n4096-d10-clustered-r1-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=4096&density=10&locality=clustered&replication=1&trial=sparse-v1-n4096-d10-clustered-r1-dense-vdom&autoplay=1&archive=1&sequence=60"
+    },
+    {
+      "sequence": 61,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n4096-d10-clustered-r1-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=4096&density=10&locality=clustered&replication=1&trial=sparse-v1-n4096-d10-clustered-r1-bucket-32-vdom&autoplay=1&archive=1&sequence=61"
+    },
+    {
+      "sequence": 62,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n4096-d10-clustered-r1-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=4096&density=10&locality=clustered&replication=1&trial=sparse-v1-n4096-d10-clustered-r1-direct&autoplay=1&archive=1&sequence=62"
+    },
+    {
+      "sequence": 63,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n4096-d10-clustered-r1-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=4096&density=10&locality=clustered&replication=1&trial=sparse-v1-n4096-d10-clustered-r1-bucket-128-vdom&autoplay=1&archive=1&sequence=63"
+    },
+    {
+      "sequence": 64,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "react",
+      "trialId": "sparse-v1-n4096-d10-clustered-r1-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=4096&density=10&locality=clustered&replication=1&trial=sparse-v1-n4096-d10-clustered-r1-react&autoplay=1&archive=1&sequence=64"
+    },
+    {
+      "sequence": 65,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n4096-d10-clustered-r1-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=4096&density=10&locality=clustered&replication=1&trial=sparse-v1-n4096-d10-clustered-r1-dirty-rows-vdom&autoplay=1&archive=1&sequence=65"
+    },
+    {
+      "sequence": 66,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n4096-d10-scattered-r1-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=4096&density=10&locality=scattered&replication=1&trial=sparse-v1-n4096-d10-scattered-r1-bucket-32-vdom&autoplay=1&archive=1&sequence=66"
+    },
+    {
+      "sequence": 67,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n4096-d10-scattered-r1-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=4096&density=10&locality=scattered&replication=1&trial=sparse-v1-n4096-d10-scattered-r1-direct&autoplay=1&archive=1&sequence=67"
+    },
+    {
+      "sequence": 68,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n4096-d10-scattered-r1-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=4096&density=10&locality=scattered&replication=1&trial=sparse-v1-n4096-d10-scattered-r1-bucket-128-vdom&autoplay=1&archive=1&sequence=68"
+    },
+    {
+      "sequence": 69,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "react",
+      "trialId": "sparse-v1-n4096-d10-scattered-r1-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=4096&density=10&locality=scattered&replication=1&trial=sparse-v1-n4096-d10-scattered-r1-react&autoplay=1&archive=1&sequence=69"
+    },
+    {
+      "sequence": 70,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n4096-d10-scattered-r1-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=4096&density=10&locality=scattered&replication=1&trial=sparse-v1-n4096-d10-scattered-r1-dirty-rows-vdom&autoplay=1&archive=1&sequence=70"
+    },
+    {
+      "sequence": 71,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n4096-d10-scattered-r1-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=4096&density=10&locality=scattered&replication=1&trial=sparse-v1-n4096-d10-scattered-r1-dense-vdom&autoplay=1&archive=1&sequence=71"
+    },
+    {
+      "sequence": 72,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n4096-d50-clustered-r1-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=4096&density=50&locality=clustered&replication=1&trial=sparse-v1-n4096-d50-clustered-r1-bucket-32-vdom&autoplay=1&archive=1&sequence=72"
+    },
+    {
+      "sequence": 73,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n4096-d50-clustered-r1-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=4096&density=50&locality=clustered&replication=1&trial=sparse-v1-n4096-d50-clustered-r1-direct&autoplay=1&archive=1&sequence=73"
+    },
+    {
+      "sequence": 74,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n4096-d50-clustered-r1-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=4096&density=50&locality=clustered&replication=1&trial=sparse-v1-n4096-d50-clustered-r1-bucket-128-vdom&autoplay=1&archive=1&sequence=74"
+    },
+    {
+      "sequence": 75,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "react",
+      "trialId": "sparse-v1-n4096-d50-clustered-r1-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=4096&density=50&locality=clustered&replication=1&trial=sparse-v1-n4096-d50-clustered-r1-react&autoplay=1&archive=1&sequence=75"
+    },
+    {
+      "sequence": 76,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n4096-d50-clustered-r1-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=4096&density=50&locality=clustered&replication=1&trial=sparse-v1-n4096-d50-clustered-r1-dirty-rows-vdom&autoplay=1&archive=1&sequence=76"
+    },
+    {
+      "sequence": 77,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n4096-d50-clustered-r1-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=4096&density=50&locality=clustered&replication=1&trial=sparse-v1-n4096-d50-clustered-r1-dense-vdom&autoplay=1&archive=1&sequence=77"
+    },
+    {
+      "sequence": 78,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n4096-d50-scattered-r1-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=4096&density=50&locality=scattered&replication=1&trial=sparse-v1-n4096-d50-scattered-r1-direct&autoplay=1&archive=1&sequence=78"
+    },
+    {
+      "sequence": 79,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n4096-d50-scattered-r1-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=4096&density=50&locality=scattered&replication=1&trial=sparse-v1-n4096-d50-scattered-r1-bucket-128-vdom&autoplay=1&archive=1&sequence=79"
+    },
+    {
+      "sequence": 80,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "react",
+      "trialId": "sparse-v1-n4096-d50-scattered-r1-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=4096&density=50&locality=scattered&replication=1&trial=sparse-v1-n4096-d50-scattered-r1-react&autoplay=1&archive=1&sequence=80"
+    },
+    {
+      "sequence": 81,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n4096-d50-scattered-r1-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=4096&density=50&locality=scattered&replication=1&trial=sparse-v1-n4096-d50-scattered-r1-dirty-rows-vdom&autoplay=1&archive=1&sequence=81"
+    },
+    {
+      "sequence": 82,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n4096-d50-scattered-r1-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=4096&density=50&locality=scattered&replication=1&trial=sparse-v1-n4096-d50-scattered-r1-dense-vdom&autoplay=1&archive=1&sequence=82"
+    },
+    {
+      "sequence": 83,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n4096-d50-scattered-r1-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=4096&density=50&locality=scattered&replication=1&trial=sparse-v1-n4096-d50-scattered-r1-bucket-32-vdom&autoplay=1&archive=1&sequence=83"
+    },
+    {
+      "sequence": 84,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n4096-d100-clustered-r1-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=4096&density=100&locality=clustered&replication=1&trial=sparse-v1-n4096-d100-clustered-r1-direct&autoplay=1&archive=1&sequence=84"
+    },
+    {
+      "sequence": 85,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n4096-d100-clustered-r1-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=4096&density=100&locality=clustered&replication=1&trial=sparse-v1-n4096-d100-clustered-r1-bucket-128-vdom&autoplay=1&archive=1&sequence=85"
+    },
+    {
+      "sequence": 86,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "react",
+      "trialId": "sparse-v1-n4096-d100-clustered-r1-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=4096&density=100&locality=clustered&replication=1&trial=sparse-v1-n4096-d100-clustered-r1-react&autoplay=1&archive=1&sequence=86"
+    },
+    {
+      "sequence": 87,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n4096-d100-clustered-r1-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=4096&density=100&locality=clustered&replication=1&trial=sparse-v1-n4096-d100-clustered-r1-dirty-rows-vdom&autoplay=1&archive=1&sequence=87"
+    },
+    {
+      "sequence": 88,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n4096-d100-clustered-r1-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=4096&density=100&locality=clustered&replication=1&trial=sparse-v1-n4096-d100-clustered-r1-dense-vdom&autoplay=1&archive=1&sequence=88"
+    },
+    {
+      "sequence": 89,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n4096-d100-clustered-r1-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=4096&density=100&locality=clustered&replication=1&trial=sparse-v1-n4096-d100-clustered-r1-bucket-32-vdom&autoplay=1&archive=1&sequence=89"
+    },
+    {
+      "sequence": 90,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n4096-d100-scattered-r1-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=4096&density=100&locality=scattered&replication=1&trial=sparse-v1-n4096-d100-scattered-r1-bucket-128-vdom&autoplay=1&archive=1&sequence=90"
+    },
+    {
+      "sequence": 91,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "react",
+      "trialId": "sparse-v1-n4096-d100-scattered-r1-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=4096&density=100&locality=scattered&replication=1&trial=sparse-v1-n4096-d100-scattered-r1-react&autoplay=1&archive=1&sequence=91"
+    },
+    {
+      "sequence": 92,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n4096-d100-scattered-r1-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=4096&density=100&locality=scattered&replication=1&trial=sparse-v1-n4096-d100-scattered-r1-dirty-rows-vdom&autoplay=1&archive=1&sequence=92"
+    },
+    {
+      "sequence": 93,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n4096-d100-scattered-r1-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=4096&density=100&locality=scattered&replication=1&trial=sparse-v1-n4096-d100-scattered-r1-dense-vdom&autoplay=1&archive=1&sequence=93"
+    },
+    {
+      "sequence": 94,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n4096-d100-scattered-r1-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=4096&density=100&locality=scattered&replication=1&trial=sparse-v1-n4096-d100-scattered-r1-bucket-32-vdom&autoplay=1&archive=1&sequence=94"
+    },
+    {
+      "sequence": 95,
+      "replication": 1,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n4096-d100-scattered-r1-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=4096&density=100&locality=scattered&replication=1&trial=sparse-v1-n4096-d100-scattered-r1-direct&autoplay=1&archive=1&sequence=95"
+    },
+    {
+      "sequence": 96,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n512-d1-clustered-r2-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=512&density=1&locality=clustered&replication=2&trial=sparse-v1-n512-d1-clustered-r2-dense-vdom&autoplay=1&archive=1&sequence=96"
+    },
+    {
+      "sequence": 97,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "react",
+      "trialId": "sparse-v1-n512-d1-clustered-r2-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=512&density=1&locality=clustered&replication=2&trial=sparse-v1-n512-d1-clustered-r2-react&autoplay=1&archive=1&sequence=97"
+    },
+    {
+      "sequence": 98,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n512-d1-clustered-r2-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=512&density=1&locality=clustered&replication=2&trial=sparse-v1-n512-d1-clustered-r2-bucket-128-vdom&autoplay=1&archive=1&sequence=98"
+    },
+    {
+      "sequence": 99,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n512-d1-clustered-r2-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=512&density=1&locality=clustered&replication=2&trial=sparse-v1-n512-d1-clustered-r2-bucket-32-vdom&autoplay=1&archive=1&sequence=99"
+    },
+    {
+      "sequence": 100,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n512-d1-clustered-r2-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=512&density=1&locality=clustered&replication=2&trial=sparse-v1-n512-d1-clustered-r2-direct&autoplay=1&archive=1&sequence=100"
+    },
+    {
+      "sequence": 101,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n512-d1-clustered-r2-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=512&density=1&locality=clustered&replication=2&trial=sparse-v1-n512-d1-clustered-r2-dirty-rows-vdom&autoplay=1&archive=1&sequence=101"
+    },
+    {
+      "sequence": 102,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "react",
+      "trialId": "sparse-v1-n512-d1-scattered-r2-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=512&density=1&locality=scattered&replication=2&trial=sparse-v1-n512-d1-scattered-r2-react&autoplay=1&archive=1&sequence=102"
+    },
+    {
+      "sequence": 103,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n512-d1-scattered-r2-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=512&density=1&locality=scattered&replication=2&trial=sparse-v1-n512-d1-scattered-r2-bucket-128-vdom&autoplay=1&archive=1&sequence=103"
+    },
+    {
+      "sequence": 104,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n512-d1-scattered-r2-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=512&density=1&locality=scattered&replication=2&trial=sparse-v1-n512-d1-scattered-r2-bucket-32-vdom&autoplay=1&archive=1&sequence=104"
+    },
+    {
+      "sequence": 105,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n512-d1-scattered-r2-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=512&density=1&locality=scattered&replication=2&trial=sparse-v1-n512-d1-scattered-r2-direct&autoplay=1&archive=1&sequence=105"
+    },
+    {
+      "sequence": 106,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n512-d1-scattered-r2-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=512&density=1&locality=scattered&replication=2&trial=sparse-v1-n512-d1-scattered-r2-dirty-rows-vdom&autoplay=1&archive=1&sequence=106"
+    },
+    {
+      "sequence": 107,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n512-d1-scattered-r2-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=512&density=1&locality=scattered&replication=2&trial=sparse-v1-n512-d1-scattered-r2-dense-vdom&autoplay=1&archive=1&sequence=107"
+    },
+    {
+      "sequence": 108,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "react",
+      "trialId": "sparse-v1-n512-d10-clustered-r2-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=512&density=10&locality=clustered&replication=2&trial=sparse-v1-n512-d10-clustered-r2-react&autoplay=1&archive=1&sequence=108"
+    },
+    {
+      "sequence": 109,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n512-d10-clustered-r2-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=512&density=10&locality=clustered&replication=2&trial=sparse-v1-n512-d10-clustered-r2-bucket-128-vdom&autoplay=1&archive=1&sequence=109"
+    },
+    {
+      "sequence": 110,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n512-d10-clustered-r2-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=512&density=10&locality=clustered&replication=2&trial=sparse-v1-n512-d10-clustered-r2-bucket-32-vdom&autoplay=1&archive=1&sequence=110"
+    },
+    {
+      "sequence": 111,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n512-d10-clustered-r2-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=512&density=10&locality=clustered&replication=2&trial=sparse-v1-n512-d10-clustered-r2-direct&autoplay=1&archive=1&sequence=111"
+    },
+    {
+      "sequence": 112,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n512-d10-clustered-r2-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=512&density=10&locality=clustered&replication=2&trial=sparse-v1-n512-d10-clustered-r2-dirty-rows-vdom&autoplay=1&archive=1&sequence=112"
+    },
+    {
+      "sequence": 113,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n512-d10-clustered-r2-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=512&density=10&locality=clustered&replication=2&trial=sparse-v1-n512-d10-clustered-r2-dense-vdom&autoplay=1&archive=1&sequence=113"
+    },
+    {
+      "sequence": 114,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n512-d10-scattered-r2-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=512&density=10&locality=scattered&replication=2&trial=sparse-v1-n512-d10-scattered-r2-bucket-128-vdom&autoplay=1&archive=1&sequence=114"
+    },
+    {
+      "sequence": 115,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n512-d10-scattered-r2-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=512&density=10&locality=scattered&replication=2&trial=sparse-v1-n512-d10-scattered-r2-bucket-32-vdom&autoplay=1&archive=1&sequence=115"
+    },
+    {
+      "sequence": 116,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n512-d10-scattered-r2-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=512&density=10&locality=scattered&replication=2&trial=sparse-v1-n512-d10-scattered-r2-direct&autoplay=1&archive=1&sequence=116"
+    },
+    {
+      "sequence": 117,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n512-d10-scattered-r2-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=512&density=10&locality=scattered&replication=2&trial=sparse-v1-n512-d10-scattered-r2-dirty-rows-vdom&autoplay=1&archive=1&sequence=117"
+    },
+    {
+      "sequence": 118,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n512-d10-scattered-r2-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=512&density=10&locality=scattered&replication=2&trial=sparse-v1-n512-d10-scattered-r2-dense-vdom&autoplay=1&archive=1&sequence=118"
+    },
+    {
+      "sequence": 119,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "react",
+      "trialId": "sparse-v1-n512-d10-scattered-r2-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=512&density=10&locality=scattered&replication=2&trial=sparse-v1-n512-d10-scattered-r2-react&autoplay=1&archive=1&sequence=119"
+    },
+    {
+      "sequence": 120,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n512-d50-clustered-r2-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=512&density=50&locality=clustered&replication=2&trial=sparse-v1-n512-d50-clustered-r2-bucket-128-vdom&autoplay=1&archive=1&sequence=120"
+    },
+    {
+      "sequence": 121,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n512-d50-clustered-r2-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=512&density=50&locality=clustered&replication=2&trial=sparse-v1-n512-d50-clustered-r2-bucket-32-vdom&autoplay=1&archive=1&sequence=121"
+    },
+    {
+      "sequence": 122,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n512-d50-clustered-r2-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=512&density=50&locality=clustered&replication=2&trial=sparse-v1-n512-d50-clustered-r2-direct&autoplay=1&archive=1&sequence=122"
+    },
+    {
+      "sequence": 123,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n512-d50-clustered-r2-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=512&density=50&locality=clustered&replication=2&trial=sparse-v1-n512-d50-clustered-r2-dirty-rows-vdom&autoplay=1&archive=1&sequence=123"
+    },
+    {
+      "sequence": 124,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n512-d50-clustered-r2-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=512&density=50&locality=clustered&replication=2&trial=sparse-v1-n512-d50-clustered-r2-dense-vdom&autoplay=1&archive=1&sequence=124"
+    },
+    {
+      "sequence": 125,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "react",
+      "trialId": "sparse-v1-n512-d50-clustered-r2-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=512&density=50&locality=clustered&replication=2&trial=sparse-v1-n512-d50-clustered-r2-react&autoplay=1&archive=1&sequence=125"
+    },
+    {
+      "sequence": 126,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n512-d50-scattered-r2-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=512&density=50&locality=scattered&replication=2&trial=sparse-v1-n512-d50-scattered-r2-bucket-32-vdom&autoplay=1&archive=1&sequence=126"
+    },
+    {
+      "sequence": 127,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n512-d50-scattered-r2-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=512&density=50&locality=scattered&replication=2&trial=sparse-v1-n512-d50-scattered-r2-direct&autoplay=1&archive=1&sequence=127"
+    },
+    {
+      "sequence": 128,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n512-d50-scattered-r2-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=512&density=50&locality=scattered&replication=2&trial=sparse-v1-n512-d50-scattered-r2-dirty-rows-vdom&autoplay=1&archive=1&sequence=128"
+    },
+    {
+      "sequence": 129,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n512-d50-scattered-r2-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=512&density=50&locality=scattered&replication=2&trial=sparse-v1-n512-d50-scattered-r2-dense-vdom&autoplay=1&archive=1&sequence=129"
+    },
+    {
+      "sequence": 130,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "react",
+      "trialId": "sparse-v1-n512-d50-scattered-r2-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=512&density=50&locality=scattered&replication=2&trial=sparse-v1-n512-d50-scattered-r2-react&autoplay=1&archive=1&sequence=130"
+    },
+    {
+      "sequence": 131,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n512-d50-scattered-r2-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=512&density=50&locality=scattered&replication=2&trial=sparse-v1-n512-d50-scattered-r2-bucket-128-vdom&autoplay=1&archive=1&sequence=131"
+    },
+    {
+      "sequence": 132,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n512-d100-clustered-r2-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=512&density=100&locality=clustered&replication=2&trial=sparse-v1-n512-d100-clustered-r2-bucket-32-vdom&autoplay=1&archive=1&sequence=132"
+    },
+    {
+      "sequence": 133,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n512-d100-clustered-r2-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=512&density=100&locality=clustered&replication=2&trial=sparse-v1-n512-d100-clustered-r2-direct&autoplay=1&archive=1&sequence=133"
+    },
+    {
+      "sequence": 134,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n512-d100-clustered-r2-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=512&density=100&locality=clustered&replication=2&trial=sparse-v1-n512-d100-clustered-r2-dirty-rows-vdom&autoplay=1&archive=1&sequence=134"
+    },
+    {
+      "sequence": 135,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n512-d100-clustered-r2-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=512&density=100&locality=clustered&replication=2&trial=sparse-v1-n512-d100-clustered-r2-dense-vdom&autoplay=1&archive=1&sequence=135"
+    },
+    {
+      "sequence": 136,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "react",
+      "trialId": "sparse-v1-n512-d100-clustered-r2-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=512&density=100&locality=clustered&replication=2&trial=sparse-v1-n512-d100-clustered-r2-react&autoplay=1&archive=1&sequence=136"
+    },
+    {
+      "sequence": 137,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n512-d100-clustered-r2-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=512&density=100&locality=clustered&replication=2&trial=sparse-v1-n512-d100-clustered-r2-bucket-128-vdom&autoplay=1&archive=1&sequence=137"
+    },
+    {
+      "sequence": 138,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n512-d100-scattered-r2-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=512&density=100&locality=scattered&replication=2&trial=sparse-v1-n512-d100-scattered-r2-direct&autoplay=1&archive=1&sequence=138"
+    },
+    {
+      "sequence": 139,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n512-d100-scattered-r2-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=512&density=100&locality=scattered&replication=2&trial=sparse-v1-n512-d100-scattered-r2-dirty-rows-vdom&autoplay=1&archive=1&sequence=139"
+    },
+    {
+      "sequence": 140,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n512-d100-scattered-r2-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=512&density=100&locality=scattered&replication=2&trial=sparse-v1-n512-d100-scattered-r2-dense-vdom&autoplay=1&archive=1&sequence=140"
+    },
+    {
+      "sequence": 141,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "react",
+      "trialId": "sparse-v1-n512-d100-scattered-r2-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=512&density=100&locality=scattered&replication=2&trial=sparse-v1-n512-d100-scattered-r2-react&autoplay=1&archive=1&sequence=141"
+    },
+    {
+      "sequence": 142,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n512-d100-scattered-r2-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=512&density=100&locality=scattered&replication=2&trial=sparse-v1-n512-d100-scattered-r2-bucket-128-vdom&autoplay=1&archive=1&sequence=142"
+    },
+    {
+      "sequence": 143,
+      "replication": 2,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n512-d100-scattered-r2-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=512&density=100&locality=scattered&replication=2&trial=sparse-v1-n512-d100-scattered-r2-bucket-32-vdom&autoplay=1&archive=1&sequence=143"
+    },
+    {
+      "sequence": 144,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "react",
+      "trialId": "sparse-v1-n4096-d1-clustered-r2-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=4096&density=1&locality=clustered&replication=2&trial=sparse-v1-n4096-d1-clustered-r2-react&autoplay=1&archive=1&sequence=144"
+    },
+    {
+      "sequence": 145,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n4096-d1-clustered-r2-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=4096&density=1&locality=clustered&replication=2&trial=sparse-v1-n4096-d1-clustered-r2-bucket-128-vdom&autoplay=1&archive=1&sequence=145"
+    },
+    {
+      "sequence": 146,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n4096-d1-clustered-r2-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=4096&density=1&locality=clustered&replication=2&trial=sparse-v1-n4096-d1-clustered-r2-bucket-32-vdom&autoplay=1&archive=1&sequence=146"
+    },
+    {
+      "sequence": 147,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n4096-d1-clustered-r2-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=4096&density=1&locality=clustered&replication=2&trial=sparse-v1-n4096-d1-clustered-r2-direct&autoplay=1&archive=1&sequence=147"
+    },
+    {
+      "sequence": 148,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n4096-d1-clustered-r2-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=4096&density=1&locality=clustered&replication=2&trial=sparse-v1-n4096-d1-clustered-r2-dirty-rows-vdom&autoplay=1&archive=1&sequence=148"
+    },
+    {
+      "sequence": 149,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n4096-d1-clustered-r2-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=4096&density=1&locality=clustered&replication=2&trial=sparse-v1-n4096-d1-clustered-r2-dense-vdom&autoplay=1&archive=1&sequence=149"
+    },
+    {
+      "sequence": 150,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n4096-d1-scattered-r2-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=4096&density=1&locality=scattered&replication=2&trial=sparse-v1-n4096-d1-scattered-r2-bucket-128-vdom&autoplay=1&archive=1&sequence=150"
+    },
+    {
+      "sequence": 151,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n4096-d1-scattered-r2-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=4096&density=1&locality=scattered&replication=2&trial=sparse-v1-n4096-d1-scattered-r2-bucket-32-vdom&autoplay=1&archive=1&sequence=151"
+    },
+    {
+      "sequence": 152,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n4096-d1-scattered-r2-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=4096&density=1&locality=scattered&replication=2&trial=sparse-v1-n4096-d1-scattered-r2-direct&autoplay=1&archive=1&sequence=152"
+    },
+    {
+      "sequence": 153,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n4096-d1-scattered-r2-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=4096&density=1&locality=scattered&replication=2&trial=sparse-v1-n4096-d1-scattered-r2-dirty-rows-vdom&autoplay=1&archive=1&sequence=153"
+    },
+    {
+      "sequence": 154,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n4096-d1-scattered-r2-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=4096&density=1&locality=scattered&replication=2&trial=sparse-v1-n4096-d1-scattered-r2-dense-vdom&autoplay=1&archive=1&sequence=154"
+    },
+    {
+      "sequence": 155,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "react",
+      "trialId": "sparse-v1-n4096-d1-scattered-r2-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=4096&density=1&locality=scattered&replication=2&trial=sparse-v1-n4096-d1-scattered-r2-react&autoplay=1&archive=1&sequence=155"
+    },
+    {
+      "sequence": 156,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n4096-d10-clustered-r2-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=4096&density=10&locality=clustered&replication=2&trial=sparse-v1-n4096-d10-clustered-r2-bucket-128-vdom&autoplay=1&archive=1&sequence=156"
+    },
+    {
+      "sequence": 157,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n4096-d10-clustered-r2-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=4096&density=10&locality=clustered&replication=2&trial=sparse-v1-n4096-d10-clustered-r2-bucket-32-vdom&autoplay=1&archive=1&sequence=157"
+    },
+    {
+      "sequence": 158,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n4096-d10-clustered-r2-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=4096&density=10&locality=clustered&replication=2&trial=sparse-v1-n4096-d10-clustered-r2-direct&autoplay=1&archive=1&sequence=158"
+    },
+    {
+      "sequence": 159,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n4096-d10-clustered-r2-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=4096&density=10&locality=clustered&replication=2&trial=sparse-v1-n4096-d10-clustered-r2-dirty-rows-vdom&autoplay=1&archive=1&sequence=159"
+    },
+    {
+      "sequence": 160,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n4096-d10-clustered-r2-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=4096&density=10&locality=clustered&replication=2&trial=sparse-v1-n4096-d10-clustered-r2-dense-vdom&autoplay=1&archive=1&sequence=160"
+    },
+    {
+      "sequence": 161,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "react",
+      "trialId": "sparse-v1-n4096-d10-clustered-r2-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=4096&density=10&locality=clustered&replication=2&trial=sparse-v1-n4096-d10-clustered-r2-react&autoplay=1&archive=1&sequence=161"
+    },
+    {
+      "sequence": 162,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n4096-d10-scattered-r2-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=4096&density=10&locality=scattered&replication=2&trial=sparse-v1-n4096-d10-scattered-r2-bucket-32-vdom&autoplay=1&archive=1&sequence=162"
+    },
+    {
+      "sequence": 163,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n4096-d10-scattered-r2-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=4096&density=10&locality=scattered&replication=2&trial=sparse-v1-n4096-d10-scattered-r2-direct&autoplay=1&archive=1&sequence=163"
+    },
+    {
+      "sequence": 164,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n4096-d10-scattered-r2-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=4096&density=10&locality=scattered&replication=2&trial=sparse-v1-n4096-d10-scattered-r2-dirty-rows-vdom&autoplay=1&archive=1&sequence=164"
+    },
+    {
+      "sequence": 165,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n4096-d10-scattered-r2-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=4096&density=10&locality=scattered&replication=2&trial=sparse-v1-n4096-d10-scattered-r2-dense-vdom&autoplay=1&archive=1&sequence=165"
+    },
+    {
+      "sequence": 166,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "react",
+      "trialId": "sparse-v1-n4096-d10-scattered-r2-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=4096&density=10&locality=scattered&replication=2&trial=sparse-v1-n4096-d10-scattered-r2-react&autoplay=1&archive=1&sequence=166"
+    },
+    {
+      "sequence": 167,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n4096-d10-scattered-r2-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=4096&density=10&locality=scattered&replication=2&trial=sparse-v1-n4096-d10-scattered-r2-bucket-128-vdom&autoplay=1&archive=1&sequence=167"
+    },
+    {
+      "sequence": 168,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n4096-d50-clustered-r2-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=4096&density=50&locality=clustered&replication=2&trial=sparse-v1-n4096-d50-clustered-r2-bucket-32-vdom&autoplay=1&archive=1&sequence=168"
+    },
+    {
+      "sequence": 169,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n4096-d50-clustered-r2-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=4096&density=50&locality=clustered&replication=2&trial=sparse-v1-n4096-d50-clustered-r2-direct&autoplay=1&archive=1&sequence=169"
+    },
+    {
+      "sequence": 170,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n4096-d50-clustered-r2-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=4096&density=50&locality=clustered&replication=2&trial=sparse-v1-n4096-d50-clustered-r2-dirty-rows-vdom&autoplay=1&archive=1&sequence=170"
+    },
+    {
+      "sequence": 171,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n4096-d50-clustered-r2-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=4096&density=50&locality=clustered&replication=2&trial=sparse-v1-n4096-d50-clustered-r2-dense-vdom&autoplay=1&archive=1&sequence=171"
+    },
+    {
+      "sequence": 172,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "react",
+      "trialId": "sparse-v1-n4096-d50-clustered-r2-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=4096&density=50&locality=clustered&replication=2&trial=sparse-v1-n4096-d50-clustered-r2-react&autoplay=1&archive=1&sequence=172"
+    },
+    {
+      "sequence": 173,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n4096-d50-clustered-r2-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=4096&density=50&locality=clustered&replication=2&trial=sparse-v1-n4096-d50-clustered-r2-bucket-128-vdom&autoplay=1&archive=1&sequence=173"
+    },
+    {
+      "sequence": 174,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n4096-d50-scattered-r2-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=4096&density=50&locality=scattered&replication=2&trial=sparse-v1-n4096-d50-scattered-r2-direct&autoplay=1&archive=1&sequence=174"
+    },
+    {
+      "sequence": 175,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n4096-d50-scattered-r2-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=4096&density=50&locality=scattered&replication=2&trial=sparse-v1-n4096-d50-scattered-r2-dirty-rows-vdom&autoplay=1&archive=1&sequence=175"
+    },
+    {
+      "sequence": 176,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n4096-d50-scattered-r2-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=4096&density=50&locality=scattered&replication=2&trial=sparse-v1-n4096-d50-scattered-r2-dense-vdom&autoplay=1&archive=1&sequence=176"
+    },
+    {
+      "sequence": 177,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "react",
+      "trialId": "sparse-v1-n4096-d50-scattered-r2-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=4096&density=50&locality=scattered&replication=2&trial=sparse-v1-n4096-d50-scattered-r2-react&autoplay=1&archive=1&sequence=177"
+    },
+    {
+      "sequence": 178,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n4096-d50-scattered-r2-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=4096&density=50&locality=scattered&replication=2&trial=sparse-v1-n4096-d50-scattered-r2-bucket-128-vdom&autoplay=1&archive=1&sequence=178"
+    },
+    {
+      "sequence": 179,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n4096-d50-scattered-r2-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=4096&density=50&locality=scattered&replication=2&trial=sparse-v1-n4096-d50-scattered-r2-bucket-32-vdom&autoplay=1&archive=1&sequence=179"
+    },
+    {
+      "sequence": 180,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n4096-d100-clustered-r2-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=4096&density=100&locality=clustered&replication=2&trial=sparse-v1-n4096-d100-clustered-r2-direct&autoplay=1&archive=1&sequence=180"
+    },
+    {
+      "sequence": 181,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n4096-d100-clustered-r2-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=4096&density=100&locality=clustered&replication=2&trial=sparse-v1-n4096-d100-clustered-r2-dirty-rows-vdom&autoplay=1&archive=1&sequence=181"
+    },
+    {
+      "sequence": 182,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n4096-d100-clustered-r2-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=4096&density=100&locality=clustered&replication=2&trial=sparse-v1-n4096-d100-clustered-r2-dense-vdom&autoplay=1&archive=1&sequence=182"
+    },
+    {
+      "sequence": 183,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "react",
+      "trialId": "sparse-v1-n4096-d100-clustered-r2-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=4096&density=100&locality=clustered&replication=2&trial=sparse-v1-n4096-d100-clustered-r2-react&autoplay=1&archive=1&sequence=183"
+    },
+    {
+      "sequence": 184,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n4096-d100-clustered-r2-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=4096&density=100&locality=clustered&replication=2&trial=sparse-v1-n4096-d100-clustered-r2-bucket-128-vdom&autoplay=1&archive=1&sequence=184"
+    },
+    {
+      "sequence": 185,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n4096-d100-clustered-r2-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=4096&density=100&locality=clustered&replication=2&trial=sparse-v1-n4096-d100-clustered-r2-bucket-32-vdom&autoplay=1&archive=1&sequence=185"
+    },
+    {
+      "sequence": 186,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n4096-d100-scattered-r2-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=4096&density=100&locality=scattered&replication=2&trial=sparse-v1-n4096-d100-scattered-r2-dirty-rows-vdom&autoplay=1&archive=1&sequence=186"
+    },
+    {
+      "sequence": 187,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n4096-d100-scattered-r2-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=4096&density=100&locality=scattered&replication=2&trial=sparse-v1-n4096-d100-scattered-r2-dense-vdom&autoplay=1&archive=1&sequence=187"
+    },
+    {
+      "sequence": 188,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "react",
+      "trialId": "sparse-v1-n4096-d100-scattered-r2-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=4096&density=100&locality=scattered&replication=2&trial=sparse-v1-n4096-d100-scattered-r2-react&autoplay=1&archive=1&sequence=188"
+    },
+    {
+      "sequence": 189,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n4096-d100-scattered-r2-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=4096&density=100&locality=scattered&replication=2&trial=sparse-v1-n4096-d100-scattered-r2-bucket-128-vdom&autoplay=1&archive=1&sequence=189"
+    },
+    {
+      "sequence": 190,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n4096-d100-scattered-r2-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=4096&density=100&locality=scattered&replication=2&trial=sparse-v1-n4096-d100-scattered-r2-bucket-32-vdom&autoplay=1&archive=1&sequence=190"
+    },
+    {
+      "sequence": 191,
+      "replication": 2,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n4096-d100-scattered-r2-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=4096&density=100&locality=scattered&replication=2&trial=sparse-v1-n4096-d100-scattered-r2-direct&autoplay=1&archive=1&sequence=191"
+    },
+    {
+      "sequence": 192,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n512-d1-clustered-r3-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=512&density=1&locality=clustered&replication=3&trial=sparse-v1-n512-d1-clustered-r3-dirty-rows-vdom&autoplay=1&archive=1&sequence=192"
+    },
+    {
+      "sequence": 193,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n512-d1-clustered-r3-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=512&density=1&locality=clustered&replication=3&trial=sparse-v1-n512-d1-clustered-r3-direct&autoplay=1&archive=1&sequence=193"
+    },
+    {
+      "sequence": 194,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "react",
+      "trialId": "sparse-v1-n512-d1-clustered-r3-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=512&density=1&locality=clustered&replication=3&trial=sparse-v1-n512-d1-clustered-r3-react&autoplay=1&archive=1&sequence=194"
+    },
+    {
+      "sequence": 195,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n512-d1-clustered-r3-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=512&density=1&locality=clustered&replication=3&trial=sparse-v1-n512-d1-clustered-r3-bucket-128-vdom&autoplay=1&archive=1&sequence=195"
+    },
+    {
+      "sequence": 196,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n512-d1-clustered-r3-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=512&density=1&locality=clustered&replication=3&trial=sparse-v1-n512-d1-clustered-r3-dense-vdom&autoplay=1&archive=1&sequence=196"
+    },
+    {
+      "sequence": 197,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n512-d1-clustered-r3-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=512&density=1&locality=clustered&replication=3&trial=sparse-v1-n512-d1-clustered-r3-bucket-32-vdom&autoplay=1&archive=1&sequence=197"
+    },
+    {
+      "sequence": 198,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n512-d1-scattered-r3-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=512&density=1&locality=scattered&replication=3&trial=sparse-v1-n512-d1-scattered-r3-direct&autoplay=1&archive=1&sequence=198"
+    },
+    {
+      "sequence": 199,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "react",
+      "trialId": "sparse-v1-n512-d1-scattered-r3-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=512&density=1&locality=scattered&replication=3&trial=sparse-v1-n512-d1-scattered-r3-react&autoplay=1&archive=1&sequence=199"
+    },
+    {
+      "sequence": 200,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n512-d1-scattered-r3-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=512&density=1&locality=scattered&replication=3&trial=sparse-v1-n512-d1-scattered-r3-bucket-128-vdom&autoplay=1&archive=1&sequence=200"
+    },
+    {
+      "sequence": 201,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n512-d1-scattered-r3-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=512&density=1&locality=scattered&replication=3&trial=sparse-v1-n512-d1-scattered-r3-dense-vdom&autoplay=1&archive=1&sequence=201"
+    },
+    {
+      "sequence": 202,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n512-d1-scattered-r3-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=512&density=1&locality=scattered&replication=3&trial=sparse-v1-n512-d1-scattered-r3-bucket-32-vdom&autoplay=1&archive=1&sequence=202"
+    },
+    {
+      "sequence": 203,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n512-d1-scattered-r3-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=512&density=1&locality=scattered&replication=3&trial=sparse-v1-n512-d1-scattered-r3-dirty-rows-vdom&autoplay=1&archive=1&sequence=203"
+    },
+    {
+      "sequence": 204,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n512-d10-clustered-r3-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=512&density=10&locality=clustered&replication=3&trial=sparse-v1-n512-d10-clustered-r3-direct&autoplay=1&archive=1&sequence=204"
+    },
+    {
+      "sequence": 205,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "react",
+      "trialId": "sparse-v1-n512-d10-clustered-r3-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=512&density=10&locality=clustered&replication=3&trial=sparse-v1-n512-d10-clustered-r3-react&autoplay=1&archive=1&sequence=205"
+    },
+    {
+      "sequence": 206,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n512-d10-clustered-r3-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=512&density=10&locality=clustered&replication=3&trial=sparse-v1-n512-d10-clustered-r3-bucket-128-vdom&autoplay=1&archive=1&sequence=206"
+    },
+    {
+      "sequence": 207,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n512-d10-clustered-r3-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=512&density=10&locality=clustered&replication=3&trial=sparse-v1-n512-d10-clustered-r3-dense-vdom&autoplay=1&archive=1&sequence=207"
+    },
+    {
+      "sequence": 208,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n512-d10-clustered-r3-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=512&density=10&locality=clustered&replication=3&trial=sparse-v1-n512-d10-clustered-r3-bucket-32-vdom&autoplay=1&archive=1&sequence=208"
+    },
+    {
+      "sequence": 209,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n512-d10-clustered-r3-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=512&density=10&locality=clustered&replication=3&trial=sparse-v1-n512-d10-clustered-r3-dirty-rows-vdom&autoplay=1&archive=1&sequence=209"
+    },
+    {
+      "sequence": 210,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "react",
+      "trialId": "sparse-v1-n512-d10-scattered-r3-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=512&density=10&locality=scattered&replication=3&trial=sparse-v1-n512-d10-scattered-r3-react&autoplay=1&archive=1&sequence=210"
+    },
+    {
+      "sequence": 211,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n512-d10-scattered-r3-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=512&density=10&locality=scattered&replication=3&trial=sparse-v1-n512-d10-scattered-r3-bucket-128-vdom&autoplay=1&archive=1&sequence=211"
+    },
+    {
+      "sequence": 212,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n512-d10-scattered-r3-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=512&density=10&locality=scattered&replication=3&trial=sparse-v1-n512-d10-scattered-r3-dense-vdom&autoplay=1&archive=1&sequence=212"
+    },
+    {
+      "sequence": 213,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n512-d10-scattered-r3-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=512&density=10&locality=scattered&replication=3&trial=sparse-v1-n512-d10-scattered-r3-bucket-32-vdom&autoplay=1&archive=1&sequence=213"
+    },
+    {
+      "sequence": 214,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n512-d10-scattered-r3-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=512&density=10&locality=scattered&replication=3&trial=sparse-v1-n512-d10-scattered-r3-dirty-rows-vdom&autoplay=1&archive=1&sequence=214"
+    },
+    {
+      "sequence": 215,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n512-d10-scattered-r3-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=512&density=10&locality=scattered&replication=3&trial=sparse-v1-n512-d10-scattered-r3-direct&autoplay=1&archive=1&sequence=215"
+    },
+    {
+      "sequence": 216,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "react",
+      "trialId": "sparse-v1-n512-d50-clustered-r3-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=512&density=50&locality=clustered&replication=3&trial=sparse-v1-n512-d50-clustered-r3-react&autoplay=1&archive=1&sequence=216"
+    },
+    {
+      "sequence": 217,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n512-d50-clustered-r3-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=512&density=50&locality=clustered&replication=3&trial=sparse-v1-n512-d50-clustered-r3-bucket-128-vdom&autoplay=1&archive=1&sequence=217"
+    },
+    {
+      "sequence": 218,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n512-d50-clustered-r3-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=512&density=50&locality=clustered&replication=3&trial=sparse-v1-n512-d50-clustered-r3-dense-vdom&autoplay=1&archive=1&sequence=218"
+    },
+    {
+      "sequence": 219,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n512-d50-clustered-r3-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=512&density=50&locality=clustered&replication=3&trial=sparse-v1-n512-d50-clustered-r3-bucket-32-vdom&autoplay=1&archive=1&sequence=219"
+    },
+    {
+      "sequence": 220,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n512-d50-clustered-r3-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=512&density=50&locality=clustered&replication=3&trial=sparse-v1-n512-d50-clustered-r3-dirty-rows-vdom&autoplay=1&archive=1&sequence=220"
+    },
+    {
+      "sequence": 221,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n512-d50-clustered-r3-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=512&density=50&locality=clustered&replication=3&trial=sparse-v1-n512-d50-clustered-r3-direct&autoplay=1&archive=1&sequence=221"
+    },
+    {
+      "sequence": 222,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n512-d50-scattered-r3-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=512&density=50&locality=scattered&replication=3&trial=sparse-v1-n512-d50-scattered-r3-bucket-128-vdom&autoplay=1&archive=1&sequence=222"
+    },
+    {
+      "sequence": 223,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n512-d50-scattered-r3-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=512&density=50&locality=scattered&replication=3&trial=sparse-v1-n512-d50-scattered-r3-dense-vdom&autoplay=1&archive=1&sequence=223"
+    },
+    {
+      "sequence": 224,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n512-d50-scattered-r3-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=512&density=50&locality=scattered&replication=3&trial=sparse-v1-n512-d50-scattered-r3-bucket-32-vdom&autoplay=1&archive=1&sequence=224"
+    },
+    {
+      "sequence": 225,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n512-d50-scattered-r3-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=512&density=50&locality=scattered&replication=3&trial=sparse-v1-n512-d50-scattered-r3-dirty-rows-vdom&autoplay=1&archive=1&sequence=225"
+    },
+    {
+      "sequence": 226,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n512-d50-scattered-r3-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=512&density=50&locality=scattered&replication=3&trial=sparse-v1-n512-d50-scattered-r3-direct&autoplay=1&archive=1&sequence=226"
+    },
+    {
+      "sequence": 227,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "react",
+      "trialId": "sparse-v1-n512-d50-scattered-r3-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=512&density=50&locality=scattered&replication=3&trial=sparse-v1-n512-d50-scattered-r3-react&autoplay=1&archive=1&sequence=227"
+    },
+    {
+      "sequence": 228,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n512-d100-clustered-r3-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=512&density=100&locality=clustered&replication=3&trial=sparse-v1-n512-d100-clustered-r3-bucket-128-vdom&autoplay=1&archive=1&sequence=228"
+    },
+    {
+      "sequence": 229,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n512-d100-clustered-r3-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=512&density=100&locality=clustered&replication=3&trial=sparse-v1-n512-d100-clustered-r3-dense-vdom&autoplay=1&archive=1&sequence=229"
+    },
+    {
+      "sequence": 230,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n512-d100-clustered-r3-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=512&density=100&locality=clustered&replication=3&trial=sparse-v1-n512-d100-clustered-r3-bucket-32-vdom&autoplay=1&archive=1&sequence=230"
+    },
+    {
+      "sequence": 231,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n512-d100-clustered-r3-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=512&density=100&locality=clustered&replication=3&trial=sparse-v1-n512-d100-clustered-r3-dirty-rows-vdom&autoplay=1&archive=1&sequence=231"
+    },
+    {
+      "sequence": 232,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n512-d100-clustered-r3-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=512&density=100&locality=clustered&replication=3&trial=sparse-v1-n512-d100-clustered-r3-direct&autoplay=1&archive=1&sequence=232"
+    },
+    {
+      "sequence": 233,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "react",
+      "trialId": "sparse-v1-n512-d100-clustered-r3-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=512&density=100&locality=clustered&replication=3&trial=sparse-v1-n512-d100-clustered-r3-react&autoplay=1&archive=1&sequence=233"
+    },
+    {
+      "sequence": 234,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n512-d100-scattered-r3-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=512&density=100&locality=scattered&replication=3&trial=sparse-v1-n512-d100-scattered-r3-dense-vdom&autoplay=1&archive=1&sequence=234"
+    },
+    {
+      "sequence": 235,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n512-d100-scattered-r3-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=512&density=100&locality=scattered&replication=3&trial=sparse-v1-n512-d100-scattered-r3-bucket-32-vdom&autoplay=1&archive=1&sequence=235"
+    },
+    {
+      "sequence": 236,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n512-d100-scattered-r3-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=512&density=100&locality=scattered&replication=3&trial=sparse-v1-n512-d100-scattered-r3-dirty-rows-vdom&autoplay=1&archive=1&sequence=236"
+    },
+    {
+      "sequence": 237,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n512-d100-scattered-r3-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=512&density=100&locality=scattered&replication=3&trial=sparse-v1-n512-d100-scattered-r3-direct&autoplay=1&archive=1&sequence=237"
+    },
+    {
+      "sequence": 238,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "react",
+      "trialId": "sparse-v1-n512-d100-scattered-r3-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=512&density=100&locality=scattered&replication=3&trial=sparse-v1-n512-d100-scattered-r3-react&autoplay=1&archive=1&sequence=238"
+    },
+    {
+      "sequence": 239,
+      "replication": 3,
+      "size": 512,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n512-d100-scattered-r3-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=512&density=100&locality=scattered&replication=3&trial=sparse-v1-n512-d100-scattered-r3-bucket-128-vdom&autoplay=1&archive=1&sequence=239"
+    },
+    {
+      "sequence": 240,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n4096-d1-clustered-r3-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=4096&density=1&locality=clustered&replication=3&trial=sparse-v1-n4096-d1-clustered-r3-direct&autoplay=1&archive=1&sequence=240"
+    },
+    {
+      "sequence": 241,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "react",
+      "trialId": "sparse-v1-n4096-d1-clustered-r3-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=4096&density=1&locality=clustered&replication=3&trial=sparse-v1-n4096-d1-clustered-r3-react&autoplay=1&archive=1&sequence=241"
+    },
+    {
+      "sequence": 242,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n4096-d1-clustered-r3-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=4096&density=1&locality=clustered&replication=3&trial=sparse-v1-n4096-d1-clustered-r3-bucket-128-vdom&autoplay=1&archive=1&sequence=242"
+    },
+    {
+      "sequence": 243,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n4096-d1-clustered-r3-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=4096&density=1&locality=clustered&replication=3&trial=sparse-v1-n4096-d1-clustered-r3-dense-vdom&autoplay=1&archive=1&sequence=243"
+    },
+    {
+      "sequence": 244,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n4096-d1-clustered-r3-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=4096&density=1&locality=clustered&replication=3&trial=sparse-v1-n4096-d1-clustered-r3-bucket-32-vdom&autoplay=1&archive=1&sequence=244"
+    },
+    {
+      "sequence": 245,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "clustered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n4096-d1-clustered-r3-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=4096&density=1&locality=clustered&replication=3&trial=sparse-v1-n4096-d1-clustered-r3-dirty-rows-vdom&autoplay=1&archive=1&sequence=245"
+    },
+    {
+      "sequence": 246,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "react",
+      "trialId": "sparse-v1-n4096-d1-scattered-r3-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=4096&density=1&locality=scattered&replication=3&trial=sparse-v1-n4096-d1-scattered-r3-react&autoplay=1&archive=1&sequence=246"
+    },
+    {
+      "sequence": 247,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n4096-d1-scattered-r3-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=4096&density=1&locality=scattered&replication=3&trial=sparse-v1-n4096-d1-scattered-r3-bucket-128-vdom&autoplay=1&archive=1&sequence=247"
+    },
+    {
+      "sequence": 248,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n4096-d1-scattered-r3-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=4096&density=1&locality=scattered&replication=3&trial=sparse-v1-n4096-d1-scattered-r3-dense-vdom&autoplay=1&archive=1&sequence=248"
+    },
+    {
+      "sequence": 249,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n4096-d1-scattered-r3-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=4096&density=1&locality=scattered&replication=3&trial=sparse-v1-n4096-d1-scattered-r3-bucket-32-vdom&autoplay=1&archive=1&sequence=249"
+    },
+    {
+      "sequence": 250,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n4096-d1-scattered-r3-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=4096&density=1&locality=scattered&replication=3&trial=sparse-v1-n4096-d1-scattered-r3-dirty-rows-vdom&autoplay=1&archive=1&sequence=250"
+    },
+    {
+      "sequence": 251,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 1,
+      "locality": "scattered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n4096-d1-scattered-r3-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=4096&density=1&locality=scattered&replication=3&trial=sparse-v1-n4096-d1-scattered-r3-direct&autoplay=1&archive=1&sequence=251"
+    },
+    {
+      "sequence": 252,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "react",
+      "trialId": "sparse-v1-n4096-d10-clustered-r3-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=4096&density=10&locality=clustered&replication=3&trial=sparse-v1-n4096-d10-clustered-r3-react&autoplay=1&archive=1&sequence=252"
+    },
+    {
+      "sequence": 253,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n4096-d10-clustered-r3-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=4096&density=10&locality=clustered&replication=3&trial=sparse-v1-n4096-d10-clustered-r3-bucket-128-vdom&autoplay=1&archive=1&sequence=253"
+    },
+    {
+      "sequence": 254,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n4096-d10-clustered-r3-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=4096&density=10&locality=clustered&replication=3&trial=sparse-v1-n4096-d10-clustered-r3-dense-vdom&autoplay=1&archive=1&sequence=254"
+    },
+    {
+      "sequence": 255,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n4096-d10-clustered-r3-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=4096&density=10&locality=clustered&replication=3&trial=sparse-v1-n4096-d10-clustered-r3-bucket-32-vdom&autoplay=1&archive=1&sequence=255"
+    },
+    {
+      "sequence": 256,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n4096-d10-clustered-r3-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=4096&density=10&locality=clustered&replication=3&trial=sparse-v1-n4096-d10-clustered-r3-dirty-rows-vdom&autoplay=1&archive=1&sequence=256"
+    },
+    {
+      "sequence": 257,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "clustered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n4096-d10-clustered-r3-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=4096&density=10&locality=clustered&replication=3&trial=sparse-v1-n4096-d10-clustered-r3-direct&autoplay=1&archive=1&sequence=257"
+    },
+    {
+      "sequence": 258,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n4096-d10-scattered-r3-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=4096&density=10&locality=scattered&replication=3&trial=sparse-v1-n4096-d10-scattered-r3-bucket-128-vdom&autoplay=1&archive=1&sequence=258"
+    },
+    {
+      "sequence": 259,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n4096-d10-scattered-r3-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=4096&density=10&locality=scattered&replication=3&trial=sparse-v1-n4096-d10-scattered-r3-dense-vdom&autoplay=1&archive=1&sequence=259"
+    },
+    {
+      "sequence": 260,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n4096-d10-scattered-r3-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=4096&density=10&locality=scattered&replication=3&trial=sparse-v1-n4096-d10-scattered-r3-bucket-32-vdom&autoplay=1&archive=1&sequence=260"
+    },
+    {
+      "sequence": 261,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n4096-d10-scattered-r3-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=4096&density=10&locality=scattered&replication=3&trial=sparse-v1-n4096-d10-scattered-r3-dirty-rows-vdom&autoplay=1&archive=1&sequence=261"
+    },
+    {
+      "sequence": 262,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n4096-d10-scattered-r3-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=4096&density=10&locality=scattered&replication=3&trial=sparse-v1-n4096-d10-scattered-r3-direct&autoplay=1&archive=1&sequence=262"
+    },
+    {
+      "sequence": 263,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 10,
+      "locality": "scattered",
+      "arm": "react",
+      "trialId": "sparse-v1-n4096-d10-scattered-r3-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=4096&density=10&locality=scattered&replication=3&trial=sparse-v1-n4096-d10-scattered-r3-react&autoplay=1&archive=1&sequence=263"
+    },
+    {
+      "sequence": 264,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n4096-d50-clustered-r3-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=4096&density=50&locality=clustered&replication=3&trial=sparse-v1-n4096-d50-clustered-r3-bucket-128-vdom&autoplay=1&archive=1&sequence=264"
+    },
+    {
+      "sequence": 265,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n4096-d50-clustered-r3-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=4096&density=50&locality=clustered&replication=3&trial=sparse-v1-n4096-d50-clustered-r3-dense-vdom&autoplay=1&archive=1&sequence=265"
+    },
+    {
+      "sequence": 266,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n4096-d50-clustered-r3-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=4096&density=50&locality=clustered&replication=3&trial=sparse-v1-n4096-d50-clustered-r3-bucket-32-vdom&autoplay=1&archive=1&sequence=266"
+    },
+    {
+      "sequence": 267,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n4096-d50-clustered-r3-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=4096&density=50&locality=clustered&replication=3&trial=sparse-v1-n4096-d50-clustered-r3-dirty-rows-vdom&autoplay=1&archive=1&sequence=267"
+    },
+    {
+      "sequence": 268,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n4096-d50-clustered-r3-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=4096&density=50&locality=clustered&replication=3&trial=sparse-v1-n4096-d50-clustered-r3-direct&autoplay=1&archive=1&sequence=268"
+    },
+    {
+      "sequence": 269,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "clustered",
+      "arm": "react",
+      "trialId": "sparse-v1-n4096-d50-clustered-r3-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=4096&density=50&locality=clustered&replication=3&trial=sparse-v1-n4096-d50-clustered-r3-react&autoplay=1&archive=1&sequence=269"
+    },
+    {
+      "sequence": 270,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n4096-d50-scattered-r3-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=4096&density=50&locality=scattered&replication=3&trial=sparse-v1-n4096-d50-scattered-r3-dense-vdom&autoplay=1&archive=1&sequence=270"
+    },
+    {
+      "sequence": 271,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n4096-d50-scattered-r3-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=4096&density=50&locality=scattered&replication=3&trial=sparse-v1-n4096-d50-scattered-r3-bucket-32-vdom&autoplay=1&archive=1&sequence=271"
+    },
+    {
+      "sequence": 272,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n4096-d50-scattered-r3-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=4096&density=50&locality=scattered&replication=3&trial=sparse-v1-n4096-d50-scattered-r3-dirty-rows-vdom&autoplay=1&archive=1&sequence=272"
+    },
+    {
+      "sequence": 273,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n4096-d50-scattered-r3-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=4096&density=50&locality=scattered&replication=3&trial=sparse-v1-n4096-d50-scattered-r3-direct&autoplay=1&archive=1&sequence=273"
+    },
+    {
+      "sequence": 274,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "react",
+      "trialId": "sparse-v1-n4096-d50-scattered-r3-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=4096&density=50&locality=scattered&replication=3&trial=sparse-v1-n4096-d50-scattered-r3-react&autoplay=1&archive=1&sequence=274"
+    },
+    {
+      "sequence": 275,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 50,
+      "locality": "scattered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n4096-d50-scattered-r3-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=4096&density=50&locality=scattered&replication=3&trial=sparse-v1-n4096-d50-scattered-r3-bucket-128-vdom&autoplay=1&archive=1&sequence=275"
+    },
+    {
+      "sequence": 276,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n4096-d100-clustered-r3-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=4096&density=100&locality=clustered&replication=3&trial=sparse-v1-n4096-d100-clustered-r3-dense-vdom&autoplay=1&archive=1&sequence=276"
+    },
+    {
+      "sequence": 277,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n4096-d100-clustered-r3-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=4096&density=100&locality=clustered&replication=3&trial=sparse-v1-n4096-d100-clustered-r3-bucket-32-vdom&autoplay=1&archive=1&sequence=277"
+    },
+    {
+      "sequence": 278,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n4096-d100-clustered-r3-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=4096&density=100&locality=clustered&replication=3&trial=sparse-v1-n4096-d100-clustered-r3-dirty-rows-vdom&autoplay=1&archive=1&sequence=278"
+    },
+    {
+      "sequence": 279,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n4096-d100-clustered-r3-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=4096&density=100&locality=clustered&replication=3&trial=sparse-v1-n4096-d100-clustered-r3-direct&autoplay=1&archive=1&sequence=279"
+    },
+    {
+      "sequence": 280,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "react",
+      "trialId": "sparse-v1-n4096-d100-clustered-r3-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=4096&density=100&locality=clustered&replication=3&trial=sparse-v1-n4096-d100-clustered-r3-react&autoplay=1&archive=1&sequence=280"
+    },
+    {
+      "sequence": 281,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "clustered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n4096-d100-clustered-r3-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=4096&density=100&locality=clustered&replication=3&trial=sparse-v1-n4096-d100-clustered-r3-bucket-128-vdom&autoplay=1&archive=1&sequence=281"
+    },
+    {
+      "sequence": 282,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "bucket-32-vdom",
+      "trialId": "sparse-v1-n4096-d100-scattered-r3-bucket-32-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-32-vdom&size=4096&density=100&locality=scattered&replication=3&trial=sparse-v1-n4096-d100-scattered-r3-bucket-32-vdom&autoplay=1&archive=1&sequence=282"
+    },
+    {
+      "sequence": 283,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "dirty-rows-vdom",
+      "trialId": "sparse-v1-n4096-d100-scattered-r3-dirty-rows-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dirty-rows-vdom&size=4096&density=100&locality=scattered&replication=3&trial=sparse-v1-n4096-d100-scattered-r3-dirty-rows-vdom&autoplay=1&archive=1&sequence=283"
+    },
+    {
+      "sequence": 284,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "direct",
+      "trialId": "sparse-v1-n4096-d100-scattered-r3-direct",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=direct&size=4096&density=100&locality=scattered&replication=3&trial=sparse-v1-n4096-d100-scattered-r3-direct&autoplay=1&archive=1&sequence=284"
+    },
+    {
+      "sequence": 285,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "react",
+      "trialId": "sparse-v1-n4096-d100-scattered-r3-react",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=react&size=4096&density=100&locality=scattered&replication=3&trial=sparse-v1-n4096-d100-scattered-r3-react&autoplay=1&archive=1&sequence=285"
+    },
+    {
+      "sequence": 286,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "bucket-128-vdom",
+      "trialId": "sparse-v1-n4096-d100-scattered-r3-bucket-128-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=bucket-128-vdom&size=4096&density=100&locality=scattered&replication=3&trial=sparse-v1-n4096-d100-scattered-r3-bucket-128-vdom&autoplay=1&archive=1&sequence=286"
+    },
+    {
+      "sequence": 287,
+      "replication": 3,
+      "size": 4096,
+      "dirtyPercent": 100,
+      "locality": "scattered",
+      "arm": "dense-vdom",
+      "trialId": "sparse-v1-n4096-d100-scattered-r3-dense-vdom",
+      "url": "https://snake-sparse-frame-v1.localhost:1355/snake-sparse-frame-benchmark.html?protocol=sparse-v1&collection=production&arm=dense-vdom&size=4096&density=100&locality=scattered&replication=3&trial=sparse-v1-n4096-d100-scattered-r3-dense-vdom&autoplay=1&archive=1&sequence=287"
+    }
+  ]
+}

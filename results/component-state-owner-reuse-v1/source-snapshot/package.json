@@ -1,0 +1,26 @@
+{
+  "name": "react-runtime-research",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.25.0",
+  "scripts": {
+    "dev": "deno task compiler:plan && deno task compiler:region && vite --config vite.config.ts",
+    "build": "deno task compiler:plan && deno task compiler:region && vite build --config vite.config.ts",
+    "preview": "vite preview --config vite.config.ts",
+    "bench:kernel": "deno run src/benchmark.ts",
+    "check:kernel": "deno check src/benchmark.ts",
+    "bundle:size": "node scripts/measure_runtime_bundle_size.mjs"
+  },
+  "dependencies": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "5.2.0",
+    "babel-plugin-react-compiler": "1.0.0",
+    "vite": "8.3.1"
+  },
+  "optionalDependencies": {
+    "@rolldown/binding-darwin-arm64": "1.2.13"
+  }
+}

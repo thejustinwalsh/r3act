@@ -1,0 +1,50 @@
+[
+  {
+    "name": "rust",
+    "command": [
+      "cargo",
+      "test",
+      "--manifest-path",
+      "compiler/oxc-spike/Cargo.toml"
+    ],
+    "exitCode": 0
+  },
+  {
+    "name": "smoke",
+    "command": [
+      "pnpm",
+      "compiler:native:smoke"
+    ],
+    "exitCode": 0
+  },
+  {
+    "name": "retention",
+    "command": [
+      "node",
+      "--expose-gc",
+      "--experimental-transform-types",
+      "scripts/verify_owner_preparation_retention.mjs"
+    ],
+    "exitCode": 0
+  },
+  {
+    "name": "candidate-retention",
+    "command": [
+      "node",
+      "--expose-gc",
+      "--experimental-transform-types",
+      "scripts/verify_native_candidate_retention.mjs"
+    ],
+    "exitCode": 0
+  },
+  {
+    "name": "resource-retention",
+    "command": [
+      "node",
+      "--expose-gc",
+      "--experimental-transform-types",
+      "scripts/verify_native_resource_retention.mjs"
+    ],
+    "exitCode": 0
+  }
+]

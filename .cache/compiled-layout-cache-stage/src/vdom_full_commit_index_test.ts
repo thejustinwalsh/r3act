@@ -1,0 +1,1 @@
+/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/src/vdom_full_commit_index_test.ts

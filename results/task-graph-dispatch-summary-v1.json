@@ -1,0 +1,248 @@
+{
+  "schemaVersion": 1,
+  "experiment": "Paired task-graph dispatch versus full recomputation",
+  "processCount": 3,
+  "pairCountPerProcess": 24,
+  "randomizationSeeds": [
+    1610091001,
+    1610091102,
+    1610091203
+  ],
+  "environments": [
+    {
+      "deno": "2.6.3",
+      "v8": "14.2.231.17-rusty",
+      "os": "darwin",
+      "arch": "aarch64",
+      "hardwareConcurrency": 10,
+      "sampleDate": "2026-10-10T00:54:34.206Z"
+    },
+    {
+      "deno": "2.6.3",
+      "v8": "14.2.231.17-rusty",
+      "os": "darwin",
+      "arch": "aarch64",
+      "hardwareConcurrency": 10,
+      "sampleDate": "2026-10-10T00:54:34.807Z"
+    },
+    {
+      "deno": "2.6.3",
+      "v8": "14.2.231.17-rusty",
+      "os": "darwin",
+      "arch": "aarch64",
+      "hardwareConcurrency": 10,
+      "sampleDate": "2026-10-10T00:54:35.394Z"
+    }
+  ],
+  "protocol": {
+    "entityCounts": [
+      1000,
+      10000
+    ],
+    "changedFractions": [
+      0.01,
+      0.1,
+      1
+    ],
+    "pairCount": 24,
+    "repeatsPerSample": 8,
+    "warmupPairs": 4,
+    "randomizationSeed": 1610091001,
+    "design": "Each source feeds one independent task. Every changed source changes its output. Each pair measures eight repeated batches per arm; arm order is balanced and seeded. Plan build and runtime setup are reported separately from updates.",
+    "measurement": "Source writes, task dispatch, and derived output updates are included; DOM, VDOM reconciliation, and paint are excluded."
+  },
+  "scenarios": [
+    {
+      "entityCount": 1000,
+      "changedFraction": 0.01,
+      "changedCount": 10,
+      "medianAcrossProcessMediansMs": {
+        "taskGraph": 0.006385375000000693,
+        "fullScan": 0.0016926250000004472
+      },
+      "p95AcrossPairedSamplesMs": {
+        "taskGraph": 0.014708375000001439,
+        "fullScan": 0.003572874999999698
+      },
+      "speedupFullScanOverGraph": 0.2650784018166926,
+      "pairedWinsByProcess": [
+        {
+          "taskGraph": 1,
+          "fullScan": 23,
+          "ties": 0
+        },
+        {
+          "taskGraph": 1,
+          "fullScan": 23,
+          "ties": 0
+        },
+        {
+          "taskGraph": 4,
+          "fullScan": 20,
+          "ties": 0
+        }
+      ],
+      "parityEveryProcess": true
+    },
+    {
+      "entityCount": 1000,
+      "changedFraction": 0.1,
+      "changedCount": 100,
+      "medianAcrossProcessMediansMs": {
+        "taskGraph": 0.009312500000000057,
+        "fullScan": 0.0028490000000012117
+      },
+      "p95AcrossPairedSamplesMs": {
+        "taskGraph": 0.011489499999999708,
+        "fullScan": 0.0029738749999985714
+      },
+      "speedupFullScanOverGraph": 0.3059328859061685,
+      "pairedWinsByProcess": [
+        {
+          "taskGraph": 0,
+          "fullScan": 24,
+          "ties": 0
+        },
+        {
+          "taskGraph": 0,
+          "fullScan": 24,
+          "ties": 0
+        },
+        {
+          "taskGraph": 0,
+          "fullScan": 24,
+          "ties": 0
+        }
+      ],
+      "parityEveryProcess": true
+    },
+    {
+      "entityCount": 1000,
+      "changedFraction": 1,
+      "changedCount": 1000,
+      "medianAcrossProcessMediansMs": {
+        "taskGraph": 0.0935416250000003,
+        "fullScan": 0.007880249999999478
+      },
+      "p95AcrossPairedSamplesMs": {
+        "taskGraph": 0.13567712500000084,
+        "fullScan": 0.008770874999999734
+      },
+      "speedupFullScanOverGraph": 0.0842432446517735,
+      "pairedWinsByProcess": [
+        {
+          "taskGraph": 0,
+          "fullScan": 24,
+          "ties": 0
+        },
+        {
+          "taskGraph": 0,
+          "fullScan": 24,
+          "ties": 0
+        },
+        {
+          "taskGraph": 0,
+          "fullScan": 24,
+          "ties": 0
+        }
+      ],
+      "parityEveryProcess": true
+    },
+    {
+      "entityCount": 10000,
+      "changedFraction": 0.01,
+      "changedCount": 100,
+      "medianAcrossProcessMediansMs": {
+        "taskGraph": 0.0054635000000047285,
+        "fullScan": 0.016697999999998103
+      },
+      "p95AcrossPairedSamplesMs": {
+        "taskGraph": 0.006197874999998021,
+        "fullScan": 0.017463499999998078
+      },
+      "speedupFullScanOverGraph": 3.056282602724197,
+      "pairedWinsByProcess": [
+        {
+          "taskGraph": 24,
+          "fullScan": 0,
+          "ties": 0
+        },
+        {
+          "taskGraph": 24,
+          "fullScan": 0,
+          "ties": 0
+        },
+        {
+          "taskGraph": 24,
+          "fullScan": 0,
+          "ties": 0
+        }
+      ],
+      "parityEveryProcess": true
+    },
+    {
+      "entityCount": 10000,
+      "changedFraction": 0.1,
+      "changedCount": 1000,
+      "medianAcrossProcessMediansMs": {
+        "taskGraph": 0.08821350000000194,
+        "fullScan": 0.01899999999999835
+      },
+      "p95AcrossPairedSamplesMs": {
+        "taskGraph": 0.11821350000000308,
+        "fullScan": 0.02015624999999943
+      },
+      "speedupFullScanOverGraph": 0.21538653380716027,
+      "pairedWinsByProcess": [
+        {
+          "taskGraph": 0,
+          "fullScan": 24,
+          "ties": 0
+        },
+        {
+          "taskGraph": 0,
+          "fullScan": 24,
+          "ties": 0
+        },
+        {
+          "taskGraph": 0,
+          "fullScan": 24,
+          "ties": 0
+        }
+      ],
+      "parityEveryProcess": true
+    },
+    {
+      "entityCount": 10000,
+      "changedFraction": 1,
+      "changedCount": 10000,
+      "medianAcrossProcessMediansMs": {
+        "taskGraph": 0.9631353750000073,
+        "fullScan": 0.060958374999998455
+      },
+      "p95AcrossPairedSamplesMs": {
+        "taskGraph": 1.0090468749999957,
+        "fullScan": 0.06514062499999795
+      },
+      "speedupFullScanOverGraph": 0.0632915959503595,
+      "pairedWinsByProcess": [
+        {
+          "taskGraph": 0,
+          "fullScan": 24,
+          "ties": 0
+        },
+        {
+          "taskGraph": 0,
+          "fullScan": 24,
+          "ties": 0
+        },
+        {
+          "taskGraph": 0,
+          "fullScan": 24,
+          "ties": 0
+        }
+      ],
+      "parityEveryProcess": true
+    }
+  ]
+}

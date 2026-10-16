@@ -1,0 +1,1 @@
+../../../../src/native_store_owner_invalidation_test.ts

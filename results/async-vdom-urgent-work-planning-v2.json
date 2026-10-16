@@ -1,0 +1,94 @@
+{
+  "schemaVersion": "async-vdom-urgent-work-planning-v2",
+  "status": "PASS",
+  "cases": {
+    "independentAsyncWorkRebase": {
+      "schemaVersion": "async-vdom-urgent-rebase-v1",
+      "status": "PASS",
+      "contracts": {
+        "urgentVisibleImmediately": true,
+        "pendingResultRetained": true,
+        "rebasedStateCommitted": true,
+        "hostIdentityPreserved": true,
+        "rootVersionAdvanced": true
+      },
+      "contractsPass": true,
+      "events": [
+        "transition:start",
+        "urgent:commit",
+        "async:ready",
+        "candidate:rebased-and-committed"
+      ],
+      "changedState": [
+        {
+          "owner": 1,
+          "site": "compiler/fixtures/component_state_sites.tsx#component:Counter#state:0",
+          "version": 1
+        }
+      ],
+      "finalCount": "1",
+      "finalResult": "1: fresh results",
+      "rootVersion": 3,
+      "timingMeasured": false,
+      "limitations": [
+        "the async result is independent of the urgent count; changing a task dependency must restart or invalidate that task explicitly",
+        "the build callback must read current application state when it builds the ready candidate",
+        "deterministic in-memory host trace only; no React differential or browser paint measurement"
+      ]
+    },
+    "changedTaskDependencyInvalidation": {
+      "schemaVersion": "async-vdom-urgent-dependency-invalidation-v1",
+      "status": "PASS",
+      "contracts": {
+        "compilerInputEdgeBound": true,
+        "stateWriteInvalidatedBeforeUrgentCommit": true,
+        "taskSignalAborted": true,
+        "staleCandidateRejected": true,
+        "urgentStateRetained": true,
+        "oldResultRetained": true,
+        "rootVersionAdvancedOnlyForUrgentWrite": true
+      },
+      "contractsPass": true,
+      "changedState": [
+        {
+          "owner": 1,
+          "site": "compiler/fixtures/component_state_sites.tsx#component:Counter#state:0",
+          "version": 1
+        }
+      ],
+      "finalCount": "1",
+      "finalResult": "old result",
+      "timingMeasured": false
+    },
+    "changedTaskDependencyRestart": {
+      "schemaVersion": "async-vdom-input-restart-v1",
+      "status": "PASS",
+      "contracts": {
+        "firstAttemptAborted": true,
+        "urgentStateVisible": true,
+        "restartedWithLatestInput": true,
+        "restartCountReported": true,
+        "staleResultDidNotPublish": true,
+        "downstreamTaskRanOnlyForFreshAttempt": true,
+        "independentTaskReusedAcrossRestart": true,
+        "transitionCommitted": true,
+        "rootVersionIncludesUrgentAndTransition": true
+      },
+      "contractsPass": true,
+      "startedInputs": [
+        0,
+        1
+      ],
+      "restartCount": 1,
+      "finalResult": "fresh results for 1|catalog",
+      "rootVersion": 3,
+      "timingMeasured": false,
+      "limitations": [
+        "reuse is limited to completed tasks outside the conservative changed-input descendant closure",
+        "refreshInputs is an application callback; the runtime does not yet synthesize owner-scoped state snapshots",
+        "restart behavior is not compared with React or timed in a browser"
+      ]
+    }
+  },
+  "timingMeasured": false
+}

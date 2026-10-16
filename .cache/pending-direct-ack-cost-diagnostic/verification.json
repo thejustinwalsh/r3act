@@ -1,0 +1,479 @@
+{
+  "status": "PASS",
+  "scope": "Independent integrity/completeness and paired-median recomputation for a Node queue-only diagnostic; no Root/React/VDOM/browser performance claim",
+  "inputs": {
+    "resultsJson": {
+      "path": "results.json",
+      "sha256": "edc828ad7fac9877d41b349ca2391c9243af12554733ebf13ddac7829676de6a"
+    },
+    "rawNdjson": {
+      "path": "raw.ndjson",
+      "sha256": "5e6cf9090a7be6fd9d91a988aee922aa6d1cca6c5ba8ddb6069e8ec872e10cba",
+      "bytes": 423521,
+      "records": 360
+    },
+    "source": {
+      "path": ".cache/pending-direct-ack-stage-v3/src/pending_state_changes.ts",
+      "sha256": "11afdb7111a2f1d399c5d32e7b429456b8004fc106b20277295eb011cb403e1e"
+    },
+    "collector": {
+      "path": "queue_cost_diagnostic.mjs",
+      "sha256": "e18cd62fc7e8ceff8769107c32a3b76721ca78c2ed9989426bbfc5a638f1ef33"
+    },
+    "protocol": {
+      "path": "protocol.md",
+      "sha256": "6354761a0e23d8697a5a3c16761e1a46ad9ff0cd885d672c36bc92a337ea6ffd"
+    },
+    "verifier": {
+      "path": "verification.mjs",
+      "sha256": "12553dd51ee4c67cfd10b0cf20201df67dd5dce559f274f1d77ba771f06230eb"
+    }
+  },
+  "configurationVerified": {
+    "sizes": [
+      128,
+      1024,
+      10000
+    ],
+    "densities": [
+      "sparse-1pct",
+      "dense-100pct"
+    ],
+    "matchedPairsPerWorkload": 10,
+    "orderCounts": {
+      "AB": 5,
+      "BA": 5
+    },
+    "armRecords": 240,
+    "pairRecords": 120,
+    "measuredSamplesPerArm": 96,
+    "warmupBatchesPerArm": 64,
+    "cleanupAssertionsPassed": 240
+  },
+  "recomputation": {
+    "method": "For every matched pair, compute the median of that arm's 96 durations; divide keyed median by baseline median; report geometric mean of the ten pair ratios. Cold ratios use each pair's separate firstColdNs values. Generic legacy-decline and accepted cases remain separate.",
+    "pairedSummaries": [
+      {
+        "case": "accepted",
+        "workload": {
+          "size": 128,
+          "density": "sparse-1pct",
+          "activeCount": 1
+        },
+        "pairing": "ratio of each matched pair's keyed/baseline median over 96 measured batches",
+        "warmPairRatios": [
+          1.0876826722338204,
+          0.9606147934678194,
+          0.8,
+          1,
+          1.168,
+          1.748502994011976,
+          1.0060240963855422,
+          1,
+          1.0060240963855422,
+          1.0060240963855422
+        ],
+        "warmGeometricMeanBOverA": 1.0568359643163445,
+        "coldPairRatios": [
+          0.34517115177610336,
+          1.0052657359784472,
+          4.538725261025402,
+          1.4512383900928794,
+          2.1737089201877935,
+          1.972,
+          2.3333333333333335,
+          2.459409594095941,
+          3.834,
+          8.666
+        ],
+        "coldGeometricMeanBOverA": 2.1239166840419306
+      },
+      {
+        "case": "legacy-decline",
+        "workload": {
+          "size": 128,
+          "density": "sparse-1pct",
+          "activeCount": 1
+        },
+        "pairing": "ratio of each matched pair's keyed/baseline median over 96 measured batches",
+        "warmPairRatios": [
+          1.056,
+          0.946969696969697,
+          0.4656,
+          1.164,
+          1.328,
+          1,
+          1.328,
+          1.328,
+          1,
+          1.328
+        ],
+        "warmGeometricMeanBOverA": 1.0536001534560044,
+        "coldPairRatios": [
+          0.05846764088868523,
+          3.4997000599880024,
+          0.6930733569675485,
+          1.6433776253750536,
+          1.8489208633093526,
+          0.75,
+          4.767527675276753,
+          1.9981549815498154,
+          2.183406113537118,
+          1.666
+        ],
+        "coldGeometricMeanBOverA": 1.2732610292208855
+      },
+      {
+        "case": "accepted",
+        "workload": {
+          "size": 128,
+          "density": "dense-100pct",
+          "activeCount": 128
+        },
+        "pairing": "ratio of each matched pair's keyed/baseline median over 96 measured batches",
+        "warmPairRatios": [
+          1.0167389331451044,
+          0.9945333333333334,
+          0.9722,
+          0.9926562779867455,
+          1.0259498715791338,
+          0.9851334408024359,
+          1.029727793696275,
+          1.0923190546528803,
+          1,
+          0.9924785100286533
+        ],
+        "warmGeometricMeanBOverA": 1.0096707076165408,
+        "coldPairRatios": [
+          0.9397741530740276,
+          2.1993804774856454,
+          2.1172307954642338,
+          2.961479768786127,
+          2.3083469894803614,
+          1.4455958549222798,
+          1.7401652728982138,
+          2.218978102189781,
+          2.064516129032258,
+          0.263504147341131
+        ],
+        "coldGeometricMeanBOverA": 1.569747525129583
+      },
+      {
+        "case": "legacy-decline",
+        "workload": {
+          "size": 128,
+          "density": "dense-100pct",
+          "activeCount": 128
+        },
+        "pairing": "ratio of each matched pair's keyed/baseline median over 96 measured batches",
+        "warmPairRatios": [
+          1.1297059631766968,
+          1.1485092818301144,
+          1.016,
+          1.165015411712902,
+          1.151703449753589,
+          1.133919005785301,
+          1.113128783135045,
+          1.1428265295189113,
+          1.1746311385157455,
+          1.135135135135135
+        ],
+        "warmGeometricMeanBOverA": 1.1302441851186995,
+        "coldPairRatios": [
+          1.5873015873015872,
+          1.7987500656478126,
+          2.339584996009577,
+          1.3216948121101475,
+          1.926050718212449,
+          0.8458110749185668,
+          1.3598636363636363,
+          1.677854748603352,
+          2.1587897400898597,
+          1.6566410877066489
+        ],
+        "coldGeometricMeanBOverA": 1.6104712893699449
+      },
+      {
+        "case": "accepted",
+        "workload": {
+          "size": 1024,
+          "density": "sparse-1pct",
+          "activeCount": 10
+        },
+        "pairing": "ratio of each matched pair's keyed/baseline median over 96 measured batches",
+        "warmPairRatios": [
+          1.091703056768559,
+          1.0893246187363834,
+          1.0893246187363834,
+          1.091703056768559,
+          1.002183406113537,
+          1.002183406113537,
+          1.002183406113537,
+          1.002183406113537,
+          1.002183406113537,
+          1.002183406113537
+        ],
+        "warmGeometricMeanBOverA": 1.0366226492611272,
+        "coldPairRatios": [
+          2.5484961135518756,
+          2.2784598214285716,
+          1.6925207756232687,
+          1.4079570571518787,
+          1.95078031212485,
+          1.9705277587388623,
+          1.744,
+          2.117148906139732,
+          2.0889830508474576,
+          0.3944
+        ],
+        "coldGeometricMeanBOverA": 1.6630332776152132
+      },
+      {
+        "case": "legacy-decline",
+        "workload": {
+          "size": 1024,
+          "density": "sparse-1pct",
+          "activeCount": 10
+        },
+        "pairing": "ratio of each matched pair's keyed/baseline median over 96 measured batches",
+        "warmPairRatios": [
+          1.1007194244604317,
+          1.1007194244604317,
+          1.091703056768559,
+          1.091703056768559,
+          1.091703056768559,
+          1.1990407673860912,
+          1.1990407673860912,
+          1.1990407673860912,
+          1.1007194244604317,
+          1.002183406113537
+        ],
+        "warmGeometricMeanBOverA": 1.1160386950619217,
+        "coldPairRatios": [
+          2.5991140642303434,
+          4.204923076923077,
+          2.147598870056497,
+          1.3298442685728875,
+          0.5725540491022353,
+          2.147598870056497,
+          1.8378728923476004,
+          2,
+          1.9396363636363636,
+          4.455106237148732
+        ],
+        "coldGeometricMeanBOverA": 2.035181215347987
+      },
+      {
+        "case": "accepted",
+        "workload": {
+          "size": 1024,
+          "density": "dense-100pct",
+          "activeCount": 1024
+        },
+        "pairing": "ratio of each matched pair's keyed/baseline median over 96 measured batches",
+        "warmPairRatios": [
+          1.0043749222182865,
+          0.8718362586936864,
+          0.9958990086299123,
+          0.9744885657584806,
+          0.9414414414414415,
+          0.8831965811965812,
+          0.9691969196919692,
+          0.9343782726478047,
+          0.888408695652174,
+          0.8919497488294343
+        ],
+        "warmGeometricMeanBOverA": 0.9343425929581003,
+        "coldPairRatios": [
+          0.7715394739907284,
+          0.8845787563339282,
+          0.8535729599000093,
+          0.6782380248484808,
+          1.8341157967972592,
+          0.9609345509893455,
+          2.0140140409392906,
+          1.7013168258734346,
+          3.126990550823814,
+          2.192661150775763
+        ],
+        "coldGeometricMeanBOverA": 1.3224473118230953
+      },
+      {
+        "case": "legacy-decline",
+        "workload": {
+          "size": 1024,
+          "density": "dense-100pct",
+          "activeCount": 1024
+        },
+        "pairing": "ratio of each matched pair's keyed/baseline median over 96 measured batches",
+        "warmPairRatios": [
+          1.201301204819277,
+          1.1009214712714541,
+          1.1785113636363636,
+          1.1326949384404925,
+          1.0777562254259503,
+          1.0856760374832664,
+          1.0757746538780544,
+          1.0841097026160191,
+          1.1414075104311543,
+          1.0823760725772844
+        ],
+        "warmGeometricMeanBOverA": 1.1152415026985159,
+        "coldPairRatios": [
+          2.942172586370648,
+          1.6141404056162247,
+          1.968136658485883,
+          1.6869203894469134,
+          1.5095578870107722,
+          1.7867112405577565,
+          2.184994923857868,
+          1.2650296482760888,
+          1.9835830279628348,
+          1.7297411509025173
+        ],
+        "coldGeometricMeanBOverA": 1.8220681097205766
+      },
+      {
+        "case": "accepted",
+        "workload": {
+          "size": 10000,
+          "density": "sparse-1pct",
+          "activeCount": 100
+        },
+        "pairing": "ratio of each matched pair's keyed/baseline median over 96 measured batches",
+        "warmPairRatios": [
+          1.079134980988593,
+          1.0409012980651482,
+          1.0616031667491341,
+          1.0413264043553576,
+          1.0413264043553576,
+          1.0979713013359722,
+          1.0823849579416132,
+          0.9904912836767037,
+          1.041316180108857,
+          1.041316180108857
+        ],
+        "warmGeometricMeanBOverA": 1.0513830993139717,
+        "coldPairRatios": [
+          1.5951413612565446,
+          1.4336080197094554,
+          1.8816774193548387,
+          1.1421201381723565,
+          1.419269026139255,
+          1.972177527487262,
+          1.7456622936944561,
+          1.5575128897618462,
+          2.2963232323232323,
+          1.8265844416375658
+        ],
+        "coldGeometricMeanBOverA": 1.657891842238464
+      },
+      {
+        "case": "legacy-decline",
+        "workload": {
+          "size": 10000,
+          "density": "sparse-1pct",
+          "activeCount": 100
+        },
+        "pairing": "ratio of each matched pair's keyed/baseline median over 96 measured batches",
+        "warmPairRatios": [
+          1.1998870694522867,
+          1.153896874587894,
+          1.1318565400843883,
+          1.1263352235263089,
+          1.104,
+          1.1445333333333334,
+          1.1135805835833106,
+          1.1379310344827587,
+          1.1392299107142858,
+          1.1461704422869472
+        ],
+        "warmGeometricMeanBOverA": 1.1394787002225815,
+        "coldPairRatios": [
+          1.5444488000348446,
+          2.7059792964927643,
+          1.63379792955873,
+          1.9780526315789473,
+          1.645640945374863,
+          1.9168281837874814,
+          2.282051282051282,
+          2.337629263775274,
+          2.0591186554059706,
+          1.3546099290780143
+        ],
+        "coldGeometricMeanBOverA": 1.9063599711424999
+      },
+      {
+        "case": "accepted",
+        "workload": {
+          "size": 10000,
+          "density": "dense-100pct",
+          "activeCount": 10000
+        },
+        "pairing": "ratio of each matched pair's keyed/baseline median over 96 measured batches",
+        "warmPairRatios": [
+          0.9509875019858697,
+          0.8351185896061756,
+          0.8458760500330348,
+          0.8507335007440081,
+          0.7861357311544566,
+          0.7967180600796236,
+          0.8476744090343502,
+          0.688613454491857,
+          0.8514304114490161,
+          0.8082183558377283
+        ],
+        "warmGeometricMeanBOverA": 0.8237032634525059,
+        "coldPairRatios": [
+          2.417101704756144,
+          1.4302719564901467,
+          0.8147132719550478,
+          1.619343545586731,
+          1.140488206818416,
+          1.3833392646810196,
+          1.3767934421540768,
+          1.4341929884699411,
+          0.8807555883075412,
+          1.7465317600508725
+        ],
+        "coldGeometricMeanBOverA": 1.3613146289337403
+      },
+      {
+        "case": "legacy-decline",
+        "workload": {
+          "size": 10000,
+          "density": "dense-100pct",
+          "activeCount": 10000
+        },
+        "pairing": "ratio of each matched pair's keyed/baseline median over 96 measured batches",
+        "warmPairRatios": [
+          1.1215669528893015,
+          1.0868467125597212,
+          1.074769786772678,
+          1.07560980585243,
+          1.1399872112507228,
+          1.086031629005066,
+          1.1015617312297044,
+          1.070917494968246,
+          1.1145528177169288,
+          1.0646440498944714
+        ],
+        "warmGeometricMeanBOverA": 1.0933963238957163,
+        "coldPairRatios": [
+          1.5402552833009366,
+          1.913169552960129,
+          1.2325131009341537,
+          1.5888416925433169,
+          1.3690523328550877,
+          1.868972302421751,
+          1.57200971176236,
+          1.6119167180752623,
+          1.8624417158480098,
+          1.5942589070904556
+        ],
+        "coldGeometricMeanBOverA": 1.6016516378127157
+      }
+    ]
+  },
+  "interpretationLimit": "Results describe only this Node PendingStateChanges queue harness. They do not establish React, Root, VDOM, or product-level gains."
+}

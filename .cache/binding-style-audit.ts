@@ -1,0 +1,11 @@
+import { bind, jsx, ScalarSource } from '../src/jsx_binding_runtime.ts';
+import { MemoryVDOMHost, VDOMSnapshotRoot } from '../src/vdom_snapshot_runtime.ts';
+const a=new ScalarSource(0,1), b=new ScalarSource(1,2);
+const host=new MemoryVDOMHost(),container=host.createContainer();
+const root=new VDOMSnapshotRoot(host,container);
+const tree=()=>jsx('div',{style:{opacity:bind(a),left:bind(b)}});
+root.prepareCommit(tree(),null,true).commit();
+a.value=3;b.value=4;
+root.prepareCommit(tree(),null,true).commit();
+console.log(JSON.stringify({actual:container.children[0].props.style,expected:{opacity:3,left:4}}));
+root.dispose();

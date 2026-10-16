@@ -1,0 +1,37 @@
+import assert from 'node:assert/strict';
+import {openBrowser,run} from 'vitexec/cli';
+import {writeFile} from 'node:fs/promises';
+const browser=await openBrowser({gpu:false});const errors=[];
+try{
+ const context=await browser.newContext({ignoreHTTPSErrors:true,viewport:{width:1400,height:1100}});const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+ await page.goto('https://async-transition-stress.localhost:1355/native-collection-props.html',{waitUntil:'networkidle'});
+ await page.getByRole('button',{name:'Insert before first',exact:true}).waitFor();
+ const snap=()=>page.evaluate(()=>window.__nativeCollectionDemoDiagnostics.snapshot());
+ const initial=await snap();assert.equal(initial.collection.size,32);assert.equal(initial.activeEffectCount,32);assert.equal(initial.registeredWriterCount,32);
+ const initialTick=await page.locator('[data-row-id="record-001"]').getAttribute('data-tick');
+ await page.waitForFunction(tick=>document.querySelector('[data-row-id="record-001"]').getAttribute('data-tick')!==tick,initialTick);
+ const afterTick=await snap();assert.equal(afterTick.root.sourceValueSyncVisits,initial.root.sourceValueSyncVisits,'RAF tick scanned/re-rendered collection');
+ await run(page,`console.log('direct RAF',JSON.stringify(globalThis.__nativeCollectionDemoDiagnostics.snapshot()))`,{onLog:console.log});
+ const draft=page.getByRole('textbox',{name:'Edit record-005',exact:true});await draft.fill('A surviving local draft');
+ await page.evaluate(()=>{window.__retainedInput=document.querySelector('[aria-label="Edit record-005"]');window.__retainedRow=document.querySelector('[data-row-id="record-005"]');});
+ await page.getByRole('button',{name:'Move first to end',exact:true}).click();
+ await page.waitForFunction(()=>document.querySelector('.collection-row:last-child')?.getAttribute('data-row-id')==='record-001');
+ await page.getByRole('button',{name:'Replace first',exact:true}).click();
+ await page.waitForFunction(()=>document.querySelector('[data-row-id="record-002"] .badge')?.textContent.includes('rev 1'));
+ await page.getByRole('button',{name:'Insert before first',exact:true}).click();
+ await page.locator('[data-row-id="record-033"]').waitFor();assert.equal(await page.locator('.collection-row').count(),33);
+ assert.equal((await snap()).activeEffectCount,33);assert.equal((await snap()).registeredWriterCount,33);
+ await page.getByRole('button',{name:'Move first to end',exact:true}).click();
+ await page.waitForFunction(()=>document.querySelector('.collection-row:last-child')?.getAttribute('data-row-id')==='record-033');
+ await page.getByRole('button',{name:'Remove last',exact:true}).click();await page.locator('[data-row-id="record-033"]').waitFor({state:'detached'});
+ assert.equal(await page.locator('.collection-row').count(),32);assert.equal(await draft.inputValue(),'A surviving local draft');
+ assert.ok(await page.evaluate(()=>window.__retainedInput===document.querySelector('[aria-label="Edit record-005"]') && window.__retainedRow===document.querySelector('[data-row-id="record-005"]')),'Sparse edits replaced surviving row/input');
+ const edited=await snap();assert.equal(edited.activeEffectCount,32);assert.equal(edited.registeredWriterCount,32);assert.ok(edited.collection.entryInspections-initial.collection.entryInspections<=20,'Control handlers or sparse renderer scanned collection snapshot');
+ assert.equal(errors.length,0,errors.join('\n'));
+ await page.screenshot({path:'.cache/native-async-foundations/browser.png',fullPage:true});
+ await page.evaluate(()=>{window.__oldCollectionFacade=window.__nativeCollectionDemoDiagnostics;window.dispatchEvent(new Event('pagehide'));});
+ const disposed=await page.evaluate(()=>window.__oldCollectionFacade.snapshot());assert.equal(disposed.root.disposed,true);assert.equal(disposed.root.ownerCount,0);assert.equal(disposed.activeEffectCount,0);assert.equal(disposed.registeredWriterCount,0);assert.equal(disposed.collection.readerCount,0);assert.equal(disposed.collection.retainedBatches,0);assert.equal(await page.locator('#app > *').count(),0);
+ await page.waitForTimeout(100);assert.equal(errors.length,0,errors.join('\n'));
+ await writeFile('.cache/native-async-foundations/browser-result.json',JSON.stringify({status:'PASS',url:page.url(),initial,afterTick,edited,disposed,errors},null,2));
+ console.log('Native collection browser PASS: direct RAF, CRUD, keyed draft/identity and real effect/reader teardown.');
+}finally{await browser.close();}

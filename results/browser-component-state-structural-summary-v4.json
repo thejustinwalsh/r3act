@@ -1,0 +1,115 @@
+{
+  "schemaVersion": "component-state-structural-browser-summary-v4",
+  "status": "PASS",
+  "pageLoadsAreReplicationUnit": true,
+  "profileReplications": 1,
+  "rawFiles": [
+    "results/browser-component-state-structural-v4-83001024.json",
+    "results/browser-component-state-structural-v4-83001025.json",
+    "results/browser-component-state-structural-v4-83001026.json"
+  ],
+  "protocol": {
+    "leaves": 10000,
+    "warmupPairsPerPage": 8,
+    "measuredPairsPerPage": 24,
+    "operations": [
+      "rotate",
+      "replace-edge",
+      "filter-half"
+    ],
+    "react": "React 19.3 + React Compiler with keyed row components owning useState",
+    "runtime": "OXC-generated component and state-site metadata; structural updates expand the dirty owner subtree and use a linear last-placed-index keyed VDOM move plan",
+    "timing": "Programmatic click to synchronous host commit; mount reported separately; layout, paint, and display presentation excluded."
+  },
+  "scenarios": [
+    {
+      "operation": "rotate",
+      "pageLoads": 3,
+      "medianOfPageMediansMs": {
+        "react": 9.700000017881393,
+        "runtime": 14
+      },
+      "medianOfPageP95Ms": {
+        "react": 11.900000005960464,
+        "runtime": 18.899999976158142
+      },
+      "pageMedianRangeMs": {
+        "react": [
+          5.5,
+          10.5
+        ],
+        "runtime": [
+          13,
+          14.300000011920929
+        ]
+      },
+      "mountMs": {
+        "react": 22.299999982118607,
+        "runtime": 54.900000005960464
+      },
+      "contractsPass": true
+    },
+    {
+      "operation": "replace-edge",
+      "pageLoads": 3,
+      "medianOfPageMediansMs": {
+        "react": 9.5,
+        "runtime": 13.599999994039536
+      },
+      "medianOfPageP95Ms": {
+        "react": 10.400000005960464,
+        "runtime": 15.5
+      },
+      "pageMedianRangeMs": {
+        "react": [
+          5.700000017881393,
+          9.599999994039536
+        ],
+        "runtime": [
+          12.599999994039536,
+          13.800000011920929
+        ]
+      },
+      "mountMs": {
+        "react": 16.900000005960464,
+        "runtime": 46.80000001192093
+      },
+      "contractsPass": true
+    },
+    {
+      "operation": "filter-half",
+      "pageLoads": 3,
+      "medianOfPageMediansMs": {
+        "react": 13.200000017881393,
+        "runtime": 32
+      },
+      "medianOfPageP95Ms": {
+        "react": 19.5,
+        "runtime": 52.900000005960464
+      },
+      "pageMedianRangeMs": {
+        "react": [
+          10.700000017881393,
+          14.299999982118607
+        ],
+        "runtime": [
+          25.099999994039536,
+          34.19999998807907
+        ]
+      },
+      "mountMs": {
+        "react": 14,
+        "runtime": 41.5
+      },
+      "contractsPass": true
+    }
+  ],
+  "limitations": [
+    "Three page loads share one Chrome 154 profile and one MacIntel device; each page is the replication unit and 24 pairs are nested observations.",
+    "The linear last-placed-index plan can move more retained host nodes than an LIS plan; it still normalizes and scans the sibling sequence and does not use the dependency DAG to select structural intervals.",
+    "React Compiler is enabled; source render counters are omitted to avoid changing compiler memoization.",
+    "Three fresh page loads share one Chrome 154 profile and one MacIntel device; more independent device/browser replications are needed.",
+    "The benchmark excludes layout, paint, display presentation, repeated churn memory, and lifecycle instrumentation.",
+    "OXC lowers the checked-in TSX component and state-site fixture; the structural operation callback is supplied by the harness."
+  ]
+}

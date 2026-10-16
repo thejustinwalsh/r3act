@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "component-state-owner-reuse-v3-browser-preregistration-amendment-v1",
+  "amendedAt": "2026-10-11",
+  "beforeProductionCollection": true,
+  "implementationSmokeSeed": 83005300,
+  "finding": "The first implementation smoke revealed that rotating the full sequence moves the selected row-0 sentinel to the tail. Replacing the literal final key on the next pair therefore removed the stateful sentinel, making the preregistered retention check invalid for every arm, including React.",
+  "amendment": {
+    "sequencePerPair": "Replace the final key other than row-0 with a new unique key and change the keyed-region version token; then rotate the complete sequence left while preserving the new version token.",
+    "state": "Seed row-0 selected before measurement; it must remain selected after each stage. The inserted row starts unselected.",
+    "implementation": "The implementation chooses the last index when it does not contain row-0 and otherwise chooses the preceding index. All pair order, timing, sample counts, thresholds, arms, seeds, and analysis rules remain unchanged."
+  },
+  "dataCollectedUnderPriorImplementation": false
+}

@@ -1,0 +1,1233 @@
+{
+  "schemaVersion": "component-update-ablation-v1",
+  "runtime": {
+    "deno": "2.6.3",
+    "v8": "14.2.231.17-rusty",
+    "typescript": "5.9.2"
+  },
+  "compiler": {
+    "sourceFile": "compiler/fixtures/component_state_sites.tsx",
+    "schemaVersion": 3,
+    "invalidationSourceCount": 6,
+    "componentRegionCount": 5
+  },
+  "methodology": {
+    "pairedOrder": "seeded pseudorandom order, recorded per pair",
+    "timer": "performance.now around one state update and commit",
+    "warmupPairs": 5,
+    "measuredPairs": 25,
+    "stateChangesPerBatch": 1,
+    "equalWork": "one native click state update on the final keyed OXC-generated BenchmarkItem; same tree, compiler-emitted invalidation graph, and retained in-memory VDOM host implementation",
+    "limitation": "owner-cache arm uses the compiler-selected owner and a globally unique stable host-root key to commit one host region without scanning siblings; structural changes and ineligible trees fall back to full reconciliation. This is not a browser or React comparison"
+  },
+  "scenarios": [
+    {
+      "size": 100,
+      "seed": 1610091202,
+      "warmupPairs": 5,
+      "measuredPairs": 25,
+      "medianMs": {
+        "ownerCache": 0.01300000000000523,
+        "fullRender": 0.38479200000000446
+      },
+      "p95Ms": {
+        "ownerCache": 0.09916699999999423,
+        "fullRender": 0.6150000000000091
+      },
+      "rendersPerUpdate": {
+        "ownerCache": 1,
+        "fullRender": 100
+      },
+      "renderCountContract": true,
+      "partialCommitsPerUpdate": {
+        "ownerCache": 1,
+        "fullRender": 0
+      },
+      "partialCommitContract": true,
+      "finalOutputParity": true,
+      "samples": [
+        {
+          "pair": 0,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.10620799999998098,
+            "fullRender": 0.6150000000000091
+          }
+        },
+        {
+          "pair": 1,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.05041599999998425,
+            "fullRender": 0.41270799999998076
+          }
+        },
+        {
+          "pair": 2,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.022500000000007958,
+            "fullRender": 0.548624999999987
+          }
+        },
+        {
+          "pair": 3,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.030957999999998265,
+            "fullRender": 0.3936249999999859
+          }
+        },
+        {
+          "pair": 4,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.028082999999980984,
+            "fullRender": 0.5067919999999901
+          }
+        },
+        {
+          "pair": 5,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.017416999999994687,
+            "fullRender": 0.3740839999999821
+          }
+        },
+        {
+          "pair": 6,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.09337500000000887,
+            "fullRender": 0.5005419999999958
+          }
+        },
+        {
+          "pair": 7,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.01300000000000523,
+            "fullRender": 0.3280409999999847
+          }
+        },
+        {
+          "pair": 8,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.009415999999987434,
+            "fullRender": 0.5020420000000172
+          }
+        },
+        {
+          "pair": 9,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.07012499999999022,
+            "fullRender": 0.3158329999999978
+          }
+        },
+        {
+          "pair": 10,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.01387500000001296,
+            "fullRender": 0.37045899999998255
+          }
+        },
+        {
+          "pair": 11,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.012833000000000538,
+            "fullRender": 0.46554199999999923
+          }
+        },
+        {
+          "pair": 12,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.06458399999999642,
+            "fullRender": 0.5945420000000183
+          }
+        },
+        {
+          "pair": 13,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.008207999999996218,
+            "fullRender": 0.2891659999999945
+          }
+        },
+        {
+          "pair": 14,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.009332999999998037,
+            "fullRender": 0.330916000000002
+          }
+        },
+        {
+          "pair": 15,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.00899999999998613,
+            "fullRender": 0.38870799999997985
+          }
+        },
+        {
+          "pair": 16,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.09916699999999423,
+            "fullRender": 0.6418749999999989
+          }
+        },
+        {
+          "pair": 17,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.011459000000002106,
+            "fullRender": 0.3308749999999918
+          }
+        },
+        {
+          "pair": 18,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.007833000000005086,
+            "fullRender": 0.295833000000016
+          }
+        },
+        {
+          "pair": 19,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.008207999999996218,
+            "fullRender": 0.2903749999999832
+          }
+        },
+        {
+          "pair": 20,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.008916999999996733,
+            "fullRender": 0.38479200000000446
+          }
+        },
+        {
+          "pair": 21,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.0072499999999990905,
+            "fullRender": 0.5692090000000007
+          }
+        },
+        {
+          "pair": 22,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.00829199999998309,
+            "fullRender": 0.2928330000000017
+          }
+        },
+        {
+          "pair": 23,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.013958000000002357,
+            "fullRender": 0.311916999999994
+          }
+        },
+        {
+          "pair": 24,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.0072079999999914435,
+            "fullRender": 0.31024999999999636
+          }
+        }
+      ]
+    },
+    {
+      "size": 1000,
+      "seed": 1610092102,
+      "warmupPairs": 5,
+      "measuredPairs": 25,
+      "medianMs": {
+        "ownerCache": 0.008750000000020464,
+        "fullRender": 2.423541
+      },
+      "p95Ms": {
+        "ownerCache": 0.02133299999997007,
+        "fullRender": 3.619541999999967
+      },
+      "rendersPerUpdate": {
+        "ownerCache": 1,
+        "fullRender": 1000
+      },
+      "renderCountContract": true,
+      "partialCommitsPerUpdate": {
+        "ownerCache": 1,
+        "fullRender": 0
+      },
+      "partialCommitContract": true,
+      "finalOutputParity": true,
+      "samples": [
+        {
+          "pair": 0,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.011500000000012278,
+            "fullRender": 3.2123750000000086
+          }
+        },
+        {
+          "pair": 1,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.02050000000002683,
+            "fullRender": 3.7965410000000475
+          }
+        },
+        {
+          "pair": 2,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.007708999999977095,
+            "fullRender": 2.4727080000000115
+          }
+        },
+        {
+          "pair": 3,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.00933399999996709,
+            "fullRender": 3.1456249999999955
+          }
+        },
+        {
+          "pair": 4,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.008542000000034022,
+            "fullRender": 3.089749999999981
+          }
+        },
+        {
+          "pair": 5,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.01391599999999471,
+            "fullRender": 2.031417000000033
+          }
+        },
+        {
+          "pair": 6,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.017500000000040927,
+            "fullRender": 2.8375839999999926
+          }
+        },
+        {
+          "pair": 7,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.005666000000019267,
+            "fullRender": 2.0843340000000126
+          }
+        },
+        {
+          "pair": 8,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.007749999999987267,
+            "fullRender": 1.910708999999997
+          }
+        },
+        {
+          "pair": 9,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.008750000000020464,
+            "fullRender": 2.767333000000008
+          }
+        },
+        {
+          "pair": 10,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.005249999999989541,
+            "fullRender": 1.9347499999999513
+          }
+        },
+        {
+          "pair": 11,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.006208999999955722,
+            "fullRender": 2.0135419999999726
+          }
+        },
+        {
+          "pair": 12,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.007875000000012733,
+            "fullRender": 2.423541
+          }
+        },
+        {
+          "pair": 13,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.01445899999998801,
+            "fullRender": 2.41862500000002
+          }
+        },
+        {
+          "pair": 14,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.009749999999996817,
+            "fullRender": 3.619541999999967
+          }
+        },
+        {
+          "pair": 15,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.005457999999975982,
+            "fullRender": 3.5628750000000196
+          }
+        },
+        {
+          "pair": 16,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.01495799999997871,
+            "fullRender": 1.9802080000000046
+          }
+        },
+        {
+          "pair": 17,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.006250000000022737,
+            "fullRender": 2.0858330000000365
+          }
+        },
+        {
+          "pair": 18,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.03737499999999727,
+            "fullRender": 2.5607500000000414
+          }
+        },
+        {
+          "pair": 19,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.02133299999997007,
+            "fullRender": 2.5450420000000236
+          }
+        },
+        {
+          "pair": 20,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.00695899999999483,
+            "fullRender": 2.2497079999999983
+          }
+        },
+        {
+          "pair": 21,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.009000000000014552,
+            "fullRender": 3.494874999999979
+          }
+        },
+        {
+          "pair": 22,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.015290999999990618,
+            "fullRender": 1.8624579999999469
+          }
+        },
+        {
+          "pair": 23,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.0067499999999540705,
+            "fullRender": 1.8799169999999776
+          }
+        },
+        {
+          "pair": 24,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.006583999999975276,
+            "fullRender": 1.8565419999999904
+          }
+        }
+      ]
+    },
+    {
+      "size": 5000,
+      "seed": 1610096102,
+      "warmupPairs": 5,
+      "measuredPairs": 25,
+      "medianMs": {
+        "ownerCache": 0.01999999999998181,
+        "fullRender": 12.563417000000072
+      },
+      "p95Ms": {
+        "ownerCache": 0.047083000000043285,
+        "fullRender": 17.21104200000002
+      },
+      "rendersPerUpdate": {
+        "ownerCache": 1,
+        "fullRender": 5000
+      },
+      "renderCountContract": true,
+      "partialCommitsPerUpdate": {
+        "ownerCache": 1,
+        "fullRender": 0
+      },
+      "partialCommitContract": true,
+      "finalOutputParity": true,
+      "samples": [
+        {
+          "pair": 0,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.02008299999999963,
+            "fullRender": 11.077249999999992
+          }
+        },
+        {
+          "pair": 1,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.01754199999999173,
+            "fullRender": 12.444542000000013
+          }
+        },
+        {
+          "pair": 2,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.005207999999981894,
+            "fullRender": 11.815249999999992
+          }
+        },
+        {
+          "pair": 3,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.013499999999964984,
+            "fullRender": 12.163833999999952
+          }
+        },
+        {
+          "pair": 4,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.013833000000033735,
+            "fullRender": 11.528332999999975
+          }
+        },
+        {
+          "pair": 5,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.012917000000015832,
+            "fullRender": 10.369167000000004
+          }
+        },
+        {
+          "pair": 6,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.010833000000047832,
+            "fullRender": 12.171416999999906
+          }
+        },
+        {
+          "pair": 7,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.047083000000043285,
+            "fullRender": 13.188334000000054
+          }
+        },
+        {
+          "pair": 8,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.02616600000010294,
+            "fullRender": 12.787165999999957
+          }
+        },
+        {
+          "pair": 9,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.01824999999996635,
+            "fullRender": 13.974790999999982
+          }
+        },
+        {
+          "pair": 10,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.009709000000043488,
+            "fullRender": 13.874582999999916
+          }
+        },
+        {
+          "pair": 11,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.030416999999943073,
+            "fullRender": 11.417292000000089
+          }
+        },
+        {
+          "pair": 12,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.007000000000061846,
+            "fullRender": 17.21104200000002
+          }
+        },
+        {
+          "pair": 13,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.026374999999916326,
+            "fullRender": 13.302832999999964
+          }
+        },
+        {
+          "pair": 14,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.01999999999998181,
+            "fullRender": 13.493750000000091
+          }
+        },
+        {
+          "pair": 15,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.026749999999992724,
+            "fullRender": 14.506291999999917
+          }
+        },
+        {
+          "pair": 16,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.006709000000000742,
+            "fullRender": 11.38904100000002
+          }
+        },
+        {
+          "pair": 17,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.032417000000009466,
+            "fullRender": 12.487250000000017
+          }
+        },
+        {
+          "pair": 18,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.007457999999928688,
+            "fullRender": 13.102334000000042
+          }
+        },
+        {
+          "pair": 19,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.02695800000003601,
+            "fullRender": 12.563417000000072
+          }
+        },
+        {
+          "pair": 20,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.03599999999994452,
+            "fullRender": 13.667625000000044
+          }
+        },
+        {
+          "pair": 21,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.008709000000067135,
+            "fullRender": 11.503958000000011
+          }
+        },
+        {
+          "pair": 22,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.024916999999959444,
+            "fullRender": 12.334165999999982
+          }
+        },
+        {
+          "pair": 23,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.021665999999981977,
+            "fullRender": 12.56433400000003
+          }
+        },
+        {
+          "pair": 24,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 4.899249999999938,
+            "fullRender": 69.12033299999996
+          }
+        }
+      ]
+    },
+    {
+      "size": 10000,
+      "seed": 1610101102,
+      "warmupPairs": 5,
+      "measuredPairs": 25,
+      "medianMs": {
+        "ownerCache": 0.033625000000029104,
+        "fullRender": 27.84762499999988
+      },
+      "p95Ms": {
+        "ownerCache": 0.043624999999792635,
+        "fullRender": 39.70495800000003
+      },
+      "rendersPerUpdate": {
+        "ownerCache": 1,
+        "fullRender": 10000
+      },
+      "renderCountContract": true,
+      "partialCommitsPerUpdate": {
+        "ownerCache": 1,
+        "fullRender": 0
+      },
+      "partialCommitContract": true,
+      "finalOutputParity": true,
+      "samples": [
+        {
+          "pair": 0,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.04049999999983811,
+            "fullRender": 27.660624999999982
+          }
+        },
+        {
+          "pair": 1,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.03899999999998727,
+            "fullRender": 26.78862500000014
+          }
+        },
+        {
+          "pair": 2,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.006750000000010914,
+            "fullRender": 27.27212499999996
+          }
+        },
+        {
+          "pair": 3,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.031542000000172266,
+            "fullRender": 68.34920799999986
+          }
+        },
+        {
+          "pair": 4,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.04362500000002001,
+            "fullRender": 39.70495800000003
+          }
+        },
+        {
+          "pair": 5,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.0257090000000062,
+            "fullRender": 27.108375000000024
+          }
+        },
+        {
+          "pair": 6,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.00641700000005585,
+            "fullRender": 29.413042000000132
+          }
+        },
+        {
+          "pair": 7,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.035750000000007276,
+            "fullRender": 25.29537500000015
+          }
+        },
+        {
+          "pair": 8,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.03670899999997346,
+            "fullRender": 27.61133299999983
+          }
+        },
+        {
+          "pair": 9,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.006499999999959982,
+            "fullRender": 26.941499999999905
+          }
+        },
+        {
+          "pair": 10,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.03037499999982174,
+            "fullRender": 25.967916999999943
+          }
+        },
+        {
+          "pair": 11,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.04158399999982976,
+            "fullRender": 29.291999999999916
+          }
+        },
+        {
+          "pair": 12,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.007749999999987267,
+            "fullRender": 25.949041999999963
+          }
+        },
+        {
+          "pair": 13,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.033625000000029104,
+            "fullRender": 27.951542000000018
+          }
+        },
+        {
+          "pair": 14,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.03633300000001327,
+            "fullRender": 27.84762499999988
+          }
+        },
+        {
+          "pair": 15,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.04291600000010476,
+            "fullRender": 29.75408299999981
+          }
+        },
+        {
+          "pair": 16,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.007417000000032203,
+            "fullRender": 30.455249999999978
+          }
+        },
+        {
+          "pair": 17,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.02758399999993344,
+            "fullRender": 27.434041999999863
+          }
+        },
+        {
+          "pair": 18,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.043624999999792635,
+            "fullRender": 38.35591700000009
+          }
+        },
+        {
+          "pair": 19,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.039707999999791355,
+            "fullRender": 26.598416999999927
+          }
+        },
+        {
+          "pair": 20,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.008166999999957625,
+            "fullRender": 30.53191700000025
+          }
+        },
+        {
+          "pair": 21,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.03445800000008603,
+            "fullRender": 28.033374999999978
+          }
+        },
+        {
+          "pair": 22,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.006750000000010914,
+            "fullRender": 28.983624999999847
+          }
+        },
+        {
+          "pair": 23,
+          "order": [
+            "fullRender",
+            "ownerCache"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.04233399999975518,
+            "fullRender": 30.467542000000094
+          }
+        },
+        {
+          "pair": 24,
+          "order": [
+            "ownerCache",
+            "fullRender"
+          ],
+          "milliseconds": {
+            "ownerCache": 0.007416000000148415,
+            "fullRender": 26.159749999999804
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "experiment": "native event to source update: React external store vs retained VDOM bindings",
+  "schemaVersion": 1,
+  "status": "PASS",
+  "collectedAt": "2026-10-10T00:15:23.712Z",
+  "source": "src/browser/event_source_differential.ts",
+  "reactBaseline": {
+    "react": "19.3.0",
+    "reactDom": "19.3.0"
+  },
+  "browser": {
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+    "platform": "MacIntel",
+    "hardwareConcurrency": 10,
+    "devicePixelRatio": 2,
+    "viewport": {
+      "width": 1512,
+      "height": 862
+    }
+  },
+  "contract": "A native click increments one state source and both declarative outputs reflect every update",
+  "vdomPath": "native click listener → ScalarSource → retained source-to-prop/style index → host writes",
+  "reactPath": "click handler → external store notification → useSyncExternalStore → React render and commit",
+  "removedButtonListenerCleanup": true,
+  "timing": "not measured",
+  "phases": [
+    {
+      "click": 1,
+      "reactCount": "1",
+      "vdomCount": "1",
+      "reactWidth": "2px",
+      "vdomWidth": "2px",
+      "parity": true
+    },
+    {
+      "click": 2,
+      "reactCount": "2",
+      "vdomCount": "2",
+      "reactWidth": "3px",
+      "vdomWidth": "3px",
+      "parity": true
+    },
+    {
+      "click": 3,
+      "reactCount": "3",
+      "vdomCount": "3",
+      "reactWidth": "4px",
+      "vdomWidth": "4px",
+      "parity": true
+    }
+  ]
+}

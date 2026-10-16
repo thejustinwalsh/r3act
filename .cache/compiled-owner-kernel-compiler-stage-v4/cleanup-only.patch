@@ -1,0 +1,34 @@
+--- .cache/compiled-owner-kernel-compiler-stage-v3/compiler/oxc-spike/src/main.rs	2026-10-13 16:05:17
++++ .cache/compiled-owner-kernel-compiler-stage-v4/compiler/oxc-spike/src/main.rs	2026-10-13 16:07:49
+@@ -290,7 +290,6 @@
+ struct NativePropCandidate {
+     span: SourceSpan,
+     state_refs: BTreeSet<SymbolId>,
+-    state_ref_counts: BTreeMap<SymbolId, usize>,
+     state_reference_sites: BTreeMap<(u32, u32), String>,
+     other_refs: bool,
+ }
+@@ -1336,7 +1335,6 @@
+                                                 property.value.span().end,
+                                             ),
+                                             state_refs: BTreeSet::new(),
+-                                            state_ref_counts: BTreeMap::new(),
+                                             state_reference_sites: BTreeMap::new(),
+                                             other_refs: false,
+                                         });
+@@ -1348,7 +1346,6 @@
+                         self.candidates.push(NativePropCandidate {
+                             span: span(expression.span().start, expression.span().end),
+                             state_refs: BTreeSet::new(),
+-                            state_ref_counts: BTreeMap::new(),
+                             state_reference_sites: BTreeMap::new(),
+                             other_refs: false,
+                         });
+@@ -1386,7 +1383,6 @@
+                         (node.span.start, node.span.end),
+                         binding.site_id.clone(),
+                     );
+-                    *candidate.state_ref_counts.entry(symbol).or_default() += 1;
+                 } else {
+                     self.outside_state_reads.insert(binding.site_id.clone());
+                 }

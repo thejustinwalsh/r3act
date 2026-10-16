@@ -1,0 +1,180 @@
+{
+  "benchmark": "compiled-bindings vs synthetic component/VNode model",
+  "disclaimer": "Not a React benchmark. It omits React scheduling, Fiber, compiler, host config, and browser host costs.",
+  "runtime": {
+    "deno": "2.6.3",
+    "v8": "14.2.231.17-rusty",
+    "typescript": "5.9.2"
+  },
+  "hardwareConcurrency": 10,
+  "results": [
+    {
+      "entityCount": 10000,
+      "changedCount": 10,
+      "changedFraction": 0.001,
+      "baseline": {
+        "medianMs": 0.0001409579999999835,
+        "p95Ms": 0.0008257079999999916,
+        "workPerFrame": {
+          "componentCalls": 10,
+          "elementAndPropsAllocations": 20,
+          "valueEqualityChecks": 10,
+          "bindingVisits": 0,
+          "hostWrites": 10
+        }
+      },
+      "compiledGraph": {
+        "medianMs": 0.0001278340000000071,
+        "p95Ms": 0.0007110000000000127,
+        "workPerFrame": {
+          "componentCalls": 0,
+          "elementAndPropsAllocations": 0,
+          "valueEqualityChecks": 10,
+          "bindingVisits": 10,
+          "hostWrites": 10
+        }
+      },
+      "parity": "identical host values"
+    },
+    {
+      "entityCount": 10000,
+      "changedCount": 1000,
+      "changedFraction": 0.1,
+      "baseline": {
+        "medianMs": 0.012254099999998403,
+        "p95Ms": 0.060524999999998386,
+        "workPerFrame": {
+          "componentCalls": 1000,
+          "elementAndPropsAllocations": 2000,
+          "valueEqualityChecks": 1000,
+          "bindingVisits": 0,
+          "hostWrites": 1000
+        }
+      },
+      "compiledGraph": {
+        "medianMs": 0.013329100000001403,
+        "p95Ms": 0.056562499999998295,
+        "workPerFrame": {
+          "componentCalls": 0,
+          "elementAndPropsAllocations": 0,
+          "valueEqualityChecks": 1000,
+          "bindingVisits": 1000,
+          "hostWrites": 1000
+        }
+      },
+      "parity": "identical host values"
+    },
+    {
+      "entityCount": 10000,
+      "changedCount": 10000,
+      "changedFraction": 1,
+      "baseline": {
+        "medianMs": 0.10895800000000122,
+        "p95Ms": 0.42429200000000833,
+        "workPerFrame": {
+          "componentCalls": 10000,
+          "elementAndPropsAllocations": 20000,
+          "valueEqualityChecks": 10000,
+          "bindingVisits": 0,
+          "hostWrites": 10000
+        }
+      },
+      "compiledGraph": {
+        "medianMs": 0.10304200000001629,
+        "p95Ms": 0.11270799999999781,
+        "workPerFrame": {
+          "componentCalls": 0,
+          "elementAndPropsAllocations": 0,
+          "valueEqualityChecks": 10000,
+          "bindingVisits": 10000,
+          "hostWrites": 10000
+        }
+      },
+      "parity": "identical host values"
+    },
+    {
+      "entityCount": 100000,
+      "changedCount": 100,
+      "changedFraction": 0.001,
+      "baseline": {
+        "medianMs": 0.0015958399999999528,
+        "p95Ms": 0.014076249999999959,
+        "workPerFrame": {
+          "componentCalls": 100,
+          "elementAndPropsAllocations": 200,
+          "valueEqualityChecks": 100,
+          "bindingVisits": 0,
+          "hostWrites": 100
+        }
+      },
+      "compiledGraph": {
+        "medianMs": 0.000924169999999549,
+        "p95Ms": 0.006220419999999649,
+        "workPerFrame": {
+          "componentCalls": 0,
+          "elementAndPropsAllocations": 0,
+          "valueEqualityChecks": 100,
+          "bindingVisits": 100,
+          "hostWrites": 100
+        }
+      },
+      "parity": "identical host values"
+    },
+    {
+      "entityCount": 100000,
+      "changedCount": 10000,
+      "changedFraction": 0.1,
+      "baseline": {
+        "medianMs": 0.09000000000003183,
+        "p95Ms": 0.127666999999974,
+        "workPerFrame": {
+          "componentCalls": 10000,
+          "elementAndPropsAllocations": 20000,
+          "valueEqualityChecks": 10000,
+          "bindingVisits": 0,
+          "hostWrites": 10000
+        }
+      },
+      "compiledGraph": {
+        "medianMs": 0.0987079999999878,
+        "p95Ms": 0.10104200000000674,
+        "workPerFrame": {
+          "componentCalls": 0,
+          "elementAndPropsAllocations": 0,
+          "valueEqualityChecks": 10000,
+          "bindingVisits": 10000,
+          "hostWrites": 10000
+        }
+      },
+      "parity": "identical host values"
+    },
+    {
+      "entityCount": 100000,
+      "changedCount": 100000,
+      "changedFraction": 1,
+      "baseline": {
+        "medianMs": 0.933166999999969,
+        "p95Ms": 3.117457999999999,
+        "workPerFrame": {
+          "componentCalls": 100000,
+          "elementAndPropsAllocations": 200000,
+          "valueEqualityChecks": 100000,
+          "bindingVisits": 0,
+          "hostWrites": 100000
+        }
+      },
+      "compiledGraph": {
+        "medianMs": 0.8878750000000082,
+        "p95Ms": 0.9597920000000499,
+        "workPerFrame": {
+          "componentCalls": 0,
+          "elementAndPropsAllocations": 0,
+          "valueEqualityChecks": 100000,
+          "bindingVisits": 100000,
+          "hostWrites": 100000
+        }
+      },
+      "parity": "identical host values"
+    }
+  ]
+}

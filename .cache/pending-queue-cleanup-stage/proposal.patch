@@ -1,0 +1,34 @@
+--- src/pending_state_changes.ts
++++ src/pending_state_changes.ts
+@@ -109,11 +109,8 @@
+   clear(): void {
+     for (let key = this.#head; key;) {
+       const next = key.next;
+-      this.#unlink(key);
+-      key.legacy = undefined;
+-      key.cellVersion = undefined;
++      this.#removePending(key);
+       key.cellIdentity = undefined;
+-      key.cellHandle = undefined;
+       key = next;
+     }
+     this.#keysByOwner.clear();
+@@ -179,10 +176,7 @@
+     for (const key of keysBySite.values()) {
+       key.alive = false;
+       this.#removePending(key);
+-      key.legacy = undefined;
+-      key.cellVersion = undefined;
+       key.cellIdentity = undefined;
+-      key.cellHandle = undefined;
+     }
+     this.#keysByOwner.delete(owner);
+   }
+@@ -210,6 +204,7 @@
+     this.#size--;
+   }
+ 
++  // Unlink a key and scrub retained payloads; identity stays cached until retirement.
+   #removePending(key: PendingKey): void {
+     this.#unlink(key);
+     key.legacy = undefined;

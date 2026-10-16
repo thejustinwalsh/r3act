@@ -1,0 +1,34 @@
+{
+  "study": "keyed-region-buckets-v2",
+  "status": "preregistered before collection",
+  "question": "Do bounded buckets reduce edit time and maintained position-index work versus a flat ordered array with a key-to-index Map?",
+  "claimBoundary": "Data-structure evidence only. No component owner, compiler graph, JSX, VDOM, DOM, React, layout, paint, or frame behavior is measured.",
+  "workload": {
+    "operation": "move an existing keyed row before a stable anchor",
+    "sizes": [1000, 10000, 50000],
+    "localities": ["head", "middle", "tail"],
+    "bucketCapacities": [32, 64, 128, 256],
+    "operationsPerSample": 64,
+    "warmupSamples": 2,
+    "measuredSamples": 7,
+    "seed": 42182
+  },
+  "arms": {
+    "indexed-array": "Map key lookup plus Array.splice; after each splice, update key-to-index entries for every row in the shifted suffix",
+    "bucketed": "KeyedRegionBuckets Map key lookup plus bounded bucket-local splice and position reindex"
+  },
+  "measures": [
+    "operation elapsed time",
+    "array suffix index rewrites",
+    "array row shifts",
+    "bucket slot reads and writes",
+    "bucket splits and merges",
+    "final ordered key equality and bucket integrity"
+  ],
+  "analysis": "Report per-sample median and nearest-rank p95 by size, locality, arm, and bucket capacity. Keep position-index rewrites and bucket-slot movement distinct; do not equate unlike implementation counters. Verify exact final order after timing.",
+  "knownLimitations": [
+    "The index map must be updated for all positions affected by Array.splice; this is the standard cost of preserving direct key-to-index lookup in a flat array.",
+    "Counters are logical maintenance operations, not bytes allocated, cache misses, or total engine work.",
+    "Seven measured samples make nearest-rank p95 the maximum and cannot characterize a stable tail."
+  ]
+}

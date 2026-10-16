@@ -1,0 +1,50 @@
+{
+  "schema_version": 2,
+  "source_file": "compiler/fixtures/keyed_filter_regions.tsx",
+  "regions": [
+    {
+      "region_id": 0,
+      "collection_source": "rows",
+      "predicate_sources": [
+        "queryA"
+      ],
+      "collection_binding": "groupRows",
+      "item_parameter": "row",
+      "item_key_path": "row.id",
+      "root_tag": "section",
+      "item_tag": "li"
+    },
+    {
+      "region_id": 1,
+      "collection_source": "rows",
+      "predicate_sources": [
+        "queryB"
+      ],
+      "collection_binding": "scoreRows",
+      "item_parameter": "row",
+      "item_key_path": "row.id",
+      "root_tag": "section",
+      "item_tag": "li"
+    }
+  ],
+  "dependency_graph": {
+    "source_count": 3,
+    "source_paths": [
+      "queryA",
+      "queryB",
+      "rows"
+    ],
+    "source_region_offsets": [
+      0,
+      1,
+      2,
+      4
+    ],
+    "region_ids": [
+      0,
+      1,
+      0,
+      1
+    ]
+  }
+}

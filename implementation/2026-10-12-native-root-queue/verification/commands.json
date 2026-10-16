@@ -1,0 +1,107 @@
+[
+  {
+    "name": "runtime",
+    "command": [
+      "deno",
+      "test",
+      "--config",
+      "deno.browser.json",
+      "src"
+    ],
+    "exitCode": 0
+  },
+  {
+    "name": "rust",
+    "command": [
+      "cargo",
+      "test",
+      "--manifest-path",
+      "compiler/oxc-spike/Cargo.toml"
+    ],
+    "exitCode": 0
+  },
+  {
+    "name": "smoke",
+    "command": [
+      "pnpm",
+      "compiler:native:smoke"
+    ],
+    "exitCode": 0
+  },
+  {
+    "name": "state",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_state_execution_test.mjs"
+    ],
+    "exitCode": 0
+  },
+  {
+    "name": "store",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_store_execution_test.mjs"
+    ],
+    "exitCode": 0
+  },
+  {
+    "name": "collection",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_collection_execution_test.mjs"
+    ],
+    "exitCode": 0
+  },
+  {
+    "name": "native-queue",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_root_queue_execution_test.mjs"
+    ],
+    "exitCode": 0
+  },
+  {
+    "name": "owner-retention",
+    "command": [
+      "node",
+      "--expose-gc",
+      "--experimental-transform-types",
+      "scripts/verify_owner_preparation_retention.mjs"
+    ],
+    "exitCode": 0
+  },
+  {
+    "name": "native-retention",
+    "command": [
+      "node",
+      "--expose-gc",
+      "--experimental-transform-types",
+      "scripts/verify_native_candidate_retention.mjs"
+    ],
+    "exitCode": 0
+  },
+  {
+    "name": "typecheck",
+    "command": [
+      "deno",
+      "check",
+      "--config",
+      "deno.browser.json",
+      "src/browser/native_root_queue.tsx",
+      "src/native_runtime_api.ts"
+    ],
+    "exitCode": 0
+  },
+  {
+    "name": "build",
+    "command": [
+      "pnpm",
+      "build"
+    ],
+    "exitCode": 0
+  }
+]

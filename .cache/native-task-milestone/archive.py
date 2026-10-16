@@ -1,0 +1,35 @@
+from pathlib import Path
+import hashlib,json,tarfile,shutil,re
+root=Path.cwd();cache=root/'.cache/native-task-milestone';out=root/'implementation/2026-10-12-native-task-transitions'
+assert not out.exists(),'Refusing to overwrite immutable checkpoint'
+commands=json.loads((cache/'commands.json').read_text());assert len(commands)==17 and all(c['exitCode']==0 for c in commands)
+assert re.search(r'ok \| 341 passed \| 0 failed',(cache/'deno.log').read_text())
+assert 'test result: ok. 22 passed; 0 failed' in (cache/'rust.log').read_text()
+for name in ['browser-results.json','hmr-results.json','resource-regression/browser-result.json']:assert json.loads((cache/name).read_text())['status']=='PASS'
+sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+prior=root/'implementation/2026-10-12-native-resource-boundaries';previous=json.loads((prior/'status.json').read_text())
+assert sha(prior/'source-and-build.tar.gz')==previous['archiveSha256'];assert sha(root/'research.ipynb')==previous['historicalEvidence']['researchNotebookSha256']
+files=[p for p in root.iterdir() if p.is_file() and p.suffix in {'.md','.html','.json','.ts','.yaml'}]
+for base in ['src','scripts','compiler','dist']:
+ for p in (root/base).rglob('*'):
+  if p.is_file() and not any(part in {'target','node_modules','.cache','.git','__pycache__'} for part in p.relative_to(root).parts):files.append(p)
+files=sorted(set(files),key=lambda p:str(p.relative_to(root)));hashes={str(p.relative_to(root)):sha(p) for p in files}
+out.mkdir();v=out/'verification';v.mkdir()
+for c in commands:shutil.copy2(cache/(c['name']+'.log'),v/(c['name']+'.log'))
+for name in ['commands.json','verify.py','browser-check.mjs','hmr-check.mjs','browser-results.json','hmr-results.json','desktop.png','mobile.png']:shutil.copy2(cache/name,v/name)
+shutil.copytree(cache/'resource-regression',v/'resource-regression')
+with tarfile.open(out/'source-and-build.tar.gz','w:gz') as t:
+ for p in files:t.add(p,arcname=str(p.relative_to(root)),recursive=False)
+status={'schemaVersion':1,'date':'2026-10-12','milestone':'Compiler task-DAG resources, coherent live-input task transitions and explicit optimistic domain compensation','status':'NATIVE_TASK_TRANSITIONS_IMPLEMENTED_AND_VERIFIED','goalStatus':'ACTIVE',
+'scope':['Typed per-task native resources allocated before task callbacks start','Rust inferred asyncTask dependency edges including top-level as const and satisfies arrays','Coherent all-root initial and refreshed live-input snapshots before execution/publication','Equal-cut execution sharing; unequal projections within one grouped publication','Restart on changed declared inputs and completed unaffected dependency-closure reuse','Pre-host stale rejection without poisoning; post-host stale mutation terminal group failure','Pending hidden providers owned until completion, manager disposal or final interested root disposal','Actual authored TSX shared/fork store scopes, urgent edits, operation-tagged optimistic contributions, cancel, rejection and recovery','Terminal observer/lease/read-history cleanup and bounded demo history'],
+'verification':{'runtimeTests':{'passed':341,'failed':0,'log':'verification/deno.log'},'rustTests':{'passed':22,'failed':0,'log':'verification/rust.log'},'commands':commands,'compiledExecutionFixtures':['native_state','native_store','native_collection','native_root_queue','native_resource','native_task_transition'],'browser':{'status':'PASS','record':'verification/browser-results.json','checks':['DAG starts six providers before hidden fan-in consumer renders','urgent score update in both roots while tasks pending','live query invalidation with completed catalog reuse','retained editable draft and focus','three overlapping runs sharing roots plus independent forks','exact own contribution confirmation and compensation','local resource rejection and recovery','transition scope cleanup','mobile no horizontal overflow','pagehide store/root/provider cleanup']},'hmr':{'status':'PASS','record':'verification/hmr-results.json','checks':['pending providers aborted','store scopes, roots, readers and listeners cleared','old owners/effects disposed','one fresh main/fork pair plus workbench']},'resourceBoundaryRegression':{'status':'PASS','record':'verification/resource-regression/browser-result.json'},'retention':'Existing controlled Node24 owner/candidate/resource GC probes; no new task-execution heap or allocation-rate claim','productionBuild':True,'typeCheck':True},
+'preview':'https://async-transition-stress.localhost:1355/native-task-transitions.html',
+'limitations':['Async scheduling overlaps I/O on one JS thread; no parallel CPU execution','Task inputs are shallow immutable captures; callers must preserve immutable payload semantics','Only explicit liveInputs are watched; compiler edges must be statically supported','Task input selectors are pure freshness readers with undefined previous history, not committed UI readers','Completed output reuse requires unchanged inputs outside the invalidated dependency closure','A local rejected-resource error UI can commit successfully while domain operation reports failure','Domain compensation and transition-scope actions remain caller-owned; manager cancellation aborts only owned task executions','Host exceptions/post-host reentrant stale cuts terminally fail the group; arbitrary host mutation cannot be rolled back','Top-level direct task arrays accept transparent TS wrappers; nested and spread task declarations remain unsupported','Bounded correctness/browser coverage does not complete fork parity, composition, maintainability, performance or ecosystem adoption gates','No new React speed, size, generic compatibility, workers, hydration, streaming or Wasm claim'],
+'remaining':['Full Phase2A store/fork behavioral, optimistic and input/composition matrix','Phase2B randomized structural/full fallback and mixed dependency acceptance','Prescribed integrated performance/lifecycle comparison and independent-device confirmation','Public DOM/Three property/ref/event contracts, React adapter and independent extension validation','Installable packages, compiler support/diagnostic/source-map/watch matrix and finite maintainability/adoption gates'],
+'archive':'source-and-build.tar.gz','archiveSha256':sha(out/'source-and-build.tar.gz'),'sourceAndBuildSha256':hashes,'historicalEvidence':{'researchNotebookSha256':sha(root/'research.ipynb'),'previousCheckpointArchiveSha256':previous['archiveSha256']}}
+(out/'status.json').write_text(json.dumps(status,indent=2)+'\n')
+with tarfile.open(out/'source-and-build.tar.gz') as t:
+ members={m.name:m for m in t.getmembers()};assert set(members)==set(hashes)
+ for name,expected in hashes.items():assert hashlib.sha256(t.extractfile(members[name]).read()).hexdigest()==expected and sha(root/name)==expected,name
+assert sha(prior/'source-and-build.tar.gz')==previous['archiveSha256']
+print(json.dumps({'status':'ARCHIVED_AND_HASH_VERIFIED','files':len(hashes),'archiveSha256':status['archiveSha256'],'path':str(out)}))

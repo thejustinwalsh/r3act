@@ -1,0 +1,7580 @@
+[
+  {
+    "schemaVersion": 4,
+    "protocolVersion": "gate-a-regions-v1",
+    "experiment": "two independently derived keyed regions: React Compiler vs whole-tree VDOM vs OXC region DAG",
+    "timestamp": "2026-10-09T23:49:56.086Z",
+    "sessionId": "gate-a-session-1",
+    "pageLoadId": "4f833dd9-6dc8-4a68-83a9-5fda6d40bde0",
+    "seed": 610001,
+    "entityCount": 1000,
+    "updates": [
+      {
+        "source": "queryA",
+        "value": "7"
+      },
+      {
+        "source": "queryB",
+        "value": "80"
+      },
+      {
+        "source": "queryA",
+        "value": "3"
+      },
+      {
+        "source": "queryB",
+        "value": "50"
+      },
+      {
+        "source": "queryA",
+        "value": "1"
+      },
+      {
+        "source": "queryB",
+        "value": "95"
+      },
+      {
+        "source": "queryA",
+        "value": "0"
+      },
+      {
+        "source": "queryB",
+        "value": "0"
+      }
+    ],
+    "warmupPairs": 6,
+    "timedPairs": 24,
+    "armOrderCounts": {
+      "reactFirst": 8,
+      "handwrittenFirst": 8,
+      "compiledFirst": 8
+    },
+    "react": {
+      "version": "19.3.0",
+      "compiler": "babel-plugin-react-compiler target 19",
+      "isolation": "memoized region components; only changed query prop differs"
+    },
+    "handwritten": {
+      "update": "rederive and reconcile both keyed regions on every query update",
+      "compilerGraph": false
+    },
+    "compiled": {
+      "update": "dispatch query source through OXC CSR graph; derive and reconcile only affected keyed region",
+      "compilerGraph": true,
+      "plan": {
+        "schema_version": 2,
+        "source_file": "compiler/fixtures/keyed_filter_regions.tsx",
+        "regions": [
+          {
+            "region_id": 0,
+            "collection_source": "rows",
+            "predicate_sources": [
+              "queryA"
+            ],
+            "collection_binding": "groupRows",
+            "item_parameter": "row",
+            "item_key_path": "row.id",
+            "root_tag": "section",
+            "item_tag": "li"
+          },
+          {
+            "region_id": 1,
+            "collection_source": "rows",
+            "predicate_sources": [
+              "queryB"
+            ],
+            "collection_binding": "scoreRows",
+            "item_parameter": "row",
+            "item_key_path": "row.id",
+            "root_tag": "section",
+            "item_tag": "li"
+          }
+        ],
+        "dependency_graph": {
+          "source_count": 3,
+          "source_paths": [
+            "queryA",
+            "queryB",
+            "rows"
+          ],
+          "source_region_offsets": [
+            0,
+            1,
+            2,
+            4
+          ],
+          "region_ids": [
+            0,
+            1,
+            0,
+            1
+          ]
+        }
+      }
+    },
+    "browser": {
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+      "hardwareConcurrency": 10,
+      "devicePixelRatio": 2
+    },
+    "mountMs": {
+      "react": 19.100000001490116,
+      "handwritten": 6.200000002980232,
+      "compiled": 3,
+      "samplesPerArm": 1,
+      "includes": "root, generated shell, and dispatcher setup plus initial lists; excludes shared row-data creation and OXC build time"
+    },
+    "summaries": {
+      "react": {
+        "medianMs": 2.674999998882413,
+        "p95Ms": 3.149999998509884
+      },
+      "handwritten": {
+        "medianMs": 0.7125000022351742,
+        "p95Ms": 0.974999999627471
+      },
+      "compiled": {
+        "medianMs": 0.5125000001862645,
+        "p95Ms": 0.8124999990686774
+      }
+    },
+    "outputParity": true,
+    "finalParity": true,
+    "pairs": [
+      {
+        "pair": 1,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.9000000013038516,
+          "handwritten": 0.8250000011175871,
+          "compiled": 0.4249999988824129
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 2,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.6749999998137355,
+          "handwritten": 0.837500000372529,
+          "compiled": 0.5124999992549419
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 3,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.637499999254942,
+          "handwritten": 0.6125000016763806,
+          "compiled": 0.775000000372529
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 4,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.8500000005587935,
+          "handwritten": 0.7250000014901161,
+          "compiled": 0.4874999998137355
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 5,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.1875,
+          "handwritten": 0.8374999975785613,
+          "compiled": 0.6000000005587935
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 6,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.9500000001862645,
+          "handwritten": 0.6875,
+          "compiled": 0.787499999627471
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 7,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 3.149999998509884,
+          "handwritten": 0.7250000014901161,
+          "compiled": 0.6999999992549419
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 8,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 1.8875000001862645,
+          "handwritten": 0.974999999627471,
+          "compiled": 0.6874999990686774
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 9,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.7374999998137355,
+          "handwritten": 0.7499999981373549,
+          "compiled": 0.587500000372529
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 10,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.5625,
+          "handwritten": 0.912499999627471,
+          "compiled": 0.4375
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 11,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 1.6625000005587935,
+          "handwritten": 0.7250000005587935,
+          "compiled": 0.4874999998137355
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 12,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.9500000001862645,
+          "handwritten": 0.6250000009313226,
+          "compiled": 0.8125
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 13,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.349999997764826,
+          "handwritten": 0.6750000007450581,
+          "compiled": 0.47499999962747097
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 14,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 4.400000000372529,
+          "handwritten": 0.5749999983236194,
+          "compiled": 0.5375000005587935
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 15,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 1.9625000022351742,
+          "handwritten": 0.6500000013038516,
+          "compiled": 0.599999999627471
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 16,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.7125000013038516,
+          "handwritten": 0.625,
+          "compiled": 0.5500000007450581
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 17,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.812499998137355,
+          "handwritten": 0.8750000009313226,
+          "compiled": 0.4749999986961484
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 18,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.187499998137355,
+          "handwritten": 0.6750000026077032,
+          "compiled": 0.8124999990686774
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 19,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.262500001117587,
+          "handwritten": 0.7125000022351742,
+          "compiled": 0.46250000037252903
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 20,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.6499999994412065,
+          "handwritten": 0.6875,
+          "compiled": 0.5125000001862645
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 21,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.7125000013038516,
+          "handwritten": 0.6375000001862645,
+          "compiled": 0.4749999986961484
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 22,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.7374999998137355,
+          "handwritten": 0.7374999998137355,
+          "compiled": 0.5
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 23,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 1.837500000372529,
+          "handwritten": 0.9999999981373549,
+          "compiled": 0.47499999962747097
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 24,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.674999998882413,
+          "handwritten": 0.6375000001862645,
+          "compiled": 0.5125000011175871
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      }
+    ],
+    "validity": "Each timed transition changes exactly one query source. React uses memoized child regions with stable rows; the handwritten VDOM rebuilds both regions; the compiled path rebuilds only the region reached by the changed source. The graph's shared rows source fans out to both regions and is tested separately. Every intermediate output and retained keyed-node identity is checked outside timing. Six arm orders are balanced. Mount is reported separately; paint/presentation and compiler build time are excluded.",
+    "exportedFromStore": "keyed-region-graph-react-v6"
+  },
+  {
+    "schemaVersion": 4,
+    "protocolVersion": "gate-a-regions-v1",
+    "experiment": "two independently derived keyed regions: React Compiler vs whole-tree VDOM vs OXC region DAG",
+    "timestamp": "2026-10-09T23:50:24.925Z",
+    "sessionId": "gate-a-session-1",
+    "pageLoadId": "443fa143-1b8e-43e1-965d-bf89921184f3",
+    "seed": 610002,
+    "entityCount": 5000,
+    "updates": [
+      {
+        "source": "queryA",
+        "value": "7"
+      },
+      {
+        "source": "queryB",
+        "value": "80"
+      },
+      {
+        "source": "queryA",
+        "value": "3"
+      },
+      {
+        "source": "queryB",
+        "value": "50"
+      },
+      {
+        "source": "queryA",
+        "value": "1"
+      },
+      {
+        "source": "queryB",
+        "value": "95"
+      },
+      {
+        "source": "queryA",
+        "value": "0"
+      },
+      {
+        "source": "queryB",
+        "value": "0"
+      }
+    ],
+    "warmupPairs": 6,
+    "timedPairs": 24,
+    "armOrderCounts": {
+      "reactFirst": 8,
+      "handwrittenFirst": 8,
+      "compiledFirst": 8
+    },
+    "react": {
+      "version": "19.3.0",
+      "compiler": "babel-plugin-react-compiler target 19",
+      "isolation": "memoized region components; only changed query prop differs"
+    },
+    "handwritten": {
+      "update": "rederive and reconcile both keyed regions on every query update",
+      "compilerGraph": false
+    },
+    "compiled": {
+      "update": "dispatch query source through OXC CSR graph; derive and reconcile only affected keyed region",
+      "compilerGraph": true,
+      "plan": {
+        "schema_version": 2,
+        "source_file": "compiler/fixtures/keyed_filter_regions.tsx",
+        "regions": [
+          {
+            "region_id": 0,
+            "collection_source": "rows",
+            "predicate_sources": [
+              "queryA"
+            ],
+            "collection_binding": "groupRows",
+            "item_parameter": "row",
+            "item_key_path": "row.id",
+            "root_tag": "section",
+            "item_tag": "li"
+          },
+          {
+            "region_id": 1,
+            "collection_source": "rows",
+            "predicate_sources": [
+              "queryB"
+            ],
+            "collection_binding": "scoreRows",
+            "item_parameter": "row",
+            "item_key_path": "row.id",
+            "root_tag": "section",
+            "item_tag": "li"
+          }
+        ],
+        "dependency_graph": {
+          "source_count": 3,
+          "source_paths": [
+            "queryA",
+            "queryB",
+            "rows"
+          ],
+          "source_region_offsets": [
+            0,
+            1,
+            2,
+            4
+          ],
+          "region_ids": [
+            0,
+            1,
+            0,
+            1
+          ]
+        }
+      }
+    },
+    "browser": {
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+      "hardwareConcurrency": 10,
+      "devicePixelRatio": 2
+    },
+    "mountMs": {
+      "react": 72.89999999850988,
+      "handwritten": 15.700000002980232,
+      "compiled": 12.399999998509884,
+      "samplesPerArm": 1,
+      "includes": "root, generated shell, and dispatcher setup plus initial lists; excludes shared row-data creation and OXC build time"
+    },
+    "summaries": {
+      "react": {
+        "medianMs": 13.087500001303852,
+        "p95Ms": 15.625000000931323
+      },
+      "handwritten": {
+        "medianMs": 3.7124999994412065,
+        "p95Ms": 4.3125
+      },
+      "compiled": {
+        "medianMs": 2.6875,
+        "p95Ms": 3.224999999627471
+      }
+    },
+    "outputParity": true,
+    "finalParity": true,
+    "pairs": [
+      {
+        "pair": 1,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 15.625000000931323,
+          "handwritten": 3.575000001117587,
+          "compiled": 6.300000002607703
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 2,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 13.337500000372529,
+          "handwritten": 3.325000001117587,
+          "compiled": 2.525000000372529
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 3,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 8.750000000931323,
+          "handwritten": 3.375,
+          "compiled": 3.224999999627471
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 4,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 12.787499999627471,
+          "handwritten": 3.287499999627471,
+          "compiled": 2.825000001117587
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 5,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 10.750000000931323,
+          "handwritten": 3.462500000372529,
+          "compiled": 2.7124999994412065
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 6,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 13.087500001303852,
+          "handwritten": 4.137499999254942,
+          "compiled": 2.4750000005587935
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 7,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 13.400000001303852,
+          "handwritten": 5.587500000372529,
+          "compiled": 2.224999999627471
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 8,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 12.299999998882413,
+          "handwritten": 4.199999999254942,
+          "compiled": 2.7749999994412065
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 9,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 13.612500000745058,
+          "handwritten": 3.5499999998137355,
+          "compiled": 2.887500001117587
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 10,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 14.175000000745058,
+          "handwritten": 3.625,
+          "compiled": 2.6624999986961484
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 11,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 12.049999998882413,
+          "handwritten": 3.8250000001862645,
+          "compiled": 3.1250000009313226
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 12,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 11.787499998696148,
+          "handwritten": 3.299999998882413,
+          "compiled": 2.637500001117587
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 13,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 13.5625,
+          "handwritten": 4.0750000001862645,
+          "compiled": 2.7875000005587935
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 14,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 15.674999998882413,
+          "handwritten": 3.7124999994412065,
+          "compiled": 2.537499999627471
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 15,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 13.762500001117587,
+          "handwritten": 4.3125,
+          "compiled": 3.1624999986961484
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 16,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 13.9375,
+          "handwritten": 3.862499998882413,
+          "compiled": 2.5499999998137355
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 17,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 12.675000000745058,
+          "handwritten": 3.649999998509884,
+          "compiled": 2.8500000005587935
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 18,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 12.912499999627471,
+          "handwritten": 3.625,
+          "compiled": 2.4874999998137355
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 19,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 11.237499999813735,
+          "handwritten": 3.962500000372529,
+          "compiled": 2.837500000372529
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 20,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 12.487499999813735,
+          "handwritten": 3.3500000024214387,
+          "compiled": 2.5249999994412065
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 21,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 8.399999999441206,
+          "handwritten": 3.850000001490116,
+          "compiled": 2.5250000013038516
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 22,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 15.424999999813735,
+          "handwritten": 3.8499999986961484,
+          "compiled": 2.5
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 23,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 13.537500000558794,
+          "handwritten": 4.075000002980232,
+          "compiled": 2.7874999986961484
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 24,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 13.937500000931323,
+          "handwritten": 3.9375,
+          "compiled": 2.6875
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      }
+    ],
+    "validity": "Each timed transition changes exactly one query source. React uses memoized child regions with stable rows; the handwritten VDOM rebuilds both regions; the compiled path rebuilds only the region reached by the changed source. The graph's shared rows source fans out to both regions and is tested separately. Every intermediate output and retained keyed-node identity is checked outside timing. Six arm orders are balanced. Mount is reported separately; paint/presentation and compiler build time are excluded.",
+    "exportedFromStore": "keyed-region-graph-react-v6"
+  },
+  {
+    "schemaVersion": 4,
+    "protocolVersion": "gate-a-regions-v1",
+    "experiment": "two independently derived keyed regions: React Compiler vs whole-tree VDOM vs OXC region DAG",
+    "timestamp": "2026-10-09T23:50:49.339Z",
+    "sessionId": "gate-a-session-1",
+    "pageLoadId": "c8418a2d-e207-40ab-a7f6-a3d81f048f48",
+    "seed": 610003,
+    "entityCount": 10000,
+    "updates": [
+      {
+        "source": "queryA",
+        "value": "7"
+      },
+      {
+        "source": "queryB",
+        "value": "80"
+      },
+      {
+        "source": "queryA",
+        "value": "3"
+      },
+      {
+        "source": "queryB",
+        "value": "50"
+      },
+      {
+        "source": "queryA",
+        "value": "1"
+      },
+      {
+        "source": "queryB",
+        "value": "95"
+      },
+      {
+        "source": "queryA",
+        "value": "0"
+      },
+      {
+        "source": "queryB",
+        "value": "0"
+      }
+    ],
+    "warmupPairs": 6,
+    "timedPairs": 24,
+    "armOrderCounts": {
+      "reactFirst": 8,
+      "handwrittenFirst": 8,
+      "compiledFirst": 8
+    },
+    "react": {
+      "version": "19.3.0",
+      "compiler": "babel-plugin-react-compiler target 19",
+      "isolation": "memoized region components; only changed query prop differs"
+    },
+    "handwritten": {
+      "update": "rederive and reconcile both keyed regions on every query update",
+      "compilerGraph": false
+    },
+    "compiled": {
+      "update": "dispatch query source through OXC CSR graph; derive and reconcile only affected keyed region",
+      "compilerGraph": true,
+      "plan": {
+        "schema_version": 2,
+        "source_file": "compiler/fixtures/keyed_filter_regions.tsx",
+        "regions": [
+          {
+            "region_id": 0,
+            "collection_source": "rows",
+            "predicate_sources": [
+              "queryA"
+            ],
+            "collection_binding": "groupRows",
+            "item_parameter": "row",
+            "item_key_path": "row.id",
+            "root_tag": "section",
+            "item_tag": "li"
+          },
+          {
+            "region_id": 1,
+            "collection_source": "rows",
+            "predicate_sources": [
+              "queryB"
+            ],
+            "collection_binding": "scoreRows",
+            "item_parameter": "row",
+            "item_key_path": "row.id",
+            "root_tag": "section",
+            "item_tag": "li"
+          }
+        ],
+        "dependency_graph": {
+          "source_count": 3,
+          "source_paths": [
+            "queryA",
+            "queryB",
+            "rows"
+          ],
+          "source_region_offsets": [
+            0,
+            1,
+            2,
+            4
+          ],
+          "region_ids": [
+            0,
+            1,
+            0,
+            1
+          ]
+        }
+      }
+    },
+    "browser": {
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+      "hardwareConcurrency": 10,
+      "devicePixelRatio": 2
+    },
+    "mountMs": {
+      "react": 191.80000000447035,
+      "handwritten": 34.899999998509884,
+      "compiled": 33.600000001490116,
+      "samplesPerArm": 1,
+      "includes": "root, generated shell, and dispatcher setup plus initial lists; excludes shared row-data creation and OXC build time"
+    },
+    "summaries": {
+      "react": {
+        "medianMs": 27.975000000558794,
+        "p95Ms": 31.774999999441206
+      },
+      "handwritten": {
+        "medianMs": 8.662499999627471,
+        "p95Ms": 9.662499998696148
+      },
+      "compiled": {
+        "medianMs": 6.01250000204891,
+        "p95Ms": 7.587500002235174
+      }
+    },
+    "outputParity": true,
+    "finalParity": true,
+    "pairs": [
+      {
+        "pair": 1,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 30.662499997764826,
+          "handwritten": 9.212500001303852,
+          "compiled": 7.3999999994412065
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 2,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 30.54999999795109,
+          "handwritten": 8.325000000186265,
+          "compiled": 5.987500001676381
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 3,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 20.924999999813735,
+          "handwritten": 8.887499999254942,
+          "compiled": 6.237500000745058
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 4,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 29.562499999068677,
+          "handwritten": 8.187500000931323,
+          "compiled": 5.7749999994412065
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 5,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 25.41249999869615,
+          "handwritten": 8.337500002235174,
+          "compiled": 7.062499999068677
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 6,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 25.450000000186265,
+          "handwritten": 9.074999999254942,
+          "compiled": 5.73749999795109
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 7,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 29.15000000037253,
+          "handwritten": 7.749999999068677,
+          "compiled": 22.799999999813735
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 8,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 30.08750000130385,
+          "handwritten": 8.900000000372529,
+          "compiled": 6.025000001303852
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 9,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 29.887500001117587,
+          "handwritten": 8.362499999813735,
+          "compiled": 6.8125
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 10,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 19.15000000037253,
+          "handwritten": 9.162499999627471,
+          "compiled": 5.5874999994412065
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 11,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 27.33750000037253,
+          "handwritten": 9.562499999068677,
+          "compiled": 5.0750000001862645
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 12,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 27.924999998882413,
+          "handwritten": 7.5125000001862645,
+          "compiled": 5.974999999627471
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 13,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 19.66249999869615,
+          "handwritten": 8.862499998882413,
+          "compiled": 6.062499998137355
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 14,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 27.83750000037253,
+          "handwritten": 8.525000002235174,
+          "compiled": 5.512499999254942
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 15,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 24.537500000558794,
+          "handwritten": 8.662499999627471,
+          "compiled": 6.01250000204891
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 16,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 28.612500000745058,
+          "handwritten": 8.124999998137355,
+          "compiled": 5.5375000005587935
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 17,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 26.575000000186265,
+          "handwritten": 9.075000000186265,
+          "compiled": 6.300000000745058
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 18,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 30.14999999664724,
+          "handwritten": 8.187499999068677,
+          "compiled": 6.775000000372529
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 19,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 27.975000000558794,
+          "handwritten": 10.087499999441206,
+          "compiled": 5.812499999068677
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 20,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 25.475000001490116,
+          "handwritten": 7.67499999795109,
+          "compiled": 6.75
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 21,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 31.774999999441206,
+          "handwritten": 9.662499998696148,
+          "compiled": 6.9375
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 22,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 36.57499999925494,
+          "handwritten": 9.087499999441206,
+          "compiled": 7.587500002235174
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 23,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 29.687499999068677,
+          "handwritten": 7.349999999627471,
+          "compiled": 5.3250000001862645
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 24,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 28.98750000167638,
+          "handwritten": 9.287500000558794,
+          "compiled": 5.8999999994412065
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      }
+    ],
+    "validity": "Each timed transition changes exactly one query source. React uses memoized child regions with stable rows; the handwritten VDOM rebuilds both regions; the compiled path rebuilds only the region reached by the changed source. The graph's shared rows source fans out to both regions and is tested separately. Every intermediate output and retained keyed-node identity is checked outside timing. Six arm orders are balanced. Mount is reported separately; paint/presentation and compiler build time are excluded.",
+    "exportedFromStore": "keyed-region-graph-react-v6"
+  },
+  {
+    "schemaVersion": 4,
+    "protocolVersion": "gate-a-regions-v1",
+    "experiment": "two independently derived keyed regions: React Compiler vs whole-tree VDOM vs OXC region DAG",
+    "timestamp": "2026-10-09T23:51:24.674Z",
+    "sessionId": "gate-a-session-1",
+    "pageLoadId": "5c86df9e-8df6-4eae-9b11-21b4994e4189",
+    "seed": 610004,
+    "entityCount": 5000,
+    "updates": [
+      {
+        "source": "queryA",
+        "value": "7"
+      },
+      {
+        "source": "queryB",
+        "value": "80"
+      },
+      {
+        "source": "queryA",
+        "value": "3"
+      },
+      {
+        "source": "queryB",
+        "value": "50"
+      },
+      {
+        "source": "queryA",
+        "value": "1"
+      },
+      {
+        "source": "queryB",
+        "value": "95"
+      },
+      {
+        "source": "queryA",
+        "value": "0"
+      },
+      {
+        "source": "queryB",
+        "value": "0"
+      }
+    ],
+    "warmupPairs": 6,
+    "timedPairs": 24,
+    "armOrderCounts": {
+      "reactFirst": 8,
+      "handwrittenFirst": 8,
+      "compiledFirst": 8
+    },
+    "react": {
+      "version": "19.3.0",
+      "compiler": "babel-plugin-react-compiler target 19",
+      "isolation": "memoized region components; only changed query prop differs"
+    },
+    "handwritten": {
+      "update": "rederive and reconcile both keyed regions on every query update",
+      "compilerGraph": false
+    },
+    "compiled": {
+      "update": "dispatch query source through OXC CSR graph; derive and reconcile only affected keyed region",
+      "compilerGraph": true,
+      "plan": {
+        "schema_version": 2,
+        "source_file": "compiler/fixtures/keyed_filter_regions.tsx",
+        "regions": [
+          {
+            "region_id": 0,
+            "collection_source": "rows",
+            "predicate_sources": [
+              "queryA"
+            ],
+            "collection_binding": "groupRows",
+            "item_parameter": "row",
+            "item_key_path": "row.id",
+            "root_tag": "section",
+            "item_tag": "li"
+          },
+          {
+            "region_id": 1,
+            "collection_source": "rows",
+            "predicate_sources": [
+              "queryB"
+            ],
+            "collection_binding": "scoreRows",
+            "item_parameter": "row",
+            "item_key_path": "row.id",
+            "root_tag": "section",
+            "item_tag": "li"
+          }
+        ],
+        "dependency_graph": {
+          "source_count": 3,
+          "source_paths": [
+            "queryA",
+            "queryB",
+            "rows"
+          ],
+          "source_region_offsets": [
+            0,
+            1,
+            2,
+            4
+          ],
+          "region_ids": [
+            0,
+            1,
+            0,
+            1
+          ]
+        }
+      }
+    },
+    "browser": {
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+      "hardwareConcurrency": 10,
+      "devicePixelRatio": 2
+    },
+    "mountMs": {
+      "react": 58.79999999701977,
+      "handwritten": 25.200000002980232,
+      "compiled": 16.299999997019768,
+      "samplesPerArm": 1,
+      "includes": "root, generated shell, and dispatcher setup plus initial lists; excludes shared row-data creation and OXC build time"
+    },
+    "summaries": {
+      "react": {
+        "medianMs": 14.262499999254942,
+        "p95Ms": 17.95000000204891
+      },
+      "handwritten": {
+        "medianMs": 4.5125000001862645,
+        "p95Ms": 5.1375000001862645
+      },
+      "compiled": {
+        "medianMs": 3.25,
+        "p95Ms": 3.8000000016763806
+      }
+    },
+    "outputParity": true,
+    "finalParity": true,
+    "pairs": [
+      {
+        "pair": 1,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 15.725000001490116,
+          "handwritten": 4.137499999254942,
+          "compiled": 3.75
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 2,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 12.325000000186265,
+          "handwritten": 4.775000001303852,
+          "compiled": 3.212500000372529
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 3,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 11.749999999068677,
+          "handwritten": 4.287499999627471,
+          "compiled": 3.3875000001862645
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 4,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 17.95000000204891,
+          "handwritten": 7.7000000001862645,
+          "compiled": 4.087500000372529
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 5,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 13.837500001303852,
+          "handwritten": 4.537499998696148,
+          "compiled": 3.25
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 6,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 14.262499999254942,
+          "handwritten": 5.1375000001862645,
+          "compiled": 3.0125000001862645
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 7,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 13.862499998882413,
+          "handwritten": 4.2875000005587935,
+          "compiled": 3.1375000001862645
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 8,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 10.700000001117587,
+          "handwritten": 4.862499998882413,
+          "compiled": 3.3124999990686774
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 9,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 14.512499999254942,
+          "handwritten": 4.250000000931323,
+          "compiled": 3.0750000020489097
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 10,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 14.450000001117587,
+          "handwritten": 4.475000001490116,
+          "compiled": 3.3499999986961484
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 11,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 14.799999999813735,
+          "handwritten": 4.675000000745058,
+          "compiled": 2.412499999627471
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 12,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 12.512500001117587,
+          "handwritten": 4.8250000001862645,
+          "compiled": 3.8000000016763806
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 13,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 14.662499999627471,
+          "handwritten": 4.1000000005587935,
+          "compiled": 3.5874999994412065
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 14,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 15.149999998509884,
+          "handwritten": 4.525000000372529,
+          "compiled": 2.737500000745058
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 15,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 14.087500000372529,
+          "handwritten": 4.425000000745058,
+          "compiled": 3.4750000005587935
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 16,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 15.88749999832362,
+          "handwritten": 4.937500000931323,
+          "compiled": 3.325000001117587
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 17,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 12.375,
+          "handwritten": 4.5625,
+          "compiled": 3.449999999254942
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 18,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 15.450000000186265,
+          "handwritten": 4.5125000001862645,
+          "compiled": 3.099999999627471
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 19,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 10.449999999254942,
+          "handwritten": 4.462500000372529,
+          "compiled": 3.2749999975785613
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 20,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 14.774999998509884,
+          "handwritten": 3.712500000372529,
+          "compiled": 2.987499998882413
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 21,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 12.575000000186265,
+          "handwritten": 4.4624999994412065,
+          "compiled": 3.0499999979510903
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 22,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 18.262500000186265,
+          "handwritten": 4.300000000745058,
+          "compiled": 3.1874999990686774
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 23,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 15.037499999627471,
+          "handwritten": 4.912499999627471,
+          "compiled": 3.2875000005587935
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 24,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 12.575000000186265,
+          "handwritten": 4.5874999994412065,
+          "compiled": 3.0499999998137355
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      }
+    ],
+    "validity": "Each timed transition changes exactly one query source. React uses memoized child regions with stable rows; the handwritten VDOM rebuilds both regions; the compiled path rebuilds only the region reached by the changed source. The graph's shared rows source fans out to both regions and is tested separately. Every intermediate output and retained keyed-node identity is checked outside timing. Six arm orders are balanced. Mount is reported separately; paint/presentation and compiler build time are excluded.",
+    "exportedFromStore": "keyed-region-graph-react-v6"
+  },
+  {
+    "schemaVersion": 4,
+    "protocolVersion": "gate-a-regions-v1",
+    "experiment": "two independently derived keyed regions: React Compiler vs whole-tree VDOM vs OXC region DAG",
+    "timestamp": "2026-10-09T23:51:52.317Z",
+    "sessionId": "gate-a-session-1",
+    "pageLoadId": "ee3215ec-2671-4bd0-a46f-6f48ee23befd",
+    "seed": 610005,
+    "entityCount": 10000,
+    "updates": [
+      {
+        "source": "queryA",
+        "value": "7"
+      },
+      {
+        "source": "queryB",
+        "value": "80"
+      },
+      {
+        "source": "queryA",
+        "value": "3"
+      },
+      {
+        "source": "queryB",
+        "value": "50"
+      },
+      {
+        "source": "queryA",
+        "value": "1"
+      },
+      {
+        "source": "queryB",
+        "value": "95"
+      },
+      {
+        "source": "queryA",
+        "value": "0"
+      },
+      {
+        "source": "queryB",
+        "value": "0"
+      }
+    ],
+    "warmupPairs": 6,
+    "timedPairs": 24,
+    "armOrderCounts": {
+      "reactFirst": 8,
+      "handwrittenFirst": 8,
+      "compiledFirst": 8
+    },
+    "react": {
+      "version": "19.3.0",
+      "compiler": "babel-plugin-react-compiler target 19",
+      "isolation": "memoized region components; only changed query prop differs"
+    },
+    "handwritten": {
+      "update": "rederive and reconcile both keyed regions on every query update",
+      "compilerGraph": false
+    },
+    "compiled": {
+      "update": "dispatch query source through OXC CSR graph; derive and reconcile only affected keyed region",
+      "compilerGraph": true,
+      "plan": {
+        "schema_version": 2,
+        "source_file": "compiler/fixtures/keyed_filter_regions.tsx",
+        "regions": [
+          {
+            "region_id": 0,
+            "collection_source": "rows",
+            "predicate_sources": [
+              "queryA"
+            ],
+            "collection_binding": "groupRows",
+            "item_parameter": "row",
+            "item_key_path": "row.id",
+            "root_tag": "section",
+            "item_tag": "li"
+          },
+          {
+            "region_id": 1,
+            "collection_source": "rows",
+            "predicate_sources": [
+              "queryB"
+            ],
+            "collection_binding": "scoreRows",
+            "item_parameter": "row",
+            "item_key_path": "row.id",
+            "root_tag": "section",
+            "item_tag": "li"
+          }
+        ],
+        "dependency_graph": {
+          "source_count": 3,
+          "source_paths": [
+            "queryA",
+            "queryB",
+            "rows"
+          ],
+          "source_region_offsets": [
+            0,
+            1,
+            2,
+            4
+          ],
+          "region_ids": [
+            0,
+            1,
+            0,
+            1
+          ]
+        }
+      }
+    },
+    "browser": {
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+      "hardwareConcurrency": 10,
+      "devicePixelRatio": 2
+    },
+    "mountMs": {
+      "react": 360.20000000298023,
+      "handwritten": 38,
+      "compiled": 34.79999999701977,
+      "samplesPerArm": 1,
+      "includes": "root, generated shell, and dispatcher setup plus initial lists; excludes shared row-data creation and OXC build time"
+    },
+    "summaries": {
+      "react": {
+        "medianMs": 31.02500000130385,
+        "p95Ms": 36.4375
+      },
+      "handwritten": {
+        "medianMs": 9.787499999627471,
+        "p95Ms": 10.700000000186265
+      },
+      "compiled": {
+        "medianMs": 6.6625000005587935,
+        "p95Ms": 8.825000000186265
+      }
+    },
+    "outputParity": true,
+    "finalParity": true,
+    "pairs": [
+      {
+        "pair": 1,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 31.174999998882413,
+          "handwritten": 8.550000000745058,
+          "compiled": 7.712499997578561
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 2,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 31.02500000130385,
+          "handwritten": 8.112500000745058,
+          "compiled": 5.8875000001862645
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 3,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 29.399999999441206,
+          "handwritten": 9.124999999068677,
+          "compiled": 6.3999999994412065
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 4,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 26.362499998882413,
+          "handwritten": 10.625000000931323,
+          "compiled": 8.762500000186265
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 5,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 25.899999999441206,
+          "handwritten": 10.287499998696148,
+          "compiled": 6.375
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 6,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 28.937500000931323,
+          "handwritten": 10.17500000167638,
+          "compiled": 7.5750000001862645
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 7,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 31.262499999254942,
+          "handwritten": 10.174999999813735,
+          "compiled": 6.637499999254942
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 8,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 36.4375,
+          "handwritten": 10.337499998509884,
+          "compiled": 6.450000001117587
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 9,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 30.44999999832362,
+          "handwritten": 9.174999999813735,
+          "compiled": 7.424999998882413
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 10,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 33.59999999962747,
+          "handwritten": 9.950000000186265,
+          "compiled": 6.612500001676381
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 11,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 31.262500000186265,
+          "handwritten": 9.974999999627471,
+          "compiled": 7.1000000005587935
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 12,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 42.28749999962747,
+          "handwritten": 11.224999998696148,
+          "compiled": 7.437499999068677
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 13,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 31.387500000186265,
+          "handwritten": 8.837499998509884,
+          "compiled": 38
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 14,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 27.33750000130385,
+          "handwritten": 10.700000000186265,
+          "compiled": 6.587500000372529
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 15,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 32.6875,
+          "handwritten": 8.399999998509884,
+          "compiled": 8.825000000186265
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 16,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 30.712500002235174,
+          "handwritten": 10.212499999441206,
+          "compiled": 6.287499999627471
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 17,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 20.97499999869615,
+          "handwritten": 9.987499998882413,
+          "compiled": 7.012500001117587
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 18,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 31.174999998882413,
+          "handwritten": 9.449999999254942,
+          "compiled": 7.074999999254942
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 19,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 31.624999999068677,
+          "handwritten": 9.324999997392297,
+          "compiled": 6.424999998882413
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 20,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 30.674999999813735,
+          "handwritten": 9.787499999627471,
+          "compiled": 6.937500000931323
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 21,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 26.450000000186265,
+          "handwritten": 10.350000001490116,
+          "compiled": 6.362500000745058
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 22,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 35.07500000204891,
+          "handwritten": 8.037499999627471,
+          "compiled": 5.962500001303852
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 23,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 30.65000000037253,
+          "handwritten": 9.749999999068677,
+          "compiled": 6.6625000005587935
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 24,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 33.01249999832362,
+          "handwritten": 9.049999999813735,
+          "compiled": 6.937499999068677
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      }
+    ],
+    "validity": "Each timed transition changes exactly one query source. React uses memoized child regions with stable rows; the handwritten VDOM rebuilds both regions; the compiled path rebuilds only the region reached by the changed source. The graph's shared rows source fans out to both regions and is tested separately. Every intermediate output and retained keyed-node identity is checked outside timing. Six arm orders are balanced. Mount is reported separately; paint/presentation and compiler build time are excluded.",
+    "exportedFromStore": "keyed-region-graph-react-v6"
+  },
+  {
+    "schemaVersion": 4,
+    "protocolVersion": "gate-a-regions-v1",
+    "experiment": "two independently derived keyed regions: React Compiler vs whole-tree VDOM vs OXC region DAG",
+    "timestamp": "2026-10-09T23:52:20.316Z",
+    "sessionId": "gate-a-session-1",
+    "pageLoadId": "821899ce-1429-4bd6-936d-cbe46a689d93",
+    "seed": 610006,
+    "entityCount": 1000,
+    "updates": [
+      {
+        "source": "queryA",
+        "value": "7"
+      },
+      {
+        "source": "queryB",
+        "value": "80"
+      },
+      {
+        "source": "queryA",
+        "value": "3"
+      },
+      {
+        "source": "queryB",
+        "value": "50"
+      },
+      {
+        "source": "queryA",
+        "value": "1"
+      },
+      {
+        "source": "queryB",
+        "value": "95"
+      },
+      {
+        "source": "queryA",
+        "value": "0"
+      },
+      {
+        "source": "queryB",
+        "value": "0"
+      }
+    ],
+    "warmupPairs": 6,
+    "timedPairs": 24,
+    "armOrderCounts": {
+      "reactFirst": 8,
+      "handwrittenFirst": 8,
+      "compiledFirst": 8
+    },
+    "react": {
+      "version": "19.3.0",
+      "compiler": "babel-plugin-react-compiler target 19",
+      "isolation": "memoized region components; only changed query prop differs"
+    },
+    "handwritten": {
+      "update": "rederive and reconcile both keyed regions on every query update",
+      "compilerGraph": false
+    },
+    "compiled": {
+      "update": "dispatch query source through OXC CSR graph; derive and reconcile only affected keyed region",
+      "compilerGraph": true,
+      "plan": {
+        "schema_version": 2,
+        "source_file": "compiler/fixtures/keyed_filter_regions.tsx",
+        "regions": [
+          {
+            "region_id": 0,
+            "collection_source": "rows",
+            "predicate_sources": [
+              "queryA"
+            ],
+            "collection_binding": "groupRows",
+            "item_parameter": "row",
+            "item_key_path": "row.id",
+            "root_tag": "section",
+            "item_tag": "li"
+          },
+          {
+            "region_id": 1,
+            "collection_source": "rows",
+            "predicate_sources": [
+              "queryB"
+            ],
+            "collection_binding": "scoreRows",
+            "item_parameter": "row",
+            "item_key_path": "row.id",
+            "root_tag": "section",
+            "item_tag": "li"
+          }
+        ],
+        "dependency_graph": {
+          "source_count": 3,
+          "source_paths": [
+            "queryA",
+            "queryB",
+            "rows"
+          ],
+          "source_region_offsets": [
+            0,
+            1,
+            2,
+            4
+          ],
+          "region_ids": [
+            0,
+            1,
+            0,
+            1
+          ]
+        }
+      }
+    },
+    "browser": {
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+      "hardwareConcurrency": 10,
+      "devicePixelRatio": 2
+    },
+    "mountMs": {
+      "react": 14.300000004470348,
+      "handwritten": 6,
+      "compiled": 2.600000001490116,
+      "samplesPerArm": 1,
+      "includes": "root, generated shell, and dispatcher setup plus initial lists; excludes shared row-data creation and OXC build time"
+    },
+    "summaries": {
+      "react": {
+        "medianMs": 2.7249999968335032,
+        "p95Ms": 3.050000000745058
+      },
+      "handwritten": {
+        "medianMs": 0.712500000372529,
+        "p95Ms": 1.1124999998137355
+      },
+      "compiled": {
+        "medianMs": 0.5124999992549419,
+        "p95Ms": 0.7625000001862645
+      }
+    },
+    "outputParity": true,
+    "finalParity": true,
+    "pairs": [
+      {
+        "pair": 1,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 3.0750000001862645,
+          "handwritten": 0.8500000005587935,
+          "compiled": 0.875
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 2,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 3.0499999998137355,
+          "handwritten": 0.9874999988824129,
+          "compiled": 0.537499999627471
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 3,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 3.050000000745058,
+          "handwritten": 0.6000000005587935,
+          "compiled": 0.4374999990686774
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 4,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.7625000001862645,
+          "handwritten": 0.724999999627471,
+          "compiled": 0.5499999988824129
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 5,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.0749999983236194,
+          "handwritten": 0.6749999998137355,
+          "compiled": 0.5374999986961484
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 6,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.8125,
+          "handwritten": 0.6875000009313226,
+          "compiled": 0.5499999988824129
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 7,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.3000000016763806,
+          "handwritten": 0.7250000005587935,
+          "compiled": 0.5625000018626451
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 8,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.775000000372529,
+          "handwritten": 0.7499999990686774,
+          "compiled": 0.5
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 9,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.2999999998137355,
+          "handwritten": 0.712500000372529,
+          "compiled": 0.537499999627471
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 10,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.799999998882413,
+          "handwritten": 0.6375000001862645,
+          "compiled": 0.5750000011175871
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 11,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.7749999994412065,
+          "handwritten": 1.1124999998137355,
+          "compiled": 0.47500000055879354
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 12,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.599999999627471,
+          "handwritten": 0.6999999983236194,
+          "compiled": 0.5499999988824129
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 13,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.2625000001862645,
+          "handwritten": 1.125,
+          "compiled": 0.4375
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 14,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.7249999968335032,
+          "handwritten": 0.7124999985098839,
+          "compiled": 0.5124999992549419
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 15,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.224999997764826,
+          "handwritten": 0.6375000029802322,
+          "compiled": 0.5250000013038516
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 16,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.212499998509884,
+          "handwritten": 0.7249999986961484,
+          "compiled": 0.5874999985098839
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 17,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.787499999627471,
+          "handwritten": 1.049999998882413,
+          "compiled": 0.5000000009313226
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 18,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.512500001117587,
+          "handwritten": 0.5750000001862645,
+          "compiled": 0.4500000011175871
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 19,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.474999999627471,
+          "handwritten": 0.712500000372529,
+          "compiled": 0.5000000009313226
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 20,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.7624999983236194,
+          "handwritten": 0.7125000022351742,
+          "compiled": 0.4874999988824129
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 21,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.762499999254942,
+          "handwritten": 0.6874999990686774,
+          "compiled": 0.46250000037252903
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 22,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.7124999994412065,
+          "handwritten": 0.712500000372529,
+          "compiled": 0.4874999998137355
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 23,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 1.7124999985098839,
+          "handwritten": 0.6749999998137355,
+          "compiled": 0.4874999998137355
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 24,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.762499999254942,
+          "handwritten": 0.7499999981373549,
+          "compiled": 0.7625000001862645
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      }
+    ],
+    "validity": "Each timed transition changes exactly one query source. React uses memoized child regions with stable rows; the handwritten VDOM rebuilds both regions; the compiled path rebuilds only the region reached by the changed source. The graph's shared rows source fans out to both regions and is tested separately. Every intermediate output and retained keyed-node identity is checked outside timing. Six arm orders are balanced. Mount is reported separately; paint/presentation and compiler build time are excluded.",
+    "exportedFromStore": "keyed-region-graph-react-v6"
+  },
+  {
+    "schemaVersion": 4,
+    "protocolVersion": "gate-a-regions-v1",
+    "experiment": "two independently derived keyed regions: React Compiler vs whole-tree VDOM vs OXC region DAG",
+    "timestamp": "2026-10-09T23:52:44.095Z",
+    "sessionId": "gate-a-session-1",
+    "pageLoadId": "621b8a6b-0fbc-45f8-b524-f393f5130177",
+    "seed": 610007,
+    "entityCount": 10000,
+    "updates": [
+      {
+        "source": "queryA",
+        "value": "7"
+      },
+      {
+        "source": "queryB",
+        "value": "80"
+      },
+      {
+        "source": "queryA",
+        "value": "3"
+      },
+      {
+        "source": "queryB",
+        "value": "50"
+      },
+      {
+        "source": "queryA",
+        "value": "1"
+      },
+      {
+        "source": "queryB",
+        "value": "95"
+      },
+      {
+        "source": "queryA",
+        "value": "0"
+      },
+      {
+        "source": "queryB",
+        "value": "0"
+      }
+    ],
+    "warmupPairs": 6,
+    "timedPairs": 24,
+    "armOrderCounts": {
+      "reactFirst": 8,
+      "handwrittenFirst": 8,
+      "compiledFirst": 8
+    },
+    "react": {
+      "version": "19.3.0",
+      "compiler": "babel-plugin-react-compiler target 19",
+      "isolation": "memoized region components; only changed query prop differs"
+    },
+    "handwritten": {
+      "update": "rederive and reconcile both keyed regions on every query update",
+      "compilerGraph": false
+    },
+    "compiled": {
+      "update": "dispatch query source through OXC CSR graph; derive and reconcile only affected keyed region",
+      "compilerGraph": true,
+      "plan": {
+        "schema_version": 2,
+        "source_file": "compiler/fixtures/keyed_filter_regions.tsx",
+        "regions": [
+          {
+            "region_id": 0,
+            "collection_source": "rows",
+            "predicate_sources": [
+              "queryA"
+            ],
+            "collection_binding": "groupRows",
+            "item_parameter": "row",
+            "item_key_path": "row.id",
+            "root_tag": "section",
+            "item_tag": "li"
+          },
+          {
+            "region_id": 1,
+            "collection_source": "rows",
+            "predicate_sources": [
+              "queryB"
+            ],
+            "collection_binding": "scoreRows",
+            "item_parameter": "row",
+            "item_key_path": "row.id",
+            "root_tag": "section",
+            "item_tag": "li"
+          }
+        ],
+        "dependency_graph": {
+          "source_count": 3,
+          "source_paths": [
+            "queryA",
+            "queryB",
+            "rows"
+          ],
+          "source_region_offsets": [
+            0,
+            1,
+            2,
+            4
+          ],
+          "region_ids": [
+            0,
+            1,
+            0,
+            1
+          ]
+        }
+      }
+    },
+    "browser": {
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+      "hardwareConcurrency": 10,
+      "devicePixelRatio": 2
+    },
+    "mountMs": {
+      "react": 98.89999999850988,
+      "handwritten": 43.399999998509884,
+      "compiled": 33.80000000447035,
+      "samplesPerArm": 1,
+      "includes": "root, generated shell, and dispatcher setup plus initial lists; excludes shared row-data creation and OXC build time"
+    },
+    "summaries": {
+      "react": {
+        "medianMs": 31.162500000558794,
+        "p95Ms": 78.4125000005588
+      },
+      "handwritten": {
+        "medianMs": 10.012499999254942,
+        "p95Ms": 11.474999999627471
+      },
+      "compiled": {
+        "medianMs": 6.887499998323619,
+        "p95Ms": 8.025000000372529
+      }
+    },
+    "outputParity": true,
+    "finalParity": true,
+    "pairs": [
+      {
+        "pair": 1,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 32.075000000186265,
+          "handwritten": 10.149999998509884,
+          "compiled": 6.699999999254942
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 2,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 31.112499998882413,
+          "handwritten": 8.799999999813735,
+          "compiled": 6.025000001303852
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 3,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 31.500000000931323,
+          "handwritten": 10.225000000558794,
+          "compiled": 6.9500000001862645
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 4,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 22.674999999813735,
+          "handwritten": 10.999999999068677,
+          "compiled": 8.025000000372529
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 5,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 32.125,
+          "handwritten": 10.787500000558794,
+          "compiled": 6.524999998509884
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 6,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 33.68750000093132,
+          "handwritten": 11.212499999441206,
+          "compiled": 6.887499998323619
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 7,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 78.4125000005588,
+          "handwritten": 9.600000000558794,
+          "compiled": 6.387500002980232
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 8,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 28.88750000204891,
+          "handwritten": 11.075000001117587,
+          "compiled": 7.312499999068677
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 9,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 32.17499999795109,
+          "handwritten": 10.062500000931323,
+          "compiled": 6.7875000005587935
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 10,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 25.625,
+          "handwritten": 10.112499998882413,
+          "compiled": 6.787500001490116
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 11,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 30.749999999068677,
+          "handwritten": 10.012499999254942,
+          "compiled": 5.812500000931323
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 12,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 31.437500000931323,
+          "handwritten": 9.087499997578561,
+          "compiled": 6.6875
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 13,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 31.237500000745058,
+          "handwritten": 9.512499999254942,
+          "compiled": 6.974999999627471
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 14,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 27.624999998137355,
+          "handwritten": 11.049999999813735,
+          "compiled": 7.5375000005587935
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 15,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 32.475000001490116,
+          "handwritten": 9,
+          "compiled": 7.037499998696148
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 16,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 27.999999998137355,
+          "handwritten": 11.474999999627471,
+          "compiled": 7.3500000005587935
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 17,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 28.399999998509884,
+          "handwritten": 11.450000000186265,
+          "compiled": 7.275000002235174
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 18,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 34.58750000037253,
+          "handwritten": 9.400000000372529,
+          "compiled": 6.3624999998137355
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 19,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 107.04999999981374,
+          "handwritten": 9.875000000931323,
+          "compiled": 9.137500000186265
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 20,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 31.162500000558794,
+          "handwritten": 12.050000000745058,
+          "compiled": 7.262500001117587
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 21,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 21.950000000186265,
+          "handwritten": 8.900000001303852,
+          "compiled": 6.7875000005587935
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 22,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 35.262500000186265,
+          "handwritten": 9.662499998696148,
+          "compiled": 6.0874999994412065
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 23,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 30.52500000037253,
+          "handwritten": 9.924999998882413,
+          "compiled": 7.112500000745058
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      },
+      {
+        "pair": 24,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 26.299999998882413,
+          "handwritten": 9.674999999813735,
+          "compiled": 7.449999998323619
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "handwritten": {
+            "preserved": 23468,
+            "shared": 23468
+          },
+          "compiled": {
+            "preserved": 23468,
+            "shared": 23468
+          }
+        }
+      }
+    ],
+    "validity": "Each timed transition changes exactly one query source. React uses memoized child regions with stable rows; the handwritten VDOM rebuilds both regions; the compiled path rebuilds only the region reached by the changed source. The graph's shared rows source fans out to both regions and is tested separately. Every intermediate output and retained keyed-node identity is checked outside timing. Six arm orders are balanced. Mount is reported separately; paint/presentation and compiler build time are excluded.",
+    "exportedFromStore": "keyed-region-graph-react-v6"
+  },
+  {
+    "schemaVersion": 4,
+    "protocolVersion": "gate-a-regions-v1",
+    "experiment": "two independently derived keyed regions: React Compiler vs whole-tree VDOM vs OXC region DAG",
+    "timestamp": "2026-10-09T23:53:15.060Z",
+    "sessionId": "gate-a-session-1",
+    "pageLoadId": "8128152d-bd29-445d-b05d-5629bfaf7236",
+    "seed": 610008,
+    "entityCount": 1000,
+    "updates": [
+      {
+        "source": "queryA",
+        "value": "7"
+      },
+      {
+        "source": "queryB",
+        "value": "80"
+      },
+      {
+        "source": "queryA",
+        "value": "3"
+      },
+      {
+        "source": "queryB",
+        "value": "50"
+      },
+      {
+        "source": "queryA",
+        "value": "1"
+      },
+      {
+        "source": "queryB",
+        "value": "95"
+      },
+      {
+        "source": "queryA",
+        "value": "0"
+      },
+      {
+        "source": "queryB",
+        "value": "0"
+      }
+    ],
+    "warmupPairs": 6,
+    "timedPairs": 24,
+    "armOrderCounts": {
+      "reactFirst": 8,
+      "handwrittenFirst": 8,
+      "compiledFirst": 8
+    },
+    "react": {
+      "version": "19.3.0",
+      "compiler": "babel-plugin-react-compiler target 19",
+      "isolation": "memoized region components; only changed query prop differs"
+    },
+    "handwritten": {
+      "update": "rederive and reconcile both keyed regions on every query update",
+      "compilerGraph": false
+    },
+    "compiled": {
+      "update": "dispatch query source through OXC CSR graph; derive and reconcile only affected keyed region",
+      "compilerGraph": true,
+      "plan": {
+        "schema_version": 2,
+        "source_file": "compiler/fixtures/keyed_filter_regions.tsx",
+        "regions": [
+          {
+            "region_id": 0,
+            "collection_source": "rows",
+            "predicate_sources": [
+              "queryA"
+            ],
+            "collection_binding": "groupRows",
+            "item_parameter": "row",
+            "item_key_path": "row.id",
+            "root_tag": "section",
+            "item_tag": "li"
+          },
+          {
+            "region_id": 1,
+            "collection_source": "rows",
+            "predicate_sources": [
+              "queryB"
+            ],
+            "collection_binding": "scoreRows",
+            "item_parameter": "row",
+            "item_key_path": "row.id",
+            "root_tag": "section",
+            "item_tag": "li"
+          }
+        ],
+        "dependency_graph": {
+          "source_count": 3,
+          "source_paths": [
+            "queryA",
+            "queryB",
+            "rows"
+          ],
+          "source_region_offsets": [
+            0,
+            1,
+            2,
+            4
+          ],
+          "region_ids": [
+            0,
+            1,
+            0,
+            1
+          ]
+        }
+      }
+    },
+    "browser": {
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+      "hardwareConcurrency": 10,
+      "devicePixelRatio": 2
+    },
+    "mountMs": {
+      "react": 82.30000000447035,
+      "handwritten": 19.099999994039536,
+      "compiled": 8.400000005960464,
+      "samplesPerArm": 1,
+      "includes": "root, generated shell, and dispatcher setup plus initial lists; excludes shared row-data creation and OXC build time"
+    },
+    "summaries": {
+      "react": {
+        "medianMs": 3.125,
+        "p95Ms": 4.049999998882413
+      },
+      "handwritten": {
+        "medianMs": 0.7625000011175871,
+        "p95Ms": 1.3499999986961484
+      },
+      "compiled": {
+        "medianMs": 0.587500000372529,
+        "p95Ms": 0.9125000005587935
+      }
+    },
+    "outputParity": true,
+    "finalParity": true,
+    "pairs": [
+      {
+        "pair": 1,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 3.687499998137355,
+          "handwritten": 1.262499999254942,
+          "compiled": 0.5500000007450581
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 2,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.949999999254942,
+          "handwritten": 0.7124999994412065,
+          "compiled": 0.849999999627471
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 3,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 3.125,
+          "handwritten": 1.087500000372529,
+          "compiled": 0.9125000005587935
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 4,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 4.2875000005587935,
+          "handwritten": 0.7500000018626451,
+          "compiled": 0.7625000001862645
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 5,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 3.775000000372529,
+          "handwritten": 1.8499999986961484,
+          "compiled": 0.7874999986961484
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 6,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 3.8374999994412065,
+          "handwritten": 0.8250000011175871,
+          "compiled": 0.6874999990686774
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 7,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.9375000009313226,
+          "handwritten": 0.9500000011175871,
+          "compiled": 0.7125000013038516
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 8,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 3.562499998137355,
+          "handwritten": 1.3499999986961484,
+          "compiled": 0.6625000005587935
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 9,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 3.350000001490116,
+          "handwritten": 0.9250000007450581,
+          "compiled": 0.537499999627471
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 10,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.649999998509884,
+          "handwritten": 0.75,
+          "compiled": 0.5875000013038516
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 11,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.8875000001862645,
+          "handwritten": 0.7625000011175871,
+          "compiled": 0.5874999994412065
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 12,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 3.237499998882413,
+          "handwritten": 0.8125,
+          "compiled": 0.9124999977648258
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 13,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 3.25,
+          "handwritten": 0.7624999992549419,
+          "compiled": 0.5750000001862645
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 14,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.6249999990686774,
+          "handwritten": 0.7625000001862645,
+          "compiled": 0.4999999990686774
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 15,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 3.2249999986961484,
+          "handwritten": 0.7000000001862645,
+          "compiled": 0.587500000372529
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 16,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.812499998137355,
+          "handwritten": 0.599999999627471,
+          "compiled": 0.9125000005587935
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 17,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.0749999983236194,
+          "handwritten": 0.7749999985098839,
+          "compiled": 0.5500000016763806
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 18,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 4.049999998882413,
+          "handwritten": 0.7374999998137355,
+          "compiled": 0.5249999994412065
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 19,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 3.300000000745058,
+          "handwritten": 0.7625000011175871,
+          "compiled": 0.5624999990686774
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 20,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 3.1874999972060323,
+          "handwritten": 0.6124999998137355,
+          "compiled": 1.112500000745058
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 21,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.0624999990686774,
+          "handwritten": 0.625,
+          "compiled": 0.48750000074505806
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 22,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.9375000009313226,
+          "handwritten": 0.9874999998137355,
+          "compiled": 0.4249999998137355
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 23,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.0499999979510903,
+          "handwritten": 0.9000000013038516,
+          "compiled": 0.650000000372529
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      },
+      {
+        "pair": 24,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 2.9000000013038516,
+          "handwritten": 1.3499999986961484,
+          "compiled": 0.45000000204890966
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "handwritten": {
+            "preserved": 2349,
+            "shared": 2349
+          },
+          "compiled": {
+            "preserved": 2349,
+            "shared": 2349
+          }
+        }
+      }
+    ],
+    "validity": "Each timed transition changes exactly one query source. React uses memoized child regions with stable rows; the handwritten VDOM rebuilds both regions; the compiled path rebuilds only the region reached by the changed source. The graph's shared rows source fans out to both regions and is tested separately. Every intermediate output and retained keyed-node identity is checked outside timing. Six arm orders are balanced. Mount is reported separately; paint/presentation and compiler build time are excluded.",
+    "exportedFromStore": "keyed-region-graph-react-v6"
+  },
+  {
+    "schemaVersion": 4,
+    "protocolVersion": "gate-a-regions-v1",
+    "experiment": "two independently derived keyed regions: React Compiler vs whole-tree VDOM vs OXC region DAG",
+    "timestamp": "2026-10-09T23:53:29.317Z",
+    "sessionId": "gate-a-session-1",
+    "pageLoadId": "9530daac-cee9-454d-9cb4-8dc0b798beef",
+    "seed": 610009,
+    "entityCount": 5000,
+    "updates": [
+      {
+        "source": "queryA",
+        "value": "7"
+      },
+      {
+        "source": "queryB",
+        "value": "80"
+      },
+      {
+        "source": "queryA",
+        "value": "3"
+      },
+      {
+        "source": "queryB",
+        "value": "50"
+      },
+      {
+        "source": "queryA",
+        "value": "1"
+      },
+      {
+        "source": "queryB",
+        "value": "95"
+      },
+      {
+        "source": "queryA",
+        "value": "0"
+      },
+      {
+        "source": "queryB",
+        "value": "0"
+      }
+    ],
+    "warmupPairs": 6,
+    "timedPairs": 24,
+    "armOrderCounts": {
+      "reactFirst": 8,
+      "handwrittenFirst": 8,
+      "compiledFirst": 8
+    },
+    "react": {
+      "version": "19.3.0",
+      "compiler": "babel-plugin-react-compiler target 19",
+      "isolation": "memoized region components; only changed query prop differs"
+    },
+    "handwritten": {
+      "update": "rederive and reconcile both keyed regions on every query update",
+      "compilerGraph": false
+    },
+    "compiled": {
+      "update": "dispatch query source through OXC CSR graph; derive and reconcile only affected keyed region",
+      "compilerGraph": true,
+      "plan": {
+        "schema_version": 2,
+        "source_file": "compiler/fixtures/keyed_filter_regions.tsx",
+        "regions": [
+          {
+            "region_id": 0,
+            "collection_source": "rows",
+            "predicate_sources": [
+              "queryA"
+            ],
+            "collection_binding": "groupRows",
+            "item_parameter": "row",
+            "item_key_path": "row.id",
+            "root_tag": "section",
+            "item_tag": "li"
+          },
+          {
+            "region_id": 1,
+            "collection_source": "rows",
+            "predicate_sources": [
+              "queryB"
+            ],
+            "collection_binding": "scoreRows",
+            "item_parameter": "row",
+            "item_key_path": "row.id",
+            "root_tag": "section",
+            "item_tag": "li"
+          }
+        ],
+        "dependency_graph": {
+          "source_count": 3,
+          "source_paths": [
+            "queryA",
+            "queryB",
+            "rows"
+          ],
+          "source_region_offsets": [
+            0,
+            1,
+            2,
+            4
+          ],
+          "region_ids": [
+            0,
+            1,
+            0,
+            1
+          ]
+        }
+      }
+    },
+    "browser": {
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+      "hardwareConcurrency": 10,
+      "devicePixelRatio": 2
+    },
+    "mountMs": {
+      "react": 51.20000000298023,
+      "handwritten": 18.600000001490116,
+      "compiled": 12.399999998509884,
+      "samplesPerArm": 1,
+      "includes": "root, generated shell, and dispatcher setup plus initial lists; excludes shared row-data creation and OXC build time"
+    },
+    "summaries": {
+      "react": {
+        "medianMs": 14.799999998882413,
+        "p95Ms": 16.362499998882413
+      },
+      "handwritten": {
+        "medianMs": 4.6875,
+        "p95Ms": 5.462500001303852
+      },
+      "compiled": {
+        "medianMs": 3.1875,
+        "p95Ms": 3.7999999998137355
+      }
+    },
+    "outputParity": true,
+    "finalParity": true,
+    "pairs": [
+      {
+        "pair": 1,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 15.13750000204891,
+          "handwritten": 4.474999998696148,
+          "compiled": 2.9624999994412065
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 2,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 10.400000000372529,
+          "handwritten": 5.162499999627471,
+          "compiled": 3.0250000013038516
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 3,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 15.487499999813735,
+          "handwritten": 5.050000000745058,
+          "compiled": 2.7999999998137355
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 4,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 14.475000001490116,
+          "handwritten": 4.424999998882413,
+          "compiled": 3.650000000372529
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 5,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 15.049999999813735,
+          "handwritten": 3.949999999254942,
+          "compiled": 3.125
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 6,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 13.425000000745058,
+          "handwritten": 4.6375000001862645,
+          "compiled": 3.2000000020489097
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 7,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 16.112499999813735,
+          "handwritten": 5.01250000204891,
+          "compiled": 3.7999999998137355
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 8,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 16.100000000558794,
+          "handwritten": 5.074999999254942,
+          "compiled": 3.337499998509884
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 9,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 15.574999999254942,
+          "handwritten": 4.6875,
+          "compiled": 2.8749999990686774
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 10,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 14.799999998882413,
+          "handwritten": 4.937500000931323,
+          "compiled": 3.1374999983236194
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 11,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 13.912500002421439,
+          "handwritten": 4.650000001303852,
+          "compiled": 3.499999998137355
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 12,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 9.887500000186265,
+          "handwritten": 5.000000000931323,
+          "compiled": 3.287500001490116
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 13,
+        "order": [
+          "handwritten",
+          "compiled",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 15.162499999627471,
+          "handwritten": 4.062499999068677,
+          "compiled": 2.7499999972060323
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 14,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 10.612499999813735,
+          "handwritten": 4.362499998882413,
+          "compiled": 3.587500000372529
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 15,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 16.362499998882413,
+          "handwritten": 5.349999998696148,
+          "compiled": 3.099999999627471
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 16,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 15.800000000745058,
+          "handwritten": 4.225000001490116,
+          "compiled": 3.1124999998137355
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 17,
+        "order": [
+          "handwritten",
+          "react",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 12.912500000558794,
+          "handwritten": 4.750000000931323,
+          "compiled": 3.362500000745058
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 18,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 13.350000001490116,
+          "handwritten": 5.424999998882413,
+          "compiled": 3.212500000372529
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 19,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 13.562500000931323,
+          "handwritten": 102.77500000037253,
+          "compiled": 3.387500001117587
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 20,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 16.137499999254942,
+          "handwritten": 5.462500001303852,
+          "compiled": 3.950000001117587
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 21,
+        "order": [
+          "compiled",
+          "handwritten",
+          "react"
+        ],
+        "millisecondsPerChange": {
+          "react": 17.037499997764826,
+          "handwritten": 4.300000000745058,
+          "compiled": 3.1875
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 22,
+        "order": [
+          "react",
+          "handwritten",
+          "compiled"
+        ],
+        "millisecondsPerChange": {
+          "react": 13.387500001117587,
+          "handwritten": 4.2625000001862645,
+          "compiled": 3.674999998882413
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 23,
+        "order": [
+          "compiled",
+          "react",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 15.724999999627471,
+          "handwritten": 5.012499999254942,
+          "compiled": 3.0125000001862645
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      },
+      {
+        "pair": 24,
+        "order": [
+          "react",
+          "compiled",
+          "handwritten"
+        ],
+        "millisecondsPerChange": {
+          "react": 12.07500000204891,
+          "handwritten": 4.549999998882413,
+          "compiled": 2.9000000013038516
+        },
+        "sameOutput": true,
+        "transitionsCompared": 8,
+        "keyRetention": {
+          "react": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "handwritten": {
+            "preserved": 11732,
+            "shared": 11732
+          },
+          "compiled": {
+            "preserved": 11732,
+            "shared": 11732
+          }
+        }
+      }
+    ],
+    "validity": "Each timed transition changes exactly one query source. React uses memoized child regions with stable rows; the handwritten VDOM rebuilds both regions; the compiled path rebuilds only the region reached by the changed source. The graph's shared rows source fans out to both regions and is tested separately. Every intermediate output and retained keyed-node identity is checked outside timing. Six arm orders are balanced. Mount is reported separately; paint/presentation and compiler build time are excluded.",
+    "exportedFromStore": "keyed-region-graph-react-v6"
+  }
+]

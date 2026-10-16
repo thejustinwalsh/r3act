@@ -1,0 +1,21 @@
+Check src/native_cell_cut_test.ts
+Check src/pending_state_changes_test.ts
+running 6 tests from ./src/native_cell_cut_test.ts
+captureNative coalesces in first-arrival order into reused buffers ... ok (0ms)
+legacy fallback scrubs the partially written native prefix ... ok (0ms)
+native queue clear requires exact handle address and incarnation ... ok (0ms)
+world validates exact cell handles and preserves writes newer than a cut ... ok (0ms)
+dead cell handles resolve to null and stale native cuts cannot clear state ... ok (0ms)
+two roots can capture and independently acknowledge one shared-world cut ... ok (0ms)
+running 8 tests from ./src/pending_state_changes_test.ts
+pending changes expose current values in insertion order ... ok (0ms)
+repeated writes coalesce without changing insertion order ... ok (0ms)
+different owners and unusual site strings remain distinct ... ok (0ms)
+clearThrough only removes entries at or below captured versions ... ok (0ms)
+a write after a captured clear is preserved ... ok (0ms)
+cleared identities are reused without moving pending entries ... ok (0ms)
+dropOwner removes that owner's entries and permits clean reuse ... ok (0ms)
+clear removes pending changes and cached identities ... ok (0ms)
+
+ok | 14 passed | 0 failed (26ms)
+

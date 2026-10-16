@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "component-state-tree-shape-browser-schedule-v1",
+  "status": "PLANNED",
+  "pageLoadsAreReplicationUnit": true,
+  "replicationsPerTopology": 3,
+  "benchmarkUrl": "https://react-runtime-research.localhost:1355/component-state-tree-shape-benchmark.html",
+  "topologies": [
+    { "groupCount": 0, "groupSize": null, "label": "flat" },
+    { "groupCount": 10, "groupSize": 1000, "label": "10 × 1,000" },
+    { "groupCount": 100, "groupSize": 100, "label": "100 × 100" },
+    { "groupCount": 1000, "groupSize": 10, "label": "1,000 × 10" }
+  ],
+  "runs": [
+    { "order": 1, "round": 1, "groupCount": 0, "seed": 71002001 },
+    { "order": 2, "round": 1, "groupCount": 10, "seed": 71002002 },
+    { "order": 3, "round": 1, "groupCount": 100, "seed": 71002003 },
+    { "order": 4, "round": 1, "groupCount": 1000, "seed": 71002004 },
+    { "order": 5, "round": 2, "groupCount": 100, "seed": 71002005 },
+    { "order": 6, "round": 2, "groupCount": 1000, "seed": 71002006 },
+    { "order": 7, "round": 2, "groupCount": 0, "seed": 71002007 },
+    { "order": 8, "round": 2, "groupCount": 10, "seed": 71002008 },
+    { "order": 9, "round": 3, "groupCount": 1000, "seed": 71002009 },
+    { "order": 10, "round": 3, "groupCount": 0, "seed": 71002010 },
+    { "order": 11, "round": 3, "groupCount": 10, "seed": 71002011 },
+    { "order": 12, "round": 3, "groupCount": 100, "seed": 71002012 }
+  ],
+  "protocol": {
+    "warmupPairs": 8,
+    "measuredPairs": 40,
+    "updatesPerPairArm": 100,
+    "count": 10000,
+    "treeShapeMode": "study=tree-shape",
+    "autorunQuery": "autorun=1&study=tree-shape&count=10000&groups={groupCount}&seed={seed}",
+    "purpose": "Interleave topology runs to reduce confounding from collection order or gradual device load. The measured comparison holds the 10,000-span DOM constant and groups return Fragments."
+  }
+}

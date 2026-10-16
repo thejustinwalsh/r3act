@@ -1,0 +1,538 @@
+[
+  {
+    "name": "deno",
+    "command": [
+      "deno",
+      "test",
+      "--config",
+      "deno.browser.json",
+      "src"
+    ],
+    "exitCode": 0,
+    "seconds": 8.72537899017334
+  },
+  {
+    "name": "rust",
+    "command": [
+      "cargo",
+      "test",
+      "--manifest-path",
+      "compiler/oxc-spike/Cargo.toml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.09717988967895508
+  },
+  {
+    "name": "smoke",
+    "command": [
+      "pnpm",
+      "compiler:native:smoke"
+    ],
+    "exitCode": 0,
+    "seconds": 0.556377649307251
+  },
+  {
+    "name": "typecheck",
+    "command": [
+      "deno",
+      "check",
+      "--config",
+      "deno.native.json",
+      "src/native_runtime_api.ts",
+      "src/native_task_execution.ts",
+      "src/native_task_transition.ts",
+      "src/browser/native_task_transitions.tsx",
+      "src/native_task_generation_lease_test.ts",
+      "src/store_projection_matrix_test.ts",
+      "src/store_scope_contract_test.ts",
+      "src/native_task_store_matrix_test.ts",
+      "src/native_late_reader_matrix_test.ts"
+    ],
+    "exitCode": 0,
+    "seconds": 0.8591721057891846
+  },
+  {
+    "name": "build",
+    "command": [
+      "pnpm",
+      "build"
+    ],
+    "exitCode": 0,
+    "seconds": 2.507500171661377
+  },
+  {
+    "name": "execution-state",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_state_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.32825374603271484
+  },
+  {
+    "name": "execution-store",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_store_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.30957698822021484
+  },
+  {
+    "name": "execution-collection",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_collection_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.3969409465789795
+  },
+  {
+    "name": "execution-root_queue",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_root_queue_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.3258941173553467
+  },
+  {
+    "name": "execution-resource",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_resource_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.38261914253234863
+  },
+  {
+    "name": "execution-task_transition",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_task_transition_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 2.3513526916503906
+  },
+  {
+    "name": "execution-promise_store_race",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_promise_store_race_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.35219287872314453
+  },
+  {
+    "name": "retention-owner_preparation",
+    "command": [
+      "node",
+      "--expose-gc",
+      "--experimental-transform-types",
+      "scripts/verify_owner_preparation_retention.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.10463809967041016
+  },
+  {
+    "name": "retention-native_candidate",
+    "command": [
+      "node",
+      "--expose-gc",
+      "--experimental-transform-types",
+      "scripts/verify_native_candidate_retention.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.15456295013427734
+  },
+  {
+    "name": "retention-native_resource",
+    "command": [
+      "node",
+      "--expose-gc",
+      "--experimental-transform-types",
+      "scripts/verify_native_resource_retention.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.15438199043273926
+  },
+  {
+    "name": "dom-browser",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "scripts/verify_dom_input_contract.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 2.6354050636291504
+  },
+  {
+    "name": "input-browser",
+    "command": [
+      "node",
+      "scripts/verify_native_input_transition_contract.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 4.3182148933410645
+  },
+  {
+    "name": "browser",
+    "command": [
+      "node",
+      ".cache/namespace-three-milestone/browser-check.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 10.744089126586914
+  },
+  {
+    "name": "hmr",
+    "command": [
+      "node",
+      ".cache/namespace-three-milestone/hmr-check.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 1.9671568870544434
+  },
+  {
+    "name": "resource-regression",
+    "command": [
+      "node",
+      ".cache/namespace-three-milestone/resource-regression/browser-check.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 12.219680070877075
+  },
+  {
+    "name": "composed-plugin",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/vite_native_plugin_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.4348421096801758
+  },
+  {
+    "name": "namespace-browser",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "scripts/verify_dom_namespace_contract.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 2.0593228340148926
+  },
+  {
+    "name": "react-adapter-browser",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/react_native_adapter_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 2.099714756011963
+  },
+  {
+    "name": "tooling-typecheck",
+    "command": [
+      "pnpm",
+      "check:native-tooling"
+    ],
+    "exitCode": 0,
+    "seconds": 0.934218168258667
+  },
+  {
+    "name": "three-host-execution",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/three_host_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.3490869998931885
+  },
+  {
+    "name": "three-extension",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/three_host_extension_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.32611918449401855
+  },
+  {
+    "name": "three-browser",
+    "command": [
+      "node",
+      "scripts/verify_native_three_host.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 3.9314539432525635
+  },
+  {
+    "name": "collection-differential",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_collection_differential_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.332744836807251
+  },
+  {
+    "name": "native-package-build",
+    "command": [
+      "pnpm",
+      "package:native"
+    ],
+    "exitCode": 0,
+    "seconds": 7.788200855255127
+  },
+  {
+    "name": "native-package-consumer",
+    "command": [
+      "pnpm",
+      "check:native-package"
+    ],
+    "exitCode": 0,
+    "seconds": 2.743300199508667
+  },
+  {
+    "name": "store-owner-execution",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_store_owner_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 2.4257731437683105
+  },
+  {
+    "name": "numeric-commit-execution",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_numeric_commit_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.3316769599914551
+  },
+  {
+    "name": "index-fallback-execution",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_index_fallback_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.32132816314697266
+  },
+  {
+    "name": "binding-index-execution",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_binding_index_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.3212931156158447
+  },
+  {
+    "name": "binding-retention",
+    "command": [
+      "node",
+      "--expose-gc",
+      "--experimental-transform-types",
+      "scripts/verify_vdom_binding_retention.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.12511587142944336
+  },
+  {
+    "name": "sparse-store-execution",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_sparse_store_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 2.7308881282806396
+  },
+  {
+    "name": "sparse-store-retention",
+    "command": [
+      "node",
+      "--expose-gc",
+      "--experimental-transform-types",
+      "scripts/verify_sparse_store_retention.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.16202068328857422
+  },
+  {
+    "name": "host-leaf-compiler",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_host_leaf_compiler_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.18543314933776855
+  },
+  {
+    "name": "namespace-three",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_namespace_three_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.33254003524780273
+  },
+  {
+    "name": "typed-collection",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_typed_collection_compiler_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.2536492347717285
+  },
+  {
+    "name": "three-inferred-types",
+    "command": [
+      "pnpm",
+      "exec",
+      "tsgo",
+      "-p",
+      "tsconfig.three-inferred.json"
+    ],
+    "exitCode": 0,
+    "seconds": 0.6417810916900635
+  },
+  {
+    "name": "product-mixed-build",
+    "command": [
+      "pnpm",
+      "exec",
+      "vite",
+      "build",
+      "--config",
+      "vite.product-mixed-numeric-programs.config.ts"
+    ],
+    "exitCode": 0,
+    "seconds": 0.6720969676971436
+  },
+  {
+    "name": "typed-collection-execution",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_typed_collection_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.3239879608154297
+  },
+  {
+    "name": "host-jsx-generator",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/host_jsx_declarations_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.06634688377380371
+  },
+  {
+    "name": "host-jsx-vite",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/vite_host_jsx_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 1.460381031036377
+  },
+  {
+    "name": "compiled-direct-writers",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_direct_writers_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.32923436164855957
+  },
+  {
+    "name": "compiled-unary-binding",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_unary_binding_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.3240659236907959
+  },
+  {
+    "name": "compiled-numeric-cut",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_numeric_cut_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.3155660629272461
+  },
+  {
+    "name": "state-identity-retention",
+    "command": [
+      "node",
+      "--expose-gc",
+      "--experimental-transform-types",
+      "scripts/verify_state_identity_retention.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.10928702354431152
+  },
+  {
+    "name": "dead-setter-retention",
+    "command": [
+      "node",
+      "--expose-gc",
+      "--experimental-transform-types",
+      "scripts/verify_dead_state_setter_retention.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.11290502548217773
+  },
+  {
+    "name": "compiled-numeric-program",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_numeric_program_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.32851290702819824
+  },
+  {
+    "name": "numeric-program-retention",
+    "command": [
+      "node",
+      "--expose-gc",
+      "--experimental-transform-types",
+      "scripts/verify_numeric_program_retention.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.12508797645568848
+  }
+]

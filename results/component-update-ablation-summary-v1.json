@@ -1,0 +1,422 @@
+{
+  "schemaVersion": "component-update-ablation-summary-v1",
+  "status": "PASS",
+  "processCount": 3,
+  "independentReplicationUnit": "fresh serialized Deno process",
+  "runtimes": [
+    {
+      "deno": "2.6.3",
+      "v8": "14.2.231.17-rusty",
+      "typescript": "5.9.2"
+    },
+    {
+      "deno": "2.6.3",
+      "v8": "14.2.231.17-rusty",
+      "typescript": "5.9.2"
+    },
+    {
+      "deno": "2.6.3",
+      "v8": "14.2.231.17-rusty",
+      "typescript": "5.9.2"
+    }
+  ],
+  "compiler": {
+    "sourceFile": "compiler/fixtures/component_state_sites.tsx",
+    "schemaVersion": 3,
+    "invalidationSourceCount": 6,
+    "componentRegionCount": 5
+  },
+  "protocol": {
+    "pairedOrder": "seeded pseudorandom order, recorded per pair",
+    "timer": "performance.now around one state update and commit",
+    "warmupPairs": 5,
+    "measuredPairs": 25,
+    "stateChangesPerBatch": 1,
+    "equalWork": "one native click state update on the final keyed OXC-generated BenchmarkItem; same tree, compiler-emitted invalidation graph, and retained in-memory VDOM host implementation",
+    "limitation": "owner-cache arm uses the compiler-selected owner and a globally unique stable host-root key to commit one host region without scanning siblings; structural changes and ineligible trees fall back to full reconciliation. This is not a browser or React comparison"
+  },
+  "scenarios": [
+    {
+      "size": 100,
+      "medianMs": {
+        "ownerCache": 0.01300000000000523,
+        "fullRender": 0.37708300000002737
+      },
+      "medianProcessP95Ms": {
+        "ownerCache": 0.09916699999999423,
+        "fullRender": 0.6370420000000081
+      },
+      "medianSpeedupFullOverOwnerCache": 29.59938461537305,
+      "pairedWinsByProcess": [
+        {
+          "ownerCache": 25,
+          "fullRender": 0,
+          "ties": 0
+        },
+        {
+          "ownerCache": 25,
+          "fullRender": 0,
+          "ties": 0
+        },
+        {
+          "ownerCache": 25,
+          "fullRender": 0,
+          "ties": 0
+        }
+      ],
+      "processes": [
+        {
+          "seed": 1610091001,
+          "medianMs": {
+            "ownerCache": 0.013041999999984455,
+            "fullRender": 0.37708300000002737
+          },
+          "p95Ms": {
+            "ownerCache": 0.1073329999999828,
+            "fullRender": 0.6370420000000081
+          },
+          "rendersPerUpdate": {
+            "ownerCache": 1,
+            "fullRender": 100
+          },
+          "partialCommitsPerUpdate": {
+            "ownerCache": 1,
+            "fullRender": 0
+          },
+          "pairCount": 25
+        },
+        {
+          "seed": 1610091102,
+          "medianMs": {
+            "ownerCache": 0.01300000000000523,
+            "fullRender": 0.38479200000000446
+          },
+          "p95Ms": {
+            "ownerCache": 0.09916699999999423,
+            "fullRender": 0.6150000000000091
+          },
+          "rendersPerUpdate": {
+            "ownerCache": 1,
+            "fullRender": 100
+          },
+          "partialCommitsPerUpdate": {
+            "ownerCache": 1,
+            "fullRender": 0
+          },
+          "pairCount": 25
+        },
+        {
+          "seed": 1610091203,
+          "medianMs": {
+            "ownerCache": 0.01141699999999446,
+            "fullRender": 0.3581660000000113
+          },
+          "p95Ms": {
+            "ownerCache": 0.09870800000001623,
+            "fullRender": 0.6995830000000183
+          },
+          "rendersPerUpdate": {
+            "ownerCache": 1,
+            "fullRender": 100
+          },
+          "partialCommitsPerUpdate": {
+            "ownerCache": 1,
+            "fullRender": 0
+          },
+          "pairCount": 25
+        }
+      ],
+      "allOutputParity": true,
+      "allRenderCountContracts": true,
+      "allPartialCommitContracts": true
+    },
+    {
+      "size": 1000,
+      "medianMs": {
+        "ownerCache": 0.008750000000020464,
+        "fullRender": 2.376292000000035
+      },
+      "medianProcessP95Ms": {
+        "ownerCache": 0.023707999999999174,
+        "fullRender": 3.7094999999999914
+      },
+      "medianSpeedupFullOverOwnerCache": 275.51211594219285,
+      "pairedWinsByProcess": [
+        {
+          "ownerCache": 25,
+          "fullRender": 0,
+          "ties": 0
+        },
+        {
+          "ownerCache": 25,
+          "fullRender": 0,
+          "ties": 0
+        },
+        {
+          "ownerCache": 25,
+          "fullRender": 0,
+          "ties": 0
+        }
+      ],
+      "processes": [
+        {
+          "seed": 1610091001,
+          "medianMs": {
+            "ownerCache": 0.010625000000004547,
+            "fullRender": 2.3039999999999736
+          },
+          "p95Ms": {
+            "ownerCache": 0.026583999999957086,
+            "fullRender": 3.7094999999999914
+          },
+          "rendersPerUpdate": {
+            "ownerCache": 1,
+            "fullRender": 1000
+          },
+          "partialCommitsPerUpdate": {
+            "ownerCache": 1,
+            "fullRender": 0
+          },
+          "pairCount": 25
+        },
+        {
+          "seed": 1610091102,
+          "medianMs": {
+            "ownerCache": 0.008750000000020464,
+            "fullRender": 2.423541
+          },
+          "p95Ms": {
+            "ownerCache": 0.02133299999997007,
+            "fullRender": 3.619541999999967
+          },
+          "rendersPerUpdate": {
+            "ownerCache": 1,
+            "fullRender": 1000
+          },
+          "partialCommitsPerUpdate": {
+            "ownerCache": 1,
+            "fullRender": 0
+          },
+          "pairCount": 25
+        },
+        {
+          "seed": 1610091203,
+          "medianMs": {
+            "ownerCache": 0.008624999999994998,
+            "fullRender": 2.376292000000035
+          },
+          "p95Ms": {
+            "ownerCache": 0.023707999999999174,
+            "fullRender": 4.113500000000045
+          },
+          "rendersPerUpdate": {
+            "ownerCache": 1,
+            "fullRender": 1000
+          },
+          "partialCommitsPerUpdate": {
+            "ownerCache": 1,
+            "fullRender": 0
+          },
+          "pairCount": 25
+        }
+      ],
+      "allOutputParity": true,
+      "allRenderCountContracts": true,
+      "allPartialCommitContracts": true
+    },
+    {
+      "size": 5000,
+      "medianMs": {
+        "ownerCache": 0.021292000000016742,
+        "fullRender": 12.674791000000027
+      },
+      "medianProcessP95Ms": {
+        "ownerCache": 0.03300000000001546,
+        "fullRender": 17.21104200000002
+      },
+      "medianSpeedupFullOverOwnerCache": 595.2841912450715,
+      "pairedWinsByProcess": [
+        {
+          "ownerCache": 25,
+          "fullRender": 0,
+          "ties": 0
+        },
+        {
+          "ownerCache": 25,
+          "fullRender": 0,
+          "ties": 0
+        },
+        {
+          "ownerCache": 25,
+          "fullRender": 0,
+          "ties": 0
+        }
+      ],
+      "processes": [
+        {
+          "seed": 1610091001,
+          "medianMs": {
+            "ownerCache": 0.021292000000016742,
+            "fullRender": 12.674791000000027
+          },
+          "p95Ms": {
+            "ownerCache": 0.03195800000003146,
+            "fullRender": 17.040957999999932
+          },
+          "rendersPerUpdate": {
+            "ownerCache": 1,
+            "fullRender": 5000
+          },
+          "partialCommitsPerUpdate": {
+            "ownerCache": 1,
+            "fullRender": 0
+          },
+          "pairCount": 25
+        },
+        {
+          "seed": 1610091102,
+          "medianMs": {
+            "ownerCache": 0.01999999999998181,
+            "fullRender": 12.563417000000072
+          },
+          "p95Ms": {
+            "ownerCache": 0.047083000000043285,
+            "fullRender": 17.21104200000002
+          },
+          "rendersPerUpdate": {
+            "ownerCache": 1,
+            "fullRender": 5000
+          },
+          "partialCommitsPerUpdate": {
+            "ownerCache": 1,
+            "fullRender": 0
+          },
+          "pairCount": 25
+        },
+        {
+          "seed": 1610091203,
+          "medianMs": {
+            "ownerCache": 0.024499999999989086,
+            "fullRender": 12.702084000000013
+          },
+          "p95Ms": {
+            "ownerCache": 0.03300000000001546,
+            "fullRender": 18.812999999999988
+          },
+          "rendersPerUpdate": {
+            "ownerCache": 1,
+            "fullRender": 5000
+          },
+          "partialCommitsPerUpdate": {
+            "ownerCache": 1,
+            "fullRender": 0
+          },
+          "pairCount": 25
+        }
+      ],
+      "allOutputParity": true,
+      "allRenderCountContracts": true,
+      "allPartialCommitContracts": true
+    },
+    {
+      "size": 10000,
+      "medianMs": {
+        "ownerCache": 0.03008300000010422,
+        "fullRender": 28.032417000000123
+      },
+      "medianProcessP95Ms": {
+        "ownerCache": 0.04224999999996726,
+        "fullRender": 39.50020800000016
+      },
+      "medianSpeedupFullOverOwnerCache": 931.8358208922982,
+      "pairedWinsByProcess": [
+        {
+          "ownerCache": 25,
+          "fullRender": 0,
+          "ties": 0
+        },
+        {
+          "ownerCache": 25,
+          "fullRender": 0,
+          "ties": 0
+        },
+        {
+          "ownerCache": 25,
+          "fullRender": 0,
+          "ties": 0
+        }
+      ],
+      "processes": [
+        {
+          "seed": 1610091001,
+          "medianMs": {
+            "ownerCache": 0.029541999999992186,
+            "fullRender": 28.33941700000014
+          },
+          "p95Ms": {
+            "ownerCache": 0.04224999999996726,
+            "fullRender": 36.08066699999995
+          },
+          "rendersPerUpdate": {
+            "ownerCache": 1,
+            "fullRender": 10000
+          },
+          "partialCommitsPerUpdate": {
+            "ownerCache": 1,
+            "fullRender": 0
+          },
+          "pairCount": 25
+        },
+        {
+          "seed": 1610091102,
+          "medianMs": {
+            "ownerCache": 0.033625000000029104,
+            "fullRender": 27.84762499999988
+          },
+          "p95Ms": {
+            "ownerCache": 0.043624999999792635,
+            "fullRender": 39.70495800000003
+          },
+          "rendersPerUpdate": {
+            "ownerCache": 1,
+            "fullRender": 10000
+          },
+          "partialCommitsPerUpdate": {
+            "ownerCache": 1,
+            "fullRender": 0
+          },
+          "pairCount": 25
+        },
+        {
+          "seed": 1610091203,
+          "medianMs": {
+            "ownerCache": 0.03008300000010422,
+            "fullRender": 28.032417000000123
+          },
+          "p95Ms": {
+            "ownerCache": 0.03916700000013407,
+            "fullRender": 39.50020800000016
+          },
+          "rendersPerUpdate": {
+            "ownerCache": 1,
+            "fullRender": 10000
+          },
+          "partialCommitsPerUpdate": {
+            "ownerCache": 1,
+            "fullRender": 0
+          },
+          "pairCount": 25
+        }
+      ],
+      "allOutputParity": true,
+      "allRenderCountContracts": true,
+      "allPartialCommitContracts": true
+    }
+  ],
+  "rawFiles": [
+    "results/component-update-ablation-v1-process-1.json",
+    "results/component-update-ablation-v1-process-2.json",
+    "results/component-update-ablation-v1-process-3.json"
+  ],
+  "limitation": "same-runtime Deno ablation; the owner-cache arm uses the compiler-selected owner and indexed unique keyed host-root to update one region without visiting siblings. Structural or ineligible updates fall back to full reconciliation. Not a React or browser comparison."
+}

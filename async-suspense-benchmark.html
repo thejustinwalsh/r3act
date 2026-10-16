@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Async graph and React Suspense behavior study</title>
+    <style>
+      body {
+        max-width: 920px;
+        margin: 32px auto;
+        padding: 0 20px;
+        font: 16px/1.5 system-ui, sans-serif;
+        color: #172033;
+      }
+      .lede, .note {
+        color: #536078;
+      }
+      button {
+        padding: 9px 14px;
+        margin-right: 8px;
+      }
+      .arms {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin: 20px 0;
+      }
+      .arm {
+        border: 1px solid #cbd3df;
+        border-radius: 8px;
+        padding: 12px;
+        min-height: 120px;
+      }
+      #status {
+        white-space: pre-wrap;
+        background: #f4f6fa;
+        padding: 12px;
+        min-height: 80px;
+      }
+      @media (max-width: 620px) {
+        .arms {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Async graph vs React Suspense</h1>
+    <p class="lede">
+      A behavior study of the same prewarmed profile/feed dependency graph.
+      React uses a transition and one Suspense boundary; the runtime uses its
+      OXC-emitted task graph and a coordinated VDOM commit.
+    </p>
+    <p class="note">
+      This measures task-to-commit latency under deterministic timers and
+      verifies retained UI while data is pending. It is not a frame-time or
+      broad React performance benchmark.
+    </p>
+    <button id="run">Run 20 paired transitions</button>
+    <button id="export" disabled>Download JSON</button>
+    <div class="arms">
+      <section class="arm">
+        <h2>React 19 Suspense</h2>
+        <div id="react-root"></div>
+      </section>
+      <section class="arm">
+        <h2>Compiled graph runtime</h2>
+        <div id="runtime-root"></div>
+      </section>
+    </div>
+    <pre id="status" aria-live="polite">Ready. Both roots show version 1.</pre>
+    <script
+      type="module"
+      src="/src/browser/async_suspense_benchmark.tsx"
+    ></script>
+  </body>
+</html>

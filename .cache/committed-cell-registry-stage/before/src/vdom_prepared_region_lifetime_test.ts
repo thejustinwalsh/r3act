@@ -1,0 +1,1 @@
+../../../../src/vdom_prepared_region_lifetime_test.ts

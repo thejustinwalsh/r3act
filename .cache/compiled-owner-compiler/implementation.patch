@@ -1,0 +1,506 @@
+--- a/compiler/oxc-spike/src/main.rs
++++ b/compiler/oxc-spike/src/main.rs
+@@ -228,6 +228,8 @@
+ #[derive(Debug, Serialize)]
+ struct NativeStateLayoutMetadata {
+     schema_version: u32,
++    #[serde(rename = "programId", skip_serializing_if = "Option::is_none")]
++    program_id: Option<String>,
+     slots: Vec<NativeStateLayoutSlotMetadata>,
+ }
+ 
+@@ -3309,21 +3311,46 @@
+     };
+     usage.visit_program(&parsed.program);
+     let mut prop_edits = Vec::<(SourceSpan, String, String, bool, Option<usize>)>::new();
+-    let mut numeric_programs = Vec::<(String, Vec<String>)>::new();
++    let mut numeric_programs = Vec::<(String, String, Vec<String>)>::new();
+     let mut prop_sites = BTreeSet::new();
+     let mut fallback_sites = BTreeSet::new();
+-    let mut unary_layout_sites = BTreeSet::new();
+-    let mut non_unary_layout_sites = BTreeSet::new();
++    let mut layout_eligible_sites = BTreeSet::new();
++    struct CandidateClassification<'a> {
++        owner_program_id: Option<String>,
++        bindings: Vec<&'a NativeStateBinding>,
++        site_ids: BTreeSet<String>,
++        certified: bool,
++    }
++    let mut classifications = Vec::with_capacity(usage.candidates.len());
+     for candidate in &usage.candidates {
+         if candidate.state_refs.is_empty() {
++            classifications.push(CandidateClassification {
++                owner_program_id: None,
++                bindings: Vec::new(),
++                site_ids: BTreeSet::new(),
++                certified: false,
++            });
+             continue;
+         }
+-        let source_expression = slice(source, candidate.span.clone());
+-        let bindings: Vec<_> = candidate
++        let expression = slice(source, candidate.span.clone());
++        let mut bindings: Vec<_> = candidate
+             .state_refs
+             .iter()
+             .filter_map(|symbol| usage.bindings.get(symbol))
+             .collect();
++        let owner_component = state_plan.components.iter().find(|component| {
++            component.declaration.start <= candidate.span.start
++                && candidate.span.end <= component.declaration.end
++        });
++        if let Some(component) = owner_component {
++            bindings.sort_by_key(|binding| {
++                component
++                    .state_sites
++                    .iter()
++                    .position(|state| state.site_id == binding.site_id)
++                    .unwrap_or(usize::MAX)
++            });
++        }
+         let site_ids: BTreeSet<_> = bindings
+             .iter()
+             .map(|binding| binding.site_id.clone())
+@@ -3332,7 +3359,18 @@
+             .iter()
+             .map(|binding| binding.name.clone())
+             .collect();
+-        let pure = !candidate.other_refs
++        let owner_sites: BTreeSet<_> = owner_component
++            .into_iter()
++            .flat_map(|component| component.state_sites.iter())
++            .map(|state| state.site_id.as_str())
++            .collect();
++        let owner_local = owner_component.is_some_and(|_| {
++            site_ids
++                .iter()
++                .all(|site| owner_sites.contains(site.as_str()))
++        });
++        let certified = !candidate.other_refs
++            && owner_local
+             && !state_plan
+                 .components
+                 .iter()
+@@ -3345,18 +3383,39 @@
+             && site_ids
+                 .iter()
+                 .all(|site| usage.numeric_sites.contains(site))
+-            && numeric_expression_is_pure(&source_expression, &names);
+-        let unary_layout_sink = pure
+-            && candidate.state_refs.len() == 1
+-            && candidate.state_ref_counts.values().next() == Some(&1)
+-            && bindings.len() == 1;
+-        if unary_layout_sink {
+-            unary_layout_sites.extend(site_ids.iter().cloned());
+-        } else {
+-            non_unary_layout_sites.extend(site_ids.iter().cloned());
++            && site_ids
++                .iter()
++                .all(|site| !usage.outside_state_reads.contains(site))
++            && numeric_expression_is_pure(&expression, &names);
++        classifications.push(CandidateClassification {
++            owner_program_id: owner_component.map(|component| component.component_site_id.clone()),
++            bindings,
++            site_ids,
++            certified,
++        });
++    }
++    let mut ineligible_numeric_sites = usage.outside_state_reads.clone();
++    for classification in &classifications {
++        if !classification.certified {
++            ineligible_numeric_sites.extend(classification.site_ids.iter().cloned());
+         }
++    }
++    for (candidate, classification) in usage.candidates.iter().zip(&classifications) {
++        if candidate.state_refs.is_empty() {
++            continue;
++        }
++        let bindings = &classification.bindings;
++        let site_ids = &classification.site_ids;
++        let pure = classification.certified
++            && site_ids
++                .iter()
++                .all(|site| !ineligible_numeric_sites.contains(site));
+         if pure {
+-            let ordered: Vec<_> = bindings.into_iter().collect();
++            let owner_program_id = classification
++                .owner_program_id
++                .clone()
++                .expect("owner-local numeric candidate has an owner");
++            let ordered = bindings;
+             let singular = ordered.len() == 1;
+             let ids = ordered
+                 .iter()
+@@ -3379,7 +3438,7 @@
+                 .map(|binding| binding.site_id.clone())
+                 .collect();
+             let sink_id = format!("{path}#numeric-sink:{}", candidate.span.start);
+-            numeric_programs.push((sink_id, source_sites));
++            numeric_programs.push((owner_program_id, sink_id, source_sites));
+             prop_edits.push((
+                 candidate.span.clone(),
+                 prefix,
+@@ -3388,8 +3447,9 @@
+                 Some(descriptor_index),
+             ));
+             prop_sites.extend(ordered.iter().map(|binding| binding.site_id.clone()));
++            layout_eligible_sites.extend(site_ids.iter().cloned());
+         } else {
+-            fallback_sites.extend(bindings.into_iter().map(|binding| binding.site_id.clone()));
++            fallback_sites.extend(bindings.iter().map(|binding| binding.site_id.clone()));
+         }
+     }
+     usage.outside_state_reads.extend(fallback_sites);
+@@ -3408,10 +3468,6 @@
+                 .collect::<BTreeSet<_>>();
+             (component.component_site_id.clone(), sites)
+         })
+-        .collect();
+-    let layout_eligible_sites: BTreeSet<_> = unary_layout_sites
+-        .difference(&non_unary_layout_sites)
+-        .cloned()
+         .collect();
+     let component_state_layouts: BTreeMap<_, _> = state_plan
+         .components
+@@ -3465,6 +3521,7 @@
+                 .cloned()
+                 .map(|slots| NativeStateLayoutMetadata {
+                     schema_version: 1,
++                    program_id: Some(component.component_site_id.clone()),
+                     slots,
+                 }),
+             state_sites: component
+@@ -3655,7 +3712,7 @@
+     source: &str,
+     plan: &ComponentStateSitesPlan,
+     prop_edits: &[(SourceSpan, String, String, bool, Option<usize>)],
+-    numeric_programs: &[(String, Vec<String>)],
++    numeric_programs: &[(String, String, Vec<String>)],
+     prop_sites: &BTreeMap<String, BTreeSet<String>>,
+     state_layouts: &BTreeMap<String, Vec<NativeStateLayoutSlotMetadata>>,
+ ) -> Result<(String, Vec<NativeModuleEdit>), String> {
+@@ -3703,14 +3760,15 @@
+     } else {
+         let descriptors = numeric_programs
+             .iter()
+-            .map(|(sink_id, source_sites)| {
++            .map(|(owner_program_id, sink_id, source_sites)| {
++                let owner_program_id = serde_json::to_string(owner_program_id).unwrap_or_default();
+                 let sink_id = serde_json::to_string(sink_id).unwrap_or_default();
+                 let source_sites = source_sites
+                     .iter()
+                     .map(|site| serde_json::to_string(site).unwrap_or_default())
+                     .collect::<Vec<_>>()
+                     .join(", ");
+-                format!("{{ schemaVersion: 1, sinkId: {sink_id}, sourceSites: [{source_sites}] }}")
++                format!("{{ schemaVersion: 2, ownerProgramId: {owner_program_id}, sinkId: {sink_id}, sourceSites: [{source_sites}] }}")
+             })
+             .collect::<Vec<_>>()
+             .join(", ");
+@@ -3742,7 +3800,9 @@
+                     })
+                     .collect::<Vec<_>>()
+                     .join(", ");
+-                format!(", stateLayout: {{ schemaVersion: 1, slots: [{slots}] }}")
++                format!(
++                    ", stateLayout: {{ schemaVersion: 1, programId: {site}, slots: [{slots}] }}"
++                )
+             })
+             .unwrap_or_default();
+         registrations.push_str(&format!(
+@@ -6100,7 +6160,7 @@
+         assert!(code.contains("__nativeBindStatePropsAt([\"native-state-props.tsx#component:MovingDot#state:0\", \"native-state-props.tsx#component:MovingDot#state:1\"], ([x, y]) => (x + y), __nativeNumericPrograms["), "{code}");
+         assert!(code.contains("__nativeBindStatePropsAt([\"native-state-props.tsx#component:MovingDot#state:0\", \"native-state-props.tsx#component:MovingDot#state:1\"], ([x, y]) => (`position ${x + y}`), __nativeNumericPrograms[2])"), "{code}");
+         assert!(code.contains("style={{ \"--x\": __nativeBindStatePropAt(\"native-state-props.tsx#component:MovingDot#state:0\", (x) => (x), __nativeNumericPrograms[3]), \"--y\": __nativeBindStatePropAt(\"native-state-props.tsx#component:MovingDot#state:1\", (y) => (y), __nativeNumericPrograms[4])"), "{code}");
+-        assert!(code.contains("const __nativeNumericPrograms = [{ schemaVersion: 1, sinkId: \"native-state-props.tsx#numeric-sink:"));
++        assert!(code.contains("const __nativeNumericPrograms = [{ schemaVersion: 2, ownerProgramId: \"native-state-props.tsx#component:MovingDot\", sinkId: \"native-state-props.tsx#numeric-sink:"));
+         assert!(code.contains("sourceSites: [\"native-state-props.tsx#component:MovingDot#state:0\", \"native-state-props.tsx#component:MovingDot#state:1\"] }"));
+         assert!(code.contains("propOnlySites: [\"native-state-props.tsx#component:MovingDot#state:0\", \"native-state-props.tsx#component:MovingDot#state:1\"]"));
+     }
+@@ -6118,7 +6178,7 @@
+     }
+ 
+     #[test]
+-    fn lowers_one_distinct_proven_state_binding_and_preserves_fallbacks_and_spans() {
++    fn keeps_uncertified_numeric_sources_on_fallback_and_preserves_spans() {
+         let source = r#"import { useState } from "native_runtime_api.ts";
+ export function Counter() {
+   const [count] = useState(1);
+@@ -6130,36 +6190,32 @@
+         assert!(response.error.is_none(), "{:?}", response.error);
+         let plan = response.plan.unwrap();
+         let code = plan.component_module.unwrap();
+-        let site = "native-unary.tsx#component:Counter#state:0";
+-        assert!(code.contains(&format!("data-direct={{__nativeBindStatePropAt(\"{site}\", (count) => (count), __nativeNumericPrograms[0])}}")), "{code}");
+-        assert!(code.contains(&format!("data-repeated={{__nativeBindStatePropAt(\"{site}\", (count) => (count + count), __nativeNumericPrograms[1])}}")));
+-        assert!(code.contains("data-compound={__nativeBindStatePropsAt([\"native-unary.tsx#component:Counter#state:0\", \"native-unary.tsx#component:Counter#state:1\"], ([count, other]) => (count + other), __nativeNumericPrograms[2])}"));
+-        assert!(code.contains(&format!("data-unary-template={{__nativeBindStatePropAt(\"{site}\", (count) => (`count ${{count}}`), __nativeNumericPrograms[3])}}")), "{code}");
+-        assert!(code.contains("data-compound-template={__nativeBindStatePropsAt([\"native-unary.tsx#component:Counter#state:0\", \"native-unary.tsx#component:Counter#state:1\"], ([count, other]) => (`total ${count + other}`), __nativeNumericPrograms[4])}"), "{code}");
+-        assert!(code.contains("data-vector={__nativeBindStatePropsAt([\"native-unary.tsx#component:Counter#state:0\", \"native-unary.tsx#component:Counter#state:1\"], ([count, other]) => ([count, other]), __nativeNumericPrograms[5])}"), "{code}");
+-        assert!(code.contains("sourceSites: [\"native-unary.tsx#component:Counter#state:0\", \"native-unary.tsx#component:Counter#state:1\"] }"));
+-        assert_eq!(
+-            code.matches("sinkId: \"native-unary.tsx#numeric-sink:")
+-                .count(),
+-            6
++        assert!(code.contains("data-direct={count}"), "{code}");
++        assert!(code.contains("data-repeated={count + count}"), "{code}");
++        assert!(code.contains("data-compound={count + other}"), "{code}");
++        assert!(
++            code.contains("data-unary-template={`count ${count}`}"),
++            "{code}"
+         );
+-        assert!(code.contains("data-shadow={((count: number) => count)(4)}"));
+-        assert!(code.contains("data-unsupported={Math.abs(count)}"));
+-        assert!(code.contains("data-mutable={mutable}"));
+         assert!(
+-            code.contains("propOnlySites: [\"native-unary.tsx#component:Counter#state:1\"]"),
++            code.contains("data-compound-template={`total ${count + other}`}"),
+             "{code}"
+         );
++        assert!(code.contains("data-vector={[count, other]}"), "{code}");
++        assert!(
++            !code.contains("__nativeNumericPrograms"),
++            "uncertified source reads remain on fallback: {code}"
++        );
++        assert!(code.contains("data-shadow={((count: number) => count)(4)}"));
++        assert!(code.contains("data-unsupported={Math.abs(count)}"));
++        assert!(code.contains("data-mutable={mutable}"));
++        assert!(code.contains("propOnlySites: []"), "{code}");
+ 
+         // The edit records still identify the authored expression boundaries. The Vite
+         // plugin uses these offsets to compose the source map back to the TSX source.
+         let edits = response.component_edits.unwrap();
+         let direct = source.find("data-direct={count}").unwrap() + "data-direct={".len();
+-        assert!(
+-            edits
+-                .iter()
+-                .any(|edit| edit.start as usize == direct && edit.end == edit.start)
+-        );
++        assert!(!edits.iter().any(|edit| edit.start as usize == direct));
+     }
+ 
+     #[test]
+@@ -6175,7 +6231,7 @@
+     }
+ 
+     #[test]
+-    fn state_layout_selects_unary_projectors_and_excludes_compound_or_other_reads() {
++    fn state_layout_admits_compound_projectors_and_excludes_other_reads() {
+         let source = r#"import { useEffect, useState } from "native_runtime_api.ts";
+ export function Example() {
+   const [safe] = useState(1);
+@@ -6197,22 +6253,149 @@
+             .as_ref()
+             .expect("safe unary site should have a layout");
+         assert_eq!(state_layout.schema_version, 1);
+-        assert_eq!(state_layout.slots.len(), 1);
++        assert_eq!(state_layout.slots.len(), 3);
+         assert_eq!(
+             state_layout.slots[0].site_id,
+             "state-layout-eligibility.tsx#component:Example#state:0"
+         );
+         assert_eq!(state_layout.slots[0].slot, 0);
++        assert_eq!(
++            state_layout.slots[1].site_id,
++            "state-layout-eligibility.tsx#component:Example#state:1"
++        );
++        assert_eq!(state_layout.slots[1].slot, 1);
++        assert_eq!(
++            state_layout.slots[2].site_id,
++            "state-layout-eligibility.tsx#component:Example#state:2"
++        );
++        assert_eq!(state_layout.slots[2].slot, 2);
+         assert!(prop_sites.contains("state-layout-eligibility.tsx#component:Example#state:0"));
+         assert!(prop_sites.contains("state-layout-eligibility.tsx#component:Example#state:1"));
+         assert!(prop_sites.contains("state-layout-eligibility.tsx#component:Example#state:2"));
+         assert!(!prop_sites.contains("state-layout-eligibility.tsx#component:Example#state:3"));
+         assert!(!prop_sites.contains("state-layout-eligibility.tsx#component:Example#state:4"));
+         let code = plan.component_module.unwrap();
+-        assert!(code.contains("stateLayout: { schemaVersion: 1, slots: [{ siteId: \"state-layout-eligibility.tsx#component:Example#state:0\", slot: 0 }] }"));
++        assert!(code.contains("stateLayout: { schemaVersion: 1, programId: \"state-layout-eligibility.tsx#component:Example\", slots: [{ siteId: \"state-layout-eligibility.tsx#component:Example#state:0\", slot: 0 }, { siteId: \"state-layout-eligibility.tsx#component:Example#state:1\", slot: 1 }, { siteId: \"state-layout-eligibility.tsx#component:Example#state:2\", slot: 2 }] }"));
++        assert!(code.contains("sourceSites: [\"state-layout-eligibility.tsx#component:Example#state:1\", \"state-layout-eligibility.tsx#component:Example#state:2\"] }"), "{code}");
++    }
++
++    #[test]
++    fn owner_program_layout_covers_vector_and_repeated_numeric_reads_in_slot_order() {
++        let response = compile_state(
++            "native-owner-row-program.tsx",
++            include_str!("../../fixtures/native-owner-row-program.tsx"),
++        );
++        assert!(response.error.is_none(), "{:?}", response.error);
++        let plan = response.plan.unwrap();
++        let component = &plan.components.as_ref().unwrap()[0];
++        let layout = component
++            .state_layout
++            .as_ref()
++            .expect("all three numeric slots are eligible");
++        assert_eq!(layout.schema_version, 1);
++        assert_eq!(
++            layout.program_id.as_deref(),
++            Some("native-owner-row-program.tsx#component:Row")
++        );
++        assert_eq!(
++            layout
++                .slots
++                .iter()
++                .map(|slot| slot.site_id.as_str())
++                .collect::<Vec<_>>(),
++            vec![
++                "native-owner-row-program.tsx#component:Row#state:0",
++                "native-owner-row-program.tsx#component:Row#state:1",
++                "native-owner-row-program.tsx#component:Row#state:2",
++            ]
++        );
++
++        let code = plan.component_module.unwrap();
++        assert!(code.contains("stateLayout: { schemaVersion: 1, programId: \"native-owner-row-program.tsx#component:Row\""), "{code}");
++        assert!(code.contains("position={__nativeBindStatePropsAt([\"native-owner-row-program.tsx#component:Row#state:0\", \"native-owner-row-program.tsx#component:Row#state:1\", \"native-owner-row-program.tsx#component:Row#state:2\"], ([x, y, z]) => ([z, x, y]), __nativeNumericPrograms[0])}"), "{code}");
++        assert!(code.contains("data-repeat={__nativeBindStatePropAt(\"native-owner-row-program.tsx#component:Row#state:0\", (x) => (x + x), __nativeNumericPrograms[1])}"), "{code}");
++        assert!(code.contains("schemaVersion: 2, ownerProgramId: \"native-owner-row-program.tsx#component:Row\", sinkId:"), "{code}");
++
++        let outside = compile_state(
++            "owner-program-outside-read.tsx",
++            "import { useState } from \"native_runtime_api.ts\"; export function Row() { const [x] = useState(1); const copy = x; return <div data-x={x} />; }",
++        );
++        assert!(outside.error.is_none(), "{:?}", outside.error);
++        let outside = outside.plan.unwrap();
+         assert!(
+-            !code.contains("siteId: \"state-layout-eligibility.tsx#component:Example#state:1\"")
++            outside.components.as_ref().unwrap()[0]
++                .state_layout
++                .is_none()
++        );
++        assert!(
++            !outside
++                .component_module
++                .unwrap()
++                .contains("__nativeNumericPrograms")
++        );
++
++        let impure = compile_state(
++            "owner-program-unknown-call.tsx",
++            "import { useState } from \"native_runtime_api.ts\"; export function Row() { const [x] = useState(1); return <div data-direct={x} data-x={Math.abs(x)} />; }",
++        );
++        assert!(impure.error.is_none(), "{:?}", impure.error);
++        let impure = impure.plan.unwrap();
++        assert!(
++            impure.components.as_ref().unwrap()[0]
++                .state_layout
++                .is_none()
++        );
++        assert!(
++            !impure
++                .component_module
++                .unwrap()
++                .contains("__nativeNumericPrograms")
++        );
++
++        let mixed = compile_state(
++            "owner-program-mixed-numeric.tsx",
++            "import { useState } from \"native_runtime_api.ts\"; export function Row() { const [x] = useState(1); const [label] = useState(\"one\"); return <div data-pair={x + label} data-x={x} />; }",
+         );
++        assert!(mixed.error.is_none(), "{:?}", mixed.error);
++        let mixed = mixed.plan.unwrap();
++        assert!(mixed.components.as_ref().unwrap()[0].state_layout.is_none());
++        let mixed_code = mixed.component_module.unwrap();
++        assert!(mixed_code.contains("data-pair={x + label}"), "{mixed_code}");
++        assert!(mixed_code.contains("data-x={x}"), "{mixed_code}");
++        assert!(
++            !mixed_code.contains("__nativeNumericPrograms"),
++            "{mixed_code}"
++        );
++
++        let same_shape = compile_state(
++            "owner-program-two-components.tsx",
++            "import { useState } from \"native_runtime_api.ts\"; export function First() { const [value] = useState(1); return <mesh data-value={value} />; } export function Second() { const [value] = useState(2); return <mesh data-value={value} />; }",
++        );
++        assert!(same_shape.error.is_none(), "{:?}", same_shape.error);
++        let same_shape = same_shape.plan.unwrap();
++        let components = same_shape.components.as_ref().unwrap();
++        assert_eq!(components.len(), 2);
++        assert_eq!(
++            components[0]
++                .state_layout
++                .as_ref()
++                .unwrap()
++                .program_id
++                .as_deref(),
++            Some("owner-program-two-components.tsx#component:First")
++        );
++        assert_eq!(
++            components[1]
++                .state_layout
++                .as_ref()
++                .unwrap()
++                .program_id
++                .as_deref(),
++            Some("owner-program-two-components.tsx#component:Second")
++        );
++        let same_shape_code = same_shape.component_module.unwrap();
++        assert!(same_shape_code.contains("schemaVersion: 2, ownerProgramId: \"owner-program-two-components.tsx#component:First\""), "{same_shape_code}");
++        assert!(same_shape_code.contains("schemaVersion: 2, ownerProgramId: \"owner-program-two-components.tsx#component:Second\""), "{same_shape_code}");
+     }
+ 
+     #[test]
+@@ -6304,20 +6487,29 @@
+             code.contains("defineComponent as __nativeDefineComponent_"),
+             "{code}"
+         );
+-        assert!(code.contains("stateLayout: { schemaVersion: 1, slots: [{ siteId: \"state-layout-collision.tsx#component:Collision#state:0\", slot: 0 }] }"));
++        assert!(code.contains("stateLayout: { schemaVersion: 1, programId: \"state-layout-collision.tsx#component:Collision\", slots: [{ siteId: \"state-layout-collision.tsx#component:Collision#state:0\", slot: 0 }] }"));
+ 
+-        let no_layout = compile_state(
++        let repeated_read = compile_state(
+             "state-layout-empty.tsx",
+             "import { useState } from \"native_runtime_api.ts\"; export function Empty() { const [x] = useState(0); return <div data-pair={x + x} />; }",
+         );
+-        assert!(no_layout.error.is_none(), "{:?}", no_layout.error);
+-        let no_layout = no_layout.plan.unwrap();
+-        assert!(
+-            no_layout.components.as_ref().unwrap()[0]
++        assert!(repeated_read.error.is_none(), "{:?}", repeated_read.error);
++        let repeated_read = repeated_read.plan.unwrap();
++        let repeated_component = &repeated_read.components.as_ref().unwrap()[0];
++        assert_eq!(
++            repeated_component
+                 .state_layout
+-                .is_none()
++                .as_ref()
++                .unwrap()
++                .slots
++                .len(),
++            1
+         );
+-        assert!(!no_layout.component_module.unwrap().contains("stateLayout:"));
++        let repeated_code = repeated_read.component_module.unwrap();
++        assert!(repeated_code.contains("stateLayout: { schemaVersion: 1, programId: \"state-layout-empty.tsx#component:Empty\", slots: [{ siteId: \"state-layout-empty.tsx#component:Empty#state:0\", slot: 0 }] }"));
++        assert!(repeated_code.contains(
++            "schemaVersion: 2, ownerProgramId: \"state-layout-empty.tsx#component:Empty\", sinkId:"
++        ));
+ 
+         let product_source = include_str!("../../../src/browser/native_product_mixed_arm.tsx");
+         let product = compile_state("src/browser/native_product_mixed_arm.tsx", product_source);
+@@ -6398,6 +6590,12 @@
+             "{code}"
+         );
+         assert!(code.contains("data-pair={__nativeBindStatePropsAt([\"numeric-order.tsx#component:Counter#state:2\", \"numeric-order.tsx#component:Counter#state:10\"], ([v2, v10]) => (v2 + v10), __nativeNumericPrograms_[11])}"), "{code}");
++        assert!(
++            code.contains(
++                "schemaVersion: 2, ownerProgramId: \"numeric-order.tsx#component:Counter\", sinkId:"
++            ),
++            "{code}"
++        );
+         assert!(code.contains("sourceSites: [\"numeric-order.tsx#component:Counter#state:2\", \"numeric-order.tsx#component:Counter#state:10\"] }"), "{code}");
+     }
+ 
+--- /dev/null
++++ b/compiler/fixtures/native-owner-row-program.tsx
+@@ -0,0 +1,8 @@
++import { useState } from "native_runtime_api.ts";
++
++export function Row() {
++  const [x] = useState(1);
++  const [y] = useState(2);
++  const [z] = useState(3);
++  return <mesh position={[z, x, y]} data-repeat={x + x} data-x={x} data-y={y} />;
++}

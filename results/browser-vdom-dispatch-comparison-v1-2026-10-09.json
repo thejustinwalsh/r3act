@@ -1,0 +1,166 @@
+{
+  "schemaVersion": 1,
+  "experiment": "Retained VDOM dispatch: whole style object vs direct style fields vs OXC CSR",
+  "capturedAt": "2026-10-09",
+  "environment": {
+    "browser": "Chrome 155.0.0.0",
+    "platform": "macOS Intel",
+    "hardwareConcurrency": 10,
+    "devicePixelRatio": 2
+  },
+  "protocol": {
+    "entities": 10000,
+    "changedFraction": 0.1,
+    "changedEntitiesPerBatch": 1000,
+    "warmupPairsPerPage": 12,
+    "timedPairsPerPage": 36,
+    "repeatsPerPair": 6,
+    "hostPropsPerChangedEntity": 3,
+    "measurement": "update dispatch plus synchronous host commit; paint and presentation excluded",
+    "parity": "all timed pairs and final DOM styles matched",
+    "note": "Page-load replications were run in mode blocks, not interleaved. Treat small differences between dispatch modes as indicative; React timings show session drift."
+  },
+  "runs": [
+    {
+      "mode": "runtime-discovered-style-object",
+      "seeds": [
+        42000021,
+        42000031,
+        42000041
+      ],
+      "reactMedianMs": [
+        8.05,
+        8.216666666169962,
+        8.316666666418314
+      ],
+      "reactP95Ms": [
+        9.05,
+        8.933333333581686,
+        9.566666666418314
+      ],
+      "vdomMedianMs": [
+        1.866666667163372,
+        1.933333333581686,
+        1.8999999997516472
+      ],
+      "vdomP95Ms": [
+        2.1833333323399224,
+        2.1666666666666665,
+        2.2666666669150195
+      ],
+      "setupMs": [
+        31.80000000447035,
+        33.79999999701977,
+        34.899999998509884
+      ],
+      "parityPasses": 3,
+      "pairedWinsPerPage": [
+        36,
+        36,
+        36
+      ]
+    },
+    {
+      "mode": "runtime-discovered-direct-style-fields",
+      "seeds": [
+        43000011,
+        43000021,
+        43000031
+      ],
+      "reactMedianMs": [
+        7.966666667411725,
+        8.34999999900659,
+        7.816666666418314
+      ],
+      "reactP95Ms": [
+        8.933333333581686,
+        10.583333333333334,
+        8.883333334078392
+      ],
+      "vdomMedianMs": [
+        0.8833333340783914,
+        0.9166666666666666,
+        0.866666667163372
+      ],
+      "vdomP95Ms": [
+        1.0666666676600773,
+        1.1666666666666667,
+        1.433333333581686
+      ],
+      "setupMs": [
+        37.79999999701977,
+        33.899999998509884,
+        36.19999999552965
+      ],
+      "parityPasses": 3,
+      "pairedWinsPerPage": [
+        36,
+        36,
+        36
+      ]
+    },
+    {
+      "mode": "oxc-csr-cached-direct-style-fields",
+      "seeds": [
+        44000011,
+        44000021,
+        44000031
+      ],
+      "reactMedianMs": [
+        8.716666667411724,
+        9.5,
+        9.033333333830038
+      ],
+      "reactP95Ms": [
+        13.283333333830038,
+        10.25,
+        10.0
+      ],
+      "vdomMedianMs": [
+        0.9499999992549419,
+        1.0333333338300388,
+        0.9666666661699613
+      ],
+      "vdomP95Ms": [
+        1.1833333323399227,
+        1.316666666418314,
+        1.2166666674117248
+      ],
+      "setupMs": [
+        46.100000001490116,
+        62.600000001490116,
+        47.19999999552965
+      ],
+      "parityPasses": 3,
+      "pairedWinsPerPage": [
+        36,
+        36,
+        36
+      ]
+    }
+  ],
+  "summary": [
+    {
+      "mode": "runtime-discovered-style-object",
+      "replications": 3,
+      "vdomMedianAcrossPageMediansMs": 1.8999999997516472,
+      "vdomP95AcrossPageP95Ms": 2.1833333323399224,
+      "medianSetupMs": 33.79999999701977
+    },
+    {
+      "mode": "runtime-discovered-direct-style-fields",
+      "replications": 3,
+      "vdomMedianAcrossPageMediansMs": 0.8833333340783914,
+      "vdomP95AcrossPageP95Ms": 1.1666666666666667,
+      "medianSetupMs": 36.19999999552965
+    },
+    {
+      "mode": "oxc-csr-cached-direct-style-fields",
+      "replications": 3,
+      "vdomMedianAcrossPageMediansMs": 0.9666666661699613,
+      "vdomP95AcrossPageP95Ms": 1.2166666674117248,
+      "medianSetupMs": 47.19999999552965
+    }
+  ],
+  "interpretation": "Direct property-level writes explain most of the update reduction. In this two-source fixture, OXC CSR edges are resolved once during mount into per-source direct-writer lists. Their median update time (0.967 ms) is close to the runtime-discovered list (0.883 ms), with a higher median setup cost (47.2 vs 36.2 ms). The graph provides authoritative dependency metadata, but this experiment does not show a steady-state speed advantage from the compiler graph itself. The result does not test larger DAG topology, structural updates, or async scheduling."
+}

@@ -1,0 +1,79 @@
+--- a/src/vdom_snapshot_runtime.ts
++++ b/src/vdom_snapshot_runtime.ts
+@@ -70,7 +70,6 @@
+   programEpoch?: number;
+   styleWriter?: (next: unknown, previous: unknown) => void;
+   ownerRowInputs?: number[];
+-  ownerRowSources?: readonly ScalarSource[];
+   ownerRowInputSlots?: readonly number[];
+   ownerRowProjectInputs?: (values: readonly number[]) => unknown;
+   ownerRowCutEpoch?: number;
+@@ -2488,7 +2487,7 @@
+       if (!usedSlots[slotIndex]) continue;
+       if (!sources[slotIndex]) return null;
+       for (const group of groupsBySlot[slotIndex]) {
+-        if (group.ownerRowSources) return null;
++        if (group.ownerRowInputs !== undefined) return null;
+       }
+     }
+     const token = Object.freeze({}) as PreparedNumericRowProgram;
+@@ -2519,7 +2518,6 @@
+     for (const groups of groupsBySlot) {
+       for (const group of groups) {
+         group.ownerRowInputs ??= new Array<number>(group.sources.length);
+-        group.ownerRowSources = sources.filter((source): source is ScalarSource => source !== undefined);
+         const binding = getBoundValue(group.rawValue)!;
+         group.ownerRowInputSlots = binding.numericOwner!.sourceSlots;
+         group.ownerRowProjectInputs = binding.projectInputs;
+@@ -2553,7 +2551,6 @@
+     for (const groups of record.groupsBySlot) {
+       for (const group of groups) {
+         group.ownerRowInputs = undefined;
+-        group.ownerRowSources = undefined;
+         group.ownerRowInputSlots = undefined;
+         group.ownerRowProjectInputs = undefined;
+         group.ownerRowCutEpoch = undefined;
+--- a/src/prepared_owner_row_program_test.ts
++++ b/src/prepared_owner_row_program_test.ts
+@@ -239,6 +239,41 @@
+   same(root.executePreparedNumericRows(
+     [token0], new Uint32Array([0]), new Uint32Array([0]), [6], 1,
+   ), null, "binding refresh invalidates its prepared row token");
++  root.dispose();
++});
++
++Deno.test("prepared owner rows reject duplicate source leases and reprepare after refresh", () => {
++  const host = new MemoryVDOMHost();
++  const container = host.createContainer();
++  const root = new VDOMSnapshotRoot(host, container);
++  const x = new ScalarSource(45, 1);
++  const y = new ScalarSource(46, 2);
++  const xColumn = new NumericColumn(47, 0, new Float64Array([1]));
++  const yColumn = new NumericColumn(48, 1, new Float64Array([2]));
++  root.commit(jsx("div", {}, rowTree([x, y], 450, (values) => values[0] + values[1])), undefined, true);
++  const firstIdentity = {};
++  const first = mustToken(root.prepareNumericRowProgram({
++    owner: 450, layout, rowIdentity: firstIdentity, row: 0, generation: 1,
++    sources: [x, y], columns: [xColumn, yColumn],
++  }));
++  same(root.prepareNumericRowProgram({
++    owner: 450, layout, rowIdentity: {}, row: 0, generation: 1,
++    sources: [x, y], columns: [xColumn, yColumn],
++  }), null, "one mounted source set cannot belong to two prepared row records");
++
++  root.commit(jsx("div", {}, rowTree([x, y], 450, (values) => values[0] + values[1] + 1)), undefined, true);
++  same(root.executePreparedNumericRows(
++    [first], new Uint32Array([0]), new Uint32Array([0]), [3], 1,
++  ), null, "refresh invalidates the prior prepared row");
++  const refreshed = mustToken(root.prepareNumericRowProgram({
++    owner: 450, layout, rowIdentity: {}, row: 0, generation: 1,
++    sources: [x, y], columns: [xColumn, yColumn],
++  }));
++  xColumn.values[0] = 3;
++  same(root.executePreparedNumericRows(
++    [refreshed], new Uint32Array([0]), new Uint32Array([0]), [3], 1,
++  ), true, "the refreshed binding can prepare and execute a new row record");
++  same(container.children[0].children[0].props["data-total"], 6, "reprepared row uses refreshed projector");
+   root.dispose();
+ });
+ 

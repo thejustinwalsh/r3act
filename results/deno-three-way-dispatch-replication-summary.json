@@ -1,0 +1,665 @@
+{
+  "schemaVersion": 1,
+  "experiment": "Three-way graph, bucket, and full-scan independent process replications",
+  "processCount": 3,
+  "seeds": [
+    1222641101,
+    1222641211,
+    1222641307
+  ],
+  "runtime": {
+    "deno": "2.6.3",
+    "v8": "14.2.231.17-rusty",
+    "os": "darwin",
+    "arch": "aarch64",
+    "hardwareConcurrency": 10,
+    "sampleDate": "2026-10-09T16:12:19.419Z"
+  },
+  "rawSources": [
+    "results/deno-three-way-dispatch-process-1.json",
+    "results/deno-three-way-dispatch-process-2.json",
+    "results/deno-three-way-dispatch-process-3.json"
+  ],
+  "scenarios": [
+    {
+      "entityCount": 50000,
+      "changedFraction": 0.01,
+      "changedCount": 500,
+      "distribution": "spread",
+      "bucketSize": 64,
+      "bucketEntityInspectionsPerBatch": 32000,
+      "medianUsAcrossProcesses": {
+        "graph": 5.375839999999812,
+        "bucketScan": 33.999999999991815,
+        "fullScan": 37.83300000000622
+      },
+      "pairwiseWinsByProcess": [
+        {
+          "graphOverBucket": 48,
+          "bucketOverGraph": 0,
+          "graphOverFullScan": 48,
+          "fullScanOverGraph": 0,
+          "bucketOverFullScan": 47,
+          "fullScanOverBucket": 1
+        },
+        {
+          "graphOverBucket": 48,
+          "bucketOverGraph": 0,
+          "graphOverFullScan": 48,
+          "fullScanOverGraph": 0,
+          "bucketOverFullScan": 39,
+          "fullScanOverBucket": 9
+        },
+        {
+          "graphOverBucket": 48,
+          "bucketOverGraph": 0,
+          "graphOverFullScan": 48,
+          "fullScanOverGraph": 0,
+          "bucketOverFullScan": 44,
+          "fullScanOverBucket": 4
+        }
+      ],
+      "parityEveryProcess": true
+    },
+    {
+      "entityCount": 50000,
+      "changedFraction": 0.01,
+      "changedCount": 500,
+      "distribution": "cluster",
+      "bucketSize": 64,
+      "bucketEntityInspectionsPerBatch": 576,
+      "medianUsAcrossProcesses": {
+        "graph": 4.428340000000048,
+        "bucketScan": 4.0645161290324126,
+        "fullScan": 42.124999999998636
+      },
+      "pairwiseWinsByProcess": [
+        {
+          "graphOverBucket": 1,
+          "bucketOverGraph": 47,
+          "graphOverFullScan": 48,
+          "fullScanOverGraph": 0,
+          "bucketOverFullScan": 48,
+          "fullScanOverBucket": 0
+        },
+        {
+          "graphOverBucket": 0,
+          "bucketOverGraph": 48,
+          "graphOverFullScan": 48,
+          "fullScanOverGraph": 0,
+          "bucketOverFullScan": 48,
+          "fullScanOverBucket": 0
+        },
+        {
+          "graphOverBucket": 1,
+          "bucketOverGraph": 47,
+          "graphOverFullScan": 48,
+          "fullScanOverGraph": 0,
+          "bucketOverFullScan": 48,
+          "fullScanOverBucket": 0
+        }
+      ],
+      "parityEveryProcess": true
+    },
+    {
+      "entityCount": 50000,
+      "changedFraction": 0.1,
+      "changedCount": 5000,
+      "distribution": "spread",
+      "bucketSize": 64,
+      "bucketEntityInspectionsPerBatch": 50000,
+      "medianUsAcrossProcesses": {
+        "graph": 52.31660000000602,
+        "bucketScan": 85.00000000003638,
+        "fullScan": 73.70900000000802
+      },
+      "pairwiseWinsByProcess": [
+        {
+          "graphOverBucket": 48,
+          "bucketOverGraph": 0,
+          "graphOverFullScan": 48,
+          "fullScanOverGraph": 0,
+          "bucketOverFullScan": 1,
+          "fullScanOverBucket": 47
+        },
+        {
+          "graphOverBucket": 47,
+          "bucketOverGraph": 1,
+          "graphOverFullScan": 48,
+          "fullScanOverGraph": 0,
+          "bucketOverFullScan": 1,
+          "fullScanOverBucket": 47
+        },
+        {
+          "graphOverBucket": 48,
+          "bucketOverGraph": 0,
+          "graphOverFullScan": 48,
+          "fullScanOverGraph": 0,
+          "bucketOverFullScan": 4,
+          "fullScanOverBucket": 44
+        }
+      ],
+      "parityEveryProcess": true
+    },
+    {
+      "entityCount": 50000,
+      "changedFraction": 0.1,
+      "changedCount": 5000,
+      "distribution": "cluster",
+      "bucketSize": 64,
+      "bucketEntityInspectionsPerBatch": 5056,
+      "medianUsAcrossProcesses": {
+        "graph": 45.150000000001,
+        "bucketScan": 40.00000000000151,
+        "fullScan": 73.04099999998925
+      },
+      "pairwiseWinsByProcess": [
+        {
+          "graphOverBucket": 0,
+          "bucketOverGraph": 48,
+          "graphOverFullScan": 48,
+          "fullScanOverGraph": 0,
+          "bucketOverFullScan": 48,
+          "fullScanOverBucket": 0
+        },
+        {
+          "graphOverBucket": 0,
+          "bucketOverGraph": 48,
+          "graphOverFullScan": 48,
+          "fullScanOverGraph": 0,
+          "bucketOverFullScan": 48,
+          "fullScanOverBucket": 0
+        },
+        {
+          "graphOverBucket": 0,
+          "bucketOverGraph": 48,
+          "graphOverFullScan": 48,
+          "fullScanOverGraph": 0,
+          "bucketOverFullScan": 48,
+          "fullScanOverBucket": 0
+        }
+      ],
+      "parityEveryProcess": true
+    },
+    {
+      "entityCount": 50000,
+      "changedFraction": 0.15,
+      "changedCount": 7500,
+      "distribution": "spread",
+      "bucketSize": 64,
+      "bucketEntityInspectionsPerBatch": 50000,
+      "medianUsAcrossProcesses": {
+        "graph": 74.08333333334365,
+        "bucketScan": 102.33299999998735,
+        "fullScan": 90.87499999998272
+      },
+      "pairwiseWinsByProcess": [
+        {
+          "graphOverBucket": 48,
+          "bucketOverGraph": 0,
+          "graphOverFullScan": 48,
+          "fullScanOverGraph": 0,
+          "bucketOverFullScan": 0,
+          "fullScanOverBucket": 48
+        },
+        {
+          "graphOverBucket": 48,
+          "bucketOverGraph": 0,
+          "graphOverFullScan": 48,
+          "fullScanOverGraph": 0,
+          "bucketOverFullScan": 1,
+          "fullScanOverBucket": 47
+        },
+        {
+          "graphOverBucket": 48,
+          "bucketOverGraph": 0,
+          "graphOverFullScan": 48,
+          "fullScanOverGraph": 0,
+          "bucketOverFullScan": 1,
+          "fullScanOverBucket": 47
+        }
+      ],
+      "parityEveryProcess": true
+    },
+    {
+      "entityCount": 50000,
+      "changedFraction": 0.15,
+      "changedCount": 7500,
+      "distribution": "cluster",
+      "bucketSize": 64,
+      "bucketEntityInspectionsPerBatch": 7552,
+      "medianUsAcrossProcesses": {
+        "graph": 68.27766666666928,
+        "bucketScan": 60.24999999999636,
+        "fullScan": 90.45900000000984
+      },
+      "pairwiseWinsByProcess": [
+        {
+          "graphOverBucket": 2,
+          "bucketOverGraph": 46,
+          "graphOverFullScan": 48,
+          "fullScanOverGraph": 0,
+          "bucketOverFullScan": 48,
+          "fullScanOverBucket": 0
+        },
+        {
+          "graphOverBucket": 0,
+          "bucketOverGraph": 48,
+          "graphOverFullScan": 48,
+          "fullScanOverGraph": 0,
+          "bucketOverFullScan": 48,
+          "fullScanOverBucket": 0
+        },
+        {
+          "graphOverBucket": 1,
+          "bucketOverGraph": 47,
+          "graphOverFullScan": 48,
+          "fullScanOverGraph": 0,
+          "bucketOverFullScan": 48,
+          "fullScanOverBucket": 0
+        }
+      ],
+      "parityEveryProcess": true
+    },
+    {
+      "entityCount": 50000,
+      "changedFraction": 0.2,
+      "changedCount": 10000,
+      "distribution": "spread",
+      "bucketSize": 64,
+      "bucketEntityInspectionsPerBatch": 50000,
+      "medianUsAcrossProcesses": {
+        "graph": 95.35399999998617,
+        "bucketScan": 116.9999999999618,
+        "fullScan": 105.7920000000081
+      },
+      "pairwiseWinsByProcess": [
+        {
+          "graphOverBucket": 48,
+          "bucketOverGraph": 0,
+          "graphOverFullScan": 48,
+          "fullScanOverGraph": 0,
+          "bucketOverFullScan": 0,
+          "fullScanOverBucket": 48
+        },
+        {
+          "graphOverBucket": 48,
+          "bucketOverGraph": 0,
+          "graphOverFullScan": 47,
+          "fullScanOverGraph": 1,
+          "bucketOverFullScan": 1,
+          "fullScanOverBucket": 47
+        },
+        {
+          "graphOverBucket": 48,
+          "bucketOverGraph": 0,
+          "graphOverFullScan": 48,
+          "fullScanOverGraph": 0,
+          "bucketOverFullScan": 1,
+          "fullScanOverBucket": 47
+        }
+      ],
+      "parityEveryProcess": true
+    },
+    {
+      "entityCount": 50000,
+      "changedFraction": 0.2,
+      "changedCount": 10000,
+      "distribution": "cluster",
+      "bucketSize": 64,
+      "bucketEntityInspectionsPerBatch": 10048,
+      "medianUsAcrossProcesses": {
+        "graph": 90.39599999999837,
+        "bucketScan": 79.99999999998408,
+        "fullScan": 107.37499999999045
+      },
+      "pairwiseWinsByProcess": [
+        {
+          "graphOverBucket": 2,
+          "bucketOverGraph": 46,
+          "graphOverFullScan": 48,
+          "fullScanOverGraph": 0,
+          "bucketOverFullScan": 48,
+          "fullScanOverBucket": 0
+        },
+        {
+          "graphOverBucket": 0,
+          "bucketOverGraph": 48,
+          "graphOverFullScan": 48,
+          "fullScanOverGraph": 0,
+          "bucketOverFullScan": 48,
+          "fullScanOverBucket": 0
+        },
+        {
+          "graphOverBucket": 0,
+          "bucketOverGraph": 48,
+          "graphOverFullScan": 48,
+          "fullScanOverGraph": 0,
+          "bucketOverFullScan": 48,
+          "fullScanOverBucket": 0
+        }
+      ],
+      "parityEveryProcess": true
+    },
+    {
+      "entityCount": 50000,
+      "changedFraction": 0.25,
+      "changedCount": 12500,
+      "distribution": "spread",
+      "bucketSize": 64,
+      "bucketEntityInspectionsPerBatch": 50000,
+      "medianUsAcrossProcesses": {
+        "graph": 120.3959999999995,
+        "bucketScan": 135.249999999985,
+        "fullScan": 125.66700000002129
+      },
+      "pairwiseWinsByProcess": [
+        {
+          "graphOverBucket": 47,
+          "bucketOverGraph": 1,
+          "graphOverFullScan": 42,
+          "fullScanOverGraph": 6,
+          "bucketOverFullScan": 1,
+          "fullScanOverBucket": 47
+        },
+        {
+          "graphOverBucket": 45,
+          "bucketOverGraph": 3,
+          "graphOverFullScan": 44,
+          "fullScanOverGraph": 4,
+          "bucketOverFullScan": 2,
+          "fullScanOverBucket": 46
+        },
+        {
+          "graphOverBucket": 47,
+          "bucketOverGraph": 1,
+          "graphOverFullScan": 41,
+          "fullScanOverGraph": 7,
+          "bucketOverFullScan": 5,
+          "fullScanOverBucket": 43
+        }
+      ],
+      "parityEveryProcess": true
+    },
+    {
+      "entityCount": 50000,
+      "changedFraction": 0.25,
+      "changedCount": 12500,
+      "distribution": "cluster",
+      "bucketSize": 64,
+      "bucketEntityInspectionsPerBatch": 12608,
+      "medianUsAcrossProcesses": {
+        "graph": 114.16650000001027,
+        "bucketScan": 101.1670000000322,
+        "fullScan": 125.74999999998226
+      },
+      "pairwiseWinsByProcess": [
+        {
+          "graphOverBucket": 1,
+          "bucketOverGraph": 47,
+          "graphOverFullScan": 47,
+          "fullScanOverGraph": 1,
+          "bucketOverFullScan": 48,
+          "fullScanOverBucket": 0
+        },
+        {
+          "graphOverBucket": 2,
+          "bucketOverGraph": 46,
+          "graphOverFullScan": 43,
+          "fullScanOverGraph": 5,
+          "bucketOverFullScan": 45,
+          "fullScanOverBucket": 3
+        },
+        {
+          "graphOverBucket": 4,
+          "bucketOverGraph": 44,
+          "graphOverFullScan": 45,
+          "fullScanOverGraph": 3,
+          "bucketOverFullScan": 44,
+          "fullScanOverBucket": 4
+        }
+      ],
+      "parityEveryProcess": true
+    },
+    {
+      "entityCount": 50000,
+      "changedFraction": 0.5,
+      "changedCount": 25000,
+      "distribution": "spread",
+      "bucketSize": 64,
+      "bucketEntityInspectionsPerBatch": 50000,
+      "medianUsAcrossProcesses": {
+        "graph": 231.0420000000022,
+        "bucketScan": 226.37500000001864,
+        "fullScan": 211.9590000000926
+      },
+      "pairwiseWinsByProcess": [
+        {
+          "graphOverBucket": 6,
+          "bucketOverGraph": 42,
+          "graphOverFullScan": 3,
+          "fullScanOverGraph": 45,
+          "bucketOverFullScan": 3,
+          "fullScanOverBucket": 45
+        },
+        {
+          "graphOverBucket": 16,
+          "bucketOverGraph": 32,
+          "graphOverFullScan": 1,
+          "fullScanOverGraph": 47,
+          "bucketOverFullScan": 1,
+          "fullScanOverBucket": 47
+        },
+        {
+          "graphOverBucket": 4,
+          "bucketOverGraph": 44,
+          "graphOverFullScan": 1,
+          "fullScanOverGraph": 47,
+          "bucketOverFullScan": 1,
+          "fullScanOverBucket": 47
+        }
+      ],
+      "parityEveryProcess": true
+    },
+    {
+      "entityCount": 50000,
+      "changedFraction": 0.5,
+      "changedCount": 25000,
+      "distribution": "cluster",
+      "bucketSize": 64,
+      "bucketEntityInspectionsPerBatch": 25024,
+      "medianUsAcrossProcesses": {
+        "graph": 225.33399999997528,
+        "bucketScan": 200.04099999994196,
+        "fullScan": 210.24999999997362
+      },
+      "pairwiseWinsByProcess": [
+        {
+          "graphOverBucket": 0,
+          "bucketOverGraph": 48,
+          "graphOverFullScan": 0,
+          "fullScanOverGraph": 48,
+          "bucketOverFullScan": 47,
+          "fullScanOverBucket": 1
+        },
+        {
+          "graphOverBucket": 0,
+          "bucketOverGraph": 48,
+          "graphOverFullScan": 2,
+          "fullScanOverGraph": 46,
+          "bucketOverFullScan": 44,
+          "fullScanOverBucket": 4
+        },
+        {
+          "graphOverBucket": 0,
+          "bucketOverGraph": 48,
+          "graphOverFullScan": 1,
+          "fullScanOverGraph": 47,
+          "bucketOverFullScan": 48,
+          "fullScanOverBucket": 0
+        }
+      ],
+      "parityEveryProcess": true
+    },
+    {
+      "entityCount": 50000,
+      "changedFraction": 0.75,
+      "changedCount": 37500,
+      "distribution": "spread",
+      "bucketSize": 64,
+      "bucketEntityInspectionsPerBatch": 50000,
+      "medianUsAcrossProcesses": {
+        "graph": 340.45800000001236,
+        "bucketScan": 312.4589999999898,
+        "fullScan": 296.1249999999609
+      },
+      "pairwiseWinsByProcess": [
+        {
+          "graphOverBucket": 0,
+          "bucketOverGraph": 48,
+          "graphOverFullScan": 0,
+          "fullScanOverGraph": 48,
+          "bucketOverFullScan": 0,
+          "fullScanOverBucket": 48
+        },
+        {
+          "graphOverBucket": 0,
+          "bucketOverGraph": 48,
+          "graphOverFullScan": 0,
+          "fullScanOverGraph": 48,
+          "bucketOverFullScan": 0,
+          "fullScanOverBucket": 48
+        },
+        {
+          "graphOverBucket": 0,
+          "bucketOverGraph": 48,
+          "graphOverFullScan": 0,
+          "fullScanOverGraph": 48,
+          "bucketOverFullScan": 3,
+          "fullScanOverBucket": 45
+        }
+      ],
+      "parityEveryProcess": true
+    },
+    {
+      "entityCount": 50000,
+      "changedFraction": 0.75,
+      "changedCount": 37500,
+      "distribution": "cluster",
+      "bucketSize": 64,
+      "bucketEntityInspectionsPerBatch": 37568,
+      "medianUsAcrossProcesses": {
+        "graph": 338.916999999924,
+        "bucketScan": 298.9999999999782,
+        "fullScan": 295.8340000000135
+      },
+      "pairwiseWinsByProcess": [
+        {
+          "graphOverBucket": 0,
+          "bucketOverGraph": 48,
+          "graphOverFullScan": 0,
+          "fullScanOverGraph": 48,
+          "bucketOverFullScan": 7,
+          "fullScanOverBucket": 41
+        },
+        {
+          "graphOverBucket": 0,
+          "bucketOverGraph": 48,
+          "graphOverFullScan": 0,
+          "fullScanOverGraph": 48,
+          "bucketOverFullScan": 9,
+          "fullScanOverBucket": 39
+        },
+        {
+          "graphOverBucket": 0,
+          "bucketOverGraph": 48,
+          "graphOverFullScan": 0,
+          "fullScanOverGraph": 48,
+          "bucketOverFullScan": 7,
+          "fullScanOverBucket": 41
+        }
+      ],
+      "parityEveryProcess": true
+    },
+    {
+      "entityCount": 50000,
+      "changedFraction": 1,
+      "changedCount": 50000,
+      "distribution": "spread",
+      "bucketSize": 64,
+      "bucketEntityInspectionsPerBatch": 50000,
+      "medianUsAcrossProcesses": {
+        "graph": 452.2919999999431,
+        "bucketScan": 401.62499999996726,
+        "fullScan": 379.3749999999818
+      },
+      "pairwiseWinsByProcess": [
+        {
+          "graphOverBucket": 0,
+          "bucketOverGraph": 48,
+          "graphOverFullScan": 0,
+          "fullScanOverGraph": 48,
+          "bucketOverFullScan": 2,
+          "fullScanOverBucket": 46
+        },
+        {
+          "graphOverBucket": 0,
+          "bucketOverGraph": 48,
+          "graphOverFullScan": 0,
+          "fullScanOverGraph": 48,
+          "bucketOverFullScan": 0,
+          "fullScanOverBucket": 48
+        },
+        {
+          "graphOverBucket": 0,
+          "bucketOverGraph": 48,
+          "graphOverFullScan": 0,
+          "fullScanOverGraph": 48,
+          "bucketOverFullScan": 1,
+          "fullScanOverBucket": 47
+        }
+      ],
+      "parityEveryProcess": true
+    },
+    {
+      "entityCount": 50000,
+      "changedFraction": 1,
+      "changedCount": 50000,
+      "distribution": "cluster",
+      "bucketSize": 64,
+      "bucketEntityInspectionsPerBatch": 50000,
+      "medianUsAcrossProcesses": {
+        "graph": 452.54099999999653,
+        "bucketScan": 402.41600000001654,
+        "fullScan": 381.6669999999931
+      },
+      "pairwiseWinsByProcess": [
+        {
+          "graphOverBucket": 0,
+          "bucketOverGraph": 48,
+          "graphOverFullScan": 0,
+          "fullScanOverGraph": 48,
+          "bucketOverFullScan": 1,
+          "fullScanOverBucket": 47
+        },
+        {
+          "graphOverBucket": 0,
+          "bucketOverGraph": 48,
+          "graphOverFullScan": 0,
+          "fullScanOverGraph": 48,
+          "bucketOverFullScan": 0,
+          "fullScanOverBucket": 48
+        },
+        {
+          "graphOverBucket": 0,
+          "bucketOverGraph": 48,
+          "graphOverFullScan": 0,
+          "fullScanOverGraph": 48,
+          "bucketOverFullScan": 0,
+          "fullScanOverBucket": 48
+        }
+      ],
+      "parityEveryProcess": true
+    }
+  ]
+}

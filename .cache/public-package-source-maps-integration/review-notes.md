@@ -1,0 +1,9 @@
+# Public package source-map integration patch
+
+This staged patch updates only the repository's default package build and generic installed-package verifier. It does not apply the fusion checkpoint's status/archive or platform-specific qualification rules. `pnpm package:native` continues to use the same portable TypeScript and Cargo build commands, staging path, tarball path, package entry points, and verification flow.
+
+The build copies each authored TypeScript source named by emitted JavaScript and declaration maps into `sources/`, rewrites map URLs to relative paths resolving inside the package, embeds exact `sourcesContent`, and includes `sources/` in the package whitelist. It also carries `src/native_jsx_types.d.ts`, whose authored declaration source is useful for editor navigation but may not have an emitted map. The report records each packaged source path and SHA-256. Existing type checking remains against public `dist` declarations and automatic JSX imports; `sources/` is for source-map/editor navigation, not a new public module export or a type-resolution dependency.
+
+The generic consumer verifier installs the actual tarball, audits both `.js.map` and `.d.ts.map`, requires complete matching embedded source content, rejects external/escaping URLs, and compares every packed source byte against `package-report.json`. It also requires the installed `sources/` tree to match the report exactly. Existing public import/type checks remain unchanged. The consumer's existing `finally` removes its temporary project; the package builder's existing clean staging step remains unchanged.
+
+No build, install, or server was run for this staged patch. Applying and running the patch later will rebuild `.cache/native-package-build` and `.cache/compiled-ui-runtime.tgz` as the default workflow already does.

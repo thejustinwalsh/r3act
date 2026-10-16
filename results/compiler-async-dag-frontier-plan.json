@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "source_file": "compiler/fixtures/async_dag_frontier.ts",
+  "tasks": [
+    {
+      "id": "page-model",
+      "site_id": "compiler/fixtures/async_dag_frontier.ts#async-task:page-model",
+      "depends_on": [
+        "profile-summary",
+        "feed-annotations",
+        "recommendations"
+      ],
+      "call": {
+        "start": 471,
+        "end": 728
+      }
+    },
+    {
+      "id": "profile",
+      "site_id": "compiler/fixtures/async_dag_frontier.ts#async-task:profile",
+      "depends_on": [],
+      "call": {
+        "start": 732,
+        "end": 801
+      }
+    },
+    {
+      "id": "feed",
+      "site_id": "compiler/fixtures/async_dag_frontier.ts#async-task:feed",
+      "depends_on": [],
+      "call": {
+        "start": 805,
+        "end": 877
+      }
+    },
+    {
+      "id": "recommendations",
+      "site_id": "compiler/fixtures/async_dag_frontier.ts#async-task:recommendations",
+      "depends_on": [],
+      "call": {
+        "start": 881,
+        "end": 990
+      }
+    },
+    {
+      "id": "profile-summary",
+      "site_id": "compiler/fixtures/async_dag_frontier.ts#async-task:profile-summary",
+      "depends_on": [
+        "profile"
+      ],
+      "call": {
+        "start": 994,
+        "end": 1138
+      }
+    },
+    {
+      "id": "feed-annotations",
+      "site_id": "compiler/fixtures/async_dag_frontier.ts#async-task:feed-annotations",
+      "depends_on": [
+        "profile",
+        "feed"
+      ],
+      "call": {
+        "start": 1142,
+        "end": 1346
+      }
+    }
+  ],
+  "task_order": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    0
+  ]
+}

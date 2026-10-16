@@ -1,0 +1,77 @@
+--- a/src/component_state_runtime.ts
++++ b/src/component_state_runtime.ts
+@@ -4760,11 +4760,7 @@
+         );
+         if (!lane) return null;
+         let prepared = this.#nativeLanePrograms.get(lane);
+-        if (
+-          !prepared ||
+-          !this.#vdom.isPreparedNumericCellProgramCurrent(prepared.token)
+-        ) {
+-          this.#nativeLanePrograms.delete(lane);
++        if (!prepared) {
+           const source = this.world.scalarSourceForCell(handle);
+           if (!source) return null;
+           const token = this.#vdom.prepareNumericCellProgram(
+@@ -4782,20 +4778,58 @@
+         this.#numericProgramUsedCount = index + 1;
+       }
+       let declined = false;
+-      const wrote = this.#commitHostMutation(() => {
++      let wrote = this.#commitHostMutation(() => {
+         const result = this.#vdom.executePreparedNumericCells(
+           this.#nativeLaneTokens,
+           this.#numericProgramCurrentValues,
+           count,
+         );
+-        // A declined preflight is not a host publication or an acknowledgement.
+         if (result === null) {
+           declined = true;
+           return false;
+         }
+         return result;
+       });
+-      if (declined) return null;
++      if (declined) {
++        declined = false;
++        // The VDOM preflight declined before changing sources, projecting,
++        // or writing hosts. Refresh cached tokens and retry this exact cut
++        // once, preserving the values captured above.
++        for (let index = 0; index < count; index++) {
++          const handle = this.#nativeCellHandles[index]!;
++          const lane = this.world.numericLaneForCell(
++            handle,
++            this.#nativeCellVersions[index],
++          );
++          if (!lane) return null;
++          this.#nativeLanePrograms.delete(lane);
++          const source = this.world.scalarSourceForCell(handle);
++          if (!source) return null;
++          const token = this.#vdom.prepareNumericCellProgram(
++            source,
++            lane.column,
++            lane.row,
++          );
++          if (!token) return null;
++          this.#nativeLanePrograms.set(lane, { token, source });
++          this.#nativeLaneTokens[index] = token;
++          this.#numericProgramSources[index] = source;
++        }
++        wrote = this.#commitHostMutation(() => {
++          const result = this.#vdom.executePreparedNumericCells(
++            this.#nativeLaneTokens,
++            this.#numericProgramCurrentValues,
++            count,
++          );
++          if (result === null) {
++            declined = true;
++            return false;
++          }
++          return result;
++        });
++        // A repeated preflight decline preserves the generic fallback path.
++        if (declined) return null;
++      }
+       accepted = true;
+       this.#count("numeric.lane-batches");
+       this.#count("numeric.lane-cells", count);

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
+    <title>VDOM transition runtime smoke study</title>
+    <style>
+      :root { font: 16px/1.45 system-ui, sans-serif; color: #e8edf6; background: #10151f; }
+      body { max-width: 1000px; margin: 0 auto; padding: 32px 20px 60px; }
+      h1 { font-size: 28px; margin-bottom: 8px; }
+      .lede, .note { color: #a8b3c5; }
+      .controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0; }
+      button { border: 1px solid #52617a; border-radius: 8px; background: #1c2637; color: inherit; padding: 9px 13px; cursor: pointer; }
+      button:hover { background: #26354c; }
+      #status { min-height: 48px; border-left: 3px solid #75a7ff; padding: 8px 12px; background: #182131; }
+      .roots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 18px; }
+      .host { min-height: 150px; padding: 14px; border: 1px solid #37445a; border-radius: 12px; background: #151d2a; }
+      .card { padding: 12px; border-radius: 9px; background: #202d42; }
+      .card h2 { font-size: 17px; margin: 0 0 8px; }
+      .card p { margin: 0; color: #bac8dd; }
+      pre { white-space: pre-wrap; color: #b5c3d9; background: #0d121b; border-radius: 8px; padding: 12px; min-height: 90px; }
+      @media (max-width: 620px) { .roots { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <h1>VDOM transitions with two roots</h1>
+    <p class="lede">This page runs the retained keyed VDOM and transition coordinator against real DOM nodes. Pending candidates should leave both roots unchanged until the coordinated commit.</p>
+    <div class="controls">
+      <button id="bind-update">Update one bound source</button>
+      <button id="start-transition">Start two-root transition</button>
+      <button id="cancel-transition">Cancel pending transition</button>
+    </div>
+    <div id="status" role="status" aria-live="polite">Mounting version 1…</div>
+    <div class="roots">
+      <section><h2>Scene root</h2><div class="host" id="scene-root"></div></section>
+      <section><h2>HUD root</h2><div class="host" id="hud-root"></div></section>
+    </div>
+    <h2>Commit log</h2>
+    <pre id="log"></pre>
+    <p class="note">The delayed resources are deterministic timers. This is a behavior check, not a performance measurement and not a React comparison.</p>
+    <script type="module" src="/src/browser/vdom_runtime_smoke.ts"></script>
+  </body>
+</html>

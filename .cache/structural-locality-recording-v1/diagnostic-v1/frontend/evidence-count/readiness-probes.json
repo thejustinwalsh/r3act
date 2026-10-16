@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "portless-readiness-probes-v1",
+  "probes": [
+    {
+      "command": "Pinned Node HTTPS GET to https://structural-recording-diagnostic-v1.localhost:1355/.cache/structural-locality-recording-v1/diagnostic-v1/frontend/index.html with Portless CA.",
+      "sandbox": "default",
+      "exitCode": 1,
+      "toolOutput": "Error: getaddrinfo ENOTFOUND structural-recording-diagnostic-v1.localhost",
+      "interpretation": "Node's default resolver did not resolve .localhost; no TLS bypass was used."
+    },
+    {
+      "command": "Pinned Node HTTPS request to 127.0.0.1:1355 with servername and Host structural-recording-diagnostic-v1.localhost.",
+      "sandbox": "default",
+      "exitCode": 1,
+      "toolOutput": "Error: connect EPERM 127.0.0.1:1355 - Local (0.0.0.0:0)",
+      "interpretation": "The sandbox denied the loopback readiness probe."
+    },
+    {
+      "command": "Pinned Node HTTPS request to 127.0.0.1:1355 with servername and Host structural-recording-diagnostic-v1.localhost.",
+      "sandbox": "minimum command-scoped escalation",
+      "exitCode": 0,
+      "toolOutput": "{\"host\":\"structural-recording-diagnostic-v1.localhost\",\"path\":\"/.cache/structural-locality-recording-v1/diagnostic-v1/frontend/index.html\",\"status\":200,\"htmlIncludesBuiltAsset\":true,\"bodyPrefix\":\"<!doctype html>\\n<html lang=\\\"en\\\"><head><meta charset=\\\"utf-8\\\"><title>Recording B diagnostic gate</title>  <script type=\\\"module\\\" crossorigin src=\\\"/assets/index-CMf\"}\n",
+      "tlsVerification": "CA trusted through NODE_EXTRA_CA_CERTS; certificate validation remained enabled.",
+      "interpretation": "Exact nested HTML path returned 200 via the shared Portless proxy."
+    }
+  ],
+  "portlessListAfterLaunch": "Only the three pre-existing yacht aliases were listed; the exact HTTPS GET above independently confirmed the owned dynamic route."
+}

@@ -1,0 +1,657 @@
+{
+  "schemaVersion": "snake-frame-browser-v6-production-preregistration-v1",
+  "status": "PREREGISTERED",
+  "frozenAt": "2026-10-11T02:41:43.056Z",
+  "design": {
+    "purpose": "Test whether a data-oriented compiler binding to numeric trait columns lowers update CPU while preserving the production commit-delay advantage.",
+    "relation": "Follow-up to production V5; V5 source records and hashes remain unchanged.",
+    "totalPageLoads": 75,
+    "sizes": [
+      128,
+      512,
+      1024
+    ],
+    "arms": [
+      "react",
+      "runtime",
+      "generated-vdom",
+      "columnar-vdom",
+      "direct"
+    ],
+    "replicationsPerCell": 5,
+    "warmupFrames": 90,
+    "measuredFrames": 300,
+    "replicationUnit": "isolated visible browser page load",
+    "buildMode": "production",
+    "order": "Five fixed arm rotations and three-position size rotation per replication; see each page sequence.",
+    "dataLayout": "The Snake model computes per-entity x/y into reusable Float64Array columns for every arm; no arm converts an object-per-entity position array into columns during measurement.",
+    "armsDescription": {
+      "react": "React 19.3.0 + React Compiler; per-segment useSyncExternalStore snapshots consuming the same x/y columns",
+      "runtime": "runtime-discovered retained-VDOM bindings, one progress source, reading shared x/y columns",
+      "generated-vdom": "existing OXC CSR compiled prop IDs through the generic ScalarSource/setSources path",
+      "columnar-vdom": "OXC CSR prop IDs bound to contiguous Float64Array x/y columns; mount resolves entity rows to host writers; one setColumns batch per frame",
+      "direct": "cached DOM hosts with direct left/top writes from the same columns"
+    },
+    "primaryMetric": "update-to-commit milliseconds; React layout-effect timestamp, synchronous return for other arms",
+    "secondaryMetrics": [
+      "update-path CPU milliseconds",
+      "mount-to-first-commit milliseconds",
+      "per-page RAF interval p95 milliseconds",
+      "per-page Chrome heap snapshots when available"
+    ],
+    "analysis": "Report five page summaries per cell; each page is the replication unit and its 300 RAFs are nested. Report paired per-replication ratios to React and all individual direction counts. No post-hoc outlier exclusions.",
+    "contracts": [
+      "300 samples with complete React commit coverage",
+      "output positions match the deterministic Snake model",
+      "host count and host identity remain stable during measured frames",
+      "visible Chrome page and stable environment across all trials"
+    ],
+    "exclusions": [
+      "JavaScript bundle parse and evaluation",
+      "compiler execution",
+      "layout, paint, GPU work, and physical presentation"
+    ]
+  },
+  "pages": [
+    {
+      "sequence": 0,
+      "replication": 1,
+      "segmentCount": 128,
+      "arm": "react",
+      "trialId": "v6-s128-rep1-react",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=react&segments=128&frames=300&trial=v6-s128-rep1-react&autoplay=1&sequence=0"
+    },
+    {
+      "sequence": 1,
+      "replication": 1,
+      "segmentCount": 128,
+      "arm": "generated-vdom",
+      "trialId": "v6-s128-rep1-generated-vdom",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=generated-vdom&segments=128&frames=300&trial=v6-s128-rep1-generated-vdom&autoplay=1&sequence=1"
+    },
+    {
+      "sequence": 2,
+      "replication": 1,
+      "segmentCount": 128,
+      "arm": "runtime",
+      "trialId": "v6-s128-rep1-runtime",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=runtime&segments=128&frames=300&trial=v6-s128-rep1-runtime&autoplay=1&sequence=2"
+    },
+    {
+      "sequence": 3,
+      "replication": 1,
+      "segmentCount": 128,
+      "arm": "columnar-vdom",
+      "trialId": "v6-s128-rep1-columnar-vdom",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=columnar-vdom&segments=128&frames=300&trial=v6-s128-rep1-columnar-vdom&autoplay=1&sequence=3"
+    },
+    {
+      "sequence": 4,
+      "replication": 1,
+      "segmentCount": 128,
+      "arm": "direct",
+      "trialId": "v6-s128-rep1-direct",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=direct&segments=128&frames=300&trial=v6-s128-rep1-direct&autoplay=1&sequence=4"
+    },
+    {
+      "sequence": 5,
+      "replication": 1,
+      "segmentCount": 512,
+      "arm": "react",
+      "trialId": "v6-s512-rep1-react",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=react&segments=512&frames=300&trial=v6-s512-rep1-react&autoplay=1&sequence=5"
+    },
+    {
+      "sequence": 6,
+      "replication": 1,
+      "segmentCount": 512,
+      "arm": "generated-vdom",
+      "trialId": "v6-s512-rep1-generated-vdom",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=generated-vdom&segments=512&frames=300&trial=v6-s512-rep1-generated-vdom&autoplay=1&sequence=6"
+    },
+    {
+      "sequence": 7,
+      "replication": 1,
+      "segmentCount": 512,
+      "arm": "runtime",
+      "trialId": "v6-s512-rep1-runtime",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=runtime&segments=512&frames=300&trial=v6-s512-rep1-runtime&autoplay=1&sequence=7"
+    },
+    {
+      "sequence": 8,
+      "replication": 1,
+      "segmentCount": 512,
+      "arm": "columnar-vdom",
+      "trialId": "v6-s512-rep1-columnar-vdom",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=columnar-vdom&segments=512&frames=300&trial=v6-s512-rep1-columnar-vdom&autoplay=1&sequence=8"
+    },
+    {
+      "sequence": 9,
+      "replication": 1,
+      "segmentCount": 512,
+      "arm": "direct",
+      "trialId": "v6-s512-rep1-direct",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=direct&segments=512&frames=300&trial=v6-s512-rep1-direct&autoplay=1&sequence=9"
+    },
+    {
+      "sequence": 10,
+      "replication": 1,
+      "segmentCount": 1024,
+      "arm": "react",
+      "trialId": "v6-s1024-rep1-react",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=react&segments=1024&frames=300&trial=v6-s1024-rep1-react&autoplay=1&sequence=10"
+    },
+    {
+      "sequence": 11,
+      "replication": 1,
+      "segmentCount": 1024,
+      "arm": "generated-vdom",
+      "trialId": "v6-s1024-rep1-generated-vdom",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=generated-vdom&segments=1024&frames=300&trial=v6-s1024-rep1-generated-vdom&autoplay=1&sequence=11"
+    },
+    {
+      "sequence": 12,
+      "replication": 1,
+      "segmentCount": 1024,
+      "arm": "runtime",
+      "trialId": "v6-s1024-rep1-runtime",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=runtime&segments=1024&frames=300&trial=v6-s1024-rep1-runtime&autoplay=1&sequence=12"
+    },
+    {
+      "sequence": 13,
+      "replication": 1,
+      "segmentCount": 1024,
+      "arm": "columnar-vdom",
+      "trialId": "v6-s1024-rep1-columnar-vdom",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=columnar-vdom&segments=1024&frames=300&trial=v6-s1024-rep1-columnar-vdom&autoplay=1&sequence=13"
+    },
+    {
+      "sequence": 14,
+      "replication": 1,
+      "segmentCount": 1024,
+      "arm": "direct",
+      "trialId": "v6-s1024-rep1-direct",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=direct&segments=1024&frames=300&trial=v6-s1024-rep1-direct&autoplay=1&sequence=14"
+    },
+    {
+      "sequence": 15,
+      "replication": 2,
+      "segmentCount": 512,
+      "arm": "generated-vdom",
+      "trialId": "v6-s512-rep2-generated-vdom",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=generated-vdom&segments=512&frames=300&trial=v6-s512-rep2-generated-vdom&autoplay=1&sequence=15"
+    },
+    {
+      "sequence": 16,
+      "replication": 2,
+      "segmentCount": 512,
+      "arm": "runtime",
+      "trialId": "v6-s512-rep2-runtime",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=runtime&segments=512&frames=300&trial=v6-s512-rep2-runtime&autoplay=1&sequence=16"
+    },
+    {
+      "sequence": 17,
+      "replication": 2,
+      "segmentCount": 512,
+      "arm": "direct",
+      "trialId": "v6-s512-rep2-direct",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=direct&segments=512&frames=300&trial=v6-s512-rep2-direct&autoplay=1&sequence=17"
+    },
+    {
+      "sequence": 18,
+      "replication": 2,
+      "segmentCount": 512,
+      "arm": "columnar-vdom",
+      "trialId": "v6-s512-rep2-columnar-vdom",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=columnar-vdom&segments=512&frames=300&trial=v6-s512-rep2-columnar-vdom&autoplay=1&sequence=18"
+    },
+    {
+      "sequence": 19,
+      "replication": 2,
+      "segmentCount": 512,
+      "arm": "react",
+      "trialId": "v6-s512-rep2-react",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=react&segments=512&frames=300&trial=v6-s512-rep2-react&autoplay=1&sequence=19"
+    },
+    {
+      "sequence": 20,
+      "replication": 2,
+      "segmentCount": 1024,
+      "arm": "generated-vdom",
+      "trialId": "v6-s1024-rep2-generated-vdom",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=generated-vdom&segments=1024&frames=300&trial=v6-s1024-rep2-generated-vdom&autoplay=1&sequence=20"
+    },
+    {
+      "sequence": 21,
+      "replication": 2,
+      "segmentCount": 1024,
+      "arm": "runtime",
+      "trialId": "v6-s1024-rep2-runtime",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=runtime&segments=1024&frames=300&trial=v6-s1024-rep2-runtime&autoplay=1&sequence=21"
+    },
+    {
+      "sequence": 22,
+      "replication": 2,
+      "segmentCount": 1024,
+      "arm": "direct",
+      "trialId": "v6-s1024-rep2-direct",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=direct&segments=1024&frames=300&trial=v6-s1024-rep2-direct&autoplay=1&sequence=22"
+    },
+    {
+      "sequence": 23,
+      "replication": 2,
+      "segmentCount": 1024,
+      "arm": "columnar-vdom",
+      "trialId": "v6-s1024-rep2-columnar-vdom",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=columnar-vdom&segments=1024&frames=300&trial=v6-s1024-rep2-columnar-vdom&autoplay=1&sequence=23"
+    },
+    {
+      "sequence": 24,
+      "replication": 2,
+      "segmentCount": 1024,
+      "arm": "react",
+      "trialId": "v6-s1024-rep2-react",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=react&segments=1024&frames=300&trial=v6-s1024-rep2-react&autoplay=1&sequence=24"
+    },
+    {
+      "sequence": 25,
+      "replication": 2,
+      "segmentCount": 128,
+      "arm": "generated-vdom",
+      "trialId": "v6-s128-rep2-generated-vdom",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=generated-vdom&segments=128&frames=300&trial=v6-s128-rep2-generated-vdom&autoplay=1&sequence=25"
+    },
+    {
+      "sequence": 26,
+      "replication": 2,
+      "segmentCount": 128,
+      "arm": "runtime",
+      "trialId": "v6-s128-rep2-runtime",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=runtime&segments=128&frames=300&trial=v6-s128-rep2-runtime&autoplay=1&sequence=26"
+    },
+    {
+      "sequence": 27,
+      "replication": 2,
+      "segmentCount": 128,
+      "arm": "direct",
+      "trialId": "v6-s128-rep2-direct",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=direct&segments=128&frames=300&trial=v6-s128-rep2-direct&autoplay=1&sequence=27"
+    },
+    {
+      "sequence": 28,
+      "replication": 2,
+      "segmentCount": 128,
+      "arm": "columnar-vdom",
+      "trialId": "v6-s128-rep2-columnar-vdom",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=columnar-vdom&segments=128&frames=300&trial=v6-s128-rep2-columnar-vdom&autoplay=1&sequence=28"
+    },
+    {
+      "sequence": 29,
+      "replication": 2,
+      "segmentCount": 128,
+      "arm": "react",
+      "trialId": "v6-s128-rep2-react",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=react&segments=128&frames=300&trial=v6-s128-rep2-react&autoplay=1&sequence=29"
+    },
+    {
+      "sequence": 30,
+      "replication": 3,
+      "segmentCount": 1024,
+      "arm": "runtime",
+      "trialId": "v6-s1024-rep3-runtime",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=runtime&segments=1024&frames=300&trial=v6-s1024-rep3-runtime&autoplay=1&sequence=30"
+    },
+    {
+      "sequence": 31,
+      "replication": 3,
+      "segmentCount": 1024,
+      "arm": "direct",
+      "trialId": "v6-s1024-rep3-direct",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=direct&segments=1024&frames=300&trial=v6-s1024-rep3-direct&autoplay=1&sequence=31"
+    },
+    {
+      "sequence": 32,
+      "replication": 3,
+      "segmentCount": 1024,
+      "arm": "columnar-vdom",
+      "trialId": "v6-s1024-rep3-columnar-vdom",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=columnar-vdom&segments=1024&frames=300&trial=v6-s1024-rep3-columnar-vdom&autoplay=1&sequence=32"
+    },
+    {
+      "sequence": 33,
+      "replication": 3,
+      "segmentCount": 1024,
+      "arm": "react",
+      "trialId": "v6-s1024-rep3-react",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=react&segments=1024&frames=300&trial=v6-s1024-rep3-react&autoplay=1&sequence=33"
+    },
+    {
+      "sequence": 34,
+      "replication": 3,
+      "segmentCount": 1024,
+      "arm": "generated-vdom",
+      "trialId": "v6-s1024-rep3-generated-vdom",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=generated-vdom&segments=1024&frames=300&trial=v6-s1024-rep3-generated-vdom&autoplay=1&sequence=34"
+    },
+    {
+      "sequence": 35,
+      "replication": 3,
+      "segmentCount": 128,
+      "arm": "runtime",
+      "trialId": "v6-s128-rep3-runtime",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=runtime&segments=128&frames=300&trial=v6-s128-rep3-runtime&autoplay=1&sequence=35"
+    },
+    {
+      "sequence": 36,
+      "replication": 3,
+      "segmentCount": 128,
+      "arm": "direct",
+      "trialId": "v6-s128-rep3-direct",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=direct&segments=128&frames=300&trial=v6-s128-rep3-direct&autoplay=1&sequence=36"
+    },
+    {
+      "sequence": 37,
+      "replication": 3,
+      "segmentCount": 128,
+      "arm": "columnar-vdom",
+      "trialId": "v6-s128-rep3-columnar-vdom",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=columnar-vdom&segments=128&frames=300&trial=v6-s128-rep3-columnar-vdom&autoplay=1&sequence=37"
+    },
+    {
+      "sequence": 38,
+      "replication": 3,
+      "segmentCount": 128,
+      "arm": "react",
+      "trialId": "v6-s128-rep3-react",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=react&segments=128&frames=300&trial=v6-s128-rep3-react&autoplay=1&sequence=38"
+    },
+    {
+      "sequence": 39,
+      "replication": 3,
+      "segmentCount": 128,
+      "arm": "generated-vdom",
+      "trialId": "v6-s128-rep3-generated-vdom",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=generated-vdom&segments=128&frames=300&trial=v6-s128-rep3-generated-vdom&autoplay=1&sequence=39"
+    },
+    {
+      "sequence": 40,
+      "replication": 3,
+      "segmentCount": 512,
+      "arm": "runtime",
+      "trialId": "v6-s512-rep3-runtime",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=runtime&segments=512&frames=300&trial=v6-s512-rep3-runtime&autoplay=1&sequence=40"
+    },
+    {
+      "sequence": 41,
+      "replication": 3,
+      "segmentCount": 512,
+      "arm": "direct",
+      "trialId": "v6-s512-rep3-direct",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=direct&segments=512&frames=300&trial=v6-s512-rep3-direct&autoplay=1&sequence=41"
+    },
+    {
+      "sequence": 42,
+      "replication": 3,
+      "segmentCount": 512,
+      "arm": "columnar-vdom",
+      "trialId": "v6-s512-rep3-columnar-vdom",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=columnar-vdom&segments=512&frames=300&trial=v6-s512-rep3-columnar-vdom&autoplay=1&sequence=42"
+    },
+    {
+      "sequence": 43,
+      "replication": 3,
+      "segmentCount": 512,
+      "arm": "react",
+      "trialId": "v6-s512-rep3-react",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=react&segments=512&frames=300&trial=v6-s512-rep3-react&autoplay=1&sequence=43"
+    },
+    {
+      "sequence": 44,
+      "replication": 3,
+      "segmentCount": 512,
+      "arm": "generated-vdom",
+      "trialId": "v6-s512-rep3-generated-vdom",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=generated-vdom&segments=512&frames=300&trial=v6-s512-rep3-generated-vdom&autoplay=1&sequence=44"
+    },
+    {
+      "sequence": 45,
+      "replication": 4,
+      "segmentCount": 128,
+      "arm": "direct",
+      "trialId": "v6-s128-rep4-direct",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=direct&segments=128&frames=300&trial=v6-s128-rep4-direct&autoplay=1&sequence=45"
+    },
+    {
+      "sequence": 46,
+      "replication": 4,
+      "segmentCount": 128,
+      "arm": "columnar-vdom",
+      "trialId": "v6-s128-rep4-columnar-vdom",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=columnar-vdom&segments=128&frames=300&trial=v6-s128-rep4-columnar-vdom&autoplay=1&sequence=46"
+    },
+    {
+      "sequence": 47,
+      "replication": 4,
+      "segmentCount": 128,
+      "arm": "react",
+      "trialId": "v6-s128-rep4-react",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=react&segments=128&frames=300&trial=v6-s128-rep4-react&autoplay=1&sequence=47"
+    },
+    {
+      "sequence": 48,
+      "replication": 4,
+      "segmentCount": 128,
+      "arm": "generated-vdom",
+      "trialId": "v6-s128-rep4-generated-vdom",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=generated-vdom&segments=128&frames=300&trial=v6-s128-rep4-generated-vdom&autoplay=1&sequence=48"
+    },
+    {
+      "sequence": 49,
+      "replication": 4,
+      "segmentCount": 128,
+      "arm": "runtime",
+      "trialId": "v6-s128-rep4-runtime",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=runtime&segments=128&frames=300&trial=v6-s128-rep4-runtime&autoplay=1&sequence=49"
+    },
+    {
+      "sequence": 50,
+      "replication": 4,
+      "segmentCount": 512,
+      "arm": "direct",
+      "trialId": "v6-s512-rep4-direct",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=direct&segments=512&frames=300&trial=v6-s512-rep4-direct&autoplay=1&sequence=50"
+    },
+    {
+      "sequence": 51,
+      "replication": 4,
+      "segmentCount": 512,
+      "arm": "columnar-vdom",
+      "trialId": "v6-s512-rep4-columnar-vdom",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=columnar-vdom&segments=512&frames=300&trial=v6-s512-rep4-columnar-vdom&autoplay=1&sequence=51"
+    },
+    {
+      "sequence": 52,
+      "replication": 4,
+      "segmentCount": 512,
+      "arm": "react",
+      "trialId": "v6-s512-rep4-react",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=react&segments=512&frames=300&trial=v6-s512-rep4-react&autoplay=1&sequence=52"
+    },
+    {
+      "sequence": 53,
+      "replication": 4,
+      "segmentCount": 512,
+      "arm": "generated-vdom",
+      "trialId": "v6-s512-rep4-generated-vdom",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=generated-vdom&segments=512&frames=300&trial=v6-s512-rep4-generated-vdom&autoplay=1&sequence=53"
+    },
+    {
+      "sequence": 54,
+      "replication": 4,
+      "segmentCount": 512,
+      "arm": "runtime",
+      "trialId": "v6-s512-rep4-runtime",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=runtime&segments=512&frames=300&trial=v6-s512-rep4-runtime&autoplay=1&sequence=54"
+    },
+    {
+      "sequence": 55,
+      "replication": 4,
+      "segmentCount": 1024,
+      "arm": "direct",
+      "trialId": "v6-s1024-rep4-direct",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=direct&segments=1024&frames=300&trial=v6-s1024-rep4-direct&autoplay=1&sequence=55"
+    },
+    {
+      "sequence": 56,
+      "replication": 4,
+      "segmentCount": 1024,
+      "arm": "columnar-vdom",
+      "trialId": "v6-s1024-rep4-columnar-vdom",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=columnar-vdom&segments=1024&frames=300&trial=v6-s1024-rep4-columnar-vdom&autoplay=1&sequence=56"
+    },
+    {
+      "sequence": 57,
+      "replication": 4,
+      "segmentCount": 1024,
+      "arm": "react",
+      "trialId": "v6-s1024-rep4-react",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=react&segments=1024&frames=300&trial=v6-s1024-rep4-react&autoplay=1&sequence=57"
+    },
+    {
+      "sequence": 58,
+      "replication": 4,
+      "segmentCount": 1024,
+      "arm": "generated-vdom",
+      "trialId": "v6-s1024-rep4-generated-vdom",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=generated-vdom&segments=1024&frames=300&trial=v6-s1024-rep4-generated-vdom&autoplay=1&sequence=58"
+    },
+    {
+      "sequence": 59,
+      "replication": 4,
+      "segmentCount": 1024,
+      "arm": "runtime",
+      "trialId": "v6-s1024-rep4-runtime",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=runtime&segments=1024&frames=300&trial=v6-s1024-rep4-runtime&autoplay=1&sequence=59"
+    },
+    {
+      "sequence": 60,
+      "replication": 5,
+      "segmentCount": 512,
+      "arm": "columnar-vdom",
+      "trialId": "v6-s512-rep5-columnar-vdom",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=columnar-vdom&segments=512&frames=300&trial=v6-s512-rep5-columnar-vdom&autoplay=1&sequence=60"
+    },
+    {
+      "sequence": 61,
+      "replication": 5,
+      "segmentCount": 512,
+      "arm": "react",
+      "trialId": "v6-s512-rep5-react",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=react&segments=512&frames=300&trial=v6-s512-rep5-react&autoplay=1&sequence=61"
+    },
+    {
+      "sequence": 62,
+      "replication": 5,
+      "segmentCount": 512,
+      "arm": "generated-vdom",
+      "trialId": "v6-s512-rep5-generated-vdom",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=generated-vdom&segments=512&frames=300&trial=v6-s512-rep5-generated-vdom&autoplay=1&sequence=62"
+    },
+    {
+      "sequence": 63,
+      "replication": 5,
+      "segmentCount": 512,
+      "arm": "runtime",
+      "trialId": "v6-s512-rep5-runtime",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=runtime&segments=512&frames=300&trial=v6-s512-rep5-runtime&autoplay=1&sequence=63"
+    },
+    {
+      "sequence": 64,
+      "replication": 5,
+      "segmentCount": 512,
+      "arm": "direct",
+      "trialId": "v6-s512-rep5-direct",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=direct&segments=512&frames=300&trial=v6-s512-rep5-direct&autoplay=1&sequence=64"
+    },
+    {
+      "sequence": 65,
+      "replication": 5,
+      "segmentCount": 1024,
+      "arm": "columnar-vdom",
+      "trialId": "v6-s1024-rep5-columnar-vdom",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=columnar-vdom&segments=1024&frames=300&trial=v6-s1024-rep5-columnar-vdom&autoplay=1&sequence=65"
+    },
+    {
+      "sequence": 66,
+      "replication": 5,
+      "segmentCount": 1024,
+      "arm": "react",
+      "trialId": "v6-s1024-rep5-react",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=react&segments=1024&frames=300&trial=v6-s1024-rep5-react&autoplay=1&sequence=66"
+    },
+    {
+      "sequence": 67,
+      "replication": 5,
+      "segmentCount": 1024,
+      "arm": "generated-vdom",
+      "trialId": "v6-s1024-rep5-generated-vdom",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=generated-vdom&segments=1024&frames=300&trial=v6-s1024-rep5-generated-vdom&autoplay=1&sequence=67"
+    },
+    {
+      "sequence": 68,
+      "replication": 5,
+      "segmentCount": 1024,
+      "arm": "runtime",
+      "trialId": "v6-s1024-rep5-runtime",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=runtime&segments=1024&frames=300&trial=v6-s1024-rep5-runtime&autoplay=1&sequence=68"
+    },
+    {
+      "sequence": 69,
+      "replication": 5,
+      "segmentCount": 1024,
+      "arm": "direct",
+      "trialId": "v6-s1024-rep5-direct",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=direct&segments=1024&frames=300&trial=v6-s1024-rep5-direct&autoplay=1&sequence=69"
+    },
+    {
+      "sequence": 70,
+      "replication": 5,
+      "segmentCount": 128,
+      "arm": "columnar-vdom",
+      "trialId": "v6-s128-rep5-columnar-vdom",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=columnar-vdom&segments=128&frames=300&trial=v6-s128-rep5-columnar-vdom&autoplay=1&sequence=70"
+    },
+    {
+      "sequence": 71,
+      "replication": 5,
+      "segmentCount": 128,
+      "arm": "react",
+      "trialId": "v6-s128-rep5-react",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=react&segments=128&frames=300&trial=v6-s128-rep5-react&autoplay=1&sequence=71"
+    },
+    {
+      "sequence": 72,
+      "replication": 5,
+      "segmentCount": 128,
+      "arm": "generated-vdom",
+      "trialId": "v6-s128-rep5-generated-vdom",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=generated-vdom&segments=128&frames=300&trial=v6-s128-rep5-generated-vdom&autoplay=1&sequence=72"
+    },
+    {
+      "sequence": 73,
+      "replication": 5,
+      "segmentCount": 128,
+      "arm": "runtime",
+      "trialId": "v6-s128-rep5-runtime",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=runtime&segments=128&frames=300&trial=v6-s128-rep5-runtime&autoplay=1&sequence=73"
+    },
+    {
+      "sequence": 74,
+      "replication": 5,
+      "segmentCount": 128,
+      "arm": "direct",
+      "trialId": "v6-s128-rep5-direct",
+      "url": "https://snake-frame-v6-columnar.localhost:1355/snake-frame-benchmark.html?protocol=v6&collection=production-v6&arm=direct&segments=128&frames=300&trial=v6-s128-rep5-direct&autoplay=1&sequence=74"
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+--- a/src/vdom_snapshot_runtime.ts
++++ b/src/vdom_snapshot_runtime.ts
+@@ -3293,7 +3293,6 @@
+     let inputRecordCount = 0;
+     let stagedCount = 0;
+     let stagedCleanupBound = 0;
+-    let kernelRowCount = 0;
+     let ownerUpdateProgram: CompiledOwnerUpdateProgram | undefined;
+     try {
+       if (this.#ownerRowCutEpoch >= Number.MAX_SAFE_INTEGER) {
+@@ -3347,12 +3346,17 @@
+         inputRecordCount++;
+       }
+       if (count === 0) return false;
++      ownerUpdateProgram = this.#ownerRowRecordScratch[0]!.ownerUpdateProgram;
+ 
+       // Validate reached dependencies in scratch first: shared leases may be cleared
+       // by promotion or row retirement, including untouched dependencies.
+       for (let rowIndex = 0; rowIndex < this.#ownerRowRecordCount; rowIndex++) {
+         const record = this.#ownerRowRecordScratch[rowIndex];
+         if (!record) continue;
++        if (ownerUpdateProgram && (
++          record.ownerUpdateProgram !== ownerUpdateProgram || !record.sinks ||
++          record.sinks.length !== ownerUpdateProgram.sinkIds.length
++        )) ownerUpdateProgram = undefined;
+         for (let slotIndex = 0; slotIndex < record.sources.length; slotIndex++) {
+           if (countVisits) this.#ownerRowWorkVisits++;
+           if (record.usedSlots[slotIndex]) {
+@@ -3367,30 +3371,12 @@
+           }
+           if (record.changedEpochs[slotIndex] === epoch) {
+             record.inputValues[slotIndex] = record.changedValues[slotIndex];
+-          }
+-        }
+-      }
+-
+-      if (count > 0) {
+-        for (let index = 0; index < this.#ownerRowRecordCount; index++) {
+-          const record = this.#ownerRowRecordScratch[index];
+-          if (record) {
+-            ownerUpdateProgram = record.ownerUpdateProgram;
+-            break;
+           }
+-        }
+-        for (let index = 0; ownerUpdateProgram && index < this.#ownerRowRecordCount; index++) {
+-          const record = this.#ownerRowRecordScratch[index];
+-          if (!record) continue;
+-          kernelRowCount++;
+-          if (
+-            record.ownerUpdateProgram !== ownerUpdateProgram || !record.sinks ||
+-            record.sinks.length !== ownerUpdateProgram.sinkIds.length
+-          ) ownerUpdateProgram = undefined;
+         }
+       }
++
+       if (ownerUpdateProgram) {
+-        const outputCapacity = kernelRowCount * ownerUpdateProgram.sinkIds.length;
++        const outputCapacity = this.#ownerRowRecordCount * ownerUpdateProgram.sinkIds.length;
+         if (!Number.isSafeInteger(outputCapacity) || outputCapacity > 0xffff_ffff) {
+           ownerUpdateProgram = undefined;
+         } else {
+@@ -3408,7 +3394,7 @@
+           }
+           if (countVisits) {
+             this.#ownerUpdateKernelBatches++;
+-            this.#ownerUpdateKernelRows += kernelRowCount;
++            this.#ownerUpdateKernelRows += this.#ownerRowRecordCount;
+             this.#ownerUpdateKernelInputs += count;
+           }
+         }

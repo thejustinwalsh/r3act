@@ -1,0 +1,24 @@
+Check src/native_root_work_queue_test.ts
+running 19 tests from ./src/native_root_work_queue_test.ts
+native queue coexists on one root and rebases reverse-ready store work ... ok (6ms)
+native group publishes two roots and two stores before observers or effects ... ok (1ms)
+native disposal cancels pending included work and leaves unrelated root usable ... ok (0ms)
+native queue group host failure poisons every native root ... ok (0ms)
+effect disposal detaches native queue after publication without leaking later work ... ok (0ms)
+native resource candidates wait across every root and publish as one group ... ok (1ms)
+pending frontier store leases survive replacement until grouped publication ... ok (1ms)
+store invalidation replaces a pending resource frontier ... ok (0ms)
+resource settlement refreshes a blocked retained-primary candidate ... ok (1ms)
+cancelling resource work releases its retained store dependency lease ... ok (0ms)
+detaching a root and disposing the queue release resource observers ... ok (0ms)
+independent resource works overlap one root and a fork with reverse readiness ... ok (3ms)
+transition scopes finish for stores read only by an earlier pending wave ... ok (0ms)
+task-only store freshness rejects a stale resource candidate before host writes ... ok (0ms)
+external cut going stale at final pre-host validation does not poison roots ... ok (0ms)
+task-only freshness change during grouped host writes fails terminally ... ok (0ms)
+task-only publication dependencies finish scopes before subscribers ... ok (0ms)
+task-only publication dependencies reject roots outside the work ... ok (0ms)
+a dependency lease transfers pending-only scope ownership between works ... ok (0ms)
+
+ok | 19 passed | 0 failed (26ms)
+

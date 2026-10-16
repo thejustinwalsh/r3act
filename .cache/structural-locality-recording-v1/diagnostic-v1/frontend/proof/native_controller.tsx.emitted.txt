@@ -1,0 +1,158 @@
+import { createDOMRoot } from "../snapshot/src/native_runtime_api.ts";
+import { defineComponent as __nativeDefineComponent } from "../snapshot/src/native_runtime_api.ts";
+__nativeDefineComponent(".cache/structural-locality-recording-v1/diagnostic-v1/frontend/native_controller.tsx#component:NativeCollectionMount", NativeCollectionMount, { propOnlySites: [] });
+__nativeDefineComponent(".cache/structural-locality-recording-v1/diagnostic-v1/frontend/native_controller.tsx#component:NativeGenericMount", NativeGenericMount, { propOnlySites: [] });
+import { beginStructuralCountWindow, endStructuralCountWindow, configureStructuralCountProbe } from "../snapshot/src/structural_count_probe.ts";
+import { NativeCollectionBoard, makeRows } from "../../../structural-locality-protocol-v1/eligibility/native_collection.tsx";
+import { NativeGenericBoard } from "../../../structural-locality-protocol-v1/eligibility/native_generic.tsx";
+function describeThrown(value) {
+	const kind = value === null ? "null" : typeof value;
+	try {
+		return {
+			kind,
+			message: String(value)
+		};
+	} catch {
+		return {
+			kind,
+			message: "<unprintable thrown value>"
+		};
+	}
+}
+function NativeCollectionMount({ rows, life }) {
+	return /* @__PURE__ */ __nativeJsx.jsx(NativeCollectionBoard, {
+		rows,
+		life
+	});
+}
+export function NativeGenericMount({ initialIds, life, registerIdsSetter }) {
+	return /* @__PURE__ */ __nativeJsx.jsx(NativeGenericBoard, {
+		initialIds,
+		life,
+		registerIdsSetter
+	});
+}
+export function mountNativeCount(container, initialIds, life, countMode, profileCounter) {
+	configureStructuralCountProbe(countMode);
+	const root = createDOMRoot(container, {
+		scheduleCommit: () => {},
+		profileCounter
+	});
+	const rows = makeRows(initialIds);
+	try {
+		root.mount(/* @__PURE__ */ __nativeJsx.jsx(NativeCollectionMount, {
+			rows,
+			life
+		}));
+		root.flush();
+	} catch (error) {
+		try {
+			root.dispose();
+		} catch (disposal) {
+			throw new Error(`mount ${String(error)}; disposal ${String(disposal)}`);
+		}
+		throw error;
+	}
+	return {
+		click(id) {
+			const node = [...container.querySelectorAll("li[data-id]")].find((item) => item.dataset.id === id);
+			if (!node) throw new Error(`missing click target ${id}`);
+			node.click();
+			root.flush();
+		},
+		reset(operations) {
+			if (operations.length === 0) return null;
+			const applied = rows.apply(rows.version, operations);
+			if (!applied.ok) throw new Error(`reset rejected ${applied.reason}`);
+			if (!root.flush()) throw new Error("reset lacked synchronous commit");
+			return applied.version;
+		},
+		edit(label, operations) {
+			const statsBefore = rows.stats();
+			const expectedVersion = rows.version;
+			let applyResult = null;
+			let flushResult = null;
+			let receipt = null;
+			let editThrew = false;
+			let editThrown;
+			let receiptThrew = false;
+			let receiptThrown;
+			if (countMode) beginStructuralCountWindow(root, label);
+			try {
+				applyResult = rows.apply(expectedVersion, operations);
+				if (!applyResult.ok) throw new Error(`edit rejected ${applyResult.reason}`);
+				flushResult = root.flush();
+				if (flushResult !== true) throw new Error("edit lacked synchronous commit");
+			} catch (error) {
+				editThrew = true;
+				editThrown = error;
+			} finally {
+				if (countMode) try {
+					receipt = endStructuralCountWindow(root);
+				} catch (error) {
+					receiptThrew = true;
+					receiptThrown = error;
+				}
+			}
+			const afterCollectionVersion = rows.version;
+			const statsAfter = rows.stats();
+			const pendingChangeCount = root.diagnostics().pendingChangeCount;
+			if (editThrew || receiptThrew) {
+				const failure = new Error(`native edit failed: edit=${editThrew ? JSON.stringify(describeThrown(editThrown)) : "none"}; receipt=${receiptThrew ? JSON.stringify(describeThrown(receiptThrown)) : "none"}`);
+				Object.assign(failure, {
+					editThrew,
+					editThrown,
+					receiptThrew,
+					receiptThrown,
+					receipt
+				});
+				throw failure;
+			}
+			return {
+				receipt,
+				statsBefore,
+				statsAfter,
+				expectedVersion,
+				applyResult,
+				afterCollectionVersion,
+				flushResult,
+				pendingChangeCount
+			};
+		},
+		dispose() {
+			root.dispose();
+			return {
+				readerCount: rows.stats().readerCount,
+				ownerCount: root.diagnostics().ownerCount
+			};
+		}
+	};
+}
+export const compiledNativeComponentPlan = {
+	"schema_version": 2,
+	"source_file": ".cache/structural-locality-recording-v1/diagnostic-v1/frontend/native_controller.tsx",
+	"helper_module": "",
+	"tasks": [],
+	"task_order": [],
+	"component_module": "import { createDOMRoot, type KeyedCollection } from \"../snapshot/src/native_runtime_api.ts\";\nimport { defineComponent as __nativeDefineComponent, useStateAt as __nativeUseStateAt, useEffectAt as __nativeUseEffectAt, useStoreAt as __nativeUseStoreAt, bindStatePropsAt as __nativeBindStatePropsAt, renderCollectionAt as __nativeRenderCollectionAt, useAt as __nativeUseAt, bindStatePropAt as __nativeBindStatePropAt } from \"../snapshot/src/native_runtime_api.ts\";\n__nativeDefineComponent(\".cache/structural-locality-recording-v1/diagnostic-v1/frontend/native_controller.tsx#component:NativeCollectionMount\", NativeCollectionMount, { propOnlySites: [] });\n__nativeDefineComponent(\".cache/structural-locality-recording-v1/diagnostic-v1/frontend/native_controller.tsx#component:NativeGenericMount\", NativeGenericMount, { propOnlySites: [] });\nimport { beginStructuralCountWindow, endStructuralCountWindow,\n  configureStructuralCountProbe } from \"../snapshot/src/structural_count_probe.ts\";\nimport { NativeCollectionBoard, makeRows, type Life, type Row } from \"../../../structural-locality-protocol-v1/eligibility/native_collection.tsx\";\nimport { NativeGenericBoard } from \"../../../structural-locality-protocol-v1/eligibility/native_generic.tsx\";\n\ntype Operation = { type: \"insert\"; key: string; value: Row; beforeKey: string | null } |\n  { type: \"remove\"; key: string } | { type: \"move\"; key: string; beforeKey: string | null };\n\nfunction describeThrown(value: unknown) {\n  const kind = value === null ? \"null\" : typeof value;\n  try { return { kind, message: String(value) }; }\n  catch { return { kind, message: \"<unprintable thrown value>\" }; }\n}\n\nfunction NativeCollectionMount({ rows, life }: { rows: KeyedCollection<Row>; life: Life }) {\n  return <NativeCollectionBoard rows={rows} life={life} />;\n}\n\nexport function NativeGenericMount({ initialIds, life, registerIdsSetter }: {\n  initialIds: string[]; life: Life;\n  registerIdsSetter: (setter: (ids: string[]) => void) => () => void;\n}) {\n  return <NativeGenericBoard initialIds={initialIds} life={life}\n    registerIdsSetter={registerIdsSetter} />;\n}\n\nexport function mountNativeCount(container: HTMLElement, initialIds: string[], life: Life,\n  countMode: boolean, profileCounter: (values: Readonly<Record<string, number>>) => void) {\n  configureStructuralCountProbe(countMode);\n  const root = createDOMRoot(container, { scheduleCommit: () => {}, profileCounter });\n  const rows = makeRows(initialIds);\n  try {\n    root.mount(<NativeCollectionMount rows={rows} life={life} />);\n    root.flush();\n  } catch (error) {\n    try { root.dispose(); } catch (disposal) {\n      throw new Error(`mount ${String(error)}; disposal ${String(disposal)}`);\n    }\n    throw error;\n  }\n  return {\n    click(id: string) {\n      const node = [...container.querySelectorAll<HTMLLIElement>(\"li[data-id]\")]\n        .find((item) => item.dataset.id === id);\n      if (!node) throw new Error(`missing click target ${id}`);\n      node.click();\n      root.flush();\n    },\n    reset(operations: readonly Operation[]) {\n      if (operations.length === 0) return null;\n      const applied = rows.apply(rows.version, operations);\n      if (!applied.ok) throw new Error(`reset rejected ${applied.reason}`);\n      if (!root.flush()) throw new Error(\"reset lacked synchronous commit\");\n      return applied.version;\n    },\n    edit(label: string, operations: readonly Operation[]) {\n      const statsBefore = rows.stats();\n      const expectedVersion = rows.version;\n      let applyResult: ReturnType<typeof rows.apply> | null = null;\n      let flushResult: boolean | null = null;\n      let receipt: unknown = null;\n      let editThrew = false;\n      let editThrown: unknown;\n      let receiptThrew = false;\n      let receiptThrown: unknown;\n      if (countMode) beginStructuralCountWindow(root, label);\n      try {\n        applyResult = rows.apply(expectedVersion, operations);\n        if (!applyResult.ok) throw new Error(`edit rejected ${applyResult.reason}`);\n        flushResult = root.flush();\n        if (flushResult !== true) throw new Error(\"edit lacked synchronous commit\");\n      } catch (error) { editThrew = true; editThrown = error; }\n      finally {\n        if (countMode) try { receipt = endStructuralCountWindow(root); }\n        catch (error) { receiptThrew = true; receiptThrown = error; }\n      }\n      const afterCollectionVersion = rows.version;\n      const statsAfter = rows.stats();\n      const pendingChangeCount = root.diagnostics().pendingChangeCount;\n      if (editThrew || receiptThrew) {\n        const failure = new Error(`native edit failed: edit=${editThrew ?\n          JSON.stringify(describeThrown(editThrown)) : \"none\"}; receipt=${receiptThrew ?\n          JSON.stringify(describeThrown(receiptThrown)) : \"none\"}`);\n        Object.assign(failure, { editThrew, editThrown, receiptThrew, receiptThrown, receipt });\n        throw failure;\n      }\n      return { receipt, statsBefore, statsAfter, expectedVersion, applyResult,\n        afterCollectionVersion, flushResult, pendingChangeCount };\n    },\n    dispose() {\n      root.dispose();\n      return { readerCount: rows.stats().readerCount,\n        ownerCount: root.diagnostics().ownerCount };\n    },\n  };\n}\n",
+	"components": [{
+		"name": "NativeCollectionMount",
+		"component_site_id": ".cache/structural-locality-recording-v1/diagnostic-v1/frontend/native_controller.tsx#component:NativeCollectionMount",
+		"prop_only_sites": [],
+		"host_leaf_output": false,
+		"state_sites": [],
+		"effect_sites": [],
+		"store_sites": [],
+		"collection_sites": []
+	}, {
+		"name": "NativeGenericMount",
+		"component_site_id": ".cache/structural-locality-recording-v1/diagnostic-v1/frontend/native_controller.tsx#component:NativeGenericMount",
+		"prop_only_sites": [],
+		"host_leaf_output": false,
+		"state_sites": [],
+		"effect_sites": [],
+		"store_sites": [],
+		"collection_sites": []
+	}]
+};
+import * as __nativeJsx from "../snapshot/src/native_runtime_api.ts";

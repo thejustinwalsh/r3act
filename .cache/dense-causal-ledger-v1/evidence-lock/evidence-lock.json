@@ -1,0 +1,1185 @@
+{
+  "schemaVersion": "dense-causal-ledger-evidence-lock-v1",
+  "inspectedAtUtc": "2026-10-14T02:15:01Z",
+  "scope": "Existing-evidence verification only. No source edits, tests, builds, benchmarks, servers, browser runs, or archive extraction performed.",
+  "projectRoot": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research",
+  "instructions": {
+    "agentsMd": "AGENTS.md",
+    "checkpoint": "implementation-checkpoint.md",
+    "plan": "final-master-plan.md",
+    "projectHasApplicableAgentsMd": true
+  },
+  "planBasis": {
+    "units": [
+      0,
+      1,
+      2
+    ],
+    "sourceBasis": "final-master-plan.md \u00a712; Recording A and Unit 0\u20132 contracts in \u00a7\u00a77,12,15\u201316"
+  },
+  "immutableQualifiedBaseline": {
+    "studyId": "current-owner-kernel-headless-20261013-v1",
+    "sourceBuildLocksPath": "results/current-owner-kernel-headless-v1/source-build-locks.json",
+    "sourceBuildLocksSha256": "fc0ee17f8a3432b097e71a2080446ec0b2e92c3b0b564491f34456ca910a16ec",
+    "lockedFileCount": 397,
+    "liveComparison": {
+      "matched": 396,
+      "mismatched": 1,
+      "mismatches": [
+        {
+          "path": "src/vdom_snapshot_runtime.ts",
+          "expectedSha256": "00d8516d2164d1f212e804dd3a579bc13588158eb361e756e2ebd25753b73aab",
+          "liveSha256": "cdc774b77a5938ce684537dc5f026bef7622a1fbba073bf2f95a01566275a58d",
+          "matchesLive": false
+        }
+      ]
+    },
+    "archiveCopyVerification": {
+      "archivePath": "implementation/2026-10-13-current-kernel-headless-confirmation/source-build-comparison-and-diagnostics.tar.gz",
+      "archiveSha256": "a5e71711b280429128e7b1a5c027c90b0edff5a8068c87bad701e75d4b385db7",
+      "statusArchiveSha256": "a5e71711b280429128e7b1a5c027c90b0edff5a8068c87bad701e75d4b385db7",
+      "memberCount": 944,
+      "statusLockCount": 944,
+      "statusLockVsArchiveMismatchCount": 0,
+      "baselineLockVsArchiveMismatchCount": 0,
+      "statusLockVsArchiveMismatches": [],
+      "baselineLockVsArchiveMismatches": [],
+      "rootEntries": [
+        ".cache",
+        "compiler",
+        "deno.browser.json",
+        "deno.lock",
+        "implementation",
+        "package.json",
+        "performance-implementation-plan.md",
+        "pnpm-lock.yaml",
+        "research.ipynb",
+        "results",
+        "scripts",
+        "src"
+      ],
+      "layout": "Project-root-relative members; no enclosing project directory. Do not extract over the live project."
+    },
+    "candidateSourceArchive": {
+      "path": "implementation/2026-10-13-derived-array-eligibility/source-and-verification.tar.gz",
+      "sha256": "9a490d3855bc814daefa46c94bede2879743c3a8d1d8309833d2c449cebce43b",
+      "expectedSha256": "9a490d3855bc814daefa46c94bede2879743c3a8d1d8309833d2c449cebce43b",
+      "matches": true
+    },
+    "liveAdjacentTokenDifference": {
+      "path": "src/vdom_snapshot_runtime.ts",
+      "baselineSha256": "00d8516d2164d1f212e804dd3a579bc13588158eb361e756e2ebd25753b73aab",
+      "liveSha256": "cdc774b77a5938ce684537dc5f026bef7622a1fbba073bf2f95a01566275a58d",
+      "diffHunkCount": 2,
+      "diff": "--- locked baseline src/vdom_snapshot_runtime.ts\n\n+++ live src/vdom_snapshot_runtime.ts\n\n@@ -3310,4 +3310,6 @@\n\n \n       // Validate the packed dirty cut before source mirrors or projections.\n+      let previousToken: PreparedNumericRowProgram | undefined;\n+      let previousRecord: PreparedNumericRowProgramRecord<H> | undefined;\n       for (let index = 0; index < count; index++) {\n         if (countVisits) this.#ownerRowWorkVisits++;\n@@ -3320,5 +3322,9 @@\n\n           !token || !Number.isSafeInteger(slotIndex) || typeof value !== \"number\"\n         ) return null;\n-        const record = this.#preparedNumericRowPrograms.get(token);\n+        const record = token === previousToken\n+          ? previousRecord\n+          : this.#preparedNumericRowPrograms.get(token);\n+        previousToken = token;\n+        previousRecord = record;\n         if (\n           !record || record.root !== this || !record.active ||",
+      "summary": "Only live-vs-qualified-source mismatch among all 397 locked files. In #executePreparedNumericRows packed-cut validation, cache previousToken/previousRecord and reuse the immediately repeated token record instead of WeakMap.get on adjacent repeated token."
+    }
+  },
+  "build04": {
+    "proofPath": ".cache/high-frequency-build-proof-20261013-04/build-proof.json",
+    "proofSha256": "86e26257a405471f329597f98d9e82683566df9dab75fa6a7fc9b89becb97a58",
+    "proofExpectedSha256": "86e26257a405471f329597f98d9e82683566df9dab75fa6a7fc9b89becb97a58",
+    "proofStatus": "PASS",
+    "distPath": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/high-frequency-build-proof-20261013-04/dist",
+    "distExists": true,
+    "assets": [
+      {
+        "path": ".cache/high-frequency-build-proof-20261013-04/dist/assets/highFrequency-Bz4Y5vzS.js",
+        "urlPath": "/assets/highFrequency-Bz4Y5vzS.js",
+        "expectedSha256": "240e5374bee5bf4f7fdfa4fcebc8e68d9402194bab60f8321eb041af96c8f346",
+        "actualSha256": "240e5374bee5bf4f7fdfa4fcebc8e68d9402194bab60f8321eb041af96c8f346",
+        "matches": true
+      },
+      {
+        "path": ".cache/high-frequency-build-proof-20261013-04/dist/assets/highFrequency-GrFjeJ6A.css",
+        "urlPath": "/assets/highFrequency-GrFjeJ6A.css",
+        "expectedSha256": "6e8c589e7715cc058dceb37820c50bda5e4ec1529cf5b3029d83e6d4797c30e4",
+        "actualSha256": "6e8c589e7715cc058dceb37820c50bda5e4ec1529cf5b3029d83e6d4797c30e4",
+        "matches": true
+      },
+      {
+        "path": ".cache/high-frequency-build-proof-20261013-04/dist/assets/native_high_frequency_arm-fEOfkYnW.js",
+        "urlPath": "/assets/native_high_frequency_arm-fEOfkYnW.js",
+        "expectedSha256": "fd9876aaf56defb43ab55877cfd000eafd486a92cf6544d29321fba7ceb5ded9",
+        "actualSha256": "fd9876aaf56defb43ab55877cfd000eafd486a92cf6544d29321fba7ceb5ded9",
+        "matches": true
+      },
+      {
+        "path": ".cache/high-frequency-build-proof-20261013-04/dist/assets/react_high_frequency_arm-DNwDwdP7.js",
+        "urlPath": "/assets/react_high_frequency_arm-DNwDwdP7.js",
+        "expectedSha256": "c3c571ea8dd373927a24815273f46ca4c68f0eb5e06a8d78af3e884a8c4d050e",
+        "actualSha256": "c3c571ea8dd373927a24815273f46ca4c68f0eb5e06a8d78af3e884a8c4d050e",
+        "matches": true
+      },
+      {
+        "path": ".cache/high-frequency-build-proof-20261013-04/dist/high-frequency.html",
+        "urlPath": "/high-frequency.html",
+        "expectedSha256": "961ae21557877e67ad0c92007cadd367c1c3d15312c5c10c48b325600a1a2b92",
+        "actualSha256": "961ae21557877e67ad0c92007cadd367c1c3d15312c5c10c48b325600a1a2b92",
+        "matches": true
+      }
+    ],
+    "origin": "https://react-runtime-headless.localhost:1355",
+    "htmlPath": "/high-frequency.html",
+    "isolationHeaders": {
+      "cross-origin-opener-policy": "same-origin",
+      "cross-origin-embedder-policy": "require-corp"
+    },
+    "crossOriginIsolatedExpected": true,
+    "preregisteredClockQuantumMs": 0.005,
+    "reproduction": "Byte-identical original build04 assets are present at the frozen dist path and their five SHA-256 values match frozen-config.json. For a replay, serve this existing directory at the frozen Portless origin and verify those hashes; no rebuild is needed. Reconstructing source must happen in an isolated disposable snapshot from the project-root-relative confirmation tar, then use its frozen source/lock/toolchain records; rebuilding is not yet performed or qualified."
+  },
+  "fixtureAndTiming": {
+    "scope": "One fixed headless Chromium production build; all-dirty contiguous homogeneous DOM rows; synchronous setter dispatch + commit, excluding RAF wait, selection, inspection, paint and presentation",
+    "rows": [
+      128,
+      1024,
+      10000
+    ],
+    "topology": "contiguous, homogeneous DOM rows, all dirty",
+    "arms": [
+      "native TSX/OXC compiled arm",
+      "React TSX/React Compiler arm"
+    ],
+    "freshPageCount": 30,
+    "pairedPages": 15,
+    "pairsPerSize": 5,
+    "measuredFrames": 7200,
+    "warmupFramesPerPage": 60,
+    "measuredFramesPerPage": 240,
+    "timer": "synchronous setter dispatch + commit",
+    "excluded": [
+      "RAF wait",
+      "selection",
+      "inspection",
+      "paint",
+      "presentation"
+    ],
+    "headlessBrowser": {
+      "version": "153.0.8010.12",
+      "gpu": false,
+      "viewport": [
+        1200,
+        900
+      ]
+    },
+    "deadlineMsPerPair": 90000,
+    "clockFloorRule": "five times max(preregistered 0.005ms, four adjacent page calibration minima); preserve under-floor samples as unresolved",
+    "gates": {
+      "parity": "FAIL",
+      "strongerDenseWin": "FAIL",
+      "qualification": "FAIL",
+      "denseWinSizes": 0
+    },
+    "resultsBySize": [
+      {
+        "rows": 128,
+        "pairCount": 5,
+        "pairedMedianRatios": [
+          1.1500000074505807,
+          0.9177489188659254,
+          0.8765431808055384,
+          1.1333333399560717,
+          1.2988505843593197
+        ],
+        "pairedP95Ratios": [
+          0.9523809270388416,
+          1.1279069761397582,
+          0.5443037831426107,
+          1.0223463637853905,
+          1.1111111151992212
+        ],
+        "pairedMedianGeometricMean": 1.0637078880730986,
+        "pairedP95MedianRatio": 1.0223463637853905,
+        "parity": "FAIL",
+        "strongerDenseWin": "FAIL"
+      },
+      {
+        "rows": 1024,
+        "pairCount": 5,
+        "pairedMedianRatios": [
+          1.354545452378013,
+          1.2552447502167337,
+          1.328358206299637,
+          1.341726614270396,
+          1.334545455195687
+        ],
+        "pairedP95Ratios": [
+          1.2507936595038283,
+          1.1914893697969187,
+          1.3146417407594024,
+          1.179940997555814,
+          1.2436708897469213
+        ],
+        "pairedMedianGeometricMean": 1.3224124243918731,
+        "pairedP95MedianRatio": 1.2436708897469213,
+        "parity": "FAIL",
+        "strongerDenseWin": "FAIL"
+      },
+      {
+        "rows": 10000,
+        "pairCount": 5,
+        "pairedMedianRatios": [
+          1.5436151942517649,
+          1.4719696974456207,
+          1.4992412745341916,
+          1.4680096990688123,
+          1.4998197553070651
+        ],
+        "pairedP95Ratios": [
+          1.1127574070160264,
+          1.0640291517226514,
+          1.1597521545417155,
+          1.0753356539354029,
+          1.0889872174073718
+        ],
+        "pairedMedianGeometricMean": 1.4962890157592224,
+        "pairedP95MedianRatio": 1.0889872174073718,
+        "parity": "FAIL",
+        "strongerDenseWin": "FAIL"
+      }
+    ],
+    "caution": "One build/browser and one workload; per-frame commit timings only, not full page CPU, paint, or general tail claims."
+  },
+  "rawEvidence": {
+    "canonicalResultsDirectory": "results/current-owner-kernel-headless-v1",
+    "resultFileCount": 111,
+    "resultFiles": [
+      {
+        "path": "results/current-owner-kernel-headless-v1/analysis.json",
+        "sha256": "4aa78b984a9481fb07ee8a87af5b49e76e66c17815425b11ad576ffcb0544571"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-00-after.json",
+        "sha256": "2b434fd9f45c5b933f47cb0256cf49f2002719849beb17afe1139e5d2debe2cc"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-00-before.json",
+        "sha256": "f5a886bd40dd38c4e275582a22b9950ceb5ecd0eb383c75f21dd176a9293d764"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-01-after.json",
+        "sha256": "db1dcfb050c2f9d8c961deafd0c361ca0284eb96d2a9900132aafdd791b913fc"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-01-before.json",
+        "sha256": "0c88b4dd3445f92e4054081554a8448a7e891a7fa323ff0b167e1478971ed046"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-02-after.json",
+        "sha256": "72fc962615cca48f5236734a2c0e4c5b49e7584084a787c47deba1a96ab456d4"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-02-before.json",
+        "sha256": "1990e5422ee96e1baa8e6d1649d2151c74ccd6d73db16b440d7fb89c5188f153"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-03-after.json",
+        "sha256": "bfcc23fec18feb35dec972b8d061af716e39de9dd5247d38ea8e272dffcaf360"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-03-before.json",
+        "sha256": "bec0ddb1be5cdc8755e3eb5330239f13133ce8168a804b5ef684f0e31a6b42bb"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-04-after.json",
+        "sha256": "2e5b6c3996fef91992853a8baa083e0c6eab441c6eb57eb4a9cb925ff5f745c8"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-04-before.json",
+        "sha256": "fffe2ae46a9cb57d9ba2cf3105483515d70482cfc4cbd1ffc42659ebf3732b33"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-05-after.json",
+        "sha256": "7d95ee5cd3010f0d9d26628125bc1414b1a78001a4c7d4807d4fb6bdbb005a7d"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-05-before.json",
+        "sha256": "753c85cb73aafc549d432bcc2e12dd45a48424ee930140330b93850294d7f5ce"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-06-after.json",
+        "sha256": "922026bd0ddba72437c92c28f072aa48c200a5692e5bbae5569e0f85f910cbfc"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-06-before.json",
+        "sha256": "5d3f2ec58edca23afb593fa221c26249af1ae4de5b92dc849c8f28b4076f31b4"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-07-after.json",
+        "sha256": "43acd57f86a5f68a3254f0d57507a074425de6af5de6fbdbf5165c74dd491f17"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-07-before.json",
+        "sha256": "7b7d2ce790c59ae6ffc7b77a7694f655290238a7e8d32ff228470d4965b27c1d"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-08-after.json",
+        "sha256": "cf7e709a3d61db50b110e4237e0b6541758015dc3078ad16d64b76788e64d8c0"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-08-before.json",
+        "sha256": "617ec54a01c7828b7843136ab8636d1fa5dedc955a3c6c4b6000f7d1180028d7"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-09-after.json",
+        "sha256": "906edcd1c2f41efd88f670ce4c8970bc645286ae73598f7e5ffa5a61891c366e"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-09-before.json",
+        "sha256": "2d3add0a581f7546036db0e18e63b6c39f41d49d730501b6f9f5faa73d19d0fb"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-10-after.json",
+        "sha256": "fadc384692d7f3c1133a9ca2ca90a5f1443ee9c6a8b3d15b3d7f875d6ee48fe2"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-10-before.json",
+        "sha256": "6105380040a4637e91a1820b912725dca3b8ac3038c41b4ee8db5605cffed01e"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-11-after.json",
+        "sha256": "cc1f5b38b8a2d5b5d91a5a24300d7e07752c04a46e8593b7aafecedce8e791a5"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-11-before.json",
+        "sha256": "e7027830622da7886f314f7e12ac1abcab8d58a293b9de2547ef910f2e615b3e"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-12-after.json",
+        "sha256": "726a32562ba25496b2471c9db02d49bff2ffd6abd8babdfd7a8c8a4d33dff4e8"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-12-before.json",
+        "sha256": "074265e8e96f0fcb47f8016a5deadf8d26bb0c13210a29c5547ec57f1b7a6291"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-13-after.json",
+        "sha256": "4e3cd2c9b71a95699dc58a2c1467df2a100c86847f50a7d28b78679ffebd927a"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-13-before.json",
+        "sha256": "b2a8223d2f6f724ac1abe23da944d6334037f6eec438418dbfe89c53488353ce"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-14-after.json",
+        "sha256": "5e039c397fac1147cc0edb7be0632152f404ff911bcf9c1ca20b09eb28bd4188"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-14-before.json",
+        "sha256": "cbc0659a031e677137b6aaa222567286813579e5860d321024f5e44f9cf0c06b"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-15-after.json",
+        "sha256": "841a5f9e01d9d9e195f110e64fac93743851625c2ea9b9dec781a505dd0efd55"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-15-before.json",
+        "sha256": "e0920fadfa0ea6bb1670d8b40bcf08853492346cca899e8216bde1716aabc931"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-16-after.json",
+        "sha256": "c7292554464cdc6516d73de0818a1593fde5ea0353b43c2663d6c0d277e77a2b"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-16-before.json",
+        "sha256": "1ba467063cfd62a9c01a6074e2cc344a8b85bb0eb5e8f527136fe7afadf36a19"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-17-after.json",
+        "sha256": "2dca66d8b7210745b746a662df4230328c2a7d0e68ad9859cf6d54a40a7500fe"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-17-before.json",
+        "sha256": "99fc147e0c5f75347a088ef9cfbd45908fce3b819679f58778bfc8a014c5f304"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-18-after.json",
+        "sha256": "5c2bb39445fcd6cad9e11312492cc48cf5abb8cda2d69b1fc0bc7d1308845645"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-18-before.json",
+        "sha256": "94243fd6e3df63d29ffd61330a5355132041dbf28ae6fa6d364966315fe4f1fd"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-19-after.json",
+        "sha256": "8d187f5c3cd696da59dc6a7a410482f52f492ae4aa21ff727fc0a8969d79f1b6"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-19-before.json",
+        "sha256": "90e24904fbd1f2060dd1e5e5f98a28610cd6c63273bfcaf493f0efc0b2f242b1"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-20-after.json",
+        "sha256": "a86e8ba17d2747e10de3fd9cf5f5e313ddb3ea1d9145225437925bc415ccdcc8"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-20-before.json",
+        "sha256": "7f515ab66229f4c89a4e7ecb66849d2fc92769eb1ab3e4abe4847ddfbbb261a5"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-21-after.json",
+        "sha256": "05b023afa315a455e2383a4cdf335109a0bdf3951e653ec4bd671fbb2f758c3c"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-21-before.json",
+        "sha256": "f2f54effb9333802c5eb75251630bffae168a7ee565d408a25fc65a703e6fe7f"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-22-after.json",
+        "sha256": "227287f7c3b65464c0dce79f3c6bdd232ed8fb625aaa2fc90a0ed18002e44c93"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-22-before.json",
+        "sha256": "c4f7be097edf5ed3cdc86568f7e56de005cd1de95868e3f5d280a47fc73858b0"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-23-after.json",
+        "sha256": "082a53c8c026004b5c2e7a99f5a8d965c639212fbbeb78997c63e9870d7daa68"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-23-before.json",
+        "sha256": "54a42a13828ce2f3096f40984fbcb18581fdb14ff4a70f9e509fb84cae17c808"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-24-after.json",
+        "sha256": "7f5f9eff2e9cf14b57f3f2d9ab898d87431b328b1159935b98ded629a2740ce9"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-24-before.json",
+        "sha256": "6adb841b38b153dc9307ac4ad3a0467965014303536560dcc2403feab9773954"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-25-after.json",
+        "sha256": "e9792b68f54ac46916af114efefc1a081f249488f1db51a903ad9c7a91945d28"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-25-before.json",
+        "sha256": "c7550dc9afde92b0f867a97716ed439584365f6badc4be68d5177515788a79c2"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-26-after.json",
+        "sha256": "83dcb6216ec19c6a4a2cd9e9d5f2adc1b0ad7cf94a096bc4ccde75b7a9fc89a0"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-26-before.json",
+        "sha256": "29d5a009a7e6bdecbebe501d0eb92d068e67876c0b3b5c96c89a16670e5d9f01"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-27-after.json",
+        "sha256": "34e253522bf2aec335bc06738bcfa1bc50016652a455868273d91bf78ae531b6"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-27-before.json",
+        "sha256": "b96e24b1814cdc753566fb466bcbff7a4d5a9a1b57660f62705f060d0c433296"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-28-after.json",
+        "sha256": "b3e969d3f2b89d12b53ca5f43952316b040a4b33f671c926ba239fc3889756fc"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-28-before.json",
+        "sha256": "bb5f7041673f6df23883fd08b398e62a5f122dd4cb41afc6fb9c7005e453cf62"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-29-after.json",
+        "sha256": "d627c2dd70d95640898decff833a90f17678a732b20c4aa97df2b8b8230c9fb0"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/calibration-sequence-29-before.json",
+        "sha256": "819541326819990453339320d8129dfcb5154f158ca2028877e672c885cd1541"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/frozen-config.json",
+        "sha256": "691bf7424823e9c0b9940e33ca543b0a5a19f744c9a0aae6552ea1c4853cdef6"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/pair-10000-00.json",
+        "sha256": "ef5aea52a91c7f52b0f34005283f0794fbdf0fd797832fca50abb52d88175a22"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/pair-10000-01.json",
+        "sha256": "2107361505389a63cd1fcba2bf7a65284bbe02831aa80d5d3b9356db745d0ba8"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/pair-10000-02.json",
+        "sha256": "417d3facd012adeab26e832e06c613021f0b346b90c90005ccea1cb61c088a5a"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/pair-10000-03.json",
+        "sha256": "7ee7b744e0f13797773043be9e35b92c16be6ba009fe96e2ab01eb18184ca28f"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/pair-10000-04.json",
+        "sha256": "f58ab1c6becdae508efe54648828241849da2317c25aea375435893ead53b8a6"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/pair-1024-00.json",
+        "sha256": "8cdb97b14a3e24209f0ce5c1bc76ca5c3253d89b29dea810bb6dd5c7e8f4d919"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/pair-1024-01.json",
+        "sha256": "0e71837d7ada05aa998f5fe0654f3337a3ac4a06385b190e4696d4ba9690ce6a"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/pair-1024-02.json",
+        "sha256": "19e50ce5d6e39278110f50e0b7703834c1bb931be26021e097203640ab9b9bef"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/pair-1024-03.json",
+        "sha256": "961ab6ec37a8a12e783baeb066a1024e1613df928827b01e7f79e415a7922db2"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/pair-1024-04.json",
+        "sha256": "e47e56bd34e8fda81493a51513303547df98110421ec126e7be26ffb71343869"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/pair-128-00.json",
+        "sha256": "a53dbaa887f0cfe254b798db53fba613b5dfe27893f75ada43416423f9decc3c"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/pair-128-01.json",
+        "sha256": "f1944b9a53ee14d60435569f3fc572364e849da9007c1739222ac8c25de3592c"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/pair-128-02.json",
+        "sha256": "3b0d283255664e56ede6867fda8bc08e53b6d6717ce3190e7807396c99f112c4"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/pair-128-03.json",
+        "sha256": "9855679e9156c2b3cce8784e2240a47a0f06ca4c36843c0bc35a0dadb88bf29a"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/pair-128-04.json",
+        "sha256": "5d15127b21c27152e8eba0ac6fb287491cb72059b1abd024f20b808d54255b68"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/receipt.json",
+        "sha256": "a6c36241672e32db97580947a062eab974a4fe9972bf96c4eeb04ae863b5a696"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/registration.json",
+        "sha256": "3560c66f17d739996fb3f5be4cbd444c3bfff651fab14f3b5ac716db9d4d18ab"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/sequence-00.json",
+        "sha256": "63e77b8beec35abd659aba3442651bd8afdc7191d82bd62114cbe4ac0b7311cb"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/sequence-01.json",
+        "sha256": "e2e478e85b3acbdb061295aa1f7651badc0a7804ad3815b21711e9d25a8d9ded"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/sequence-02.json",
+        "sha256": "e0aa100243c2ec088fa5d2218ce6b96167d2a59ab22d1fa93e21532e1a0546fa"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/sequence-03.json",
+        "sha256": "9683223cbf2f73417fec2a57787c46ee0ea20cfcd74bf1b5e9234da51e12be73"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/sequence-04.json",
+        "sha256": "c9e46d3fd1c8e68096487270482053ba496d7e1e67b0091dea00e6bbb0b4037b"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/sequence-05.json",
+        "sha256": "a32ceef311f1bf0b9c38aa895191c0ca1d3b1c41dda863cbda4507f4207586fe"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/sequence-06.json",
+        "sha256": "7fa94ff41615b18447ace270392d9f2469ff9c16e95f6f20a984212f48273fdb"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/sequence-07.json",
+        "sha256": "e48eb8ec78e6ae62986b0fe36f27d414bcfaa2352e52ad3f3b82cfb337780c68"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/sequence-08.json",
+        "sha256": "cc1ff383344b052bcf8808766ef6ba4e5f8fdadd50669d3d55d3f78ba35c4fbe"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/sequence-09.json",
+        "sha256": "bc74fa25a935b8f30eeac17e9f241860c716f7d3df7f0aa37fd1fe3653cf767a"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/sequence-10.json",
+        "sha256": "7608876b04bd4becf8ce7cd68313692cb08224eb1c9e400ae6541b7e395f982f"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/sequence-11.json",
+        "sha256": "88b814a32235b567fc6dbf8df6ecea3d2c64e63a87749e4640773d405c304b59"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/sequence-12.json",
+        "sha256": "e4bc35de20d7e26d6b69e23e0c2502ab7f6838b60b117b4cb13075cfe478b469"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/sequence-13.json",
+        "sha256": "8b3e71ca7badc2b0d598e220d4178c0f2a1f03c9466425a5c22e089a7a2275d4"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/sequence-14.json",
+        "sha256": "572f7cd41156f568b47ac82b72422f46ab3df3e252a0eff120a8cead782d1958"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/sequence-15.json",
+        "sha256": "17d36d97b210a3bc72bf2c6f3bc04a08d41c8646bb560cc193dc93a2c819b806"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/sequence-16.json",
+        "sha256": "cfd740712ba7ca7061ec5506298d8a0127012b1c9a5480b483fcca9dd90a7970"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/sequence-17.json",
+        "sha256": "e2cea3a454274df385624f6d0ecc5a7aba07cbb4537206f20f30a8980edaabae"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/sequence-18.json",
+        "sha256": "4953548b30485d955981190240f3119207048d00516eee97f47b04882cb9e4d8"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/sequence-19.json",
+        "sha256": "2e6a30e97611191776e94b756d06551f8136d0ce50c9200b3783e465450ea43f"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/sequence-20.json",
+        "sha256": "a20661d795bb5ec18f29523607b02222eaa625671ebe13c7196abd3dd02ec0a6"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/sequence-21.json",
+        "sha256": "5c158ef386695fd82354cc6cb7f4a0e80ae769b853bb59236230d117915cf240"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/sequence-22.json",
+        "sha256": "ff791fd8e6f1ac589672e71945209da91cca8af286eb7f6ea67bf71fc2a1cd1f"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/sequence-23.json",
+        "sha256": "e7a5272fa38ca049bac77ca684cb2aa218c6463c84dc188239465167a425e871"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/sequence-24.json",
+        "sha256": "ffedab46f9dcf66444dfaae8a4c69441ff819d1422eef959209694d41b63820e"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/sequence-25.json",
+        "sha256": "b566fa034568b45d35d1ed6811ae9572f0d221d423bdd8b460e86f8ddd348c67"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/sequence-26.json",
+        "sha256": "89e1289a92998af22e2a6b3fd4de8400932ed04f3b25df9d3bdc67198f2d1246"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/sequence-27.json",
+        "sha256": "e75961f3f9132a625723993f2163a06a430ba9c194d176244cda253c9612d8c4"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/sequence-28.json",
+        "sha256": "63d5d703c3be6800955a1a921bf7f0328f8b59607e76ebf81b67764ec3df07ba"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/sequence-29.json",
+        "sha256": "7644c9f547595ab33b1e289642ce640e114d99fae98d71b9a590e88516642431"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/source-build-locks.json",
+        "sha256": "fc0ee17f8a3432b097e71a2080446ec0b2e92c3b0b564491f34456ca910a16ec"
+      },
+      {
+        "path": "results/current-owner-kernel-headless-v1/verification.json",
+        "sha256": "92b8e68b29667e17d3dbabfd1f57229d1af2bc0cb9c45ad4573d66aba5bc499a"
+      }
+    ],
+    "cacheRawMirrorDirectory": ".cache/current-owner-kernel-headless-20261013-v1/raw",
+    "cacheRawFileCount": 107,
+    "cacheRawFiles": [
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/analysis.json",
+        "sha256": "4aa78b984a9481fb07ee8a87af5b49e76e66c17815425b11ad576ffcb0544571"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-00-after.json",
+        "sha256": "2b434fd9f45c5b933f47cb0256cf49f2002719849beb17afe1139e5d2debe2cc"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-00-before.json",
+        "sha256": "f5a886bd40dd38c4e275582a22b9950ceb5ecd0eb383c75f21dd176a9293d764"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-01-after.json",
+        "sha256": "db1dcfb050c2f9d8c961deafd0c361ca0284eb96d2a9900132aafdd791b913fc"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-01-before.json",
+        "sha256": "0c88b4dd3445f92e4054081554a8448a7e891a7fa323ff0b167e1478971ed046"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-02-after.json",
+        "sha256": "72fc962615cca48f5236734a2c0e4c5b49e7584084a787c47deba1a96ab456d4"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-02-before.json",
+        "sha256": "1990e5422ee96e1baa8e6d1649d2151c74ccd6d73db16b440d7fb89c5188f153"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-03-after.json",
+        "sha256": "bfcc23fec18feb35dec972b8d061af716e39de9dd5247d38ea8e272dffcaf360"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-03-before.json",
+        "sha256": "bec0ddb1be5cdc8755e3eb5330239f13133ce8168a804b5ef684f0e31a6b42bb"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-04-after.json",
+        "sha256": "2e5b6c3996fef91992853a8baa083e0c6eab441c6eb57eb4a9cb925ff5f745c8"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-04-before.json",
+        "sha256": "fffe2ae46a9cb57d9ba2cf3105483515d70482cfc4cbd1ffc42659ebf3732b33"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-05-after.json",
+        "sha256": "7d95ee5cd3010f0d9d26628125bc1414b1a78001a4c7d4807d4fb6bdbb005a7d"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-05-before.json",
+        "sha256": "753c85cb73aafc549d432bcc2e12dd45a48424ee930140330b93850294d7f5ce"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-06-after.json",
+        "sha256": "922026bd0ddba72437c92c28f072aa48c200a5692e5bbae5569e0f85f910cbfc"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-06-before.json",
+        "sha256": "5d3f2ec58edca23afb593fa221c26249af1ae4de5b92dc849c8f28b4076f31b4"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-07-after.json",
+        "sha256": "43acd57f86a5f68a3254f0d57507a074425de6af5de6fbdbf5165c74dd491f17"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-07-before.json",
+        "sha256": "7b7d2ce790c59ae6ffc7b77a7694f655290238a7e8d32ff228470d4965b27c1d"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-08-after.json",
+        "sha256": "cf7e709a3d61db50b110e4237e0b6541758015dc3078ad16d64b76788e64d8c0"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-08-before.json",
+        "sha256": "617ec54a01c7828b7843136ab8636d1fa5dedc955a3c6c4b6000f7d1180028d7"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-09-after.json",
+        "sha256": "906edcd1c2f41efd88f670ce4c8970bc645286ae73598f7e5ffa5a61891c366e"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-09-before.json",
+        "sha256": "2d3add0a581f7546036db0e18e63b6c39f41d49d730501b6f9f5faa73d19d0fb"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-10-after.json",
+        "sha256": "fadc384692d7f3c1133a9ca2ca90a5f1443ee9c6a8b3d15b3d7f875d6ee48fe2"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-10-before.json",
+        "sha256": "6105380040a4637e91a1820b912725dca3b8ac3038c41b4ee8db5605cffed01e"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-11-after.json",
+        "sha256": "cc1f5b38b8a2d5b5d91a5a24300d7e07752c04a46e8593b7aafecedce8e791a5"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-11-before.json",
+        "sha256": "e7027830622da7886f314f7e12ac1abcab8d58a293b9de2547ef910f2e615b3e"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-12-after.json",
+        "sha256": "726a32562ba25496b2471c9db02d49bff2ffd6abd8babdfd7a8c8a4d33dff4e8"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-12-before.json",
+        "sha256": "074265e8e96f0fcb47f8016a5deadf8d26bb0c13210a29c5547ec57f1b7a6291"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-13-after.json",
+        "sha256": "4e3cd2c9b71a95699dc58a2c1467df2a100c86847f50a7d28b78679ffebd927a"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-13-before.json",
+        "sha256": "b2a8223d2f6f724ac1abe23da944d6334037f6eec438418dbfe89c53488353ce"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-14-after.json",
+        "sha256": "5e039c397fac1147cc0edb7be0632152f404ff911bcf9c1ca20b09eb28bd4188"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-14-before.json",
+        "sha256": "cbc0659a031e677137b6aaa222567286813579e5860d321024f5e44f9cf0c06b"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-15-after.json",
+        "sha256": "841a5f9e01d9d9e195f110e64fac93743851625c2ea9b9dec781a505dd0efd55"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-15-before.json",
+        "sha256": "e0920fadfa0ea6bb1670d8b40bcf08853492346cca899e8216bde1716aabc931"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-16-after.json",
+        "sha256": "c7292554464cdc6516d73de0818a1593fde5ea0353b43c2663d6c0d277e77a2b"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-16-before.json",
+        "sha256": "1ba467063cfd62a9c01a6074e2cc344a8b85bb0eb5e8f527136fe7afadf36a19"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-17-after.json",
+        "sha256": "2dca66d8b7210745b746a662df4230328c2a7d0e68ad9859cf6d54a40a7500fe"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-17-before.json",
+        "sha256": "99fc147e0c5f75347a088ef9cfbd45908fce3b819679f58778bfc8a014c5f304"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-18-after.json",
+        "sha256": "5c2bb39445fcd6cad9e11312492cc48cf5abb8cda2d69b1fc0bc7d1308845645"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-18-before.json",
+        "sha256": "94243fd6e3df63d29ffd61330a5355132041dbf28ae6fa6d364966315fe4f1fd"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-19-after.json",
+        "sha256": "8d187f5c3cd696da59dc6a7a410482f52f492ae4aa21ff727fc0a8969d79f1b6"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-19-before.json",
+        "sha256": "90e24904fbd1f2060dd1e5e5f98a28610cd6c63273bfcaf493f0efc0b2f242b1"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-20-after.json",
+        "sha256": "a86e8ba17d2747e10de3fd9cf5f5e313ddb3ea1d9145225437925bc415ccdcc8"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-20-before.json",
+        "sha256": "7f515ab66229f4c89a4e7ecb66849d2fc92769eb1ab3e4abe4847ddfbbb261a5"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-21-after.json",
+        "sha256": "05b023afa315a455e2383a4cdf335109a0bdf3951e653ec4bd671fbb2f758c3c"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-21-before.json",
+        "sha256": "f2f54effb9333802c5eb75251630bffae168a7ee565d408a25fc65a703e6fe7f"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-22-after.json",
+        "sha256": "227287f7c3b65464c0dce79f3c6bdd232ed8fb625aaa2fc90a0ed18002e44c93"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-22-before.json",
+        "sha256": "c4f7be097edf5ed3cdc86568f7e56de005cd1de95868e3f5d280a47fc73858b0"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-23-after.json",
+        "sha256": "082a53c8c026004b5c2e7a99f5a8d965c639212fbbeb78997c63e9870d7daa68"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-23-before.json",
+        "sha256": "54a42a13828ce2f3096f40984fbcb18581fdb14ff4a70f9e509fb84cae17c808"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-24-after.json",
+        "sha256": "7f5f9eff2e9cf14b57f3f2d9ab898d87431b328b1159935b98ded629a2740ce9"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-24-before.json",
+        "sha256": "6adb841b38b153dc9307ac4ad3a0467965014303536560dcc2403feab9773954"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-25-after.json",
+        "sha256": "e9792b68f54ac46916af114efefc1a081f249488f1db51a903ad9c7a91945d28"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-25-before.json",
+        "sha256": "c7550dc9afde92b0f867a97716ed439584365f6badc4be68d5177515788a79c2"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-26-after.json",
+        "sha256": "83dcb6216ec19c6a4a2cd9e9d5f2adc1b0ad7cf94a096bc4ccde75b7a9fc89a0"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-26-before.json",
+        "sha256": "29d5a009a7e6bdecbebe501d0eb92d068e67876c0b3b5c96c89a16670e5d9f01"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-27-after.json",
+        "sha256": "34e253522bf2aec335bc06738bcfa1bc50016652a455868273d91bf78ae531b6"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-27-before.json",
+        "sha256": "b96e24b1814cdc753566fb466bcbff7a4d5a9a1b57660f62705f060d0c433296"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-28-after.json",
+        "sha256": "b3e969d3f2b89d12b53ca5f43952316b040a4b33f671c926ba239fc3889756fc"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-28-before.json",
+        "sha256": "bb5f7041673f6df23883fd08b398e62a5f122dd4cb41afc6fb9c7005e453cf62"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-29-after.json",
+        "sha256": "d627c2dd70d95640898decff833a90f17678a732b20c4aa97df2b8b8230c9fb0"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/calibration-sequence-29-before.json",
+        "sha256": "819541326819990453339320d8129dfcb5154f158ca2028877e672c885cd1541"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/pair-10000-00.json",
+        "sha256": "ef5aea52a91c7f52b0f34005283f0794fbdf0fd797832fca50abb52d88175a22"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/pair-10000-01.json",
+        "sha256": "2107361505389a63cd1fcba2bf7a65284bbe02831aa80d5d3b9356db745d0ba8"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/pair-10000-02.json",
+        "sha256": "417d3facd012adeab26e832e06c613021f0b346b90c90005ccea1cb61c088a5a"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/pair-10000-03.json",
+        "sha256": "7ee7b744e0f13797773043be9e35b92c16be6ba009fe96e2ab01eb18184ca28f"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/pair-10000-04.json",
+        "sha256": "f58ab1c6becdae508efe54648828241849da2317c25aea375435893ead53b8a6"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/pair-1024-00.json",
+        "sha256": "8cdb97b14a3e24209f0ce5c1bc76ca5c3253d89b29dea810bb6dd5c7e8f4d919"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/pair-1024-01.json",
+        "sha256": "0e71837d7ada05aa998f5fe0654f3337a3ac4a06385b190e4696d4ba9690ce6a"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/pair-1024-02.json",
+        "sha256": "19e50ce5d6e39278110f50e0b7703834c1bb931be26021e097203640ab9b9bef"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/pair-1024-03.json",
+        "sha256": "961ab6ec37a8a12e783baeb066a1024e1613df928827b01e7f79e415a7922db2"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/pair-1024-04.json",
+        "sha256": "e47e56bd34e8fda81493a51513303547df98110421ec126e7be26ffb71343869"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/pair-128-00.json",
+        "sha256": "a53dbaa887f0cfe254b798db53fba613b5dfe27893f75ada43416423f9decc3c"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/pair-128-01.json",
+        "sha256": "f1944b9a53ee14d60435569f3fc572364e849da9007c1739222ac8c25de3592c"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/pair-128-02.json",
+        "sha256": "3b0d283255664e56ede6867fda8bc08e53b6d6717ce3190e7807396c99f112c4"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/pair-128-03.json",
+        "sha256": "9855679e9156c2b3cce8784e2240a47a0f06ca4c36843c0bc35a0dadb88bf29a"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/pair-128-04.json",
+        "sha256": "5d15127b21c27152e8eba0ac6fb287491cb72059b1abd024f20b808d54255b68"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/sequence-00.json",
+        "sha256": "63e77b8beec35abd659aba3442651bd8afdc7191d82bd62114cbe4ac0b7311cb"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/sequence-01.json",
+        "sha256": "e2e478e85b3acbdb061295aa1f7651badc0a7804ad3815b21711e9d25a8d9ded"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/sequence-02.json",
+        "sha256": "e0aa100243c2ec088fa5d2218ce6b96167d2a59ab22d1fa93e21532e1a0546fa"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/sequence-03.json",
+        "sha256": "9683223cbf2f73417fec2a57787c46ee0ea20cfcd74bf1b5e9234da51e12be73"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/sequence-04.json",
+        "sha256": "c9e46d3fd1c8e68096487270482053ba496d7e1e67b0091dea00e6bbb0b4037b"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/sequence-05.json",
+        "sha256": "a32ceef311f1bf0b9c38aa895191c0ca1d3b1c41dda863cbda4507f4207586fe"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/sequence-06.json",
+        "sha256": "7fa94ff41615b18447ace270392d9f2469ff9c16e95f6f20a984212f48273fdb"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/sequence-07.json",
+        "sha256": "e48eb8ec78e6ae62986b0fe36f27d414bcfaa2352e52ad3f3b82cfb337780c68"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/sequence-08.json",
+        "sha256": "cc1ff383344b052bcf8808766ef6ba4e5f8fdadd50669d3d55d3f78ba35c4fbe"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/sequence-09.json",
+        "sha256": "bc74fa25a935b8f30eeac17e9f241860c716f7d3df7f0aa37fd1fe3653cf767a"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/sequence-10.json",
+        "sha256": "7608876b04bd4becf8ce7cd68313692cb08224eb1c9e400ae6541b7e395f982f"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/sequence-11.json",
+        "sha256": "88b814a32235b567fc6dbf8df6ecea3d2c64e63a87749e4640773d405c304b59"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/sequence-12.json",
+        "sha256": "e4bc35de20d7e26d6b69e23e0c2502ab7f6838b60b117b4cb13075cfe478b469"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/sequence-13.json",
+        "sha256": "8b3e71ca7badc2b0d598e220d4178c0f2a1f03c9466425a5c22e089a7a2275d4"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/sequence-14.json",
+        "sha256": "572f7cd41156f568b47ac82b72422f46ab3df3e252a0eff120a8cead782d1958"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/sequence-15.json",
+        "sha256": "17d36d97b210a3bc72bf2c6f3bc04a08d41c8646bb560cc193dc93a2c819b806"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/sequence-16.json",
+        "sha256": "cfd740712ba7ca7061ec5506298d8a0127012b1c9a5480b483fcca9dd90a7970"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/sequence-17.json",
+        "sha256": "e2cea3a454274df385624f6d0ecc5a7aba07cbb4537206f20f30a8980edaabae"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/sequence-18.json",
+        "sha256": "4953548b30485d955981190240f3119207048d00516eee97f47b04882cb9e4d8"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/sequence-19.json",
+        "sha256": "2e6a30e97611191776e94b756d06551f8136d0ce50c9200b3783e465450ea43f"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/sequence-20.json",
+        "sha256": "a20661d795bb5ec18f29523607b02222eaa625671ebe13c7196abd3dd02ec0a6"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/sequence-21.json",
+        "sha256": "5c158ef386695fd82354cc6cb7f4a0e80ae769b853bb59236230d117915cf240"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/sequence-22.json",
+        "sha256": "ff791fd8e6f1ac589672e71945209da91cca8af286eb7f6ea67bf71fc2a1cd1f"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/sequence-23.json",
+        "sha256": "e7a5272fa38ca049bac77ca684cb2aa218c6463c84dc188239465167a425e871"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/sequence-24.json",
+        "sha256": "ffedab46f9dcf66444dfaae8a4c69441ff819d1422eef959209694d41b63820e"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/sequence-25.json",
+        "sha256": "b566fa034568b45d35d1ed6811ae9572f0d221d423bdd8b460e86f8ddd348c67"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/sequence-26.json",
+        "sha256": "89e1289a92998af22e2a6b3fd4de8400932ed04f3b25df9d3bdc67198f2d1246"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/sequence-27.json",
+        "sha256": "e75961f3f9132a625723993f2163a06a430ba9c194d176244cda253c9612d8c4"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/sequence-28.json",
+        "sha256": "63d5d703c3be6800955a1a921bf7f0328f8b59607e76ebf81b67764ec3df07ba"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/sequence-29.json",
+        "sha256": "7644c9f547595ab33b1e289642ce640e114d99fae98d71b9a590e88516642431"
+      },
+      {
+        "path": ".cache/current-owner-kernel-headless-20261013-v1/raw/verification.json",
+        "sha256": "92b8e68b29667e17d3dbabfd1f57229d1af2bc0cb9c45ad4573d66aba5bc499a"
+      }
+    ],
+    "receiptCopiedFileCount": 110,
+    "receiptCopyMismatchCount": 0,
+    "receiptCopyMismatches": [],
+    "profiles": [
+      {
+        "path": ".cache/current-kernel-cpu-diagnostic-stage/runs/native-1024-1791931838316-7f17a99a-828e-49ce-a59a-5a279c722fdc/profile.cpuprofile",
+        "sha256": "1226b012191a6bd71f52225a560e908a60822a71e05b9ee03876fa142a3337e7"
+      },
+      {
+        "path": ".cache/current-kernel-cpu-diagnostic-stage/runs/native-1024-1791931838316-7f17a99a-828e-49ce-a59a-5a279c722fdc/record.json",
+        "sha256": "950a42e99e1cc4292b8a906c98ff801fcfcafd4ac62bd5addd6fd934b04441d6"
+      },
+      {
+        "path": ".cache/current-kernel-cpu-diagnostic-stage/runs/react-1024-1791931857951-a538ee7d-7944-4b18-99db-2280a648e457/profile.cpuprofile",
+        "sha256": "c7b74714edf98c713c0b23eff270a6227b8b6cecb94871e286e251b8aa9bfab9"
+      },
+      {
+        "path": ".cache/current-kernel-cpu-diagnostic-stage/runs/react-1024-1791931857951-a538ee7d-7944-4b18-99db-2280a648e457/record.json",
+        "sha256": "eba0a1f671e21a720226dbeff80f61eabc452bdb2923ea528ae51aed727cb77f"
+      }
+    ]
+  },
+  "existingCpuDiagnostics": {
+    "stage": ".cache/current-kernel-cpu-diagnostic-stage",
+    "primaryVerificationPath": ".cache/current-kernel-cpu-diagnostic-stage/primary-verification.json",
+    "primaryVerificationStatus": "PASS",
+    "runs": 2,
+    "interpretation": "Whole-page profiles span navigation/init, warm+measured frames, DOM inspection/correctness/disposal/stale-setter checks. They are not timing-matched instrumentation controls and cannot determine authored source phase fractions. README claim that runner has not been invoked is stale because two runs and records now exist. Preserve both profiles and their records."
+  },
+  "toolchain": {
+    "node": {
+      "path": "/opt/homebrew/bin/node",
+      "versionOutput": [
+        "v26.7.0"
+      ]
+    },
+    "deno": {
+      "path": "/opt/homebrew/bin/deno",
+      "versionOutput": [
+        "deno 2.6.3 (stable, release, aarch64-apple-darwin)",
+        "v8 14.2.231.17-rusty"
+      ]
+    },
+    "pnpm": {
+      "path": "/Users/tjw/.nvm/versions/node/v24.18.0/bin/pnpm",
+      "versionOutput": [
+        "11.25.0"
+      ]
+    }
+  },
+  "controlRequirement": "Immutable historical uninstrumented result remains a frozen decision record; it cannot alone serve as the matched instrumentation-overhead control. Recording A must explicitly lock and distinguish a fresh original-source baseline with diagnostics disabled from diagnostic-enabled instrumentation, with their own source and build hashes. Keep failures and instrumented timings separate from qualification.",
+  "verificationSummary": {
+    "sourceLocksMatchArchive": true,
+    "baselineLockMismatchCount": 0,
+    "statusLocksMatchArchive": true,
+    "buildAssetsMatch": true,
+    "allReceiptCopiedEvidenceMatches": true,
+    "noArchiveExtractionPerformed": true,
+    "noTestsBuildsBenchmarksServersOrBrowserRunsPerformed": true
+  }
+}

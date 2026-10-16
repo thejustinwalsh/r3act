@@ -1,0 +1,48 @@
+Check .cache/pending-direct-ack-root-stage/src/native_cell_cut_test.ts
+Check .cache/pending-direct-ack-root-stage/src/native_prepared_cell_cut_test.ts
+Check .cache/pending-direct-ack-root-stage/src/native_prepared_row_cut_test.ts
+Check .cache/pending-direct-ack-root-stage/src/native_numeric_lane_cut_test.ts
+Check .cache/pending-direct-ack-root-stage/src/native_pending_cut_root_integration_test.ts
+running 14 tests from ./.cache/pending-direct-ack-root-stage/src/native_cell_cut_test.ts
+captureNative coalesces in first-arrival order into reused buffers ... ok (0ms)
+legacy fallback scrubs the partially written native prefix ... ok (0ms)
+capacity fallback scrubs partial output without changing the queue ... ok (0ms)
+native to legacy to native preserves reference and queue order ... ok (0ms)
+native queue clear requires exact handle address and incarnation ... ok (0ms)
+world validates exact cell handles and preserves writes newer than a cut ... ok (7ms)
+dead cell handles resolve to null and stale native cuts cannot clear state ... ok (0ms)
+two roots can capture and independently acknowledge one shared-world cut ... ok (0ms)
+keyed native capture scrubs every prefix on legacy and capacity fallback ... ok (0ms)
+direct keyed acknowledgement preserves nested maximum version ... ok (0ms)
+direct keyed acknowledgement rejects identity replacement and old cuts ... ok (0ms)
+keyed acknowledgements are queue-scoped and reject forged keys and proxies ... ok (0ms)
+clear and dropOwner revoke retained keyed capabilities before reuse ... ok (0ms)
+captured keys expose no pending-node properties and are revocable ... ok (0ms)
+running 8 tests from ./.cache/pending-direct-ack-root-stage/src/native_prepared_cell_cut_test.ts
+prepared cell cuts preserve the captured value across host reentry ... ok (6ms)
+prepared cell tokens refresh after binding changes and decline after removal ... ok (2ms)
+prepared cut null preflight retries once and publishes only the accepted retry ... ok (0ms)
+two prepared preflight declines fall back without early publication or acknowledgement ... ok (0ms)
+accepted prepared false result is acknowledged without retry ... ok (0ms)
+prepared cell tokens remain isolated across roots sharing one World ... ok (0ms)
+prepared cut host failure stays terminal with the dirty version pending ... ok (1ms)
+disposing inside a prepared writer clears captured token buffers ... ok (0ms)
+running 6 tests from ./.cache/pending-direct-ack-root-stage/src/native_prepared_row_cut_test.ts
+owner-row Root cuts use captured sparse and dense inputs without rerender ... ok (6ms)
+owner-row null retry cannot publish or acknowledge before acceptance ... ok (1ms)
+owner-row host reentry leaves newer work pending and preserves outer outputs ... ok (0ms)
+owner-row host failure is terminal and never acknowledges the failed cut ... ok (1ms)
+owner-row accepted no-write cut acknowledges without retry or publication ... ok (0ms)
+owner-row dispose during first writer cancels remaining writes and releases cut ... ok (0ms)
+running 5 tests from ./.cache/pending-direct-ack-root-stage/src/native_numeric_lane_cut_test.ts
+native lane cuts retain newer reentrant writes without scalar snapshots ... ok (5ms)
+compiled lane promotion renders general values and never reallocates a lane ... ok (1ms)
+lane roots share column storage but acknowledge independent owner cuts ... ok (0ms)
+lane host failure remains terminal and disposal releases owners ... ok (1ms)
+disposal inside a lane writer releases captured column buffers ... ok (0ms)
+running 2 tests from ./.cache/pending-direct-ack-root-stage/src/native_pending_cut_root_integration_test.ts
+Root acknowledges accepted native cuts with reusable cut keys and scrubs them ... ok (5ms)
+Root disposal clears retained cut-key scratch buffers ... ok (0ms)
+
+ok | 35 passed | 0 failed (250ms)
+

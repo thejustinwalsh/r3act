@@ -1,0 +1,3542 @@
+{
+  "status": "PASS",
+  "reused": {
+    "disposed": false,
+    "pulse": 42,
+    "roots": [
+      {
+        "version": 49,
+        "ownerCount": 3,
+        "pendingChangeCount": 0,
+        "sourceValueSyncVisits": 0,
+        "disposed": false,
+        "rootId": "task-transition-main",
+        "publicationVersion": 49
+      },
+      {
+        "version": 50,
+        "ownerCount": 3,
+        "pendingChangeCount": 0,
+        "sourceValueSyncVisits": 0,
+        "disposed": false,
+        "rootId": "task-transition-fork",
+        "publicationVersion": 50
+      },
+      {
+        "version": 47,
+        "ownerCount": 1,
+        "pendingChangeCount": 0,
+        "sourceValueSyncVisits": 0,
+        "disposed": false,
+        "rootId": "native-task-workbench",
+        "publicationVersion": 47
+      }
+    ],
+    "stores": {
+      "query": {
+        "version": 1,
+        "value": "new frontier",
+        "roots": 3,
+        "listeners": 3,
+        "readers": 3,
+        "retainedActions": 0,
+        "transitions": 0
+      },
+      "requests": {
+        "version": 2,
+        "value": {
+          "requests": [
+            {
+              "operationId": "run-1-shared",
+              "label": "Deep refresh",
+              "lane": "main + fork"
+            },
+            {
+              "operationId": "run-1-fork-only",
+              "label": "Deep refresh sidecar",
+              "lane": "fork-only"
+            }
+          ]
+        },
+        "projectedLabels": [
+          "Deep refresh",
+          "Deep refresh sidecar"
+        ],
+        "activeScopes": 0,
+        "roots": 2,
+        "listeners": 2,
+        "readers": 2,
+        "retainedActions": 0,
+        "transitions": 0
+      },
+      "failNext": {
+        "value": false,
+        "version": 0,
+        "roots": 1,
+        "listeners": 1,
+        "readers": 1,
+        "retainedActions": 0,
+        "transitions": 0
+      },
+      "score": {
+        "version": 1,
+        "value": 19,
+        "roots": 2,
+        "listeners": 2,
+        "readers": 2,
+        "retainedActions": 0,
+        "transitions": 0
+      },
+      "feed": {
+        "version": 8,
+        "state": {
+          "items": [
+            {
+              "id": "seed-1",
+              "text": "Small field note: the river path is open again.",
+              "source": "server",
+              "confirmedLikes": 5,
+              "pendingLikeOperationIds": []
+            }
+          ],
+          "operations": {
+            "run-1-like-confirm": {
+              "id": "run-1-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "confirmed",
+              "receipt": {
+                "serverLikeId": "receipt-run-1-shared"
+              }
+            },
+            "run-1-like-reject": {
+              "id": "run-1-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-1-fork-like-confirm": {
+              "id": "run-1-fork-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "confirmed",
+              "receipt": {
+                "serverLikeId": "receipt-run-1-fork-only"
+              }
+            },
+            "run-1-fork-like-reject": {
+              "id": "run-1-fork-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            }
+          }
+        },
+        "roots": 3,
+        "listeners": 3,
+        "readers": 3,
+        "retainedActions": 0,
+        "transitions": 0
+      },
+      "clock": {
+        "version": 42,
+        "roots": 2,
+        "listeners": 2,
+        "readers": 2,
+        "retainedActions": 0,
+        "transitions": 0
+      }
+    },
+    "operations": [
+      {
+        "id": "run-1-shared",
+        "lane": "main + fork",
+        "scopeId": "run-1-shared-scope",
+        "scopeRoots": [
+          "task-transition-main",
+          "task-transition-fork"
+        ],
+        "status": "committed",
+        "resourceStatus": "fulfilled",
+        "elapsedMs": 3319,
+        "task": {
+          "status": "committed",
+          "generation": 4,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-main",
+            "task-transition-fork"
+          ],
+          "started": [
+            "search",
+            "panel"
+          ],
+          "completed": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "reused": [
+            "profile",
+            "catalog"
+          ]
+        },
+        "likeIds": [
+          "run-1-like-confirm",
+          "run-1-like-reject"
+        ]
+      },
+      {
+        "id": "run-1-fork-only",
+        "lane": "fork-only",
+        "scopeId": "run-1-fork-only-scope",
+        "scopeRoots": [
+          "task-transition-fork"
+        ],
+        "status": "committed",
+        "resourceStatus": "fulfilled",
+        "elapsedMs": 1265,
+        "task": {
+          "status": "committed",
+          "generation": 2,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-fork"
+          ],
+          "started": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "completed": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "reused": []
+        },
+        "likeIds": [
+          "run-1-fork-like-confirm",
+          "run-1-fork-like-reject"
+        ]
+      }
+    ],
+    "providers": [
+      {
+        "id": "provider-1",
+        "operationId": "run-1",
+        "taskId": "profile",
+        "startedAt": 1791835001160,
+        "duration": 1008,
+        "status": "completed",
+        "endedAt": 1791835002168,
+        "elapsedMs": 1008
+      },
+      {
+        "id": "provider-2",
+        "operationId": "run-1",
+        "taskId": "catalog",
+        "startedAt": 1791835001160,
+        "duration": 1296,
+        "status": "completed",
+        "endedAt": 1791835002457,
+        "elapsedMs": 1297
+      },
+      {
+        "id": "provider-3",
+        "operationId": "run-1",
+        "taskId": "search",
+        "startedAt": 1791835001160,
+        "duration": 1800,
+        "status": "aborted",
+        "endedAt": 1791835002675,
+        "elapsedMs": 1515
+      },
+      {
+        "id": "provider-4",
+        "operationId": "run-1-fork",
+        "taskId": "profile",
+        "startedAt": 1791835001163,
+        "duration": 706,
+        "status": "completed",
+        "endedAt": 1791835001871,
+        "elapsedMs": 708
+      },
+      {
+        "id": "provider-5",
+        "operationId": "run-1-fork",
+        "taskId": "catalog",
+        "startedAt": 1791835001163,
+        "duration": 907,
+        "status": "completed",
+        "endedAt": 1791835002072,
+        "elapsedMs": 909
+      },
+      {
+        "id": "provider-6",
+        "operationId": "run-1-fork",
+        "taskId": "search",
+        "startedAt": 1791835001163,
+        "duration": 1260,
+        "status": "completed",
+        "endedAt": 1791835002424,
+        "elapsedMs": 1261
+      },
+      {
+        "id": "provider-7",
+        "operationId": "run-1",
+        "taskId": "search",
+        "startedAt": 1791835002674,
+        "duration": 1800,
+        "status": "completed",
+        "endedAt": 1791835004476,
+        "elapsedMs": 1802
+      }
+    ],
+    "activeProviderTimers": 0,
+    "effects": {
+      "active": 3,
+      "started": 3,
+      "cleanups": 0
+    }
+  },
+  "complete": {
+    "disposed": false,
+    "pulse": 66,
+    "roots": [
+      {
+        "version": 85,
+        "ownerCount": 3,
+        "pendingChangeCount": 0,
+        "sourceValueSyncVisits": 0,
+        "disposed": false,
+        "rootId": "task-transition-main",
+        "publicationVersion": 85
+      },
+      {
+        "version": 89,
+        "ownerCount": 3,
+        "pendingChangeCount": 0,
+        "sourceValueSyncVisits": 0,
+        "disposed": false,
+        "rootId": "task-transition-fork",
+        "publicationVersion": 89
+      },
+      {
+        "version": 80,
+        "ownerCount": 1,
+        "pendingChangeCount": 0,
+        "sourceValueSyncVisits": 0,
+        "disposed": false,
+        "rootId": "native-task-workbench",
+        "publicationVersion": 80
+      }
+    ],
+    "stores": {
+      "query": {
+        "version": 1,
+        "value": "new frontier",
+        "roots": 3,
+        "listeners": 3,
+        "readers": 3,
+        "retainedActions": 0,
+        "transitions": 0
+      },
+      "requests": {
+        "version": 8,
+        "value": {
+          "requests": [
+            {
+              "operationId": "run-1-shared",
+              "label": "Deep refresh",
+              "lane": "main + fork"
+            },
+            {
+              "operationId": "run-1-fork-only",
+              "label": "Deep refresh sidecar",
+              "lane": "fork-only"
+            },
+            {
+              "operationId": "run-2-shared",
+              "label": "Quick refresh",
+              "lane": "main + fork"
+            },
+            {
+              "operationId": "run-2-fork-only",
+              "label": "Quick refresh sidecar",
+              "lane": "fork-only"
+            },
+            {
+              "operationId": "run-3-shared",
+              "label": "Steady refresh",
+              "lane": "main + fork"
+            },
+            {
+              "operationId": "run-3-fork-only",
+              "label": "Steady refresh sidecar",
+              "lane": "fork-only"
+            },
+            {
+              "operationId": "run-4-shared",
+              "label": "Deep refresh",
+              "lane": "main + fork"
+            },
+            {
+              "operationId": "run-4-fork-only",
+              "label": "Deep refresh sidecar",
+              "lane": "fork-only"
+            }
+          ]
+        },
+        "projectedLabels": [
+          "Deep refresh",
+          "Deep refresh sidecar",
+          "Quick refresh",
+          "Quick refresh sidecar",
+          "Steady refresh",
+          "Steady refresh sidecar",
+          "Deep refresh",
+          "Deep refresh sidecar"
+        ],
+        "activeScopes": 0,
+        "roots": 2,
+        "listeners": 2,
+        "readers": 2,
+        "retainedActions": 0,
+        "transitions": 0
+      },
+      "failNext": {
+        "value": false,
+        "version": 0,
+        "roots": 1,
+        "listeners": 1,
+        "readers": 1,
+        "retainedActions": 0,
+        "transitions": 0
+      },
+      "score": {
+        "version": 1,
+        "value": 19,
+        "roots": 2,
+        "listeners": 2,
+        "readers": 2,
+        "retainedActions": 0,
+        "transitions": 0
+      },
+      "feed": {
+        "version": 32,
+        "state": {
+          "items": [
+            {
+              "id": "seed-1",
+              "text": "Small field note: the river path is open again.",
+              "source": "server",
+              "confirmedLikes": 11,
+              "pendingLikeOperationIds": []
+            }
+          ],
+          "operations": {
+            "run-1-like-confirm": {
+              "id": "run-1-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "confirmed",
+              "receipt": {
+                "serverLikeId": "receipt-run-1-shared"
+              }
+            },
+            "run-1-like-reject": {
+              "id": "run-1-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-1-fork-like-confirm": {
+              "id": "run-1-fork-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "confirmed",
+              "receipt": {
+                "serverLikeId": "receipt-run-1-fork-only"
+              }
+            },
+            "run-1-fork-like-reject": {
+              "id": "run-1-fork-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-2-like-confirm": {
+              "id": "run-2-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "confirmed",
+              "receipt": {
+                "serverLikeId": "receipt-run-2-shared"
+              }
+            },
+            "run-2-like-reject": {
+              "id": "run-2-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-2-fork-like-confirm": {
+              "id": "run-2-fork-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "confirmed",
+              "receipt": {
+                "serverLikeId": "receipt-run-2-fork-only"
+              }
+            },
+            "run-2-fork-like-reject": {
+              "id": "run-2-fork-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-3-like-confirm": {
+              "id": "run-3-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "confirmed",
+              "receipt": {
+                "serverLikeId": "receipt-run-3-shared"
+              }
+            },
+            "run-3-like-reject": {
+              "id": "run-3-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-3-fork-like-confirm": {
+              "id": "run-3-fork-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "confirmed",
+              "receipt": {
+                "serverLikeId": "receipt-run-3-fork-only"
+              }
+            },
+            "run-3-fork-like-reject": {
+              "id": "run-3-fork-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-4-like-confirm": {
+              "id": "run-4-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "confirmed",
+              "receipt": {
+                "serverLikeId": "receipt-run-4-shared"
+              }
+            },
+            "run-4-like-reject": {
+              "id": "run-4-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-4-fork-like-confirm": {
+              "id": "run-4-fork-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "confirmed",
+              "receipt": {
+                "serverLikeId": "receipt-run-4-fork-only"
+              }
+            },
+            "run-4-fork-like-reject": {
+              "id": "run-4-fork-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            }
+          }
+        },
+        "roots": 3,
+        "listeners": 3,
+        "readers": 3,
+        "retainedActions": 0,
+        "transitions": 0
+      },
+      "clock": {
+        "version": 66,
+        "roots": 2,
+        "listeners": 2,
+        "readers": 2,
+        "retainedActions": 0,
+        "transitions": 0
+      }
+    },
+    "operations": [
+      {
+        "id": "run-1-shared",
+        "lane": "main + fork",
+        "scopeId": "run-1-shared-scope",
+        "scopeRoots": [
+          "task-transition-main",
+          "task-transition-fork"
+        ],
+        "status": "committed",
+        "resourceStatus": "fulfilled",
+        "elapsedMs": 3319,
+        "task": {
+          "status": "committed",
+          "generation": 4,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-main",
+            "task-transition-fork"
+          ],
+          "started": [
+            "search",
+            "panel"
+          ],
+          "completed": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "reused": [
+            "profile",
+            "catalog"
+          ]
+        },
+        "likeIds": [
+          "run-1-like-confirm",
+          "run-1-like-reject"
+        ]
+      },
+      {
+        "id": "run-1-fork-only",
+        "lane": "fork-only",
+        "scopeId": "run-1-fork-only-scope",
+        "scopeRoots": [
+          "task-transition-fork"
+        ],
+        "status": "committed",
+        "resourceStatus": "fulfilled",
+        "elapsedMs": 1265,
+        "task": {
+          "status": "committed",
+          "generation": 2,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-fork"
+          ],
+          "started": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "completed": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "reused": []
+        },
+        "likeIds": [
+          "run-1-fork-like-confirm",
+          "run-1-fork-like-reject"
+        ]
+      },
+      {
+        "id": "run-2-shared",
+        "lane": "main + fork",
+        "scopeId": "run-2-shared-scope",
+        "scopeRoots": [
+          "task-transition-main",
+          "task-transition-fork"
+        ],
+        "status": "committed",
+        "resourceStatus": "fulfilled",
+        "elapsedMs": 602,
+        "task": {
+          "status": "committed",
+          "generation": 2,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-main",
+            "task-transition-fork"
+          ],
+          "started": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "completed": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "reused": []
+        },
+        "likeIds": [
+          "run-2-like-confirm",
+          "run-2-like-reject"
+        ]
+      },
+      {
+        "id": "run-2-fork-only",
+        "lane": "fork-only",
+        "scopeId": "run-2-fork-only-scope",
+        "scopeRoots": [
+          "task-transition-fork"
+        ],
+        "status": "committed",
+        "resourceStatus": "fulfilled",
+        "elapsedMs": 424,
+        "task": {
+          "status": "committed",
+          "generation": 2,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-fork"
+          ],
+          "started": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "completed": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "reused": []
+        },
+        "likeIds": [
+          "run-2-fork-like-confirm",
+          "run-2-fork-like-reject"
+        ]
+      },
+      {
+        "id": "run-3-shared",
+        "lane": "main + fork",
+        "scopeId": "run-3-shared-scope",
+        "scopeRoots": [
+          "task-transition-main",
+          "task-transition-fork"
+        ],
+        "status": "committed",
+        "resourceStatus": "fulfilled",
+        "elapsedMs": 1203,
+        "task": {
+          "status": "committed",
+          "generation": 2,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-main",
+            "task-transition-fork"
+          ],
+          "started": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "completed": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "reused": []
+        },
+        "likeIds": [
+          "run-3-like-confirm",
+          "run-3-like-reject"
+        ]
+      },
+      {
+        "id": "run-3-fork-only",
+        "lane": "fork-only",
+        "scopeId": "run-3-fork-only-scope",
+        "scopeRoots": [
+          "task-transition-fork"
+        ],
+        "status": "committed",
+        "resourceStatus": "fulfilled",
+        "elapsedMs": 843,
+        "task": {
+          "status": "committed",
+          "generation": 2,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-fork"
+          ],
+          "started": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "completed": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "reused": []
+        },
+        "likeIds": [
+          "run-3-fork-like-confirm",
+          "run-3-fork-like-reject"
+        ]
+      },
+      {
+        "id": "run-4-shared",
+        "lane": "main + fork",
+        "scopeId": "run-4-shared-scope",
+        "scopeRoots": [
+          "task-transition-main",
+          "task-transition-fork"
+        ],
+        "status": "committed",
+        "resourceStatus": "fulfilled",
+        "elapsedMs": 1803,
+        "task": {
+          "status": "committed",
+          "generation": 2,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-main",
+            "task-transition-fork"
+          ],
+          "started": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "completed": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "reused": []
+        },
+        "likeIds": [
+          "run-4-like-confirm",
+          "run-4-like-reject"
+        ]
+      },
+      {
+        "id": "run-4-fork-only",
+        "lane": "fork-only",
+        "scopeId": "run-4-fork-only-scope",
+        "scopeRoots": [
+          "task-transition-fork"
+        ],
+        "status": "committed",
+        "resourceStatus": "fulfilled",
+        "elapsedMs": 1262,
+        "task": {
+          "status": "committed",
+          "generation": 2,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-fork"
+          ],
+          "started": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "completed": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "reused": []
+        },
+        "likeIds": [
+          "run-4-fork-like-confirm",
+          "run-4-fork-like-reject"
+        ]
+      }
+    ],
+    "providers": [
+      {
+        "id": "provider-1",
+        "operationId": "run-1",
+        "taskId": "profile",
+        "startedAt": 1791835001160,
+        "duration": 1008,
+        "status": "completed",
+        "endedAt": 1791835002168,
+        "elapsedMs": 1008
+      },
+      {
+        "id": "provider-2",
+        "operationId": "run-1",
+        "taskId": "catalog",
+        "startedAt": 1791835001160,
+        "duration": 1296,
+        "status": "completed",
+        "endedAt": 1791835002457,
+        "elapsedMs": 1297
+      },
+      {
+        "id": "provider-3",
+        "operationId": "run-1",
+        "taskId": "search",
+        "startedAt": 1791835001160,
+        "duration": 1800,
+        "status": "aborted",
+        "endedAt": 1791835002675,
+        "elapsedMs": 1515
+      },
+      {
+        "id": "provider-4",
+        "operationId": "run-1-fork",
+        "taskId": "profile",
+        "startedAt": 1791835001163,
+        "duration": 706,
+        "status": "completed",
+        "endedAt": 1791835001871,
+        "elapsedMs": 708
+      },
+      {
+        "id": "provider-5",
+        "operationId": "run-1-fork",
+        "taskId": "catalog",
+        "startedAt": 1791835001163,
+        "duration": 907,
+        "status": "completed",
+        "endedAt": 1791835002072,
+        "elapsedMs": 909
+      },
+      {
+        "id": "provider-6",
+        "operationId": "run-1-fork",
+        "taskId": "search",
+        "startedAt": 1791835001163,
+        "duration": 1260,
+        "status": "completed",
+        "endedAt": 1791835002424,
+        "elapsedMs": 1261
+      },
+      {
+        "id": "provider-7",
+        "operationId": "run-1",
+        "taskId": "search",
+        "startedAt": 1791835002674,
+        "duration": 1800,
+        "status": "completed",
+        "endedAt": 1791835004476,
+        "elapsedMs": 1802
+      },
+      {
+        "id": "provider-8",
+        "operationId": "run-2",
+        "taskId": "profile",
+        "startedAt": 1791835004540,
+        "duration": 336,
+        "status": "completed",
+        "endedAt": 1791835004877,
+        "elapsedMs": 337
+      },
+      {
+        "id": "provider-9",
+        "operationId": "run-2",
+        "taskId": "catalog",
+        "startedAt": 1791835004540,
+        "duration": 432,
+        "status": "completed",
+        "endedAt": 1791835004976,
+        "elapsedMs": 436
+      },
+      {
+        "id": "provider-10",
+        "operationId": "run-2",
+        "taskId": "search",
+        "startedAt": 1791835004540,
+        "duration": 600,
+        "status": "completed",
+        "endedAt": 1791835005141,
+        "elapsedMs": 601
+      },
+      {
+        "id": "provider-11",
+        "operationId": "run-2-fork",
+        "taskId": "profile",
+        "startedAt": 1791835004542,
+        "duration": 235,
+        "status": "completed",
+        "endedAt": 1791835004778,
+        "elapsedMs": 236
+      },
+      {
+        "id": "provider-12",
+        "operationId": "run-2-fork",
+        "taskId": "catalog",
+        "startedAt": 1791835004542,
+        "duration": 302,
+        "status": "completed",
+        "endedAt": 1791835004844,
+        "elapsedMs": 302
+      },
+      {
+        "id": "provider-13",
+        "operationId": "run-2-fork",
+        "taskId": "search",
+        "startedAt": 1791835004542,
+        "duration": 420,
+        "status": "completed",
+        "endedAt": 1791835004963,
+        "elapsedMs": 421
+      },
+      {
+        "id": "provider-14",
+        "operationId": "run-3",
+        "taskId": "profile",
+        "startedAt": 1791835004575,
+        "duration": 672,
+        "status": "completed",
+        "endedAt": 1791835005248,
+        "elapsedMs": 673
+      },
+      {
+        "id": "provider-15",
+        "operationId": "run-3",
+        "taskId": "catalog",
+        "startedAt": 1791835004575,
+        "duration": 864,
+        "status": "completed",
+        "endedAt": 1791835005439,
+        "elapsedMs": 864
+      },
+      {
+        "id": "provider-16",
+        "operationId": "run-3",
+        "taskId": "search",
+        "startedAt": 1791835004575,
+        "duration": 1200,
+        "status": "completed",
+        "endedAt": 1791835005776,
+        "elapsedMs": 1201
+      },
+      {
+        "id": "provider-17",
+        "operationId": "run-3-fork",
+        "taskId": "profile",
+        "startedAt": 1791835004577,
+        "duration": 470,
+        "status": "completed",
+        "endedAt": 1791835005049,
+        "elapsedMs": 472
+      },
+      {
+        "id": "provider-18",
+        "operationId": "run-3-fork",
+        "taskId": "catalog",
+        "startedAt": 1791835004577,
+        "duration": 605,
+        "status": "completed",
+        "endedAt": 1791835005184,
+        "elapsedMs": 607
+      },
+      {
+        "id": "provider-19",
+        "operationId": "run-3-fork",
+        "taskId": "search",
+        "startedAt": 1791835004577,
+        "duration": 840,
+        "status": "completed",
+        "endedAt": 1791835005419,
+        "elapsedMs": 842
+      },
+      {
+        "id": "provider-20",
+        "operationId": "run-4",
+        "taskId": "profile",
+        "startedAt": 1791835004609,
+        "duration": 1008,
+        "status": "completed",
+        "endedAt": 1791835005618,
+        "elapsedMs": 1009
+      },
+      {
+        "id": "provider-21",
+        "operationId": "run-4",
+        "taskId": "catalog",
+        "startedAt": 1791835004610,
+        "duration": 1296,
+        "status": "completed",
+        "endedAt": 1791835005906,
+        "elapsedMs": 1296
+      },
+      {
+        "id": "provider-22",
+        "operationId": "run-4",
+        "taskId": "search",
+        "startedAt": 1791835004610,
+        "duration": 1800,
+        "status": "completed",
+        "endedAt": 1791835006411,
+        "elapsedMs": 1801
+      },
+      {
+        "id": "provider-23",
+        "operationId": "run-4-fork",
+        "taskId": "profile",
+        "startedAt": 1791835004613,
+        "duration": 706,
+        "status": "completed",
+        "endedAt": 1791835005320,
+        "elapsedMs": 707
+      },
+      {
+        "id": "provider-24",
+        "operationId": "run-4-fork",
+        "taskId": "catalog",
+        "startedAt": 1791835004613,
+        "duration": 907,
+        "status": "completed",
+        "endedAt": 1791835005522,
+        "elapsedMs": 909
+      },
+      {
+        "id": "provider-25",
+        "operationId": "run-4-fork",
+        "taskId": "search",
+        "startedAt": 1791835004613,
+        "duration": 1260,
+        "status": "completed",
+        "endedAt": 1791835005874,
+        "elapsedMs": 1261
+      }
+    ],
+    "activeProviderTimers": 0,
+    "effects": {
+      "active": 3,
+      "started": 3,
+      "cleanups": 0
+    }
+  },
+  "canceled": {
+    "disposed": false,
+    "pulse": 90,
+    "roots": [
+      {
+        "version": 113,
+        "ownerCount": 3,
+        "pendingChangeCount": 0,
+        "sourceValueSyncVisits": 0,
+        "disposed": false,
+        "rootId": "task-transition-main",
+        "publicationVersion": 113
+      },
+      {
+        "version": 117,
+        "ownerCount": 3,
+        "pendingChangeCount": 0,
+        "sourceValueSyncVisits": 0,
+        "disposed": false,
+        "rootId": "task-transition-fork",
+        "publicationVersion": 117
+      },
+      {
+        "version": 107,
+        "ownerCount": 1,
+        "pendingChangeCount": 0,
+        "sourceValueSyncVisits": 0,
+        "disposed": false,
+        "rootId": "native-task-workbench",
+        "publicationVersion": 107
+      }
+    ],
+    "stores": {
+      "query": {
+        "version": 1,
+        "value": "new frontier",
+        "roots": 3,
+        "listeners": 3,
+        "readers": 3,
+        "retainedActions": 0,
+        "transitions": 0
+      },
+      "requests": {
+        "version": 11,
+        "value": {
+          "requests": [
+            {
+              "operationId": "run-1-shared",
+              "label": "Deep refresh",
+              "lane": "main + fork"
+            },
+            {
+              "operationId": "run-1-fork-only",
+              "label": "Deep refresh sidecar",
+              "lane": "fork-only"
+            },
+            {
+              "operationId": "run-2-shared",
+              "label": "Quick refresh",
+              "lane": "main + fork"
+            },
+            {
+              "operationId": "run-2-fork-only",
+              "label": "Quick refresh sidecar",
+              "lane": "fork-only"
+            },
+            {
+              "operationId": "run-3-shared",
+              "label": "Steady refresh",
+              "lane": "main + fork"
+            },
+            {
+              "operationId": "run-3-fork-only",
+              "label": "Steady refresh sidecar",
+              "lane": "fork-only"
+            },
+            {
+              "operationId": "run-4-shared",
+              "label": "Deep refresh",
+              "lane": "main + fork"
+            },
+            {
+              "operationId": "run-4-fork-only",
+              "label": "Deep refresh sidecar",
+              "lane": "fork-only"
+            },
+            {
+              "operationId": "run-5-shared",
+              "label": "Deep refresh",
+              "lane": "main + fork"
+            }
+          ]
+        },
+        "projectedLabels": [
+          "Deep refresh",
+          "Deep refresh sidecar",
+          "Quick refresh",
+          "Quick refresh sidecar",
+          "Steady refresh",
+          "Steady refresh sidecar",
+          "Deep refresh",
+          "Deep refresh sidecar",
+          "Deep refresh"
+        ],
+        "activeScopes": 0,
+        "roots": 2,
+        "listeners": 2,
+        "readers": 2,
+        "retainedActions": 0,
+        "transitions": 0
+      },
+      "failNext": {
+        "value": false,
+        "version": 0,
+        "roots": 1,
+        "listeners": 1,
+        "readers": 1,
+        "retainedActions": 0,
+        "transitions": 0
+      },
+      "score": {
+        "version": 1,
+        "value": 19,
+        "roots": 2,
+        "listeners": 2,
+        "readers": 2,
+        "retainedActions": 0,
+        "transitions": 0
+      },
+      "feed": {
+        "version": 40,
+        "state": {
+          "items": [
+            {
+              "id": "seed-1",
+              "text": "Small field note: the river path is open again.",
+              "source": "server",
+              "confirmedLikes": 12,
+              "pendingLikeOperationIds": []
+            }
+          ],
+          "operations": {
+            "run-1-like-confirm": {
+              "id": "run-1-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "confirmed",
+              "receipt": {
+                "serverLikeId": "receipt-run-1-shared"
+              }
+            },
+            "run-1-like-reject": {
+              "id": "run-1-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-1-fork-like-confirm": {
+              "id": "run-1-fork-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "confirmed",
+              "receipt": {
+                "serverLikeId": "receipt-run-1-fork-only"
+              }
+            },
+            "run-1-fork-like-reject": {
+              "id": "run-1-fork-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-2-like-confirm": {
+              "id": "run-2-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "confirmed",
+              "receipt": {
+                "serverLikeId": "receipt-run-2-shared"
+              }
+            },
+            "run-2-like-reject": {
+              "id": "run-2-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-2-fork-like-confirm": {
+              "id": "run-2-fork-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "confirmed",
+              "receipt": {
+                "serverLikeId": "receipt-run-2-fork-only"
+              }
+            },
+            "run-2-fork-like-reject": {
+              "id": "run-2-fork-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-3-like-confirm": {
+              "id": "run-3-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "confirmed",
+              "receipt": {
+                "serverLikeId": "receipt-run-3-shared"
+              }
+            },
+            "run-3-like-reject": {
+              "id": "run-3-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-3-fork-like-confirm": {
+              "id": "run-3-fork-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "confirmed",
+              "receipt": {
+                "serverLikeId": "receipt-run-3-fork-only"
+              }
+            },
+            "run-3-fork-like-reject": {
+              "id": "run-3-fork-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-4-like-confirm": {
+              "id": "run-4-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "confirmed",
+              "receipt": {
+                "serverLikeId": "receipt-run-4-shared"
+              }
+            },
+            "run-4-like-reject": {
+              "id": "run-4-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-4-fork-like-confirm": {
+              "id": "run-4-fork-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "confirmed",
+              "receipt": {
+                "serverLikeId": "receipt-run-4-fork-only"
+              }
+            },
+            "run-4-fork-like-reject": {
+              "id": "run-4-fork-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-5-like-confirm": {
+              "id": "run-5-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "confirmed",
+              "receipt": {
+                "serverLikeId": "receipt-run-5-shared"
+              }
+            },
+            "run-5-like-reject": {
+              "id": "run-5-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-5-fork-like-confirm": {
+              "id": "run-5-fork-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-5-fork-like-reject": {
+              "id": "run-5-fork-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            }
+          }
+        },
+        "roots": 3,
+        "listeners": 3,
+        "readers": 3,
+        "retainedActions": 0,
+        "transitions": 0
+      },
+      "clock": {
+        "version": 90,
+        "roots": 2,
+        "listeners": 2,
+        "readers": 2,
+        "retainedActions": 0,
+        "transitions": 0
+      }
+    },
+    "operations": [
+      {
+        "id": "run-1-shared",
+        "lane": "main + fork",
+        "scopeId": "run-1-shared-scope",
+        "scopeRoots": [
+          "task-transition-main",
+          "task-transition-fork"
+        ],
+        "status": "committed",
+        "resourceStatus": "fulfilled",
+        "elapsedMs": 3319,
+        "task": {
+          "status": "committed",
+          "generation": 4,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-main",
+            "task-transition-fork"
+          ],
+          "started": [
+            "search",
+            "panel"
+          ],
+          "completed": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "reused": [
+            "profile",
+            "catalog"
+          ]
+        },
+        "likeIds": [
+          "run-1-like-confirm",
+          "run-1-like-reject"
+        ]
+      },
+      {
+        "id": "run-1-fork-only",
+        "lane": "fork-only",
+        "scopeId": "run-1-fork-only-scope",
+        "scopeRoots": [
+          "task-transition-fork"
+        ],
+        "status": "committed",
+        "resourceStatus": "fulfilled",
+        "elapsedMs": 1265,
+        "task": {
+          "status": "committed",
+          "generation": 2,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-fork"
+          ],
+          "started": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "completed": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "reused": []
+        },
+        "likeIds": [
+          "run-1-fork-like-confirm",
+          "run-1-fork-like-reject"
+        ]
+      },
+      {
+        "id": "run-2-shared",
+        "lane": "main + fork",
+        "scopeId": "run-2-shared-scope",
+        "scopeRoots": [
+          "task-transition-main",
+          "task-transition-fork"
+        ],
+        "status": "committed",
+        "resourceStatus": "fulfilled",
+        "elapsedMs": 602,
+        "task": {
+          "status": "committed",
+          "generation": 2,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-main",
+            "task-transition-fork"
+          ],
+          "started": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "completed": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "reused": []
+        },
+        "likeIds": [
+          "run-2-like-confirm",
+          "run-2-like-reject"
+        ]
+      },
+      {
+        "id": "run-2-fork-only",
+        "lane": "fork-only",
+        "scopeId": "run-2-fork-only-scope",
+        "scopeRoots": [
+          "task-transition-fork"
+        ],
+        "status": "committed",
+        "resourceStatus": "fulfilled",
+        "elapsedMs": 424,
+        "task": {
+          "status": "committed",
+          "generation": 2,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-fork"
+          ],
+          "started": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "completed": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "reused": []
+        },
+        "likeIds": [
+          "run-2-fork-like-confirm",
+          "run-2-fork-like-reject"
+        ]
+      },
+      {
+        "id": "run-3-shared",
+        "lane": "main + fork",
+        "scopeId": "run-3-shared-scope",
+        "scopeRoots": [
+          "task-transition-main",
+          "task-transition-fork"
+        ],
+        "status": "committed",
+        "resourceStatus": "fulfilled",
+        "elapsedMs": 1203,
+        "task": {
+          "status": "committed",
+          "generation": 2,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-main",
+            "task-transition-fork"
+          ],
+          "started": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "completed": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "reused": []
+        },
+        "likeIds": [
+          "run-3-like-confirm",
+          "run-3-like-reject"
+        ]
+      },
+      {
+        "id": "run-3-fork-only",
+        "lane": "fork-only",
+        "scopeId": "run-3-fork-only-scope",
+        "scopeRoots": [
+          "task-transition-fork"
+        ],
+        "status": "committed",
+        "resourceStatus": "fulfilled",
+        "elapsedMs": 843,
+        "task": {
+          "status": "committed",
+          "generation": 2,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-fork"
+          ],
+          "started": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "completed": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "reused": []
+        },
+        "likeIds": [
+          "run-3-fork-like-confirm",
+          "run-3-fork-like-reject"
+        ]
+      },
+      {
+        "id": "run-4-shared",
+        "lane": "main + fork",
+        "scopeId": "run-4-shared-scope",
+        "scopeRoots": [
+          "task-transition-main",
+          "task-transition-fork"
+        ],
+        "status": "committed",
+        "resourceStatus": "fulfilled",
+        "elapsedMs": 1803,
+        "task": {
+          "status": "committed",
+          "generation": 2,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-main",
+            "task-transition-fork"
+          ],
+          "started": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "completed": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "reused": []
+        },
+        "likeIds": [
+          "run-4-like-confirm",
+          "run-4-like-reject"
+        ]
+      },
+      {
+        "id": "run-4-fork-only",
+        "lane": "fork-only",
+        "scopeId": "run-4-fork-only-scope",
+        "scopeRoots": [
+          "task-transition-fork"
+        ],
+        "status": "committed",
+        "resourceStatus": "fulfilled",
+        "elapsedMs": 1262,
+        "task": {
+          "status": "committed",
+          "generation": 2,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-fork"
+          ],
+          "started": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "completed": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "reused": []
+        },
+        "likeIds": [
+          "run-4-fork-like-confirm",
+          "run-4-fork-like-reject"
+        ]
+      },
+      {
+        "id": "run-5-shared",
+        "lane": "main + fork",
+        "scopeId": "run-5-shared-scope",
+        "scopeRoots": [
+          "task-transition-main",
+          "task-transition-fork"
+        ],
+        "status": "committed",
+        "resourceStatus": "fulfilled",
+        "elapsedMs": 1801,
+        "task": {
+          "status": "committed",
+          "generation": 2,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-main",
+            "task-transition-fork"
+          ],
+          "started": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "completed": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "reused": []
+        },
+        "likeIds": [
+          "run-5-like-confirm",
+          "run-5-like-reject"
+        ]
+      },
+      {
+        "id": "run-5-fork-only",
+        "lane": "fork-only",
+        "scopeId": "run-5-fork-only-scope",
+        "scopeRoots": [
+          "task-transition-fork"
+        ],
+        "status": "cancelled",
+        "resourceStatus": "released/cancelled",
+        "elapsedMs": 35,
+        "task": {
+          "status": "cancelled",
+          "generation": 2,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-fork"
+          ],
+          "started": [
+            "profile",
+            "catalog",
+            "search"
+          ],
+          "completed": [],
+          "reused": []
+        },
+        "likeIds": [
+          "run-5-fork-like-confirm",
+          "run-5-fork-like-reject"
+        ]
+      }
+    ],
+    "providers": [
+      {
+        "id": "provider-1",
+        "operationId": "run-1",
+        "taskId": "profile",
+        "startedAt": 1791835001160,
+        "duration": 1008,
+        "status": "completed",
+        "endedAt": 1791835002168,
+        "elapsedMs": 1008
+      },
+      {
+        "id": "provider-2",
+        "operationId": "run-1",
+        "taskId": "catalog",
+        "startedAt": 1791835001160,
+        "duration": 1296,
+        "status": "completed",
+        "endedAt": 1791835002457,
+        "elapsedMs": 1297
+      },
+      {
+        "id": "provider-3",
+        "operationId": "run-1",
+        "taskId": "search",
+        "startedAt": 1791835001160,
+        "duration": 1800,
+        "status": "aborted",
+        "endedAt": 1791835002675,
+        "elapsedMs": 1515
+      },
+      {
+        "id": "provider-4",
+        "operationId": "run-1-fork",
+        "taskId": "profile",
+        "startedAt": 1791835001163,
+        "duration": 706,
+        "status": "completed",
+        "endedAt": 1791835001871,
+        "elapsedMs": 708
+      },
+      {
+        "id": "provider-5",
+        "operationId": "run-1-fork",
+        "taskId": "catalog",
+        "startedAt": 1791835001163,
+        "duration": 907,
+        "status": "completed",
+        "endedAt": 1791835002072,
+        "elapsedMs": 909
+      },
+      {
+        "id": "provider-6",
+        "operationId": "run-1-fork",
+        "taskId": "search",
+        "startedAt": 1791835001163,
+        "duration": 1260,
+        "status": "completed",
+        "endedAt": 1791835002424,
+        "elapsedMs": 1261
+      },
+      {
+        "id": "provider-7",
+        "operationId": "run-1",
+        "taskId": "search",
+        "startedAt": 1791835002674,
+        "duration": 1800,
+        "status": "completed",
+        "endedAt": 1791835004476,
+        "elapsedMs": 1802
+      },
+      {
+        "id": "provider-8",
+        "operationId": "run-2",
+        "taskId": "profile",
+        "startedAt": 1791835004540,
+        "duration": 336,
+        "status": "completed",
+        "endedAt": 1791835004877,
+        "elapsedMs": 337
+      },
+      {
+        "id": "provider-9",
+        "operationId": "run-2",
+        "taskId": "catalog",
+        "startedAt": 1791835004540,
+        "duration": 432,
+        "status": "completed",
+        "endedAt": 1791835004976,
+        "elapsedMs": 436
+      },
+      {
+        "id": "provider-10",
+        "operationId": "run-2",
+        "taskId": "search",
+        "startedAt": 1791835004540,
+        "duration": 600,
+        "status": "completed",
+        "endedAt": 1791835005141,
+        "elapsedMs": 601
+      },
+      {
+        "id": "provider-11",
+        "operationId": "run-2-fork",
+        "taskId": "profile",
+        "startedAt": 1791835004542,
+        "duration": 235,
+        "status": "completed",
+        "endedAt": 1791835004778,
+        "elapsedMs": 236
+      },
+      {
+        "id": "provider-12",
+        "operationId": "run-2-fork",
+        "taskId": "catalog",
+        "startedAt": 1791835004542,
+        "duration": 302,
+        "status": "completed",
+        "endedAt": 1791835004844,
+        "elapsedMs": 302
+      },
+      {
+        "id": "provider-13",
+        "operationId": "run-2-fork",
+        "taskId": "search",
+        "startedAt": 1791835004542,
+        "duration": 420,
+        "status": "completed",
+        "endedAt": 1791835004963,
+        "elapsedMs": 421
+      },
+      {
+        "id": "provider-14",
+        "operationId": "run-3",
+        "taskId": "profile",
+        "startedAt": 1791835004575,
+        "duration": 672,
+        "status": "completed",
+        "endedAt": 1791835005248,
+        "elapsedMs": 673
+      },
+      {
+        "id": "provider-15",
+        "operationId": "run-3",
+        "taskId": "catalog",
+        "startedAt": 1791835004575,
+        "duration": 864,
+        "status": "completed",
+        "endedAt": 1791835005439,
+        "elapsedMs": 864
+      },
+      {
+        "id": "provider-16",
+        "operationId": "run-3",
+        "taskId": "search",
+        "startedAt": 1791835004575,
+        "duration": 1200,
+        "status": "completed",
+        "endedAt": 1791835005776,
+        "elapsedMs": 1201
+      },
+      {
+        "id": "provider-17",
+        "operationId": "run-3-fork",
+        "taskId": "profile",
+        "startedAt": 1791835004577,
+        "duration": 470,
+        "status": "completed",
+        "endedAt": 1791835005049,
+        "elapsedMs": 472
+      },
+      {
+        "id": "provider-18",
+        "operationId": "run-3-fork",
+        "taskId": "catalog",
+        "startedAt": 1791835004577,
+        "duration": 605,
+        "status": "completed",
+        "endedAt": 1791835005184,
+        "elapsedMs": 607
+      },
+      {
+        "id": "provider-19",
+        "operationId": "run-3-fork",
+        "taskId": "search",
+        "startedAt": 1791835004577,
+        "duration": 840,
+        "status": "completed",
+        "endedAt": 1791835005419,
+        "elapsedMs": 842
+      },
+      {
+        "id": "provider-20",
+        "operationId": "run-4",
+        "taskId": "profile",
+        "startedAt": 1791835004609,
+        "duration": 1008,
+        "status": "completed",
+        "endedAt": 1791835005618,
+        "elapsedMs": 1009
+      },
+      {
+        "id": "provider-21",
+        "operationId": "run-4",
+        "taskId": "catalog",
+        "startedAt": 1791835004610,
+        "duration": 1296,
+        "status": "completed",
+        "endedAt": 1791835005906,
+        "elapsedMs": 1296
+      },
+      {
+        "id": "provider-22",
+        "operationId": "run-4",
+        "taskId": "search",
+        "startedAt": 1791835004610,
+        "duration": 1800,
+        "status": "completed",
+        "endedAt": 1791835006411,
+        "elapsedMs": 1801
+      },
+      {
+        "id": "provider-23",
+        "operationId": "run-4-fork",
+        "taskId": "profile",
+        "startedAt": 1791835004613,
+        "duration": 706,
+        "status": "completed",
+        "endedAt": 1791835005320,
+        "elapsedMs": 707
+      },
+      {
+        "id": "provider-24",
+        "operationId": "run-4-fork",
+        "taskId": "catalog",
+        "startedAt": 1791835004613,
+        "duration": 907,
+        "status": "completed",
+        "endedAt": 1791835005522,
+        "elapsedMs": 909
+      },
+      {
+        "id": "provider-25",
+        "operationId": "run-4-fork",
+        "taskId": "search",
+        "startedAt": 1791835004613,
+        "duration": 1260,
+        "status": "completed",
+        "endedAt": 1791835005874,
+        "elapsedMs": 1261
+      },
+      {
+        "id": "provider-26",
+        "operationId": "run-5",
+        "taskId": "profile",
+        "startedAt": 1791835006474,
+        "duration": 1008,
+        "status": "completed",
+        "endedAt": 1791835007484,
+        "elapsedMs": 1010
+      },
+      {
+        "id": "provider-27",
+        "operationId": "run-5",
+        "taskId": "catalog",
+        "startedAt": 1791835006474,
+        "duration": 1296,
+        "status": "completed",
+        "endedAt": 1791835007771,
+        "elapsedMs": 1297
+      },
+      {
+        "id": "provider-28",
+        "operationId": "run-5",
+        "taskId": "search",
+        "startedAt": 1791835006474,
+        "duration": 1800,
+        "status": "completed",
+        "endedAt": 1791835008275,
+        "elapsedMs": 1801
+      },
+      {
+        "id": "provider-29",
+        "operationId": "run-5-fork",
+        "taskId": "profile",
+        "startedAt": 1791835006475,
+        "duration": 706,
+        "status": "aborted",
+        "endedAt": 1791835006508,
+        "elapsedMs": 33
+      },
+      {
+        "id": "provider-30",
+        "operationId": "run-5-fork",
+        "taskId": "catalog",
+        "startedAt": 1791835006475,
+        "duration": 907,
+        "status": "aborted",
+        "endedAt": 1791835006508,
+        "elapsedMs": 33
+      },
+      {
+        "id": "provider-31",
+        "operationId": "run-5-fork",
+        "taskId": "search",
+        "startedAt": 1791835006475,
+        "duration": 1260,
+        "status": "aborted",
+        "endedAt": 1791835006508,
+        "elapsedMs": 33
+      }
+    ],
+    "activeProviderTimers": 0,
+    "effects": {
+      "active": 3,
+      "started": 3,
+      "cleanups": 0
+    }
+  },
+  "failed": {
+    "disposed": false,
+    "pulse": 99,
+    "roots": [
+      {
+        "version": 126,
+        "ownerCount": 3,
+        "pendingChangeCount": 0,
+        "sourceValueSyncVisits": 0,
+        "disposed": false,
+        "rootId": "task-transition-main",
+        "publicationVersion": 126
+      },
+      {
+        "version": 131,
+        "ownerCount": 3,
+        "pendingChangeCount": 0,
+        "sourceValueSyncVisits": 0,
+        "disposed": false,
+        "rootId": "task-transition-fork",
+        "publicationVersion": 131
+      },
+      {
+        "version": 120,
+        "ownerCount": 1,
+        "pendingChangeCount": 0,
+        "sourceValueSyncVisits": 0,
+        "disposed": false,
+        "rootId": "native-task-workbench",
+        "publicationVersion": 120
+      }
+    ],
+    "stores": {
+      "query": {
+        "version": 1,
+        "value": "new frontier",
+        "roots": 3,
+        "listeners": 3,
+        "readers": 3,
+        "retainedActions": 0,
+        "transitions": 0
+      },
+      "requests": {
+        "version": 15,
+        "value": {
+          "requests": [
+            {
+              "operationId": "run-1-shared",
+              "label": "Deep refresh",
+              "lane": "main + fork"
+            },
+            {
+              "operationId": "run-1-fork-only",
+              "label": "Deep refresh sidecar",
+              "lane": "fork-only"
+            },
+            {
+              "operationId": "run-2-shared",
+              "label": "Quick refresh",
+              "lane": "main + fork"
+            },
+            {
+              "operationId": "run-2-fork-only",
+              "label": "Quick refresh sidecar",
+              "lane": "fork-only"
+            },
+            {
+              "operationId": "run-3-shared",
+              "label": "Steady refresh",
+              "lane": "main + fork"
+            },
+            {
+              "operationId": "run-3-fork-only",
+              "label": "Steady refresh sidecar",
+              "lane": "fork-only"
+            },
+            {
+              "operationId": "run-4-shared",
+              "label": "Deep refresh",
+              "lane": "main + fork"
+            },
+            {
+              "operationId": "run-4-fork-only",
+              "label": "Deep refresh sidecar",
+              "lane": "fork-only"
+            },
+            {
+              "operationId": "run-5-shared",
+              "label": "Deep refresh",
+              "lane": "main + fork"
+            }
+          ]
+        },
+        "projectedLabels": [
+          "Deep refresh",
+          "Deep refresh sidecar",
+          "Quick refresh",
+          "Quick refresh sidecar",
+          "Steady refresh",
+          "Steady refresh sidecar",
+          "Deep refresh",
+          "Deep refresh sidecar",
+          "Deep refresh"
+        ],
+        "activeScopes": 0,
+        "roots": 2,
+        "listeners": 2,
+        "readers": 2,
+        "retainedActions": 0,
+        "transitions": 0
+      },
+      "failNext": {
+        "value": false,
+        "version": 2,
+        "roots": 1,
+        "listeners": 1,
+        "readers": 1,
+        "retainedActions": 0,
+        "transitions": 0
+      },
+      "score": {
+        "version": 1,
+        "value": 19,
+        "roots": 2,
+        "listeners": 2,
+        "readers": 2,
+        "retainedActions": 0,
+        "transitions": 0
+      },
+      "feed": {
+        "version": 48,
+        "state": {
+          "items": [
+            {
+              "id": "seed-1",
+              "text": "Small field note: the river path is open again.",
+              "source": "server",
+              "confirmedLikes": 12,
+              "pendingLikeOperationIds": []
+            }
+          ],
+          "operations": {
+            "run-1-like-confirm": {
+              "id": "run-1-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "confirmed",
+              "receipt": {
+                "serverLikeId": "receipt-run-1-shared"
+              }
+            },
+            "run-1-like-reject": {
+              "id": "run-1-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-1-fork-like-confirm": {
+              "id": "run-1-fork-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "confirmed",
+              "receipt": {
+                "serverLikeId": "receipt-run-1-fork-only"
+              }
+            },
+            "run-1-fork-like-reject": {
+              "id": "run-1-fork-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-2-like-confirm": {
+              "id": "run-2-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "confirmed",
+              "receipt": {
+                "serverLikeId": "receipt-run-2-shared"
+              }
+            },
+            "run-2-like-reject": {
+              "id": "run-2-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-2-fork-like-confirm": {
+              "id": "run-2-fork-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "confirmed",
+              "receipt": {
+                "serverLikeId": "receipt-run-2-fork-only"
+              }
+            },
+            "run-2-fork-like-reject": {
+              "id": "run-2-fork-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-3-like-confirm": {
+              "id": "run-3-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "confirmed",
+              "receipt": {
+                "serverLikeId": "receipt-run-3-shared"
+              }
+            },
+            "run-3-like-reject": {
+              "id": "run-3-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-3-fork-like-confirm": {
+              "id": "run-3-fork-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "confirmed",
+              "receipt": {
+                "serverLikeId": "receipt-run-3-fork-only"
+              }
+            },
+            "run-3-fork-like-reject": {
+              "id": "run-3-fork-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-4-like-confirm": {
+              "id": "run-4-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "confirmed",
+              "receipt": {
+                "serverLikeId": "receipt-run-4-shared"
+              }
+            },
+            "run-4-like-reject": {
+              "id": "run-4-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-4-fork-like-confirm": {
+              "id": "run-4-fork-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "confirmed",
+              "receipt": {
+                "serverLikeId": "receipt-run-4-fork-only"
+              }
+            },
+            "run-4-fork-like-reject": {
+              "id": "run-4-fork-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-5-like-confirm": {
+              "id": "run-5-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "confirmed",
+              "receipt": {
+                "serverLikeId": "receipt-run-5-shared"
+              }
+            },
+            "run-5-like-reject": {
+              "id": "run-5-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-5-fork-like-confirm": {
+              "id": "run-5-fork-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-5-fork-like-reject": {
+              "id": "run-5-fork-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-6-like-confirm": {
+              "id": "run-6-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-6-like-reject": {
+              "id": "run-6-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-6-fork-like-confirm": {
+              "id": "run-6-fork-like-confirm",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            },
+            "run-6-fork-like-reject": {
+              "id": "run-6-fork-like-reject",
+              "kind": "like",
+              "itemId": "seed-1",
+              "status": "compensated"
+            }
+          }
+        },
+        "roots": 3,
+        "listeners": 3,
+        "readers": 3,
+        "retainedActions": 0,
+        "transitions": 0
+      },
+      "clock": {
+        "version": 99,
+        "roots": 2,
+        "listeners": 2,
+        "readers": 2,
+        "retainedActions": 0,
+        "transitions": 0
+      }
+    },
+    "operations": [
+      {
+        "id": "run-1-shared",
+        "lane": "main + fork",
+        "scopeId": "run-1-shared-scope",
+        "scopeRoots": [
+          "task-transition-main",
+          "task-transition-fork"
+        ],
+        "status": "committed",
+        "resourceStatus": "fulfilled",
+        "elapsedMs": 3319,
+        "task": {
+          "status": "committed",
+          "generation": 4,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-main",
+            "task-transition-fork"
+          ],
+          "started": [
+            "search",
+            "panel"
+          ],
+          "completed": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "reused": [
+            "profile",
+            "catalog"
+          ]
+        },
+        "likeIds": [
+          "run-1-like-confirm",
+          "run-1-like-reject"
+        ]
+      },
+      {
+        "id": "run-1-fork-only",
+        "lane": "fork-only",
+        "scopeId": "run-1-fork-only-scope",
+        "scopeRoots": [
+          "task-transition-fork"
+        ],
+        "status": "committed",
+        "resourceStatus": "fulfilled",
+        "elapsedMs": 1265,
+        "task": {
+          "status": "committed",
+          "generation": 2,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-fork"
+          ],
+          "started": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "completed": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "reused": []
+        },
+        "likeIds": [
+          "run-1-fork-like-confirm",
+          "run-1-fork-like-reject"
+        ]
+      },
+      {
+        "id": "run-2-shared",
+        "lane": "main + fork",
+        "scopeId": "run-2-shared-scope",
+        "scopeRoots": [
+          "task-transition-main",
+          "task-transition-fork"
+        ],
+        "status": "committed",
+        "resourceStatus": "fulfilled",
+        "elapsedMs": 602,
+        "task": {
+          "status": "committed",
+          "generation": 2,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-main",
+            "task-transition-fork"
+          ],
+          "started": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "completed": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "reused": []
+        },
+        "likeIds": [
+          "run-2-like-confirm",
+          "run-2-like-reject"
+        ]
+      },
+      {
+        "id": "run-2-fork-only",
+        "lane": "fork-only",
+        "scopeId": "run-2-fork-only-scope",
+        "scopeRoots": [
+          "task-transition-fork"
+        ],
+        "status": "committed",
+        "resourceStatus": "fulfilled",
+        "elapsedMs": 424,
+        "task": {
+          "status": "committed",
+          "generation": 2,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-fork"
+          ],
+          "started": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "completed": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "reused": []
+        },
+        "likeIds": [
+          "run-2-fork-like-confirm",
+          "run-2-fork-like-reject"
+        ]
+      },
+      {
+        "id": "run-3-shared",
+        "lane": "main + fork",
+        "scopeId": "run-3-shared-scope",
+        "scopeRoots": [
+          "task-transition-main",
+          "task-transition-fork"
+        ],
+        "status": "committed",
+        "resourceStatus": "fulfilled",
+        "elapsedMs": 1203,
+        "task": {
+          "status": "committed",
+          "generation": 2,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-main",
+            "task-transition-fork"
+          ],
+          "started": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "completed": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "reused": []
+        },
+        "likeIds": [
+          "run-3-like-confirm",
+          "run-3-like-reject"
+        ]
+      },
+      {
+        "id": "run-3-fork-only",
+        "lane": "fork-only",
+        "scopeId": "run-3-fork-only-scope",
+        "scopeRoots": [
+          "task-transition-fork"
+        ],
+        "status": "committed",
+        "resourceStatus": "fulfilled",
+        "elapsedMs": 843,
+        "task": {
+          "status": "committed",
+          "generation": 2,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-fork"
+          ],
+          "started": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "completed": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "reused": []
+        },
+        "likeIds": [
+          "run-3-fork-like-confirm",
+          "run-3-fork-like-reject"
+        ]
+      },
+      {
+        "id": "run-4-shared",
+        "lane": "main + fork",
+        "scopeId": "run-4-shared-scope",
+        "scopeRoots": [
+          "task-transition-main",
+          "task-transition-fork"
+        ],
+        "status": "committed",
+        "resourceStatus": "fulfilled",
+        "elapsedMs": 1803,
+        "task": {
+          "status": "committed",
+          "generation": 2,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-main",
+            "task-transition-fork"
+          ],
+          "started": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "completed": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "reused": []
+        },
+        "likeIds": [
+          "run-4-like-confirm",
+          "run-4-like-reject"
+        ]
+      },
+      {
+        "id": "run-4-fork-only",
+        "lane": "fork-only",
+        "scopeId": "run-4-fork-only-scope",
+        "scopeRoots": [
+          "task-transition-fork"
+        ],
+        "status": "committed",
+        "resourceStatus": "fulfilled",
+        "elapsedMs": 1262,
+        "task": {
+          "status": "committed",
+          "generation": 2,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-fork"
+          ],
+          "started": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "completed": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "reused": []
+        },
+        "likeIds": [
+          "run-4-fork-like-confirm",
+          "run-4-fork-like-reject"
+        ]
+      },
+      {
+        "id": "run-5-shared",
+        "lane": "main + fork",
+        "scopeId": "run-5-shared-scope",
+        "scopeRoots": [
+          "task-transition-main",
+          "task-transition-fork"
+        ],
+        "status": "committed",
+        "resourceStatus": "fulfilled",
+        "elapsedMs": 1801,
+        "task": {
+          "status": "committed",
+          "generation": 2,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-main",
+            "task-transition-fork"
+          ],
+          "started": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "completed": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "reused": []
+        },
+        "likeIds": [
+          "run-5-like-confirm",
+          "run-5-like-reject"
+        ]
+      },
+      {
+        "id": "run-5-fork-only",
+        "lane": "fork-only",
+        "scopeId": "run-5-fork-only-scope",
+        "scopeRoots": [
+          "task-transition-fork"
+        ],
+        "status": "cancelled",
+        "resourceStatus": "released/cancelled",
+        "elapsedMs": 35,
+        "task": {
+          "status": "cancelled",
+          "generation": 2,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-fork"
+          ],
+          "started": [
+            "profile",
+            "catalog",
+            "search"
+          ],
+          "completed": [],
+          "reused": []
+        },
+        "likeIds": [
+          "run-5-fork-like-confirm",
+          "run-5-fork-like-reject"
+        ]
+      },
+      {
+        "id": "run-6-shared",
+        "lane": "main + fork",
+        "scopeId": "run-6-shared-scope",
+        "scopeRoots": [
+          "task-transition-main",
+          "task-transition-fork"
+        ],
+        "status": "failed",
+        "resourceStatus": "rejected",
+        "elapsedMs": 602,
+        "task": {
+          "status": "committed",
+          "generation": 2,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-main",
+            "task-transition-fork"
+          ],
+          "started": [
+            "profile",
+            "catalog",
+            "search"
+          ],
+          "completed": [
+            "profile",
+            "catalog"
+          ],
+          "reused": []
+        },
+        "likeIds": [
+          "run-6-like-confirm",
+          "run-6-like-reject"
+        ]
+      },
+      {
+        "id": "run-6-fork-only",
+        "lane": "fork-only",
+        "scopeId": "run-6-fork-only-scope",
+        "scopeRoots": [
+          "task-transition-fork"
+        ],
+        "status": "failed",
+        "resourceStatus": "rejected",
+        "elapsedMs": 424,
+        "task": {
+          "status": "committed",
+          "generation": 2,
+          "taskIds": [
+            "profile",
+            "catalog",
+            "search",
+            "panel"
+          ],
+          "roots": [
+            "task-transition-fork"
+          ],
+          "started": [
+            "profile",
+            "catalog",
+            "search"
+          ],
+          "completed": [
+            "profile",
+            "catalog"
+          ],
+          "reused": []
+        },
+        "likeIds": [
+          "run-6-fork-like-confirm",
+          "run-6-fork-like-reject"
+        ]
+      }
+    ],
+    "providers": [
+      {
+        "id": "provider-1",
+        "operationId": "run-1",
+        "taskId": "profile",
+        "startedAt": 1791835001160,
+        "duration": 1008,
+        "status": "completed",
+        "endedAt": 1791835002168,
+        "elapsedMs": 1008
+      },
+      {
+        "id": "provider-2",
+        "operationId": "run-1",
+        "taskId": "catalog",
+        "startedAt": 1791835001160,
+        "duration": 1296,
+        "status": "completed",
+        "endedAt": 1791835002457,
+        "elapsedMs": 1297
+      },
+      {
+        "id": "provider-3",
+        "operationId": "run-1",
+        "taskId": "search",
+        "startedAt": 1791835001160,
+        "duration": 1800,
+        "status": "aborted",
+        "endedAt": 1791835002675,
+        "elapsedMs": 1515
+      },
+      {
+        "id": "provider-4",
+        "operationId": "run-1-fork",
+        "taskId": "profile",
+        "startedAt": 1791835001163,
+        "duration": 706,
+        "status": "completed",
+        "endedAt": 1791835001871,
+        "elapsedMs": 708
+      },
+      {
+        "id": "provider-5",
+        "operationId": "run-1-fork",
+        "taskId": "catalog",
+        "startedAt": 1791835001163,
+        "duration": 907,
+        "status": "completed",
+        "endedAt": 1791835002072,
+        "elapsedMs": 909
+      },
+      {
+        "id": "provider-6",
+        "operationId": "run-1-fork",
+        "taskId": "search",
+        "startedAt": 1791835001163,
+        "duration": 1260,
+        "status": "completed",
+        "endedAt": 1791835002424,
+        "elapsedMs": 1261
+      },
+      {
+        "id": "provider-7",
+        "operationId": "run-1",
+        "taskId": "search",
+        "startedAt": 1791835002674,
+        "duration": 1800,
+        "status": "completed",
+        "endedAt": 1791835004476,
+        "elapsedMs": 1802
+      },
+      {
+        "id": "provider-8",
+        "operationId": "run-2",
+        "taskId": "profile",
+        "startedAt": 1791835004540,
+        "duration": 336,
+        "status": "completed",
+        "endedAt": 1791835004877,
+        "elapsedMs": 337
+      },
+      {
+        "id": "provider-9",
+        "operationId": "run-2",
+        "taskId": "catalog",
+        "startedAt": 1791835004540,
+        "duration": 432,
+        "status": "completed",
+        "endedAt": 1791835004976,
+        "elapsedMs": 436
+      },
+      {
+        "id": "provider-10",
+        "operationId": "run-2",
+        "taskId": "search",
+        "startedAt": 1791835004540,
+        "duration": 600,
+        "status": "completed",
+        "endedAt": 1791835005141,
+        "elapsedMs": 601
+      },
+      {
+        "id": "provider-11",
+        "operationId": "run-2-fork",
+        "taskId": "profile",
+        "startedAt": 1791835004542,
+        "duration": 235,
+        "status": "completed",
+        "endedAt": 1791835004778,
+        "elapsedMs": 236
+      },
+      {
+        "id": "provider-12",
+        "operationId": "run-2-fork",
+        "taskId": "catalog",
+        "startedAt": 1791835004542,
+        "duration": 302,
+        "status": "completed",
+        "endedAt": 1791835004844,
+        "elapsedMs": 302
+      },
+      {
+        "id": "provider-13",
+        "operationId": "run-2-fork",
+        "taskId": "search",
+        "startedAt": 1791835004542,
+        "duration": 420,
+        "status": "completed",
+        "endedAt": 1791835004963,
+        "elapsedMs": 421
+      },
+      {
+        "id": "provider-14",
+        "operationId": "run-3",
+        "taskId": "profile",
+        "startedAt": 1791835004575,
+        "duration": 672,
+        "status": "completed",
+        "endedAt": 1791835005248,
+        "elapsedMs": 673
+      },
+      {
+        "id": "provider-15",
+        "operationId": "run-3",
+        "taskId": "catalog",
+        "startedAt": 1791835004575,
+        "duration": 864,
+        "status": "completed",
+        "endedAt": 1791835005439,
+        "elapsedMs": 864
+      },
+      {
+        "id": "provider-16",
+        "operationId": "run-3",
+        "taskId": "search",
+        "startedAt": 1791835004575,
+        "duration": 1200,
+        "status": "completed",
+        "endedAt": 1791835005776,
+        "elapsedMs": 1201
+      },
+      {
+        "id": "provider-17",
+        "operationId": "run-3-fork",
+        "taskId": "profile",
+        "startedAt": 1791835004577,
+        "duration": 470,
+        "status": "completed",
+        "endedAt": 1791835005049,
+        "elapsedMs": 472
+      },
+      {
+        "id": "provider-18",
+        "operationId": "run-3-fork",
+        "taskId": "catalog",
+        "startedAt": 1791835004577,
+        "duration": 605,
+        "status": "completed",
+        "endedAt": 1791835005184,
+        "elapsedMs": 607
+      },
+      {
+        "id": "provider-19",
+        "operationId": "run-3-fork",
+        "taskId": "search",
+        "startedAt": 1791835004577,
+        "duration": 840,
+        "status": "completed",
+        "endedAt": 1791835005419,
+        "elapsedMs": 842
+      },
+      {
+        "id": "provider-20",
+        "operationId": "run-4",
+        "taskId": "profile",
+        "startedAt": 1791835004609,
+        "duration": 1008,
+        "status": "completed",
+        "endedAt": 1791835005618,
+        "elapsedMs": 1009
+      },
+      {
+        "id": "provider-21",
+        "operationId": "run-4",
+        "taskId": "catalog",
+        "startedAt": 1791835004610,
+        "duration": 1296,
+        "status": "completed",
+        "endedAt": 1791835005906,
+        "elapsedMs": 1296
+      },
+      {
+        "id": "provider-22",
+        "operationId": "run-4",
+        "taskId": "search",
+        "startedAt": 1791835004610,
+        "duration": 1800,
+        "status": "completed",
+        "endedAt": 1791835006411,
+        "elapsedMs": 1801
+      },
+      {
+        "id": "provider-23",
+        "operationId": "run-4-fork",
+        "taskId": "profile",
+        "startedAt": 1791835004613,
+        "duration": 706,
+        "status": "completed",
+        "endedAt": 1791835005320,
+        "elapsedMs": 707
+      },
+      {
+        "id": "provider-24",
+        "operationId": "run-4-fork",
+        "taskId": "catalog",
+        "startedAt": 1791835004613,
+        "duration": 907,
+        "status": "completed",
+        "endedAt": 1791835005522,
+        "elapsedMs": 909
+      },
+      {
+        "id": "provider-25",
+        "operationId": "run-4-fork",
+        "taskId": "search",
+        "startedAt": 1791835004613,
+        "duration": 1260,
+        "status": "completed",
+        "endedAt": 1791835005874,
+        "elapsedMs": 1261
+      },
+      {
+        "id": "provider-26",
+        "operationId": "run-5",
+        "taskId": "profile",
+        "startedAt": 1791835006474,
+        "duration": 1008,
+        "status": "completed",
+        "endedAt": 1791835007484,
+        "elapsedMs": 1010
+      },
+      {
+        "id": "provider-27",
+        "operationId": "run-5",
+        "taskId": "catalog",
+        "startedAt": 1791835006474,
+        "duration": 1296,
+        "status": "completed",
+        "endedAt": 1791835007771,
+        "elapsedMs": 1297
+      },
+      {
+        "id": "provider-28",
+        "operationId": "run-5",
+        "taskId": "search",
+        "startedAt": 1791835006474,
+        "duration": 1800,
+        "status": "completed",
+        "endedAt": 1791835008275,
+        "elapsedMs": 1801
+      },
+      {
+        "id": "provider-29",
+        "operationId": "run-5-fork",
+        "taskId": "profile",
+        "startedAt": 1791835006475,
+        "duration": 706,
+        "status": "aborted",
+        "endedAt": 1791835006508,
+        "elapsedMs": 33
+      },
+      {
+        "id": "provider-30",
+        "operationId": "run-5-fork",
+        "taskId": "catalog",
+        "startedAt": 1791835006475,
+        "duration": 907,
+        "status": "aborted",
+        "endedAt": 1791835006508,
+        "elapsedMs": 33
+      },
+      {
+        "id": "provider-31",
+        "operationId": "run-5-fork",
+        "taskId": "search",
+        "startedAt": 1791835006475,
+        "duration": 1260,
+        "status": "aborted",
+        "endedAt": 1791835006508,
+        "elapsedMs": 33
+      },
+      {
+        "id": "provider-32",
+        "operationId": "run-6",
+        "taskId": "profile",
+        "startedAt": 1791835008374,
+        "duration": 336,
+        "status": "completed",
+        "endedAt": 1791835008711,
+        "elapsedMs": 337
+      },
+      {
+        "id": "provider-33",
+        "operationId": "run-6",
+        "taskId": "catalog",
+        "startedAt": 1791835008374,
+        "duration": 432,
+        "status": "completed",
+        "endedAt": 1791835008808,
+        "elapsedMs": 434
+      },
+      {
+        "id": "provider-34",
+        "operationId": "run-6",
+        "taskId": "search",
+        "startedAt": 1791835008374,
+        "duration": 600,
+        "status": "completed",
+        "endedAt": 1791835008974,
+        "elapsedMs": 600
+      },
+      {
+        "id": "provider-35",
+        "operationId": "run-6-fork",
+        "taskId": "profile",
+        "startedAt": 1791835008375,
+        "duration": 235,
+        "status": "completed",
+        "endedAt": 1791835008611,
+        "elapsedMs": 236
+      },
+      {
+        "id": "provider-36",
+        "operationId": "run-6-fork",
+        "taskId": "catalog",
+        "startedAt": 1791835008375,
+        "duration": 302,
+        "status": "completed",
+        "endedAt": 1791835008678,
+        "elapsedMs": 303
+      },
+      {
+        "id": "provider-37",
+        "operationId": "run-6-fork",
+        "taskId": "search",
+        "startedAt": 1791835008375,
+        "duration": 420,
+        "status": "completed",
+        "endedAt": 1791835008797,
+        "elapsedMs": 422
+      }
+    ],
+    "activeProviderTimers": 0,
+    "effects": {
+      "active": 3,
+      "started": 3,
+      "cleanups": 0
+    }
+  },
+  "disposed": {
+    "disposed": true,
+    "pulse": 0,
+    "roots": [
+      {
+        "version": 1,
+        "ownerCount": 0,
+        "pendingChangeCount": 0,
+        "sourceValueSyncVisits": 0,
+        "disposed": true,
+        "rootId": "task-transition-main"
+      },
+      {
+        "version": 1,
+        "ownerCount": 0,
+        "pendingChangeCount": 0,
+        "sourceValueSyncVisits": 0,
+        "disposed": true,
+        "rootId": "task-transition-fork"
+      },
+      {
+        "version": 1,
+        "ownerCount": 0,
+        "pendingChangeCount": 0,
+        "sourceValueSyncVisits": 0,
+        "disposed": true,
+        "rootId": "native-task-workbench",
+        "publicationVersion": 1
+      }
+    ],
+    "stores": {
+      "query": {
+        "version": 0,
+        "value": "field notes",
+        "roots": 0,
+        "listeners": 0,
+        "readers": 0,
+        "retainedActions": 0,
+        "transitions": 0
+      },
+      "requests": {
+        "version": 0,
+        "value": {
+          "requests": []
+        },
+        "projectedLabels": [],
+        "activeScopes": 0,
+        "roots": 0,
+        "listeners": 0,
+        "readers": 0,
+        "retainedActions": 0,
+        "transitions": 0
+      },
+      "failNext": {
+        "value": false,
+        "version": 0,
+        "roots": 0,
+        "listeners": 0,
+        "readers": 0,
+        "retainedActions": 0,
+        "transitions": 0
+      },
+      "score": {
+        "version": 0,
+        "value": 18,
+        "roots": 0,
+        "listeners": 0,
+        "readers": 0,
+        "retainedActions": 0,
+        "transitions": 0
+      },
+      "feed": {
+        "version": 0,
+        "state": {
+          "items": [
+            {
+              "id": "seed-1",
+              "text": "Small field note: the river path is open again.",
+              "source": "server",
+              "confirmedLikes": 3,
+              "pendingLikeOperationIds": []
+            }
+          ],
+          "operations": {}
+        },
+        "roots": 0,
+        "listeners": 0,
+        "readers": 0,
+        "retainedActions": 0,
+        "transitions": 0
+      },
+      "clock": {
+        "version": 0,
+        "roots": 0,
+        "listeners": 0,
+        "readers": 0,
+        "retainedActions": 0,
+        "transitions": 0
+      }
+    },
+    "operations": [],
+    "providers": [],
+    "activeProviderTimers": 0,
+    "effects": {
+      "active": 0,
+      "started": 3,
+      "cleanups": 3
+    }
+  }
+}

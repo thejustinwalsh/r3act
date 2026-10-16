@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "source_file": "compiler/fixtures/async_transition_stress.ts",
+  "tasks": [
+    {
+      "id": "load-content",
+      "site_id": "compiler/fixtures/async_transition_stress.ts#async-task:load-content",
+      "depends_on": [
+        "$request"
+      ],
+      "call": {
+        "start": 437,
+        "end": 663
+      }
+    },
+    {
+      "id": "load-target",
+      "site_id": "compiler/fixtures/async_transition_stress.ts#async-task:load-target",
+      "depends_on": [
+        "$request"
+      ],
+      "call": {
+        "start": 667,
+        "end": 807
+      }
+    },
+    {
+      "id": "compose-update",
+      "site_id": "compiler/fixtures/async_transition_stress.ts#async-task:compose-update",
+      "depends_on": [
+        "load-content",
+        "load-target"
+      ],
+      "call": {
+        "start": 811,
+        "end": 1041
+      }
+    }
+  ],
+  "task_order": [
+    0,
+    1,
+    2
+  ]
+}

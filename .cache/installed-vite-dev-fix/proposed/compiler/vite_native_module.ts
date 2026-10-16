@@ -1,0 +1,1 @@
+../../../../compiler/vite_native_module.ts

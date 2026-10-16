@@ -1,0 +1,74 @@
+[
+  {
+    "name": "runtime-tests",
+    "command": "deno test --config deno.browser.json src",
+    "log": "runtime-integration-freeze.log",
+    "status": "PASS"
+  },
+  {
+    "name": "rust-tests",
+    "command": "cargo test --manifest-path compiler/oxc-spike/Cargo.toml",
+    "log": "rust-integration.log",
+    "status": "PASS"
+  },
+  {
+    "name": "tooling",
+    "command": "pnpm exec tsgo -p tsconfig.native-tooling.json",
+    "log": "tooling-integration-reviewed.log",
+    "status": "PASS"
+  },
+  {
+    "name": "compiled-lane-cut",
+    "command": "node --experimental-transform-types compiler/numeric_state_lane_cut_execution_test.mjs",
+    "log": "lane-cut-integration-freeze.log",
+    "status": "PASS"
+  },
+  {
+    "name": "compiled-lane-lifecycle",
+    "command": "node --experimental-transform-types compiler/numeric_state_lane_lifecycle_execution_test.mjs",
+    "log": "lane-lifecycle-integration-freeze.log",
+    "status": "PASS"
+  },
+  {
+    "name": "compiled-style",
+    "command": "node --experimental-transform-types compiler/prepared_style_writer_execution_test.mjs",
+    "log": "compiled-style-integration-freeze.log",
+    "status": "PASS"
+  },
+  {
+    "name": "retention",
+    "command": "node --expose-gc scripts/verify_prepared_style_writer_retention.mjs",
+    "log": "retention-integration-freeze.log",
+    "status": "PASS"
+  },
+  {
+    "name": "package-build",
+    "command": "node scripts/build_native_package.mjs",
+    "log": "package-build-reviewed.log",
+    "status": "PASS"
+  },
+  {
+    "name": "package-consumer",
+    "command": "node scripts/verify_native_package.mjs",
+    "log": "package-consumer-reviewed.log",
+    "status": "PASS"
+  },
+  {
+    "name": "product-build",
+    "command": "pnpm exec vite build --config vite.product-mixed-state-lanes.config.ts",
+    "log": "product-build-reviewed.log",
+    "status": "PASS"
+  },
+  {
+    "name": "product-pilot",
+    "command": "PRODUCT_MIXED_ORIGIN=https://compiled-state-lanes.localhost:1355 PRODUCT_MIXED_PILOT_DIR=.cache/numeric-state-layout/product-mixed-pilot-reviewed node scripts/verify_product_mixed_v2_pilot.mjs",
+    "log": "product-pilot-reviewed.log",
+    "status": "PASS"
+  },
+  {
+    "name": "root-lifecycle",
+    "command": "deno test --config deno.browser.json src/native_numeric_lane_cut_test.ts",
+    "log": "root-lane-buffer-tests.log",
+    "status": "PASS"
+  }
+]

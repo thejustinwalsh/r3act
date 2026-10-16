@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Developer study · Task B parity</title>
+    <style>
+      body { margin: 0; padding: 32px; color: #17211c; background: #f2f4f0; font: 15px/1.5 system-ui, sans-serif; }
+      main { max-width: 960px; margin: auto; }
+      h1 { margin-bottom: 8px; font-size: 32px; }
+      p { max-width: 780px; color: #58655d; }
+      button { border: 0; border-radius: 6px; padding: 11px 16px; color: white; background: #185d42; font: inherit; cursor: pointer; }
+      button:disabled { opacity: .6; cursor: wait; }
+      #result { white-space: pre-wrap; overflow-wrap: anywhere; padding: 12px; background: #fff; border-radius: 8px; }
+      #result[data-status="PASS"] { border-left: 4px solid #168653; }
+      #result[data-status="FAIL"] { border-left: 4px solid #bb3c37; }
+      .arms { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
+      .arm { background: white; border-radius: 8px; padding: 14px; min-height: 150px; }
+      .task-b-regions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      [data-region] { padding: 10px; background: #f2f4f0; border-radius: 6px; }
+      [data-region]::before { display: block; margin-bottom: 8px; color: #64736a; font: 11px ui-monospace, monospace; content: attr(data-region) " · query " attr(data-query); }
+      li { margin-left: 18px; }
+      @media (max-width: 700px) { body { padding: 18px; } .arms { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Developer study · Task B parity</h1>
+      <p>One shared row source feeds two keyed result regions. The scripted actions update query A, append a row, and update query B. Assertions check rendered IDs, query attributes, untouched region identity, and surviving keyed item identity in React and the OXC planned runtime.</p>
+      <button id="run" type="button">Run Task B interaction script</button>
+      <pre id="result" aria-live="polite" data-status="READY">Ready. Run the same four-step script against both implementations.</pre>
+      <div class="arms">
+        <section class="arm"><h2>React 19.3 + React Compiler</h2><div id="react-root"></div></section>
+        <section class="arm"><h2>OXC plan + retained VDOM</h2><div id="runtime-root"></div></section>
+      </div>
+    </main>
+    <script type="module" src="/src/developer_study/task_b_browser.tsx"></script>
+  </body>
+</html>

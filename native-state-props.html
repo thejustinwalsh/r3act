@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#101820" />
+    <title>Native TSX state and props</title>
+    <link rel="icon" href="data:," />
+    <style>
+      :root { color-scheme: dark; font: 16px/1.5 ui-sans-serif, system-ui; background: #101820; color: #e9f1f4; }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; }
+      main { width: min(1120px, calc(100% - 36px)); margin: 0 auto; padding: 48px 0 72px; }
+      .demo-root { display: contents; }
+      h1, h2, p { margin-top: 0; }
+      h1 { font-size: clamp(2rem, 5vw, 3.2rem); letter-spacing: -.04em; margin-bottom: 8px; }
+      h2 { font-size: 1.05rem; }
+      .lede, .muted { color: #9eb1bb; }
+      .grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr); gap: 18px; margin-top: 28px; }
+      .panel { border: 1px solid #2a3b45; border-radius: 16px; padding: 20px; background: #17232c; }
+      .stage { position: relative; min-height: 340px; overflow: hidden; border-radius: 12px; background: radial-gradient(ellipse at 50% 100%, #243c46, #111b23 65%); }
+      .orb { position: absolute; left: calc(var(--dot-x) * 1px); top: calc(var(--dot-y) * 1px); width: 56px; height: 56px; border-radius: 50%; background: hsl(var(--dot-tint) 68% 62%); color: hsl(var(--dot-tint) 68% 62%); box-shadow: 0 0 38px currentColor; transition: filter 80ms linear; }
+      .controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+      button, input { font: inherit; }
+      button { color: #e9f1f4; background: #263b46; border: 1px solid #3a5663; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+      button:hover { background: #304b58; }
+      input { width: 100%; accent-color: #77d5bd; }
+      .rows { display: grid; gap: 8px; }
+      .row { display: grid; grid-template-columns: 1fr 100px auto; align-items: center; gap: 8px; padding: 8px; background: #111b23; border-radius: 8px; }
+      .row input { min-width: 0; }
+      .badge { color: #77d5bd; font-variant-numeric: tabular-nums; }
+      pre { overflow: auto; padding: 12px; background: #101820; border-radius: 8px; color: #bfd4dc; }
+      @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div id="app"></div>
+      <div id="fork-app" aria-label="Shared store fork root"></div>
+    </main>
+    <script type="module" src="/src/browser/native_state_props.tsx"></script>
+  </body>
+</html>

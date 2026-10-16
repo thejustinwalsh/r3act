@@ -1,0 +1,1315 @@
+{
+  "schemaVersion": "transition-coordinator-fanin-benchmark-v1",
+  "runtime": {
+    "deno": "2.6.3",
+    "v8": "14.2.231.17-rusty",
+    "os": "darwin",
+    "arch": "aarch64",
+    "hardwareConcurrency": 10
+  },
+  "protocol": {
+    "seed": 240719,
+    "pairCount": 17,
+    "warmupPairs": 2,
+    "transitionRepeats": 4,
+    "rootCounts": [
+      1,
+      16,
+      64,
+      256,
+      1024
+    ],
+    "timedResourceCompletions": 92548,
+    "statistic": "Within each root-count condition, median is the middle paired-run sample; p95 is nearest-rank across paired runs.",
+    "timedWork": "begin and resolve all one-resource-per-root candidates, including final root-group commit; setup and candidate creation included.",
+    "limitations": [
+      "JavaScript scheduler bookkeeping only; no VDOM construction, DOM patches, actual effect work, or async waiting is timed.",
+      "The scan reference deliberately checks every root generation on each completion; it is not a React comparison.",
+      "Small conditions may be near the performance timer floor; interpret scaling and large fan-in more than tiny absolute differences."
+    ]
+  },
+  "summaries": [
+    {
+      "rootCount": 1,
+      "pairCount": 17,
+      "indexedCoordinator": {
+        "medianMs": 0.007167000000009693,
+        "p95Ms": 0.016458000000000084
+      },
+      "scanOnEveryResolve": {
+        "medianMs": 0.003417000000013104,
+        "p95Ms": 0.008457999999990307
+      },
+      "scanOverIndexedMedianRatio": 0.4767685223954908,
+      "wins": {
+        "indexedCoordinator": 0,
+        "scanOnEveryResolve": 17,
+        "ties": 0
+      }
+    },
+    {
+      "rootCount": 16,
+      "pairCount": 17,
+      "indexedCoordinator": {
+        "medianMs": 0.04912500000000364,
+        "p95Ms": 0.06745800000001623
+      },
+      "scanOnEveryResolve": {
+        "medianMs": 0.06287499999999113,
+        "p95Ms": 0.21433299999998212
+      },
+      "scanOverIndexedMedianRatio": 1.2798982188292412,
+      "wins": {
+        "indexedCoordinator": 11,
+        "scanOnEveryResolve": 6,
+        "ties": 0
+      }
+    },
+    {
+      "rootCount": 64,
+      "pairCount": 17,
+      "indexedCoordinator": {
+        "medianMs": 0.09049999999999159,
+        "p95Ms": 0.10824999999999818
+      },
+      "scanOnEveryResolve": {
+        "medianMs": 0.3855000000000075,
+        "p95Ms": 0.4587500000000091
+      },
+      "scanOverIndexedMedianRatio": 4.259668508287771,
+      "wins": {
+        "indexedCoordinator": 17,
+        "scanOnEveryResolve": 0,
+        "ties": 0
+      }
+    },
+    {
+      "rootCount": 256,
+      "pairCount": 17,
+      "indexedCoordinator": {
+        "medianMs": 0.41662500000001046,
+        "p95Ms": 0.5051660000000027
+      },
+      "scanOnEveryResolve": {
+        "medianMs": 1.8484579999999937,
+        "p95Ms": 6.972417000000007
+      },
+      "scanOverIndexedMedianRatio": 4.436742874287302,
+      "wins": {
+        "indexedCoordinator": 17,
+        "scanOnEveryResolve": 0,
+        "ties": 0
+      }
+    },
+    {
+      "rootCount": 1024,
+      "pairCount": 17,
+      "indexedCoordinator": {
+        "medianMs": 1.4559169999999995,
+        "p95Ms": 2.0565839999999866
+      },
+      "scanOnEveryResolve": {
+        "medianMs": 31.454791999999998,
+        "p95Ms": 32.839999999999975
+      },
+      "scanOverIndexedMedianRatio": 21.604797526232616,
+      "wins": {
+        "indexedCoordinator": 17,
+        "scanOnEveryResolve": 0,
+        "ties": 0
+      }
+    }
+  ],
+  "pairs": [
+    {
+      "rootCount": 1,
+      "pair": {
+        "pair": 0,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.015125000000011823,
+        "scanOnEveryResolveMs": 0.008457999999990307,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1,
+      "pair": {
+        "pair": 1,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.006792000000018561,
+        "scanOnEveryResolveMs": 0.00508299999998485,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1,
+      "pair": {
+        "pair": 2,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.013457999999985759,
+        "scanOnEveryResolveMs": 0.00508299999998485,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1,
+      "pair": {
+        "pair": 3,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.006416999999999007,
+        "scanOnEveryResolveMs": 0.004375000000010232,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1,
+      "pair": {
+        "pair": 4,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.007332999999988488,
+        "scanOnEveryResolveMs": 0.0028749999999888587,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1,
+      "pair": {
+        "pair": 5,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.007875000000012733,
+        "scanOnEveryResolveMs": 0.0027919999999994616,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1,
+      "pair": {
+        "pair": 6,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.007167000000009693,
+        "scanOnEveryResolveMs": 0.0027080000000125892,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1,
+      "pair": {
+        "pair": 7,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.0072499999999990905,
+        "scanOnEveryResolveMs": 0.003959000000008928,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1,
+      "pair": {
+        "pair": 8,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.009083000000003949,
+        "scanOnEveryResolveMs": 0.003417000000013104,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1,
+      "pair": {
+        "pair": 9,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.007041000000015174,
+        "scanOnEveryResolveMs": 0.0028749999999888587,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1,
+      "pair": {
+        "pair": 10,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.006957999999997355,
+        "scanOnEveryResolveMs": 0.0027499999999918145,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1,
+      "pair": {
+        "pair": 11,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.006750000000010914,
+        "scanOnEveryResolveMs": 0.0027499999999918145,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1,
+      "pair": {
+        "pair": 12,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.016458000000000084,
+        "scanOnEveryResolveMs": 0.00437499999998181,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1,
+      "pair": {
+        "pair": 13,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.007082999999994399,
+        "scanOnEveryResolveMs": 0.004624999999975898,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1,
+      "pair": {
+        "pair": 14,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.009041999999993777,
+        "scanOnEveryResolveMs": 0.003250000000008413,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1,
+      "pair": {
+        "pair": 15,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.006041000000010399,
+        "scanOnEveryResolveMs": 0.0030000000000143245,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1,
+      "pair": {
+        "pair": 16,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.006000000000000227,
+        "scanOnEveryResolveMs": 0.004333000000002585,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 16,
+      "pair": {
+        "pair": 0,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.055749999999989086,
+        "scanOnEveryResolveMs": 0.21433299999998212,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 16,
+      "pair": {
+        "pair": 1,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.06487500000000068,
+        "scanOnEveryResolveMs": 0.06974999999999909,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 16,
+      "pair": {
+        "pair": 2,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.05629199999998491,
+        "scanOnEveryResolveMs": 0.06287499999999113,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 16,
+      "pair": {
+        "pair": 3,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.06287499999999113,
+        "scanOnEveryResolveMs": 0.07641699999999219,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 16,
+      "pair": {
+        "pair": 4,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.06745800000001623,
+        "scanOnEveryResolveMs": 0.07320799999999394,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 16,
+      "pair": {
+        "pair": 5,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.05937499999998863,
+        "scanOnEveryResolveMs": 0.07766699999999105,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 16,
+      "pair": {
+        "pair": 6,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.060915999999991755,
+        "scanOnEveryResolveMs": 0.06358399999999165,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 16,
+      "pair": {
+        "pair": 7,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.04479200000000105,
+        "scanOnEveryResolveMs": 0.0707089999999937,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 16,
+      "pair": {
+        "pair": 8,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.04912500000000364,
+        "scanOnEveryResolveMs": 0.02987499999997567,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 16,
+      "pair": {
+        "pair": 9,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.04220900000001393,
+        "scanOnEveryResolveMs": 0.027667000000008102,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 16,
+      "pair": {
+        "pair": 10,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.04741599999999835,
+        "scanOnEveryResolveMs": 0.027374999999977945,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 16,
+      "pair": {
+        "pair": 11,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.04441700000000992,
+        "scanOnEveryResolveMs": 0.027959000000009837,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 16,
+      "pair": {
+        "pair": 12,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.04270800000000463,
+        "scanOnEveryResolveMs": 0.028500000000008185,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 16,
+      "pair": {
+        "pair": 13,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.05012500000000841,
+        "scanOnEveryResolveMs": 0.07862499999998818,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 16,
+      "pair": {
+        "pair": 14,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.04537499999997863,
+        "scanOnEveryResolveMs": 0.029124999999993406,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 16,
+      "pair": {
+        "pair": 15,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.025833000000005768,
+        "scanOnEveryResolveMs": 0.027000000000015234,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 16,
+      "pair": {
+        "pair": 16,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.02487500000000864,
+        "scanOnEveryResolveMs": 0.027166999999991504,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 64,
+      "pair": {
+        "pair": 0,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.10824999999999818,
+        "scanOnEveryResolveMs": 0.3855000000000075,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 64,
+      "pair": {
+        "pair": 1,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.10137499999999022,
+        "scanOnEveryResolveMs": 0.3880840000000205,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 64,
+      "pair": {
+        "pair": 2,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.08908400000001393,
+        "scanOnEveryResolveMs": 0.3962089999999989,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 64,
+      "pair": {
+        "pair": 3,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.08737500000000864,
+        "scanOnEveryResolveMs": 0.4587500000000091,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 64,
+      "pair": {
+        "pair": 4,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.10479200000000333,
+        "scanOnEveryResolveMs": 0.4317090000000121,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 64,
+      "pair": {
+        "pair": 5,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.09274999999999523,
+        "scanOnEveryResolveMs": 0.3945839999999805,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 64,
+      "pair": {
+        "pair": 6,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.09320799999997575,
+        "scanOnEveryResolveMs": 0.38520799999997735,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 64,
+      "pair": {
+        "pair": 7,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.09041700000000219,
+        "scanOnEveryResolveMs": 0.38154199999999605,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 64,
+      "pair": {
+        "pair": 8,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.09158300000001418,
+        "scanOnEveryResolveMs": 0.3846670000000074,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 64,
+      "pair": {
+        "pair": 9,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.09029200000000515,
+        "scanOnEveryResolveMs": 0.3782500000000084,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 64,
+      "pair": {
+        "pair": 10,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.08966599999999403,
+        "scanOnEveryResolveMs": 0.3831250000000068,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 64,
+      "pair": {
+        "pair": 11,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.09412500000001955,
+        "scanOnEveryResolveMs": 0.4253750000000025,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 64,
+      "pair": {
+        "pair": 12,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.09033300000001532,
+        "scanOnEveryResolveMs": 0.3846249999999998,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 64,
+      "pair": {
+        "pair": 13,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.08883399999999142,
+        "scanOnEveryResolveMs": 0.3804160000000252,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 64,
+      "pair": {
+        "pair": 14,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.09049999999999159,
+        "scanOnEveryResolveMs": 0.4055409999999995,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 64,
+      "pair": {
+        "pair": 15,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.09679200000002197,
+        "scanOnEveryResolveMs": 0.3857089999999914,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 64,
+      "pair": {
+        "pair": 16,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.08891699999998082,
+        "scanOnEveryResolveMs": 0.3725000000000023,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 256,
+      "pair": {
+        "pair": 0,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.5051660000000027,
+        "scanOnEveryResolveMs": 6.972417000000007,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 256,
+      "pair": {
+        "pair": 1,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.4071249999999793,
+        "scanOnEveryResolveMs": 4.793541000000005,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 256,
+      "pair": {
+        "pair": 2,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.38879199999999514,
+        "scanOnEveryResolveMs": 5.7685419999999965,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 256,
+      "pair": {
+        "pair": 3,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.39587500000001796,
+        "scanOnEveryResolveMs": 5.700457999999998,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 256,
+      "pair": {
+        "pair": 4,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.3903750000000059,
+        "scanOnEveryResolveMs": 1.7880409999999927,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 256,
+      "pair": {
+        "pair": 5,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.4619160000000022,
+        "scanOnEveryResolveMs": 1.840250000000026,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 256,
+      "pair": {
+        "pair": 6,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.48379099999999653,
+        "scanOnEveryResolveMs": 1.8607080000000167,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 256,
+      "pair": {
+        "pair": 7,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.4216250000000059,
+        "scanOnEveryResolveMs": 1.8351660000000152,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 256,
+      "pair": {
+        "pair": 8,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.5014590000000112,
+        "scanOnEveryResolveMs": 1.8323330000000055,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 256,
+      "pair": {
+        "pair": 9,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.44508299999995415,
+        "scanOnEveryResolveMs": 1.8075000000000045,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 256,
+      "pair": {
+        "pair": 10,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.36962500000004184,
+        "scanOnEveryResolveMs": 1.8484579999999937,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 256,
+      "pair": {
+        "pair": 11,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.44283400000000483,
+        "scanOnEveryResolveMs": 1.7863330000000133,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 256,
+      "pair": {
+        "pair": 12,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.36866599999996197,
+        "scanOnEveryResolveMs": 1.780083999999988,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 256,
+      "pair": {
+        "pair": 13,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.35883400000000165,
+        "scanOnEveryResolveMs": 1.8707919999999945,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 256,
+      "pair": {
+        "pair": 14,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.42712499999998954,
+        "scanOnEveryResolveMs": 1.8659590000000321,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 256,
+      "pair": {
+        "pair": 15,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 0.3681670000000281,
+        "scanOnEveryResolveMs": 1.8477920000000267,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 256,
+      "pair": {
+        "pair": 16,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 0.41662500000001046,
+        "scanOnEveryResolveMs": 1.8565830000000005,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1024,
+      "pair": {
+        "pair": 0,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 1.5652089999999816,
+        "scanOnEveryResolveMs": 31.92108300000001,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1024,
+      "pair": {
+        "pair": 1,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 2.0565839999999866,
+        "scanOnEveryResolveMs": 29.583458999999948,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1024,
+      "pair": {
+        "pair": 2,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 1.4559169999999995,
+        "scanOnEveryResolveMs": 32.64749999999998,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1024,
+      "pair": {
+        "pair": 3,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 1.529374999999959,
+        "scanOnEveryResolveMs": 32.839999999999975,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1024,
+      "pair": {
+        "pair": 4,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 1.404457999999977,
+        "scanOnEveryResolveMs": 31.452750000000037,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1024,
+      "pair": {
+        "pair": 5,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 1.349917000000005,
+        "scanOnEveryResolveMs": 30.79925000000003,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1024,
+      "pair": {
+        "pair": 6,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 1.4116669999999658,
+        "scanOnEveryResolveMs": 31.454791999999998,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1024,
+      "pair": {
+        "pair": 7,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 1.5205420000000913,
+        "scanOnEveryResolveMs": 31.90229199999999,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1024,
+      "pair": {
+        "pair": 8,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 1.4766670000000204,
+        "scanOnEveryResolveMs": 31.455874999999992,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1024,
+      "pair": {
+        "pair": 9,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 1.3374579999999696,
+        "scanOnEveryResolveMs": 30.567874999999958,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1024,
+      "pair": {
+        "pair": 10,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 1.4017089999999826,
+        "scanOnEveryResolveMs": 32.22183300000006,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1024,
+      "pair": {
+        "pair": 11,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 1.506208000000015,
+        "scanOnEveryResolveMs": 31.056290999999987,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1024,
+      "pair": {
+        "pair": 12,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 1.3571660000000065,
+        "scanOnEveryResolveMs": 31.14770800000008,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1024,
+      "pair": {
+        "pair": 13,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 1.4755420000000186,
+        "scanOnEveryResolveMs": 30.96479099999999,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1024,
+      "pair": {
+        "pair": 14,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 1.369874999999979,
+        "scanOnEveryResolveMs": 28.802749999999946,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1024,
+      "pair": {
+        "pair": 15,
+        "order": [
+          "scanOnEveryResolve",
+          "indexedCoordinator"
+        ],
+        "indexedCoordinatorMs": 1.460416999999893,
+        "scanOnEveryResolveMs": 31.56899999999996,
+        "repeats": 4,
+        "parity": true
+      }
+    },
+    {
+      "rootCount": 1024,
+      "pair": {
+        "pair": 16,
+        "order": [
+          "indexedCoordinator",
+          "scanOnEveryResolve"
+        ],
+        "indexedCoordinatorMs": 1.4297500000000127,
+        "scanOnEveryResolveMs": 31.475917000000095,
+        "repeats": 4,
+        "parity": true
+      }
+    }
+  ]
+}

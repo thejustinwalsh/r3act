@@ -1,0 +1,540 @@
+{
+  "id": "owner-cut-kernel-cleanup-parity",
+  "code": "import { asyncTask, useState } from \"native_runtime_api.ts\";\n\nconst kernelProofTask = asyncTask(\"kernel-proof\", [], async (input) => null);\n\nexport function Row() {\n  const [x] = useState(1);\n  const [y] = useState(2);\n  return <mesh data-y={y} data-sum={x + y} data-label={`${x}px`} data-x={x} data-negative={-x} data-condition={x > 0 ? \"positive\" : \"nonpositive\"} data-escaped={`line\\n${x}px`} />;\n}\n\nexport function SameShape() {\n  const [x] = useState(1);\n  const [y] = useState(2);\n  return <mesh data-y={y} data-sum={x + y} data-label={`${x}px`} data-x={x} data-negative={-x} data-condition={x > 0 ? \"positive\" : \"nonpositive\"} data-escaped={`line\\n${x}px`} />;\n}\n\nexport function Vector() {\n  const [x] = useState(1);\n  const [y] = useState(2);\n  return <mesh position={[x, y]} />;\n}\n\nexport function Opaque() {\n  const [x] = useState(1);\n  return <mesh data-opaque={Math.sin(x)} />;\n}\n\nexport function Member() {\n  const [x] = useState(1);\n  const source = { value: 2 };\n  return <mesh data-member={source.value + x} />;\n}\n\nexport function Call() {\n  const [x] = useState(1);\n  return <mesh data-call={formatValue(x)} />;\n}\n\nexport function ShadowedUndefined() {\n  const [x] = useState(1);\n  const undefined = 2;\n  return <mesh data-shadowed={x + undefined} />;\n}\n\nexport function Mutation() {\n  const [x] = useState(1);\n  return <mesh data-assignment={x = 2} data-update={x++} />;\n}\n\nexport function MixedCoverage() {\n  const [x] = useState(1);\n  return <mesh data-x={x} position={[x, 2]} />;\n}\n",
+  "plan": {
+    "schema_version": 2,
+    "source_file": "native-owner-cut-kernel.tsx",
+    "helper_module": "native_runtime_api.ts",
+    "tasks": [
+      {
+        "id": "kernel-proof",
+        "site_id": "native-owner-cut-kernel.tsx#async-task:kernel-proof",
+        "depends_on": [],
+        "span": {
+          "start": 86,
+          "end": 134
+        }
+      }
+    ],
+    "task_order": [
+      0
+    ],
+    "component_module": "import { asyncTask, useState } from \"native_runtime_api.ts\";\nimport { defineComponent as __nativeDefineComponent, useStateAt as __nativeUseStateAt, useEffectAt as __nativeUseEffectAt, useStoreAt as __nativeUseStoreAt, bindStatePropsAt as __nativeBindStatePropsAt, renderCollectionAt as __nativeRenderCollectionAt, useAt as __nativeUseAt, bindStatePropAt as __nativeBindStatePropAt } from \"native_runtime_api.ts\";\nconst __nativeNumericPrograms = [{ schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:Row\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:238\", sourceSites: [\"native-owner-cut-kernel.tsx#component:Row#state:1\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:Row\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:251\", sourceSites: [\"native-owner-cut-kernel.tsx#component:Row#state:0\", \"native-owner-cut-kernel.tsx#component:Row#state:1\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:Row\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:270\", sourceSites: [\"native-owner-cut-kernel.tsx#component:Row#state:0\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:Row\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:288\", sourceSites: [\"native-owner-cut-kernel.tsx#component:Row#state:0\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:Row\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:306\", sourceSites: [\"native-owner-cut-kernel.tsx#component:Row#state:0\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:Row\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:326\", sourceSites: [\"native-owner-cut-kernel.tsx#component:Row#state:0\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:Row\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:376\", sourceSites: [\"native-owner-cut-kernel.tsx#component:Row#state:0\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:SameShape\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:506\", sourceSites: [\"native-owner-cut-kernel.tsx#component:SameShape#state:1\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:SameShape\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:519\", sourceSites: [\"native-owner-cut-kernel.tsx#component:SameShape#state:0\", \"native-owner-cut-kernel.tsx#component:SameShape#state:1\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:SameShape\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:538\", sourceSites: [\"native-owner-cut-kernel.tsx#component:SameShape#state:0\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:SameShape\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:556\", sourceSites: [\"native-owner-cut-kernel.tsx#component:SameShape#state:0\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:SameShape\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:574\", sourceSites: [\"native-owner-cut-kernel.tsx#component:SameShape#state:0\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:SameShape\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:594\", sourceSites: [\"native-owner-cut-kernel.tsx#component:SameShape#state:0\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:SameShape\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:644\", sourceSites: [\"native-owner-cut-kernel.tsx#component:SameShape#state:0\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:Vector\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:773\", sourceSites: [\"native-owner-cut-kernel.tsx#component:Vector#state:0\", \"native-owner-cut-kernel.tsx#component:Vector#state:1\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:MixedCoverage\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:1473\", sourceSites: [\"native-owner-cut-kernel.tsx#component:MixedCoverage#state:0\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:MixedCoverage\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:1486\", sourceSites: [\"native-owner-cut-kernel.tsx#component:MixedCoverage#state:0\"] }] as const;\nconst __nativeOwnerCutKernels = [{ schemaVersion: 1, programId: \"native-owner-cut-kernel.tsx#component:Row\", sinkIds: [\"native-owner-cut-kernel.tsx#numeric-sink:238\", \"native-owner-cut-kernel.tsx#numeric-sink:251\", \"native-owner-cut-kernel.tsx#numeric-sink:270\", \"native-owner-cut-kernel.tsx#numeric-sink:288\", \"native-owner-cut-kernel.tsx#numeric-sink:306\", \"native-owner-cut-kernel.tsx#numeric-sink:326\", \"native-owner-cut-kernel.tsx#numeric-sink:376\"], executeCut: function(changedRows, changedSlots, changeCount, rowStates, stagedRows, stagedSinkIds, stagedValues) { let stagedCount = 0; for (let changeIndex = 0; changeIndex < changeCount; changeIndex++) { const rowIndex = changedRows[changeIndex]; const rowState = rowStates[rowIndex]; switch (changedSlots[changeIndex]) { case 0: {if ((rowState.seenMask & 2) === 0) { rowState.seenMask |= 2; const next = (rowState.inputValues[0] + rowState.inputValues[1]); const sinkState = rowState.sinks[1]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 1; stagedValues[stagedCount] = next; stagedCount++; } }if ((rowState.seenMask & 4) === 0) { rowState.seenMask |= 4; const next = (`${rowState.inputValues[0]}px`); const sinkState = rowState.sinks[2]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 2; stagedValues[stagedCount] = next; stagedCount++; } }if ((rowState.seenMask & 8) === 0) { rowState.seenMask |= 8; const next = (rowState.inputValues[0]); const sinkState = rowState.sinks[3]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 3; stagedValues[stagedCount] = next; stagedCount++; } }if ((rowState.seenMask & 16) === 0) { rowState.seenMask |= 16; const next = (-rowState.inputValues[0]); const sinkState = rowState.sinks[4]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 4; stagedValues[stagedCount] = next; stagedCount++; } }if ((rowState.seenMask & 32) === 0) { rowState.seenMask |= 32; const next = (rowState.inputValues[0] > 0 ? \"positive\" : \"nonpositive\"); const sinkState = rowState.sinks[5]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 5; stagedValues[stagedCount] = next; stagedCount++; } }if ((rowState.seenMask & 64) === 0) { rowState.seenMask |= 64; const next = (`line\\n${rowState.inputValues[0]}px`); const sinkState = rowState.sinks[6]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 6; stagedValues[stagedCount] = next; stagedCount++; } } break;}case 1: {if ((rowState.seenMask & 1) === 0) { rowState.seenMask |= 1; const next = (rowState.inputValues[1]); const sinkState = rowState.sinks[0]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 0; stagedValues[stagedCount] = next; stagedCount++; } }if ((rowState.seenMask & 2) === 0) { rowState.seenMask |= 2; const next = (rowState.inputValues[0] + rowState.inputValues[1]); const sinkState = rowState.sinks[1]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 1; stagedValues[stagedCount] = next; stagedCount++; } } break;} } } return stagedCount; } }, { schemaVersion: 1, programId: \"native-owner-cut-kernel.tsx#component:SameShape\", sinkIds: [\"native-owner-cut-kernel.tsx#numeric-sink:506\", \"native-owner-cut-kernel.tsx#numeric-sink:519\", \"native-owner-cut-kernel.tsx#numeric-sink:538\", \"native-owner-cut-kernel.tsx#numeric-sink:556\", \"native-owner-cut-kernel.tsx#numeric-sink:574\", \"native-owner-cut-kernel.tsx#numeric-sink:594\", \"native-owner-cut-kernel.tsx#numeric-sink:644\"], executeCut: function(changedRows, changedSlots, changeCount, rowStates, stagedRows, stagedSinkIds, stagedValues) { let stagedCount = 0; for (let changeIndex = 0; changeIndex < changeCount; changeIndex++) { const rowIndex = changedRows[changeIndex]; const rowState = rowStates[rowIndex]; switch (changedSlots[changeIndex]) { case 0: {if ((rowState.seenMask & 2) === 0) { rowState.seenMask |= 2; const next = (rowState.inputValues[0] + rowState.inputValues[1]); const sinkState = rowState.sinks[1]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 1; stagedValues[stagedCount] = next; stagedCount++; } }if ((rowState.seenMask & 4) === 0) { rowState.seenMask |= 4; const next = (`${rowState.inputValues[0]}px`); const sinkState = rowState.sinks[2]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 2; stagedValues[stagedCount] = next; stagedCount++; } }if ((rowState.seenMask & 8) === 0) { rowState.seenMask |= 8; const next = (rowState.inputValues[0]); const sinkState = rowState.sinks[3]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 3; stagedValues[stagedCount] = next; stagedCount++; } }if ((rowState.seenMask & 16) === 0) { rowState.seenMask |= 16; const next = (-rowState.inputValues[0]); const sinkState = rowState.sinks[4]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 4; stagedValues[stagedCount] = next; stagedCount++; } }if ((rowState.seenMask & 32) === 0) { rowState.seenMask |= 32; const next = (rowState.inputValues[0] > 0 ? \"positive\" : \"nonpositive\"); const sinkState = rowState.sinks[5]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 5; stagedValues[stagedCount] = next; stagedCount++; } }if ((rowState.seenMask & 64) === 0) { rowState.seenMask |= 64; const next = (`line\\n${rowState.inputValues[0]}px`); const sinkState = rowState.sinks[6]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 6; stagedValues[stagedCount] = next; stagedCount++; } } break;}case 1: {if ((rowState.seenMask & 1) === 0) { rowState.seenMask |= 1; const next = (rowState.inputValues[1]); const sinkState = rowState.sinks[0]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 0; stagedValues[stagedCount] = next; stagedCount++; } }if ((rowState.seenMask & 2) === 0) { rowState.seenMask |= 2; const next = (rowState.inputValues[0] + rowState.inputValues[1]); const sinkState = rowState.sinks[1]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 1; stagedValues[stagedCount] = next; stagedCount++; } } break;} } } return stagedCount; } }];\n__nativeDefineComponent(\"native-owner-cut-kernel.tsx#component:Call\", Call, { propOnlySites: [], hostLeafOutput: true });\n__nativeDefineComponent(\"native-owner-cut-kernel.tsx#component:Member\", Member, { propOnlySites: [], hostLeafOutput: true });\n__nativeDefineComponent(\"native-owner-cut-kernel.tsx#component:MixedCoverage\", MixedCoverage, { propOnlySites: [\"native-owner-cut-kernel.tsx#component:MixedCoverage#state:0\"], hostLeafOutput: true, stateLayout: { schemaVersion: 1, programId: \"native-owner-cut-kernel.tsx#component:MixedCoverage\", slots: [{ siteId: \"native-owner-cut-kernel.tsx#component:MixedCoverage#state:0\", slot: 0 }] } });\n__nativeDefineComponent(\"native-owner-cut-kernel.tsx#component:Mutation\", Mutation, { propOnlySites: [], hostLeafOutput: true });\n__nativeDefineComponent(\"native-owner-cut-kernel.tsx#component:Opaque\", Opaque, { propOnlySites: [], hostLeafOutput: true });\n__nativeDefineComponent(\"native-owner-cut-kernel.tsx#component:Row\", Row, { propOnlySites: [\"native-owner-cut-kernel.tsx#component:Row#state:0\", \"native-owner-cut-kernel.tsx#component:Row#state:1\"], hostLeafOutput: true, stateLayout: { schemaVersion: 1, programId: \"native-owner-cut-kernel.tsx#component:Row\", slots: [{ siteId: \"native-owner-cut-kernel.tsx#component:Row#state:0\", slot: 0 }, { siteId: \"native-owner-cut-kernel.tsx#component:Row#state:1\", slot: 1 }] }, ownerUpdateProgram: __nativeOwnerCutKernels[0] });\n__nativeDefineComponent(\"native-owner-cut-kernel.tsx#component:SameShape\", SameShape, { propOnlySites: [\"native-owner-cut-kernel.tsx#component:SameShape#state:0\", \"native-owner-cut-kernel.tsx#component:SameShape#state:1\"], hostLeafOutput: true, stateLayout: { schemaVersion: 1, programId: \"native-owner-cut-kernel.tsx#component:SameShape\", slots: [{ siteId: \"native-owner-cut-kernel.tsx#component:SameShape#state:0\", slot: 0 }, { siteId: \"native-owner-cut-kernel.tsx#component:SameShape#state:1\", slot: 1 }] }, ownerUpdateProgram: __nativeOwnerCutKernels[1] });\n__nativeDefineComponent(\"native-owner-cut-kernel.tsx#component:ShadowedUndefined\", ShadowedUndefined, { propOnlySites: [], hostLeafOutput: true });\n__nativeDefineComponent(\"native-owner-cut-kernel.tsx#component:Vector\", Vector, { propOnlySites: [\"native-owner-cut-kernel.tsx#component:Vector#state:0\", \"native-owner-cut-kernel.tsx#component:Vector#state:1\"], hostLeafOutput: true, stateLayout: { schemaVersion: 1, programId: \"native-owner-cut-kernel.tsx#component:Vector\", slots: [{ siteId: \"native-owner-cut-kernel.tsx#component:Vector#state:0\", slot: 0 }, { siteId: \"native-owner-cut-kernel.tsx#component:Vector#state:1\", slot: 1 }] } });\n\nconst kernelProofTask = asyncTask(\"kernel-proof\", async (input) => null);\n\nexport function Row() {\n  const [x] = __nativeUseStateAt(\"native-owner-cut-kernel.tsx#component:Row#state:0\", 1);\n  const [y] = __nativeUseStateAt(\"native-owner-cut-kernel.tsx#component:Row#state:1\", 2);\n  return <mesh data-y={__nativeBindStatePropAt(\"native-owner-cut-kernel.tsx#component:Row#state:1\", (y) => (y), __nativeNumericPrograms[0])} data-sum={__nativeBindStatePropsAt([\"native-owner-cut-kernel.tsx#component:Row#state:0\", \"native-owner-cut-kernel.tsx#component:Row#state:1\"], ([x, y]) => (x + y), __nativeNumericPrograms[1])} data-label={__nativeBindStatePropAt(\"native-owner-cut-kernel.tsx#component:Row#state:0\", (x) => (`${x}px`), __nativeNumericPrograms[2])} data-x={__nativeBindStatePropAt(\"native-owner-cut-kernel.tsx#component:Row#state:0\", (x) => (x), __nativeNumericPrograms[3])} data-negative={__nativeBindStatePropAt(\"native-owner-cut-kernel.tsx#component:Row#state:0\", (x) => (-x), __nativeNumericPrograms[4])} data-condition={__nativeBindStatePropAt(\"native-owner-cut-kernel.tsx#component:Row#state:0\", (x) => (x > 0 ? \"positive\" : \"nonpositive\"), __nativeNumericPrograms[5])} data-escaped={__nativeBindStatePropAt(\"native-owner-cut-kernel.tsx#component:Row#state:0\", (x) => (`line\\n${x}px`), __nativeNumericPrograms[6])} />;\n}\n\nexport function SameShape() {\n  const [x] = __nativeUseStateAt(\"native-owner-cut-kernel.tsx#component:SameShape#state:0\", 1);\n  const [y] = __nativeUseStateAt(\"native-owner-cut-kernel.tsx#component:SameShape#state:1\", 2);\n  return <mesh data-y={__nativeBindStatePropAt(\"native-owner-cut-kernel.tsx#component:SameShape#state:1\", (y) => (y), __nativeNumericPrograms[7])} data-sum={__nativeBindStatePropsAt([\"native-owner-cut-kernel.tsx#component:SameShape#state:0\", \"native-owner-cut-kernel.tsx#component:SameShape#state:1\"], ([x, y]) => (x + y), __nativeNumericPrograms[8])} data-label={__nativeBindStatePropAt(\"native-owner-cut-kernel.tsx#component:SameShape#state:0\", (x) => (`${x}px`), __nativeNumericPrograms[9])} data-x={__nativeBindStatePropAt(\"native-owner-cut-kernel.tsx#component:SameShape#state:0\", (x) => (x), __nativeNumericPrograms[10])} data-negative={__nativeBindStatePropAt(\"native-owner-cut-kernel.tsx#component:SameShape#state:0\", (x) => (-x), __nativeNumericPrograms[11])} data-condition={__nativeBindStatePropAt(\"native-owner-cut-kernel.tsx#component:SameShape#state:0\", (x) => (x > 0 ? \"positive\" : \"nonpositive\"), __nativeNumericPrograms[12])} data-escaped={__nativeBindStatePropAt(\"native-owner-cut-kernel.tsx#component:SameShape#state:0\", (x) => (`line\\n${x}px`), __nativeNumericPrograms[13])} />;\n}\n\nexport function Vector() {\n  const [x] = __nativeUseStateAt(\"native-owner-cut-kernel.tsx#component:Vector#state:0\", 1);\n  const [y] = __nativeUseStateAt(\"native-owner-cut-kernel.tsx#component:Vector#state:1\", 2);\n  return <mesh position={__nativeBindStatePropsAt([\"native-owner-cut-kernel.tsx#component:Vector#state:0\", \"native-owner-cut-kernel.tsx#component:Vector#state:1\"], ([x, y]) => ([x, y]), __nativeNumericPrograms[14])} />;\n}\n\nexport function Opaque() {\n  const [x] = __nativeUseStateAt(\"native-owner-cut-kernel.tsx#component:Opaque#state:0\", 1);\n  return <mesh data-opaque={Math.sin(x)} />;\n}\n\nexport function Member() {\n  const [x] = __nativeUseStateAt(\"native-owner-cut-kernel.tsx#component:Member#state:0\", 1);\n  const source = { value: 2 };\n  return <mesh data-member={source.value + x} />;\n}\n\nexport function Call() {\n  const [x] = __nativeUseStateAt(\"native-owner-cut-kernel.tsx#component:Call#state:0\", 1);\n  return <mesh data-call={formatValue(x)} />;\n}\n\nexport function ShadowedUndefined() {\n  const [x] = __nativeUseStateAt(\"native-owner-cut-kernel.tsx#component:ShadowedUndefined#state:0\", 1);\n  const undefined = 2;\n  return <mesh data-shadowed={x + undefined} />;\n}\n\nexport function Mutation() {\n  const [x] = __nativeUseStateAt(\"native-owner-cut-kernel.tsx#component:Mutation#state:0\", 1);\n  return <mesh data-assignment={x = 2} data-update={x++} />;\n}\n\nexport function MixedCoverage() {\n  const [x] = __nativeUseStateAt(\"native-owner-cut-kernel.tsx#component:MixedCoverage#state:0\", 1);\n  return <mesh data-x={__nativeBindStatePropAt(\"native-owner-cut-kernel.tsx#component:MixedCoverage#state:0\", (x) => (x), __nativeNumericPrograms[15])} position={__nativeBindStatePropAt(\"native-owner-cut-kernel.tsx#component:MixedCoverage#state:0\", (x) => ([x, 2]), __nativeNumericPrograms[16])} />;\n}\n",
+    "components": [
+      {
+        "name": "Call",
+        "component_site_id": "native-owner-cut-kernel.tsx#component:Call",
+        "prop_only_sites": [],
+        "host_leaf_output": true,
+        "state_sites": [
+          {
+            "site_id": "native-owner-cut-kernel.tsx#component:Call#state:0",
+            "initial_value": "1"
+          }
+        ],
+        "effect_sites": [],
+        "store_sites": [],
+        "collection_sites": []
+      },
+      {
+        "name": "Member",
+        "component_site_id": "native-owner-cut-kernel.tsx#component:Member",
+        "prop_only_sites": [],
+        "host_leaf_output": true,
+        "state_sites": [
+          {
+            "site_id": "native-owner-cut-kernel.tsx#component:Member#state:0",
+            "initial_value": "1"
+          }
+        ],
+        "effect_sites": [],
+        "store_sites": [],
+        "collection_sites": []
+      },
+      {
+        "name": "MixedCoverage",
+        "component_site_id": "native-owner-cut-kernel.tsx#component:MixedCoverage",
+        "prop_only_sites": [
+          "native-owner-cut-kernel.tsx#component:MixedCoverage#state:0"
+        ],
+        "state_layout": {
+          "schema_version": 1,
+          "programId": "native-owner-cut-kernel.tsx#component:MixedCoverage",
+          "slots": [
+            {
+              "site_id": "native-owner-cut-kernel.tsx#component:MixedCoverage#state:0",
+              "slot": 0
+            }
+          ]
+        },
+        "host_leaf_output": true,
+        "state_sites": [
+          {
+            "site_id": "native-owner-cut-kernel.tsx#component:MixedCoverage#state:0",
+            "initial_value": "1"
+          }
+        ],
+        "effect_sites": [],
+        "store_sites": [],
+        "collection_sites": []
+      },
+      {
+        "name": "Mutation",
+        "component_site_id": "native-owner-cut-kernel.tsx#component:Mutation",
+        "prop_only_sites": [],
+        "host_leaf_output": true,
+        "state_sites": [
+          {
+            "site_id": "native-owner-cut-kernel.tsx#component:Mutation#state:0",
+            "initial_value": "1"
+          }
+        ],
+        "effect_sites": [],
+        "store_sites": [],
+        "collection_sites": []
+      },
+      {
+        "name": "Opaque",
+        "component_site_id": "native-owner-cut-kernel.tsx#component:Opaque",
+        "prop_only_sites": [],
+        "host_leaf_output": true,
+        "state_sites": [
+          {
+            "site_id": "native-owner-cut-kernel.tsx#component:Opaque#state:0",
+            "initial_value": "1"
+          }
+        ],
+        "effect_sites": [],
+        "store_sites": [],
+        "collection_sites": []
+      },
+      {
+        "name": "Row",
+        "component_site_id": "native-owner-cut-kernel.tsx#component:Row",
+        "prop_only_sites": [
+          "native-owner-cut-kernel.tsx#component:Row#state:0",
+          "native-owner-cut-kernel.tsx#component:Row#state:1"
+        ],
+        "state_layout": {
+          "schema_version": 1,
+          "programId": "native-owner-cut-kernel.tsx#component:Row",
+          "slots": [
+            {
+              "site_id": "native-owner-cut-kernel.tsx#component:Row#state:0",
+              "slot": 0
+            },
+            {
+              "site_id": "native-owner-cut-kernel.tsx#component:Row#state:1",
+              "slot": 1
+            }
+          ]
+        },
+        "host_leaf_output": true,
+        "state_sites": [
+          {
+            "site_id": "native-owner-cut-kernel.tsx#component:Row#state:0",
+            "initial_value": "1"
+          },
+          {
+            "site_id": "native-owner-cut-kernel.tsx#component:Row#state:1",
+            "initial_value": "2"
+          }
+        ],
+        "effect_sites": [],
+        "store_sites": [],
+        "collection_sites": []
+      },
+      {
+        "name": "SameShape",
+        "component_site_id": "native-owner-cut-kernel.tsx#component:SameShape",
+        "prop_only_sites": [
+          "native-owner-cut-kernel.tsx#component:SameShape#state:0",
+          "native-owner-cut-kernel.tsx#component:SameShape#state:1"
+        ],
+        "state_layout": {
+          "schema_version": 1,
+          "programId": "native-owner-cut-kernel.tsx#component:SameShape",
+          "slots": [
+            {
+              "site_id": "native-owner-cut-kernel.tsx#component:SameShape#state:0",
+              "slot": 0
+            },
+            {
+              "site_id": "native-owner-cut-kernel.tsx#component:SameShape#state:1",
+              "slot": 1
+            }
+          ]
+        },
+        "host_leaf_output": true,
+        "state_sites": [
+          {
+            "site_id": "native-owner-cut-kernel.tsx#component:SameShape#state:0",
+            "initial_value": "1"
+          },
+          {
+            "site_id": "native-owner-cut-kernel.tsx#component:SameShape#state:1",
+            "initial_value": "2"
+          }
+        ],
+        "effect_sites": [],
+        "store_sites": [],
+        "collection_sites": []
+      },
+      {
+        "name": "ShadowedUndefined",
+        "component_site_id": "native-owner-cut-kernel.tsx#component:ShadowedUndefined",
+        "prop_only_sites": [],
+        "host_leaf_output": true,
+        "state_sites": [
+          {
+            "site_id": "native-owner-cut-kernel.tsx#component:ShadowedUndefined#state:0",
+            "initial_value": "1"
+          }
+        ],
+        "effect_sites": [],
+        "store_sites": [],
+        "collection_sites": []
+      },
+      {
+        "name": "Vector",
+        "component_site_id": "native-owner-cut-kernel.tsx#component:Vector",
+        "prop_only_sites": [
+          "native-owner-cut-kernel.tsx#component:Vector#state:0",
+          "native-owner-cut-kernel.tsx#component:Vector#state:1"
+        ],
+        "state_layout": {
+          "schema_version": 1,
+          "programId": "native-owner-cut-kernel.tsx#component:Vector",
+          "slots": [
+            {
+              "site_id": "native-owner-cut-kernel.tsx#component:Vector#state:0",
+              "slot": 0
+            },
+            {
+              "site_id": "native-owner-cut-kernel.tsx#component:Vector#state:1",
+              "slot": 1
+            }
+          ]
+        },
+        "host_leaf_output": true,
+        "state_sites": [
+          {
+            "site_id": "native-owner-cut-kernel.tsx#component:Vector#state:0",
+            "initial_value": "1"
+          },
+          {
+            "site_id": "native-owner-cut-kernel.tsx#component:Vector#state:1",
+            "initial_value": "2"
+          }
+        ],
+        "effect_sites": [],
+        "store_sites": [],
+        "collection_sites": []
+      }
+    ]
+  },
+  "edits": [
+    {
+      "start": 112,
+      "end": 112,
+      "replacement": "[], "
+    }
+  ],
+  "component_edits": [
+    {
+      "start": 1492,
+      "end": 1492,
+      "replacement": "), __nativeNumericPrograms[16])"
+    },
+    {
+      "start": 1486,
+      "end": 1486,
+      "replacement": "__nativeBindStatePropAt(\"native-owner-cut-kernel.tsx#component:MixedCoverage#state:0\", (x) => ("
+    },
+    {
+      "start": 1474,
+      "end": 1474,
+      "replacement": "), __nativeNumericPrograms[15])"
+    },
+    {
+      "start": 1473,
+      "end": 1473,
+      "replacement": "__nativeBindStatePropAt(\"native-owner-cut-kernel.tsx#component:MixedCoverage#state:0\", (x) => ("
+    },
+    {
+      "start": 1446,
+      "end": 1446,
+      "replacement": "\"native-owner-cut-kernel.tsx#component:MixedCoverage#state:0\", "
+    },
+    {
+      "start": 1437,
+      "end": 1445,
+      "replacement": "__nativeUseStateAt"
+    },
+    {
+      "start": 1321,
+      "end": 1321,
+      "replacement": "\"native-owner-cut-kernel.tsx#component:Mutation#state:0\", "
+    },
+    {
+      "start": 1312,
+      "end": 1320,
+      "replacement": "__nativeUseStateAt"
+    },
+    {
+      "start": 1190,
+      "end": 1190,
+      "replacement": "\"native-owner-cut-kernel.tsx#component:ShadowedUndefined#state:0\", "
+    },
+    {
+      "start": 1181,
+      "end": 1189,
+      "replacement": "__nativeUseStateAt"
+    },
+    {
+      "start": 1076,
+      "end": 1076,
+      "replacement": "\"native-owner-cut-kernel.tsx#component:Call#state:0\", "
+    },
+    {
+      "start": 1067,
+      "end": 1075,
+      "replacement": "__nativeUseStateAt"
+    },
+    {
+      "start": 940,
+      "end": 940,
+      "replacement": "\"native-owner-cut-kernel.tsx#component:Member#state:0\", "
+    },
+    {
+      "start": 931,
+      "end": 939,
+      "replacement": "__nativeUseStateAt"
+    },
+    {
+      "start": 838,
+      "end": 838,
+      "replacement": "\"native-owner-cut-kernel.tsx#component:Opaque#state:0\", "
+    },
+    {
+      "start": 829,
+      "end": 837,
+      "replacement": "__nativeUseStateAt"
+    },
+    {
+      "start": 779,
+      "end": 779,
+      "replacement": "), __nativeNumericPrograms[14])"
+    },
+    {
+      "start": 773,
+      "end": 773,
+      "replacement": "__nativeBindStatePropsAt([\"native-owner-cut-kernel.tsx#component:Vector#state:0\", \"native-owner-cut-kernel.tsx#component:Vector#state:1\"], ([x, y]) => ("
+    },
+    {
+      "start": 744,
+      "end": 744,
+      "replacement": "\"native-owner-cut-kernel.tsx#component:Vector#state:1\", "
+    },
+    {
+      "start": 735,
+      "end": 743,
+      "replacement": "__nativeUseStateAt"
+    },
+    {
+      "start": 717,
+      "end": 717,
+      "replacement": "\"native-owner-cut-kernel.tsx#component:Vector#state:0\", "
+    },
+    {
+      "start": 708,
+      "end": 716,
+      "replacement": "__nativeUseStateAt"
+    },
+    {
+      "start": 658,
+      "end": 658,
+      "replacement": "), __nativeNumericPrograms[13])"
+    },
+    {
+      "start": 644,
+      "end": 644,
+      "replacement": "__nativeBindStatePropAt(\"native-owner-cut-kernel.tsx#component:SameShape#state:0\", (x) => ("
+    },
+    {
+      "start": 628,
+      "end": 628,
+      "replacement": "), __nativeNumericPrograms[12])"
+    },
+    {
+      "start": 594,
+      "end": 594,
+      "replacement": "__nativeBindStatePropAt(\"native-owner-cut-kernel.tsx#component:SameShape#state:0\", (x) => ("
+    },
+    {
+      "start": 576,
+      "end": 576,
+      "replacement": "), __nativeNumericPrograms[11])"
+    },
+    {
+      "start": 574,
+      "end": 574,
+      "replacement": "__nativeBindStatePropAt(\"native-owner-cut-kernel.tsx#component:SameShape#state:0\", (x) => ("
+    },
+    {
+      "start": 557,
+      "end": 557,
+      "replacement": "), __nativeNumericPrograms[10])"
+    },
+    {
+      "start": 556,
+      "end": 556,
+      "replacement": "__nativeBindStatePropAt(\"native-owner-cut-kernel.tsx#component:SameShape#state:0\", (x) => ("
+    },
+    {
+      "start": 546,
+      "end": 546,
+      "replacement": "), __nativeNumericPrograms[9])"
+    },
+    {
+      "start": 538,
+      "end": 538,
+      "replacement": "__nativeBindStatePropAt(\"native-owner-cut-kernel.tsx#component:SameShape#state:0\", (x) => ("
+    },
+    {
+      "start": 524,
+      "end": 524,
+      "replacement": "), __nativeNumericPrograms[8])"
+    },
+    {
+      "start": 519,
+      "end": 519,
+      "replacement": "__nativeBindStatePropsAt([\"native-owner-cut-kernel.tsx#component:SameShape#state:0\", \"native-owner-cut-kernel.tsx#component:SameShape#state:1\"], ([x, y]) => ("
+    },
+    {
+      "start": 507,
+      "end": 507,
+      "replacement": "), __nativeNumericPrograms[7])"
+    },
+    {
+      "start": 506,
+      "end": 506,
+      "replacement": "__nativeBindStatePropAt(\"native-owner-cut-kernel.tsx#component:SameShape#state:1\", (y) => ("
+    },
+    {
+      "start": 479,
+      "end": 479,
+      "replacement": "\"native-owner-cut-kernel.tsx#component:SameShape#state:1\", "
+    },
+    {
+      "start": 470,
+      "end": 478,
+      "replacement": "__nativeUseStateAt"
+    },
+    {
+      "start": 452,
+      "end": 452,
+      "replacement": "\"native-owner-cut-kernel.tsx#component:SameShape#state:0\", "
+    },
+    {
+      "start": 443,
+      "end": 451,
+      "replacement": "__nativeUseStateAt"
+    },
+    {
+      "start": 390,
+      "end": 390,
+      "replacement": "), __nativeNumericPrograms[6])"
+    },
+    {
+      "start": 376,
+      "end": 376,
+      "replacement": "__nativeBindStatePropAt(\"native-owner-cut-kernel.tsx#component:Row#state:0\", (x) => ("
+    },
+    {
+      "start": 360,
+      "end": 360,
+      "replacement": "), __nativeNumericPrograms[5])"
+    },
+    {
+      "start": 326,
+      "end": 326,
+      "replacement": "__nativeBindStatePropAt(\"native-owner-cut-kernel.tsx#component:Row#state:0\", (x) => ("
+    },
+    {
+      "start": 308,
+      "end": 308,
+      "replacement": "), __nativeNumericPrograms[4])"
+    },
+    {
+      "start": 306,
+      "end": 306,
+      "replacement": "__nativeBindStatePropAt(\"native-owner-cut-kernel.tsx#component:Row#state:0\", (x) => ("
+    },
+    {
+      "start": 289,
+      "end": 289,
+      "replacement": "), __nativeNumericPrograms[3])"
+    },
+    {
+      "start": 288,
+      "end": 288,
+      "replacement": "__nativeBindStatePropAt(\"native-owner-cut-kernel.tsx#component:Row#state:0\", (x) => ("
+    },
+    {
+      "start": 278,
+      "end": 278,
+      "replacement": "), __nativeNumericPrograms[2])"
+    },
+    {
+      "start": 270,
+      "end": 270,
+      "replacement": "__nativeBindStatePropAt(\"native-owner-cut-kernel.tsx#component:Row#state:0\", (x) => ("
+    },
+    {
+      "start": 256,
+      "end": 256,
+      "replacement": "), __nativeNumericPrograms[1])"
+    },
+    {
+      "start": 251,
+      "end": 251,
+      "replacement": "__nativeBindStatePropsAt([\"native-owner-cut-kernel.tsx#component:Row#state:0\", \"native-owner-cut-kernel.tsx#component:Row#state:1\"], ([x, y]) => ("
+    },
+    {
+      "start": 239,
+      "end": 239,
+      "replacement": "), __nativeNumericPrograms[0])"
+    },
+    {
+      "start": 238,
+      "end": 238,
+      "replacement": "__nativeBindStatePropAt(\"native-owner-cut-kernel.tsx#component:Row#state:1\", (y) => ("
+    },
+    {
+      "start": 211,
+      "end": 211,
+      "replacement": "\"native-owner-cut-kernel.tsx#component:Row#state:1\", "
+    },
+    {
+      "start": 202,
+      "end": 210,
+      "replacement": "__nativeUseStateAt"
+    },
+    {
+      "start": 184,
+      "end": 184,
+      "replacement": "\"native-owner-cut-kernel.tsx#component:Row#state:0\", "
+    },
+    {
+      "start": 175,
+      "end": 183,
+      "replacement": "__nativeUseStateAt"
+    },
+    {
+      "start": 60,
+      "end": 60,
+      "replacement": "\nimport { defineComponent as __nativeDefineComponent, useStateAt as __nativeUseStateAt, useEffectAt as __nativeUseEffectAt, useStoreAt as __nativeUseStoreAt, bindStatePropsAt as __nativeBindStatePropsAt, renderCollectionAt as __nativeRenderCollectionAt, useAt as __nativeUseAt, bindStatePropAt as __nativeBindStatePropAt } from \"native_runtime_api.ts\";\nconst __nativeNumericPrograms = [{ schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:Row\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:238\", sourceSites: [\"native-owner-cut-kernel.tsx#component:Row#state:1\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:Row\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:251\", sourceSites: [\"native-owner-cut-kernel.tsx#component:Row#state:0\", \"native-owner-cut-kernel.tsx#component:Row#state:1\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:Row\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:270\", sourceSites: [\"native-owner-cut-kernel.tsx#component:Row#state:0\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:Row\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:288\", sourceSites: [\"native-owner-cut-kernel.tsx#component:Row#state:0\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:Row\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:306\", sourceSites: [\"native-owner-cut-kernel.tsx#component:Row#state:0\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:Row\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:326\", sourceSites: [\"native-owner-cut-kernel.tsx#component:Row#state:0\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:Row\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:376\", sourceSites: [\"native-owner-cut-kernel.tsx#component:Row#state:0\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:SameShape\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:506\", sourceSites: [\"native-owner-cut-kernel.tsx#component:SameShape#state:1\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:SameShape\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:519\", sourceSites: [\"native-owner-cut-kernel.tsx#component:SameShape#state:0\", \"native-owner-cut-kernel.tsx#component:SameShape#state:1\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:SameShape\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:538\", sourceSites: [\"native-owner-cut-kernel.tsx#component:SameShape#state:0\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:SameShape\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:556\", sourceSites: [\"native-owner-cut-kernel.tsx#component:SameShape#state:0\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:SameShape\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:574\", sourceSites: [\"native-owner-cut-kernel.tsx#component:SameShape#state:0\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:SameShape\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:594\", sourceSites: [\"native-owner-cut-kernel.tsx#component:SameShape#state:0\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:SameShape\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:644\", sourceSites: [\"native-owner-cut-kernel.tsx#component:SameShape#state:0\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:Vector\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:773\", sourceSites: [\"native-owner-cut-kernel.tsx#component:Vector#state:0\", \"native-owner-cut-kernel.tsx#component:Vector#state:1\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:MixedCoverage\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:1473\", sourceSites: [\"native-owner-cut-kernel.tsx#component:MixedCoverage#state:0\"] }, { schemaVersion: 2, ownerProgramId: \"native-owner-cut-kernel.tsx#component:MixedCoverage\", sinkId: \"native-owner-cut-kernel.tsx#numeric-sink:1486\", sourceSites: [\"native-owner-cut-kernel.tsx#component:MixedCoverage#state:0\"] }] as const;\nconst __nativeOwnerCutKernels = [{ schemaVersion: 1, programId: \"native-owner-cut-kernel.tsx#component:Row\", sinkIds: [\"native-owner-cut-kernel.tsx#numeric-sink:238\", \"native-owner-cut-kernel.tsx#numeric-sink:251\", \"native-owner-cut-kernel.tsx#numeric-sink:270\", \"native-owner-cut-kernel.tsx#numeric-sink:288\", \"native-owner-cut-kernel.tsx#numeric-sink:306\", \"native-owner-cut-kernel.tsx#numeric-sink:326\", \"native-owner-cut-kernel.tsx#numeric-sink:376\"], executeCut: function(changedRows, changedSlots, changeCount, rowStates, stagedRows, stagedSinkIds, stagedValues) { let stagedCount = 0; for (let changeIndex = 0; changeIndex < changeCount; changeIndex++) { const rowIndex = changedRows[changeIndex]; const rowState = rowStates[rowIndex]; switch (changedSlots[changeIndex]) { case 0: {if ((rowState.seenMask & 2) === 0) { rowState.seenMask |= 2; const next = (rowState.inputValues[0] + rowState.inputValues[1]); const sinkState = rowState.sinks[1]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 1; stagedValues[stagedCount] = next; stagedCount++; } }if ((rowState.seenMask & 4) === 0) { rowState.seenMask |= 4; const next = (`${rowState.inputValues[0]}px`); const sinkState = rowState.sinks[2]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 2; stagedValues[stagedCount] = next; stagedCount++; } }if ((rowState.seenMask & 8) === 0) { rowState.seenMask |= 8; const next = (rowState.inputValues[0]); const sinkState = rowState.sinks[3]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 3; stagedValues[stagedCount] = next; stagedCount++; } }if ((rowState.seenMask & 16) === 0) { rowState.seenMask |= 16; const next = (-rowState.inputValues[0]); const sinkState = rowState.sinks[4]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 4; stagedValues[stagedCount] = next; stagedCount++; } }if ((rowState.seenMask & 32) === 0) { rowState.seenMask |= 32; const next = (rowState.inputValues[0] > 0 ? \"positive\" : \"nonpositive\"); const sinkState = rowState.sinks[5]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 5; stagedValues[stagedCount] = next; stagedCount++; } }if ((rowState.seenMask & 64) === 0) { rowState.seenMask |= 64; const next = (`line\\n${rowState.inputValues[0]}px`); const sinkState = rowState.sinks[6]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 6; stagedValues[stagedCount] = next; stagedCount++; } } break;}case 1: {if ((rowState.seenMask & 1) === 0) { rowState.seenMask |= 1; const next = (rowState.inputValues[1]); const sinkState = rowState.sinks[0]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 0; stagedValues[stagedCount] = next; stagedCount++; } }if ((rowState.seenMask & 2) === 0) { rowState.seenMask |= 2; const next = (rowState.inputValues[0] + rowState.inputValues[1]); const sinkState = rowState.sinks[1]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 1; stagedValues[stagedCount] = next; stagedCount++; } } break;} } } return stagedCount; } }, { schemaVersion: 1, programId: \"native-owner-cut-kernel.tsx#component:SameShape\", sinkIds: [\"native-owner-cut-kernel.tsx#numeric-sink:506\", \"native-owner-cut-kernel.tsx#numeric-sink:519\", \"native-owner-cut-kernel.tsx#numeric-sink:538\", \"native-owner-cut-kernel.tsx#numeric-sink:556\", \"native-owner-cut-kernel.tsx#numeric-sink:574\", \"native-owner-cut-kernel.tsx#numeric-sink:594\", \"native-owner-cut-kernel.tsx#numeric-sink:644\"], executeCut: function(changedRows, changedSlots, changeCount, rowStates, stagedRows, stagedSinkIds, stagedValues) { let stagedCount = 0; for (let changeIndex = 0; changeIndex < changeCount; changeIndex++) { const rowIndex = changedRows[changeIndex]; const rowState = rowStates[rowIndex]; switch (changedSlots[changeIndex]) { case 0: {if ((rowState.seenMask & 2) === 0) { rowState.seenMask |= 2; const next = (rowState.inputValues[0] + rowState.inputValues[1]); const sinkState = rowState.sinks[1]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 1; stagedValues[stagedCount] = next; stagedCount++; } }if ((rowState.seenMask & 4) === 0) { rowState.seenMask |= 4; const next = (`${rowState.inputValues[0]}px`); const sinkState = rowState.sinks[2]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 2; stagedValues[stagedCount] = next; stagedCount++; } }if ((rowState.seenMask & 8) === 0) { rowState.seenMask |= 8; const next = (rowState.inputValues[0]); const sinkState = rowState.sinks[3]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 3; stagedValues[stagedCount] = next; stagedCount++; } }if ((rowState.seenMask & 16) === 0) { rowState.seenMask |= 16; const next = (-rowState.inputValues[0]); const sinkState = rowState.sinks[4]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 4; stagedValues[stagedCount] = next; stagedCount++; } }if ((rowState.seenMask & 32) === 0) { rowState.seenMask |= 32; const next = (rowState.inputValues[0] > 0 ? \"positive\" : \"nonpositive\"); const sinkState = rowState.sinks[5]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 5; stagedValues[stagedCount] = next; stagedCount++; } }if ((rowState.seenMask & 64) === 0) { rowState.seenMask |= 64; const next = (`line\\n${rowState.inputValues[0]}px`); const sinkState = rowState.sinks[6]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 6; stagedValues[stagedCount] = next; stagedCount++; } } break;}case 1: {if ((rowState.seenMask & 1) === 0) { rowState.seenMask |= 1; const next = (rowState.inputValues[1]); const sinkState = rowState.sinks[0]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 0; stagedValues[stagedCount] = next; stagedCount++; } }if ((rowState.seenMask & 2) === 0) { rowState.seenMask |= 2; const next = (rowState.inputValues[0] + rowState.inputValues[1]); const sinkState = rowState.sinks[1]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) { stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = 1; stagedValues[stagedCount] = next; stagedCount++; } } break;} } } return stagedCount; } }];\n__nativeDefineComponent(\"native-owner-cut-kernel.tsx#component:Call\", Call, { propOnlySites: [], hostLeafOutput: true });\n__nativeDefineComponent(\"native-owner-cut-kernel.tsx#component:Member\", Member, { propOnlySites: [], hostLeafOutput: true });\n__nativeDefineComponent(\"native-owner-cut-kernel.tsx#component:MixedCoverage\", MixedCoverage, { propOnlySites: [\"native-owner-cut-kernel.tsx#component:MixedCoverage#state:0\"], hostLeafOutput: true, stateLayout: { schemaVersion: 1, programId: \"native-owner-cut-kernel.tsx#component:MixedCoverage\", slots: [{ siteId: \"native-owner-cut-kernel.tsx#component:MixedCoverage#state:0\", slot: 0 }] } });\n__nativeDefineComponent(\"native-owner-cut-kernel.tsx#component:Mutation\", Mutation, { propOnlySites: [], hostLeafOutput: true });\n__nativeDefineComponent(\"native-owner-cut-kernel.tsx#component:Opaque\", Opaque, { propOnlySites: [], hostLeafOutput: true });\n__nativeDefineComponent(\"native-owner-cut-kernel.tsx#component:Row\", Row, { propOnlySites: [\"native-owner-cut-kernel.tsx#component:Row#state:0\", \"native-owner-cut-kernel.tsx#component:Row#state:1\"], hostLeafOutput: true, stateLayout: { schemaVersion: 1, programId: \"native-owner-cut-kernel.tsx#component:Row\", slots: [{ siteId: \"native-owner-cut-kernel.tsx#component:Row#state:0\", slot: 0 }, { siteId: \"native-owner-cut-kernel.tsx#component:Row#state:1\", slot: 1 }] }, ownerUpdateProgram: __nativeOwnerCutKernels[0] });\n__nativeDefineComponent(\"native-owner-cut-kernel.tsx#component:SameShape\", SameShape, { propOnlySites: [\"native-owner-cut-kernel.tsx#component:SameShape#state:0\", \"native-owner-cut-kernel.tsx#component:SameShape#state:1\"], hostLeafOutput: true, stateLayout: { schemaVersion: 1, programId: \"native-owner-cut-kernel.tsx#component:SameShape\", slots: [{ siteId: \"native-owner-cut-kernel.tsx#component:SameShape#state:0\", slot: 0 }, { siteId: \"native-owner-cut-kernel.tsx#component:SameShape#state:1\", slot: 1 }] }, ownerUpdateProgram: __nativeOwnerCutKernels[1] });\n__nativeDefineComponent(\"native-owner-cut-kernel.tsx#component:ShadowedUndefined\", ShadowedUndefined, { propOnlySites: [], hostLeafOutput: true });\n__nativeDefineComponent(\"native-owner-cut-kernel.tsx#component:Vector\", Vector, { propOnlySites: [\"native-owner-cut-kernel.tsx#component:Vector#state:0\", \"native-owner-cut-kernel.tsx#component:Vector#state:1\"], hostLeafOutput: true, stateLayout: { schemaVersion: 1, programId: \"native-owner-cut-kernel.tsx#component:Vector\", slots: [{ siteId: \"native-owner-cut-kernel.tsx#component:Vector#state:0\", slot: 0 }, { siteId: \"native-owner-cut-kernel.tsx#component:Vector#state:1\", slot: 1 }] } });"
+    }
+  ]
+}

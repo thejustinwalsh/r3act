@@ -1,0 +1,894 @@
+{
+  "schemaVersion": "headless-high-frequency-analysis-v1",
+  "status": "PASS",
+  "interpretation": "Per-frame synchronous commit measurements; not whole-page CPU and not a paint/visual latency measurement.",
+  "candidate": {
+    "status": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/inputs/status.json",
+    "statusSha256": "f754cfdfb4310feaa0d0018ed595acc9dcffe23bb7fab9c81bfc4736e469d02e",
+    "sourceArchive": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/inputs/source.tar.gz",
+    "sourceArchiveSha256": "98389ea3e3560f934aa16a610481e674528904bd2759b35f4c48f6dc3b3e0457",
+    "sourceBuildLock": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/inputs/source-build.json",
+    "sourceBuildLockSha256": "5b28e9bc43dd902dbe55fcdc69f810ac8a5ad7bcc88929adb0e953419d4f154e",
+    "buildProof": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/inputs/build-proof.json",
+    "buildProofSha256": "5864d4d54e0489524d397d1d6bbb1a5fa8b567a6396da181a354e9961541cbcf"
+  },
+  "config": {
+    "path": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/config.json",
+    "sha256": "17e93f233bc4138a28c2930f5c4b7b4306b4435581ddabc3a5d543eced8a0699",
+    "studyId": "synthetic-resolved-pass"
+  },
+  "schedule": {
+    "sha256": "1d9269d3b5ec2f25438cb18703483d7164e8018a297b7cc4b3e5ef4c5b7a0eeb",
+    "pageCount": 30,
+    "pairCount": 15,
+    "sizes": [
+      128,
+      1024,
+      10000
+    ]
+  },
+  "decisionRules": {
+    "schemaVersion": "headless-high-frequency-decision-v1",
+    "parity": {
+      "pairedMedianGeometricMeanAtMost": 1,
+      "pairedP95MedianAtMost": 1,
+      "requiredSizes": "all-three"
+    },
+    "strongerDenseWin": {
+      "pairedMedianGeometricMeanAtMost": 0.8,
+      "requiredSizes": "at-least-two-of-three"
+    },
+    "pairedDenominatorFloor": "five-times-the-maximum-of-frozen-preregistered-and-all-pair-before-after-positive-performance-now-quanta",
+    "unresolvedPolicy": "keep all records; do not exclude, replace, or infer a gate result when any arm median or p95 is below the floor",
+    "repetitionPrecision": "five independent pairs per size; p95 precision is limited by five page-pairs and 240 frame observations per page",
+    "sha256": "330ef76a802ab8d53705ee1d81fbad4842938eb482fd16ac4514411d02d0d0a7"
+  },
+  "gates": {
+    "parity": "PASS",
+    "strongerDenseWin": "PASS",
+    "qualification": "PASS",
+    "denseWinSizes": 3
+  },
+  "sizes": [
+    {
+      "rows": 128,
+      "pairCount": 5,
+      "pairedMedianRatios": [
+        0.75,
+        0.75,
+        0.75,
+        0.75,
+        0.75
+      ],
+      "pairedP95Ratios": [
+        0.75,
+        0.75,
+        0.75,
+        0.75,
+        0.75
+      ],
+      "pairedMedianGeometricMean": 0.75,
+      "pairedP95MedianRatio": 0.75,
+      "parity": "PASS",
+      "strongerDenseWin": "PASS"
+    },
+    {
+      "rows": 1024,
+      "pairCount": 5,
+      "pairedMedianRatios": [
+        0.75,
+        0.75,
+        0.75,
+        0.75,
+        0.75
+      ],
+      "pairedP95Ratios": [
+        0.75,
+        0.75,
+        0.75,
+        0.75,
+        0.75
+      ],
+      "pairedMedianGeometricMean": 0.75,
+      "pairedP95MedianRatio": 0.75,
+      "parity": "PASS",
+      "strongerDenseWin": "PASS"
+    },
+    {
+      "rows": 10000,
+      "pairCount": 5,
+      "pairedMedianRatios": [
+        0.75,
+        0.75,
+        0.75,
+        0.75,
+        0.75
+      ],
+      "pairedP95Ratios": [
+        0.75,
+        0.75,
+        0.75,
+        0.75,
+        0.75
+      ],
+      "pairedMedianGeometricMean": 0.75,
+      "pairedP95MedianRatio": 0.75,
+      "parity": "PASS",
+      "strongerDenseWin": "PASS"
+    }
+  ],
+  "pairs": [
+    {
+      "rows": 128,
+      "pair": 0,
+      "pairId": "128-00",
+      "pageSequences": [
+        0,
+        1
+      ],
+      "clockQuantumMs": 0.0001,
+      "maxObservedClockQuantumMs": 0.0001,
+      "clockFloorMs": 0.0005,
+      "resolved": true,
+      "react": {
+        "medianMs": 0.0008,
+        "p95Ms": 0.0008
+      },
+      "native": {
+        "medianMs": 0.0006000000000000001,
+        "p95Ms": 0.0006000000000000001
+      },
+      "paired": {
+        "nativeToReactMedianRatio": 0.75,
+        "nativeToReactP95Ratio": 0.75
+      }
+    },
+    {
+      "rows": 128,
+      "pair": 1,
+      "pairId": "128-01",
+      "pageSequences": [
+        2,
+        3
+      ],
+      "clockQuantumMs": 0.0001,
+      "maxObservedClockQuantumMs": 0.0001,
+      "clockFloorMs": 0.0005,
+      "resolved": true,
+      "react": {
+        "medianMs": 0.0008,
+        "p95Ms": 0.0008
+      },
+      "native": {
+        "medianMs": 0.0006000000000000001,
+        "p95Ms": 0.0006000000000000001
+      },
+      "paired": {
+        "nativeToReactMedianRatio": 0.75,
+        "nativeToReactP95Ratio": 0.75
+      }
+    },
+    {
+      "rows": 128,
+      "pair": 2,
+      "pairId": "128-02",
+      "pageSequences": [
+        4,
+        5
+      ],
+      "clockQuantumMs": 0.0001,
+      "maxObservedClockQuantumMs": 0.0001,
+      "clockFloorMs": 0.0005,
+      "resolved": true,
+      "react": {
+        "medianMs": 0.0008,
+        "p95Ms": 0.0008
+      },
+      "native": {
+        "medianMs": 0.0006000000000000001,
+        "p95Ms": 0.0006000000000000001
+      },
+      "paired": {
+        "nativeToReactMedianRatio": 0.75,
+        "nativeToReactP95Ratio": 0.75
+      }
+    },
+    {
+      "rows": 128,
+      "pair": 3,
+      "pairId": "128-03",
+      "pageSequences": [
+        6,
+        7
+      ],
+      "clockQuantumMs": 0.0001,
+      "maxObservedClockQuantumMs": 0.0001,
+      "clockFloorMs": 0.0005,
+      "resolved": true,
+      "react": {
+        "medianMs": 0.0008,
+        "p95Ms": 0.0008
+      },
+      "native": {
+        "medianMs": 0.0006000000000000001,
+        "p95Ms": 0.0006000000000000001
+      },
+      "paired": {
+        "nativeToReactMedianRatio": 0.75,
+        "nativeToReactP95Ratio": 0.75
+      }
+    },
+    {
+      "rows": 128,
+      "pair": 4,
+      "pairId": "128-04",
+      "pageSequences": [
+        8,
+        9
+      ],
+      "clockQuantumMs": 0.0001,
+      "maxObservedClockQuantumMs": 0.0001,
+      "clockFloorMs": 0.0005,
+      "resolved": true,
+      "react": {
+        "medianMs": 0.0008,
+        "p95Ms": 0.0008
+      },
+      "native": {
+        "medianMs": 0.0006000000000000001,
+        "p95Ms": 0.0006000000000000001
+      },
+      "paired": {
+        "nativeToReactMedianRatio": 0.75,
+        "nativeToReactP95Ratio": 0.75
+      }
+    },
+    {
+      "rows": 1024,
+      "pair": 0,
+      "pairId": "1024-00",
+      "pageSequences": [
+        10,
+        11
+      ],
+      "clockQuantumMs": 0.0001,
+      "maxObservedClockQuantumMs": 0.0001,
+      "clockFloorMs": 0.0005,
+      "resolved": true,
+      "react": {
+        "medianMs": 0.0008,
+        "p95Ms": 0.0008
+      },
+      "native": {
+        "medianMs": 0.0006000000000000001,
+        "p95Ms": 0.0006000000000000001
+      },
+      "paired": {
+        "nativeToReactMedianRatio": 0.75,
+        "nativeToReactP95Ratio": 0.75
+      }
+    },
+    {
+      "rows": 1024,
+      "pair": 1,
+      "pairId": "1024-01",
+      "pageSequences": [
+        12,
+        13
+      ],
+      "clockQuantumMs": 0.0001,
+      "maxObservedClockQuantumMs": 0.0001,
+      "clockFloorMs": 0.0005,
+      "resolved": true,
+      "react": {
+        "medianMs": 0.0008,
+        "p95Ms": 0.0008
+      },
+      "native": {
+        "medianMs": 0.0006000000000000001,
+        "p95Ms": 0.0006000000000000001
+      },
+      "paired": {
+        "nativeToReactMedianRatio": 0.75,
+        "nativeToReactP95Ratio": 0.75
+      }
+    },
+    {
+      "rows": 1024,
+      "pair": 2,
+      "pairId": "1024-02",
+      "pageSequences": [
+        14,
+        15
+      ],
+      "clockQuantumMs": 0.0001,
+      "maxObservedClockQuantumMs": 0.0001,
+      "clockFloorMs": 0.0005,
+      "resolved": true,
+      "react": {
+        "medianMs": 0.0008,
+        "p95Ms": 0.0008
+      },
+      "native": {
+        "medianMs": 0.0006000000000000001,
+        "p95Ms": 0.0006000000000000001
+      },
+      "paired": {
+        "nativeToReactMedianRatio": 0.75,
+        "nativeToReactP95Ratio": 0.75
+      }
+    },
+    {
+      "rows": 1024,
+      "pair": 3,
+      "pairId": "1024-03",
+      "pageSequences": [
+        16,
+        17
+      ],
+      "clockQuantumMs": 0.0001,
+      "maxObservedClockQuantumMs": 0.0001,
+      "clockFloorMs": 0.0005,
+      "resolved": true,
+      "react": {
+        "medianMs": 0.0008,
+        "p95Ms": 0.0008
+      },
+      "native": {
+        "medianMs": 0.0006000000000000001,
+        "p95Ms": 0.0006000000000000001
+      },
+      "paired": {
+        "nativeToReactMedianRatio": 0.75,
+        "nativeToReactP95Ratio": 0.75
+      }
+    },
+    {
+      "rows": 1024,
+      "pair": 4,
+      "pairId": "1024-04",
+      "pageSequences": [
+        18,
+        19
+      ],
+      "clockQuantumMs": 0.0001,
+      "maxObservedClockQuantumMs": 0.0001,
+      "clockFloorMs": 0.0005,
+      "resolved": true,
+      "react": {
+        "medianMs": 0.0008,
+        "p95Ms": 0.0008
+      },
+      "native": {
+        "medianMs": 0.0006000000000000001,
+        "p95Ms": 0.0006000000000000001
+      },
+      "paired": {
+        "nativeToReactMedianRatio": 0.75,
+        "nativeToReactP95Ratio": 0.75
+      }
+    },
+    {
+      "rows": 10000,
+      "pair": 0,
+      "pairId": "10000-00",
+      "pageSequences": [
+        20,
+        21
+      ],
+      "clockQuantumMs": 0.0001,
+      "maxObservedClockQuantumMs": 0.0001,
+      "clockFloorMs": 0.0005,
+      "resolved": true,
+      "react": {
+        "medianMs": 0.0008,
+        "p95Ms": 0.0008
+      },
+      "native": {
+        "medianMs": 0.0006000000000000001,
+        "p95Ms": 0.0006000000000000001
+      },
+      "paired": {
+        "nativeToReactMedianRatio": 0.75,
+        "nativeToReactP95Ratio": 0.75
+      }
+    },
+    {
+      "rows": 10000,
+      "pair": 1,
+      "pairId": "10000-01",
+      "pageSequences": [
+        22,
+        23
+      ],
+      "clockQuantumMs": 0.0001,
+      "maxObservedClockQuantumMs": 0.0001,
+      "clockFloorMs": 0.0005,
+      "resolved": true,
+      "react": {
+        "medianMs": 0.0008,
+        "p95Ms": 0.0008
+      },
+      "native": {
+        "medianMs": 0.0006000000000000001,
+        "p95Ms": 0.0006000000000000001
+      },
+      "paired": {
+        "nativeToReactMedianRatio": 0.75,
+        "nativeToReactP95Ratio": 0.75
+      }
+    },
+    {
+      "rows": 10000,
+      "pair": 2,
+      "pairId": "10000-02",
+      "pageSequences": [
+        24,
+        25
+      ],
+      "clockQuantumMs": 0.0001,
+      "maxObservedClockQuantumMs": 0.0001,
+      "clockFloorMs": 0.0005,
+      "resolved": true,
+      "react": {
+        "medianMs": 0.0008,
+        "p95Ms": 0.0008
+      },
+      "native": {
+        "medianMs": 0.0006000000000000001,
+        "p95Ms": 0.0006000000000000001
+      },
+      "paired": {
+        "nativeToReactMedianRatio": 0.75,
+        "nativeToReactP95Ratio": 0.75
+      }
+    },
+    {
+      "rows": 10000,
+      "pair": 3,
+      "pairId": "10000-03",
+      "pageSequences": [
+        26,
+        27
+      ],
+      "clockQuantumMs": 0.0001,
+      "maxObservedClockQuantumMs": 0.0001,
+      "clockFloorMs": 0.0005,
+      "resolved": true,
+      "react": {
+        "medianMs": 0.0008,
+        "p95Ms": 0.0008
+      },
+      "native": {
+        "medianMs": 0.0006000000000000001,
+        "p95Ms": 0.0006000000000000001
+      },
+      "paired": {
+        "nativeToReactMedianRatio": 0.75,
+        "nativeToReactP95Ratio": 0.75
+      }
+    },
+    {
+      "rows": 10000,
+      "pair": 4,
+      "pairId": "10000-04",
+      "pageSequences": [
+        28,
+        29
+      ],
+      "clockQuantumMs": 0.0001,
+      "maxObservedClockQuantumMs": 0.0001,
+      "clockFloorMs": 0.0005,
+      "resolved": true,
+      "react": {
+        "medianMs": 0.0008,
+        "p95Ms": 0.0008
+      },
+      "native": {
+        "medianMs": 0.0006000000000000001,
+        "p95Ms": 0.0006000000000000001
+      },
+      "paired": {
+        "nativeToReactMedianRatio": 0.75,
+        "nativeToReactP95Ratio": 0.75
+      }
+    }
+  ],
+  "pages": [
+    {
+      "sequence": 0,
+      "arm": "react",
+      "rows": 128,
+      "pair": 0,
+      "pairId": "128-00",
+      "file": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/raw/sequence-00.json",
+      "sha256": "3540c1cb405208ccda9aab2ffc322e52299ec18af3a41fd548fad8dc9e889797",
+      "metric": {
+        "medianMs": 0.0008,
+        "p95Ms": 0.0008
+      }
+    },
+    {
+      "sequence": 1,
+      "arm": "native",
+      "rows": 128,
+      "pair": 0,
+      "pairId": "128-00",
+      "file": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/raw/sequence-01.json",
+      "sha256": "a62ae081742377b3e8e7f0079348f54ca3a47d8b7aefb917e52c7c6277383adc",
+      "metric": {
+        "medianMs": 0.0006000000000000001,
+        "p95Ms": 0.0006000000000000001
+      }
+    },
+    {
+      "sequence": 2,
+      "arm": "native",
+      "rows": 128,
+      "pair": 1,
+      "pairId": "128-01",
+      "file": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/raw/sequence-02.json",
+      "sha256": "e614ab8e8296ce0ce1bc9a1a8c61bcdc11d07a7f43707692b3eaa00d2d19c530",
+      "metric": {
+        "medianMs": 0.0006000000000000001,
+        "p95Ms": 0.0006000000000000001
+      }
+    },
+    {
+      "sequence": 3,
+      "arm": "react",
+      "rows": 128,
+      "pair": 1,
+      "pairId": "128-01",
+      "file": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/raw/sequence-03.json",
+      "sha256": "e64ad52eed68d85bee748761cb836a5ea6b089f4ba480182e69f18f748646148",
+      "metric": {
+        "medianMs": 0.0008,
+        "p95Ms": 0.0008
+      }
+    },
+    {
+      "sequence": 4,
+      "arm": "react",
+      "rows": 128,
+      "pair": 2,
+      "pairId": "128-02",
+      "file": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/raw/sequence-04.json",
+      "sha256": "cc3200668a999e406b2ce738968ad2033ce0274a158b408f042ea4bda1766144",
+      "metric": {
+        "medianMs": 0.0008,
+        "p95Ms": 0.0008
+      }
+    },
+    {
+      "sequence": 5,
+      "arm": "native",
+      "rows": 128,
+      "pair": 2,
+      "pairId": "128-02",
+      "file": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/raw/sequence-05.json",
+      "sha256": "bc0d498ee373b8945d70cdbedf9abfe0a474b519ab8542034635a8051ae52a90",
+      "metric": {
+        "medianMs": 0.0006000000000000001,
+        "p95Ms": 0.0006000000000000001
+      }
+    },
+    {
+      "sequence": 6,
+      "arm": "native",
+      "rows": 128,
+      "pair": 3,
+      "pairId": "128-03",
+      "file": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/raw/sequence-06.json",
+      "sha256": "ec4630eeda03afc8b285b37b55f010599a3b5ead72af00c4a1a65bbd9a46943d",
+      "metric": {
+        "medianMs": 0.0006000000000000001,
+        "p95Ms": 0.0006000000000000001
+      }
+    },
+    {
+      "sequence": 7,
+      "arm": "react",
+      "rows": 128,
+      "pair": 3,
+      "pairId": "128-03",
+      "file": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/raw/sequence-07.json",
+      "sha256": "511e14cebec6c58e93f6fe6cdbad749ae02f0e0e29bb8ccf23e2bf2dcf8b6f01",
+      "metric": {
+        "medianMs": 0.0008,
+        "p95Ms": 0.0008
+      }
+    },
+    {
+      "sequence": 8,
+      "arm": "react",
+      "rows": 128,
+      "pair": 4,
+      "pairId": "128-04",
+      "file": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/raw/sequence-08.json",
+      "sha256": "46fe008eec1dff83cabd0f77224f53bae994a64b72fd4345d1ce2f2d8ee47841",
+      "metric": {
+        "medianMs": 0.0008,
+        "p95Ms": 0.0008
+      }
+    },
+    {
+      "sequence": 9,
+      "arm": "native",
+      "rows": 128,
+      "pair": 4,
+      "pairId": "128-04",
+      "file": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/raw/sequence-09.json",
+      "sha256": "a8bf4e5839ec6bce52d399264268ea1614933ce9300b4da2fc4882bc8d824291",
+      "metric": {
+        "medianMs": 0.0006000000000000001,
+        "p95Ms": 0.0006000000000000001
+      }
+    },
+    {
+      "sequence": 10,
+      "arm": "react",
+      "rows": 1024,
+      "pair": 0,
+      "pairId": "1024-00",
+      "file": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/raw/sequence-10.json",
+      "sha256": "e2f4432a66072157f2d1119765507b55af89dc8a5ecc930aaddbb15c068185ee",
+      "metric": {
+        "medianMs": 0.0008,
+        "p95Ms": 0.0008
+      }
+    },
+    {
+      "sequence": 11,
+      "arm": "native",
+      "rows": 1024,
+      "pair": 0,
+      "pairId": "1024-00",
+      "file": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/raw/sequence-11.json",
+      "sha256": "427ee0eaf93c04f5ae1afbc88b814ee8de5618438ceb446ea1435337fb770898",
+      "metric": {
+        "medianMs": 0.0006000000000000001,
+        "p95Ms": 0.0006000000000000001
+      }
+    },
+    {
+      "sequence": 12,
+      "arm": "native",
+      "rows": 1024,
+      "pair": 1,
+      "pairId": "1024-01",
+      "file": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/raw/sequence-12.json",
+      "sha256": "8c17d4fe6608790b5ab75d24d95ae037883f306eeb8fbbba8f6bb40b50420f63",
+      "metric": {
+        "medianMs": 0.0006000000000000001,
+        "p95Ms": 0.0006000000000000001
+      }
+    },
+    {
+      "sequence": 13,
+      "arm": "react",
+      "rows": 1024,
+      "pair": 1,
+      "pairId": "1024-01",
+      "file": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/raw/sequence-13.json",
+      "sha256": "830cc3e4f3e86486c4a1c144f293c2bb700636e8c4c7cc1385526973d03a3356",
+      "metric": {
+        "medianMs": 0.0008,
+        "p95Ms": 0.0008
+      }
+    },
+    {
+      "sequence": 14,
+      "arm": "react",
+      "rows": 1024,
+      "pair": 2,
+      "pairId": "1024-02",
+      "file": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/raw/sequence-14.json",
+      "sha256": "689f3ef62033f521ee7b710d7dbf3fa9d66f888fe1500942918b40375579b21f",
+      "metric": {
+        "medianMs": 0.0008,
+        "p95Ms": 0.0008
+      }
+    },
+    {
+      "sequence": 15,
+      "arm": "native",
+      "rows": 1024,
+      "pair": 2,
+      "pairId": "1024-02",
+      "file": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/raw/sequence-15.json",
+      "sha256": "74744978fea15119e1b7a31b15a2d98c0e51439e822d8c21a1b7651eef295588",
+      "metric": {
+        "medianMs": 0.0006000000000000001,
+        "p95Ms": 0.0006000000000000001
+      }
+    },
+    {
+      "sequence": 16,
+      "arm": "native",
+      "rows": 1024,
+      "pair": 3,
+      "pairId": "1024-03",
+      "file": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/raw/sequence-16.json",
+      "sha256": "d286920ea692cf42a407e093c0f508822d0109bfe85cb452ae99801daade9a4f",
+      "metric": {
+        "medianMs": 0.0006000000000000001,
+        "p95Ms": 0.0006000000000000001
+      }
+    },
+    {
+      "sequence": 17,
+      "arm": "react",
+      "rows": 1024,
+      "pair": 3,
+      "pairId": "1024-03",
+      "file": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/raw/sequence-17.json",
+      "sha256": "2f59309633807ee0d09b84c605fca1aa05125ccd62e579f2f216235aac52724d",
+      "metric": {
+        "medianMs": 0.0008,
+        "p95Ms": 0.0008
+      }
+    },
+    {
+      "sequence": 18,
+      "arm": "react",
+      "rows": 1024,
+      "pair": 4,
+      "pairId": "1024-04",
+      "file": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/raw/sequence-18.json",
+      "sha256": "8982c58094695405f1380541b9a0e7768598664e6de9570a1706cd9cdcaf0447",
+      "metric": {
+        "medianMs": 0.0008,
+        "p95Ms": 0.0008
+      }
+    },
+    {
+      "sequence": 19,
+      "arm": "native",
+      "rows": 1024,
+      "pair": 4,
+      "pairId": "1024-04",
+      "file": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/raw/sequence-19.json",
+      "sha256": "6b489562aca8273bcc8ff486f7a0e006b46aa0ab691667d407d1e82de6768a45",
+      "metric": {
+        "medianMs": 0.0006000000000000001,
+        "p95Ms": 0.0006000000000000001
+      }
+    },
+    {
+      "sequence": 20,
+      "arm": "react",
+      "rows": 10000,
+      "pair": 0,
+      "pairId": "10000-00",
+      "file": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/raw/sequence-20.json",
+      "sha256": "d6a92cabedb6726cb18b3870591a23090fc0870dce0bb0df21139d9ad7d7fc88",
+      "metric": {
+        "medianMs": 0.0008,
+        "p95Ms": 0.0008
+      }
+    },
+    {
+      "sequence": 21,
+      "arm": "native",
+      "rows": 10000,
+      "pair": 0,
+      "pairId": "10000-00",
+      "file": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/raw/sequence-21.json",
+      "sha256": "4260345798fd78b02554e2f2a7cf292a570c4d123f94f95057f8eb412c9a8e03",
+      "metric": {
+        "medianMs": 0.0006000000000000001,
+        "p95Ms": 0.0006000000000000001
+      }
+    },
+    {
+      "sequence": 22,
+      "arm": "native",
+      "rows": 10000,
+      "pair": 1,
+      "pairId": "10000-01",
+      "file": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/raw/sequence-22.json",
+      "sha256": "c519f7b90fa79d243f3b325de24f3b569618f9bf89ddeccaeeee4d72340fdcfc",
+      "metric": {
+        "medianMs": 0.0006000000000000001,
+        "p95Ms": 0.0006000000000000001
+      }
+    },
+    {
+      "sequence": 23,
+      "arm": "react",
+      "rows": 10000,
+      "pair": 1,
+      "pairId": "10000-01",
+      "file": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/raw/sequence-23.json",
+      "sha256": "0ea3eb6e3674db9288f8ccc5f8e1de0fd153e6caf3e125beae8f5322990ddaa1",
+      "metric": {
+        "medianMs": 0.0008,
+        "p95Ms": 0.0008
+      }
+    },
+    {
+      "sequence": 24,
+      "arm": "react",
+      "rows": 10000,
+      "pair": 2,
+      "pairId": "10000-02",
+      "file": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/raw/sequence-24.json",
+      "sha256": "545802ac6401570b2bea82609bef8775ee8b04ce28fe4dfa45519bd7c448ba25",
+      "metric": {
+        "medianMs": 0.0008,
+        "p95Ms": 0.0008
+      }
+    },
+    {
+      "sequence": 25,
+      "arm": "native",
+      "rows": 10000,
+      "pair": 2,
+      "pairId": "10000-02",
+      "file": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/raw/sequence-25.json",
+      "sha256": "34f11a494eac6ac042f1700c9a619f704b58edf97aacceb963c88cbb948f7d72",
+      "metric": {
+        "medianMs": 0.0006000000000000001,
+        "p95Ms": 0.0006000000000000001
+      }
+    },
+    {
+      "sequence": 26,
+      "arm": "native",
+      "rows": 10000,
+      "pair": 3,
+      "pairId": "10000-03",
+      "file": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/raw/sequence-26.json",
+      "sha256": "bb209409cf1cc1ee69b7b30b5178439944b4e0d31ba0935a01e9dbb959f72220",
+      "metric": {
+        "medianMs": 0.0006000000000000001,
+        "p95Ms": 0.0006000000000000001
+      }
+    },
+    {
+      "sequence": 27,
+      "arm": "react",
+      "rows": 10000,
+      "pair": 3,
+      "pairId": "10000-03",
+      "file": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/raw/sequence-27.json",
+      "sha256": "4ba909e4a4b6653a2008d6de3105a8ff304587ea9ba9b65c20de8b2d9d208635",
+      "metric": {
+        "medianMs": 0.0008,
+        "p95Ms": 0.0008
+      }
+    },
+    {
+      "sequence": 28,
+      "arm": "react",
+      "rows": 10000,
+      "pair": 4,
+      "pairId": "10000-04",
+      "file": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/raw/sequence-28.json",
+      "sha256": "7adcab3a1ff6150d1161c3dfb685c49441d072ec31d155811b13292e7fcad58e",
+      "metric": {
+        "medianMs": 0.0008,
+        "p95Ms": 0.0008
+      }
+    },
+    {
+      "sequence": 29,
+      "arm": "native",
+      "rows": 10000,
+      "pair": 4,
+      "pairId": "10000-04",
+      "file": "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/.cache/headless-high-frequency-qualification-stage/synthetic-study-cases-rerun-1791930511691/resolved-pass/raw/sequence-29.json",
+      "sha256": "faa0de293fe6b19cbea889d19c976167d73692c71d30c159cdaac4f9c715ef45",
+      "metric": {
+        "medianMs": 0.0006000000000000001,
+        "p95Ms": 0.0006000000000000001
+      }
+    }
+  ],
+  "limitations": [
+    "One browser build, one source/build candidate, one headless environment, and one contiguous all-dirty homogeneous DOM workload.",
+    "Five independent pairs per size provide limited p95 precision; report the fixed experiment, not a general tail distribution.",
+    "Frame commitMs excludes RAF wait, dirty-ID selection, DOM inspection, correctness checks, paint, and display."
+  ]
+}

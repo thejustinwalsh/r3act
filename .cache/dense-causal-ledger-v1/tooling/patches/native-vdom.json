@@ -1,0 +1,50 @@
+[
+  {
+    "find": "  #executePreparedNumericRows(\n    tokens: readonly (PreparedNumericRowProgram | undefined)[],",
+    "replace": "  #executePreparedNumericRows(\n    tokens: readonly (PreparedNumericRowProgram | undefined)[],"
+  },
+  {
+    "find": "    const countVisits = this.#profileCounter !== undefined;\n    if (countVisits) this.#ownerRowWorkVisits = 0;",
+    "replace": "    const ledger = (globalThis as any).__denseLedger;\n    ledger?.mark(\"vdom.validate.start\");\n    ledger?.count(\"vdom.inputCells\", count);\n    const countVisits = this.#profileCounter !== undefined;\n    if (countVisits) this.#ownerRowWorkVisits = 0;"
+  },
+  {
+    "find": "      if (count === 0) return false;\n      ownerUpdateProgram = this.#ownerRowRecordScratch[0]!.ownerUpdateProgram;",
+    "replace": "      ledger?.mark(\"vdom.validate.packed.end\");\n      ledger?.count(\"vdom.distinctRows\", this.#ownerRowRecordCount);\n      if (count === 0) return false;\n      ownerUpdateProgram = this.#ownerRowRecordScratch[0]!.ownerUpdateProgram;"
+  },
+  {
+    "find": "      if (ownerUpdateProgram) {\n        const outputCapacity = this.#ownerRowRecordCount * ownerUpdateProgram.sinkIds.length;",
+    "replace": "      ledger?.mark(\"vdom.validate.dependencies.end\");\n      if (ownerUpdateProgram) {\n        const outputCapacity = this.#ownerRowRecordCount * ownerUpdateProgram.sinkIds.length;"
+  },
+  {
+    "find": "      // Mirror the complete captured dependency vectors before any sink runs.\n      for (let rowIndex = 0; rowIndex < this.#ownerRowRecordCount; rowIndex++) {",
+    "replace": "      ledger?.mark(\"vdom.stage.prepare.end\");\n      // Mirror the complete captured dependency vectors before any sink runs.\n      for (let rowIndex = 0; rowIndex < this.#ownerRowRecordCount; rowIndex++) {"
+  },
+  {
+    "find": "      let wrote = false;\n      if (ownerUpdateProgram) {",
+    "replace": "      ledger?.mark(\"vdom.mirror.end\");\n      let wrote = false;\n      if (ownerUpdateProgram) {"
+  },
+  {
+    "find": "        stagedCount = ownerUpdateProgram.executeCut(\n          changedSlots,",
+    "replace": "        ledger?.mark(\"vdom.kernel.start\");\n        stagedCount = ownerUpdateProgram.executeCut(\n          changedSlots,"
+  },
+  {
+    "find": "          this.#ownerRowStagedValues,\n        );\n        if (this.#ownerRowExecutionCancelled) return false;",
+    "replace": "          this.#ownerRowStagedValues,\n        );\n        ledger?.mark(\"vdom.kernel.end\");\n        ledger?.count(\"vdom.stagedOutputs\", stagedCount);\n        if (this.#ownerRowExecutionCancelled) return false;"
+  },
+  {
+    "find": "        for (let index = 0; index < stagedCount; index++) {\n          if (this.#ownerRowExecutionCancelled) break;",
+    "replace": "        ledger?.mark(\"vdom.stage.verify.end\");\n        for (let index = 0; index < stagedCount; index++) {\n          if (this.#ownerRowExecutionCancelled) break;"
+  },
+  {
+    "find": "          const group = record.sinks![sinkIndex];\n          this.#writeBoundGroup(group, next);\n          wrote = true;",
+    "replace": "          const group = record.sinks![sinkIndex];\n          ledger?.count(\"vdom.hostWrites\");\n          this.#writeBoundGroup(group, next);\n          wrote = true;"
+  },
+  {
+    "find": "      return wrote;\n    } finally {\n      for (let index = 0; index < this.#ownerRowRecordCount; index++) {",
+    "replace": "      ledger?.mark(\"vdom.host.end\");\n      return wrote;\n    } finally {\n      ledger?.mark(\"vdom.cleanup.start\");\n      for (let index = 0; index < this.#ownerRowRecordCount; index++) {"
+  },
+  {
+    "find": "      this.#ownerRowExecutionCancelled = false;\n    }\n  }\n\n  #executePreparedNumericCells(",
+    "replace": "      this.#ownerRowExecutionCancelled = false;\n      ledger?.mark(\"vdom.cleanup.end\");\n    }\n  }\n\n  #executePreparedNumericCells("
+  }
+]

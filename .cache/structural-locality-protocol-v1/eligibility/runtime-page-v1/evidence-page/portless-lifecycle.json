@@ -1,0 +1,77 @@
+{
+  "schemaVersion": "runtime-page-v1-portless-lifecycle-v1",
+  "cachedPortlessCli": "/Users/tjw/.npm/_npx/ae62f8a082de4b24/node_modules/portless/dist/cli.js",
+  "sharedProxy": "https://*.localhost:1355",
+  "preexistingAliases": [
+    "yacht-club-test-access.localhost:1355 -> localhost:4580",
+    "yacht-agent-settings.localhost:1355 -> localhost:4405",
+    "yacht-simdeck.localhost:1355 -> localhost:4784"
+  ],
+  "sharedProxyPid": 43235,
+  "attempts": [
+    {
+      "kind": "initial_default_sandbox_start",
+      "execSessionId": 26565,
+      "exitCode": 1,
+      "error": "EPERM opening /Users/tjw/.portless/proxy.log",
+      "receipt": "portless-default-sandbox-failure.json"
+    },
+    {
+      "kind": "first_escalated_portless_preview",
+      "command": "PORTLESS_SYNC_HOSTS=0 /Users/tjw/.nvm/versions/node/v24.18.0/bin/node /Users/tjw/.npm/_npx/ae62f8a082de4b24/node_modules/portless/dist/cli.js run --name structural-locality-runtime-gate-v2 /Users/tjw/.nvm/versions/node/v24.18.0/bin/node node_modules/vite/bin/vite.js preview --config .cache/structural-locality-protocol-v1/eligibility/runtime-gate-v2/vite.config.ts",
+      "execSessionId": 97679,
+      "allocatedAppPort": 4901,
+      "route": "https://structural-locality-runtime-gate-v2.localhost:1355 -> localhost:4901",
+      "vitePid": 94463,
+      "viteActualListener": 4173,
+      "readinessStatus": 502,
+      "reason": "Portless route targeted allocated 4901, while wrapped Vite process listened on its default 4173. No collector was run against this preview.",
+      "stopExitCode": 130,
+      "postStop": "Owned route absent; shared proxy and three aliases remained."
+    },
+    {
+      "kind": "corrected_escalated_portless_preview",
+      "command": "PORTLESS_SYNC_HOSTS=0 PATH=/Users/tjw/.nvm/versions/node/v24.18.0/bin:$PATH /Users/tjw/.nvm/versions/node/v24.18.0/bin/node /Users/tjw/.npm/_npx/ae62f8a082de4b24/node_modules/portless/dist/cli.js run --name structural-locality-runtime-gate-v2 node_modules/.bin/vite preview --config .cache/structural-locality-protocol-v1/eligibility/runtime-gate-v2/vite.config.ts",
+      "execSessionId": 53371,
+      "routeOwnerPid": 95804,
+      "allocatedAppPort": 4948,
+      "vitePid": 95852,
+      "exactHttpsOrigin": "https://structural-locality-runtime-gate-v2.localhost:1355",
+      "htmlPath": "/.cache/structural-locality-protocol-v1/eligibility/runtime-gate-v2/index.html",
+      "readinessStatus": 200,
+      "routesAtReadiness": [
+        "yacht-club-test-access.localhost:1355 -> localhost:4580",
+        "yacht-agent-settings.localhost:1355 -> localhost:4405",
+        "yacht-simdeck.localhost:1355 -> localhost:4784",
+        "structural-locality-runtime-gate-v2.localhost:1355 -> localhost:4948"
+      ],
+      "stopExitCode": 130,
+      "postStop": "Owned route absent; listeners 4948, 4901, 4173 down; shared proxy PID43235 on 1355 and three aliases remained."
+    }
+  ],
+  "collector": {
+    "command": "STRUCTURAL_RUNTIME_GATE_ORIGIN=https://structural-locality-runtime-gate-v2.localhost:1355 /Users/tjw/.nvm/versions/node/v24.18.0/bin/node .cache/structural-locality-protocol-v1/eligibility/runtime-page-v1/collect-once.mjs",
+    "execSessionId": 56389,
+    "terminalExitCode": 1,
+    "status": "FAIL",
+    "actualOrigin": "https://structural-locality-runtime-gate-v2.localhost:1355",
+    "browserVersion": "153.0.8010.12",
+    "headlessGpuDisabled": {
+      "headless": true,
+      "gpu": false,
+      "handleSignals": false
+    },
+    "navigationStatus": 200,
+    "navigationUrl": "https://structural-locality-runtime-gate-v2.localhost:1355/.cache/structural-locality-protocol-v1/eligibility/runtime-gate-v2/index.html",
+    "executedResponseHashesMatched": true,
+    "pageReportSha256": "18e287515a81943aded3a7b5b7f0a15c0b8ecb48fda23b27863aa4b694eeab56"
+  },
+  "finalRouteState": {
+    "ownedRouteAbsent": true,
+    "ownedAppListener4948Down": true,
+    "oldAllocatedListener4901Down": true,
+    "defaultVite4173Down": true,
+    "sharedProxyPid43235StillListening": true,
+    "preexistingAliasesUnchanged": true
+  }
+}

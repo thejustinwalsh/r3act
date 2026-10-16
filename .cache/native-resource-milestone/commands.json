@@ -1,0 +1,52 @@
+[
+  {
+    "name": "runtime",
+    "command": "deno test --config deno.browser.json src",
+    "exitCode": 0
+  },
+  {
+    "name": "rust",
+    "command": "CARGO_HOME=\"$PWD/.cache/cargo\" cargo test --manifest-path compiler/oxc-spike/Cargo.toml",
+    "exitCode": 0
+  },
+  {
+    "name": "smoke",
+    "command": "pnpm compiler:native:smoke",
+    "exitCode": 0
+  },
+  {
+    "name": "execution",
+    "command": "node --experimental-transform-types compiler/native_state_execution_test.mjs\nnode --experimental-transform-types compiler/native_store_execution_test.mjs\nnode --experimental-transform-types compiler/native_collection_execution_test.mjs\nnode --experimental-transform-types compiler/native_root_queue_execution_test.mjs\nnode --experimental-transform-types compiler/native_resource_execution_test.mjs",
+    "exitCode": 0
+  },
+  {
+    "name": "retention",
+    "command": "node --expose-gc --experimental-transform-types scripts/verify_owner_preparation_retention.mjs\nnode --expose-gc --experimental-transform-types scripts/verify_native_candidate_retention.mjs\nnode --expose-gc --experimental-transform-types scripts/verify_native_resource_retention.mjs",
+    "exitCode": 0
+  },
+  {
+    "name": "typecheck",
+    "command": "deno check --config deno.browser.json src/native_runtime_api.ts src/browser/native_resource_boundaries.tsx src/browser/native_root_queue.tsx src/browser/native_collection_props.tsx src/browser/native_state_props.tsx",
+    "exitCode": 0
+  },
+  {
+    "name": "build",
+    "command": "pnpm build",
+    "exitCode": 0
+  },
+  {
+    "name": "browser",
+    "command": "node .cache/native-resource-milestone/browser-check.mjs",
+    "exitCode": 0
+  },
+  {
+    "name": "hmr",
+    "command": "node .cache/native-resource-milestone/hmr-check.mjs",
+    "exitCode": 0
+  },
+  {
+    "name": "queue-regression",
+    "command": "node .cache/native-resource-milestone/queue-regression/browser-check.mjs",
+    "exitCode": 0
+  }
+]

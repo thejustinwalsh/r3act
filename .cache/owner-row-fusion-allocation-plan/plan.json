@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "study": "compiled-product-mixed-owner-row-fusion-allocation-diagnostic",
+  "status": "PLAN_ONLY",
+  "purpose": "Describe a fresh allocation diagnostic for the frozen owner-row-fusion build. This diagnostic reports sampled allocation evidence only; it does not test superiority, release readiness, or an allocation pass gate.",
+  "candidate": {
+    "checkpoint": "implementation/2026-10-13-owner-row-fusion",
+    "statusPath": "implementation/2026-10-13-owner-row-fusion/status.json",
+    "archivePath": "implementation/2026-10-13-owner-row-fusion/source-and-evidence.tar.gz",
+    "archiveSha256": "cbe4ce3f557314fa093ac51214a2ba5e9cf0a5f0ad67b5429ce3a95a5e59a382",
+    "archiveMembers": 1093,
+    "sourceAndBuildEntries": 1004,
+    "currentVerificationEntries": 25,
+    "historicalVerificationEntries": 64,
+    "productionAssets": 5
+  },
+  "correctnessPilot": {
+    "directory": "results/product-mixed-owner-row-fusion-pilot",
+    "manifestPath": "results/product-mixed-owner-row-fusion-pilot/results.json",
+    "statusPath": "implementation/2026-10-13-owner-row-fusion-pilot/status.json",
+    "archivePath": "implementation/2026-10-13-owner-row-fusion-pilot/evidence.tar.gz",
+    "archiveSha256": "925cb5eb7caf9c4e49c164666eb899c7c00f87075ef97828aba4052bc324534b",
+    "records": 6,
+    "engineDiagnosticPath": "results/numeric-cell-storage-candidate-v5/diagnostic.json",
+    "requirements": [
+      "Verify all six pilot page bytes, lifecycle checks, five served production asset hashes, COOP/COEP headers, and the v5 Chromium engine tuple.",
+      "Verify the exact five production asset bytes against the frozen source/build inventory before accepting either arm."
+    ]
+  },
+  "collection": {
+    "profileScope": "Whole page from about:blank through product import, mount, 60 warmup frames, 240 measured frames, correctness inspection, and disposal.",
+    "samplingIntervalBytes": 32768,
+    "includeMinorGC": true,
+    "includeMajorGC": true,
+    "sequences": [0, 1, 10, 11, 20, 21],
+    "pages": [
+      { "sequence": 0, "pair": 0, "arm": "react", "size": 128 },
+      { "sequence": 1, "pair": 0, "arm": "native", "size": 128 },
+      { "sequence": 10, "pair": 0, "arm": "react", "size": 512 },
+      { "sequence": 11, "pair": 0, "arm": "native", "size": 512 },
+      { "sequence": 20, "pair": 0, "arm": "react", "size": 1024 },
+      { "sequence": 21, "pair": 0, "arm": "native", "size": 1024 }
+    ],
+    "order": "Serial, in the listed order; each page uses a fresh headed context, GPU disabled, and 1200x900 viewport.",
+    "outputDirectory": "results/product-mixed-owner-row-fusion-allocation",
+    "expectedOrigin": "https://owner-row-fusion-allocation.localhost:1355",
+    "serveExistingBuildOnly": true
+  },
+  "interpretation": {
+    "diagnosticOnly": true,
+    "allocationPassGate": false,
+    "speedVerdict": false,
+    "releaseVerdict": false,
+    "latencyEvidenceSeparate": true,
+    "limitations": [
+      "There is one pair at each size, so these profiles are diagnostic rather than a release allocation gate.",
+      "Sampling is probabilistic. The profile covers the whole page and should not be read as per-update allocation cost.",
+      "Post-disposal heap readings are not mounted-cache measurements or universal leak proof; JavaScript heap excludes DOM, GPU, and presentation memory.",
+      "Allocation evidence does not establish CPU speed, causal improvement over historical candidates, independent-device performance, or a general advantage over React."
+    ]
+  },
+  "newArtifactsOnly": {
+    "protocol": "product-mixed-owner-row-fusion-allocation-protocol.md",
+    "collector": "scripts/profile_product_mixed_owner_row_fusion_allocation.mjs",
+    "verifier": "scripts/verify_product_mixed_owner_row_fusion_allocation.mjs",
+    "configuration": "vite.product-mixed-owner-row-fusion-allocation.config.ts",
+    "plan": ".cache/owner-row-fusion-allocation-plan/plan.json"
+  },
+  "prohibitions": [
+    "Do not edit frozen source, build, protocol, correctness pilot, or timing evidence.",
+    "Do not launch a server, navigate to product pages, or collect profiles during planning or verification preparation.",
+    "Preserve failures and raw profile trees/samples; do not rerun selected pages or exclude observations.",
+    "Verify the archive union, all three checkpoint maps, correctness pilot, V5 diagnostic, served bytes, exact six-page sequence, raw allocation samples, excerpt offsets, and post-locks independently."
+  ]
+}

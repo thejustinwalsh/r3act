@@ -1,0 +1,370 @@
+{
+  "schemaVersion": 1,
+  "experiment": "Deno scan-vs-graph independent process replications",
+  "processCount": 3,
+  "seeds": [
+    1736031009,
+    20261009,
+    20261010
+  ],
+  "runtime": [
+    {
+      "deno": "2.6.3",
+      "v8": "14.2.231.17-rusty",
+      "typescript": "5.9.2",
+      "os": "darwin",
+      "arch": "aarch64",
+      "hardwareConcurrency": 10,
+      "sampleDate": "2026-10-09T15:56:16.623Z"
+    },
+    {
+      "deno": "2.6.3",
+      "v8": "14.2.231.17-rusty",
+      "typescript": "5.9.2",
+      "os": "darwin",
+      "arch": "aarch64",
+      "hardwareConcurrency": 10,
+      "sampleDate": "2026-10-09T15:56:17.065Z"
+    },
+    {
+      "deno": "2.6.3",
+      "v8": "14.2.231.17-rusty",
+      "typescript": "5.9.2",
+      "os": "darwin",
+      "arch": "aarch64",
+      "hardwareConcurrency": 10,
+      "sampleDate": "2026-10-09T15:56:17.513Z"
+    }
+  ],
+  "rawSources": [
+    "results/deno-graph-vs-scan-process-1.json",
+    "results/deno-graph-vs-scan-process-2.json",
+    "results/deno-graph-vs-scan-process-3.json"
+  ],
+  "scenarios": [
+    {
+      "entityCount": 1000,
+      "changedCount": 10,
+      "processCount": 3,
+      "processMedians": [
+        {
+          "scanUs": 0.43584000000009837,
+          "graphUs": 0.08487499999998249,
+          "scanOverGraph": 5.234080587499318,
+          "graphWins": 41,
+          "scanWins": 0,
+          "outputParity": true
+        },
+        {
+          "scanUs": 0.444159999999556,
+          "graphUs": 0.08500000000000796,
+          "scanOverGraph": 5.214776007180021,
+          "graphWins": 39,
+          "scanWins": 2,
+          "outputParity": true
+        },
+        {
+          "scanUs": 0.4308400000002166,
+          "graphUs": 0.08916700000000333,
+          "scanOverGraph": 5.191105019031981,
+          "graphWins": 41,
+          "scanWins": 0,
+          "outputParity": true
+        }
+      ],
+      "medianScanUsAcrossProcesses": 0.43584000000009837,
+      "medianGraphUsAcrossProcesses": 0.08500000000000796,
+      "medianScanOverGraphAcrossProcesses": 5.214776007180021,
+      "graphWinsAllProcesses": true,
+      "parityAllProcesses": true
+    },
+    {
+      "entityCount": 1000,
+      "changedCount": 100,
+      "processCount": 3,
+      "processMedians": [
+        {
+          "scanUs": 0.8391600000004473,
+          "graphUs": 0.8969999999999914,
+          "scanOverGraph": 0.9526724637683842,
+          "graphWins": 6,
+          "scanWins": 35,
+          "outputParity": true
+        },
+        {
+          "scanUs": 0.8550000000002456,
+          "graphUs": 0.9255840000000148,
+          "scanOverGraph": 0.9561952672878304,
+          "graphWins": 9,
+          "scanWins": 32,
+          "outputParity": true
+        },
+        {
+          "scanUs": 1.0325000000000273,
+          "graphUs": 1.1225000000000023,
+          "scanOverGraph": 0.9426516047608666,
+          "graphWins": 5,
+          "scanWins": 36,
+          "outputParity": true
+        }
+      ],
+      "medianScanUsAcrossProcesses": 0.8550000000002456,
+      "medianGraphUsAcrossProcesses": 0.9255840000000148,
+      "medianScanOverGraphAcrossProcesses": 0.9526724637683842,
+      "graphWinsAllProcesses": false,
+      "parityAllProcesses": true
+    },
+    {
+      "entityCount": 1000,
+      "changedCount": 1000,
+      "processCount": 3,
+      "processMedians": [
+        {
+          "scanUs": 1.5033200000004854,
+          "graphUs": 8.67999999999995,
+          "scanOverGraph": 0.17497666341543291,
+          "graphWins": 0,
+          "scanWins": 41,
+          "outputParity": true
+        },
+        {
+          "scanUs": 1.6133400000001075,
+          "graphUs": 9.094160000000215,
+          "scanOverGraph": 0.17376116654527435,
+          "graphWins": 0,
+          "scanWins": 41,
+          "outputParity": true
+        },
+        {
+          "scanUs": 1.7608400000000302,
+          "graphUs": 9.849179999999933,
+          "scanOverGraph": 0.17373362708479656,
+          "graphWins": 0,
+          "scanWins": 41,
+          "outputParity": true
+        }
+      ],
+      "medianScanUsAcrossProcesses": 1.6133400000001075,
+      "medianGraphUsAcrossProcesses": 9.094160000000215,
+      "medianScanOverGraphAcrossProcesses": 0.17376116654527435,
+      "graphWinsAllProcesses": false,
+      "parityAllProcesses": true
+    },
+    {
+      "entityCount": 10000,
+      "changedCount": 100,
+      "processCount": 3,
+      "processMedians": [
+        {
+          "scanUs": 8.141599999999016,
+          "graphUs": 0.9256680000000301,
+          "scanOverGraph": 8.812610619466263,
+          "graphWins": 41,
+          "scanWins": 0,
+          "outputParity": true
+        },
+        {
+          "scanUs": 8.083399999998164,
+          "graphUs": 0.9580000000000268,
+          "scanOverGraph": 8.569747899155889,
+          "graphWins": 41,
+          "scanWins": 0,
+          "outputParity": true
+        },
+        {
+          "scanUs": 8.199999999999363,
+          "graphUs": 0.9666659999999183,
+          "scanOverGraph": 8.547695605572414,
+          "graphWins": 41,
+          "scanWins": 0,
+          "outputParity": true
+        }
+      ],
+      "medianScanUsAcrossProcesses": 8.141599999999016,
+      "medianGraphUsAcrossProcesses": 0.9580000000000268,
+      "medianScanOverGraphAcrossProcesses": 8.569747899155889,
+      "graphWinsAllProcesses": true,
+      "parityAllProcesses": true
+    },
+    {
+      "entityCount": 10000,
+      "changedCount": 1000,
+      "processCount": 3,
+      "processMedians": [
+        {
+          "scanUs": 8.408400000007532,
+          "graphUs": 10.570840000000317,
+          "scanOverGraph": 0.8016975922378193,
+          "graphWins": 0,
+          "scanWins": 41,
+          "outputParity": true
+        },
+        {
+          "scanUs": 8.133399999996982,
+          "graphUs": 10.439159999999674,
+          "scanOverGraph": 0.7938195602970197,
+          "graphWins": 1,
+          "scanWins": 40,
+          "outputParity": true
+        },
+        {
+          "scanUs": 8.125000000006821,
+          "graphUs": 10.24499999999989,
+          "scanOverGraph": 0.798926699134159,
+          "graphWins": 3,
+          "scanWins": 38,
+          "outputParity": true
+        }
+      ],
+      "medianScanUsAcrossProcesses": 8.133399999996982,
+      "medianGraphUsAcrossProcesses": 10.439159999999674,
+      "medianScanOverGraphAcrossProcesses": 0.798926699134159,
+      "graphWinsAllProcesses": false,
+      "parityAllProcesses": true
+    },
+    {
+      "entityCount": 10000,
+      "changedCount": 10000,
+      "processCount": 3,
+      "processMedians": [
+        {
+          "scanUs": 14.916600000003655,
+          "graphUs": 88.33339999999907,
+          "scanOverGraph": 0.16887235841088902,
+          "graphWins": 0,
+          "scanWins": 41,
+          "outputParity": true
+        },
+        {
+          "scanUs": 14.71680000000788,
+          "graphUs": 87.45000000000118,
+          "scanOverGraph": 0.1697406340057567,
+          "graphWins": 0,
+          "scanWins": 41,
+          "outputParity": true
+        },
+        {
+          "scanUs": 14.791600000000926,
+          "graphUs": 88.42499999999518,
+          "scanOverGraph": 0.16857502863686297,
+          "graphWins": 0,
+          "scanWins": 41,
+          "outputParity": true
+        }
+      ],
+      "medianScanUsAcrossProcesses": 14.791600000000926,
+      "medianGraphUsAcrossProcesses": 88.33339999999907,
+      "medianScanOverGraphAcrossProcesses": 0.16887235841088902,
+      "graphWinsAllProcesses": false,
+      "parityAllProcesses": true
+    },
+    {
+      "entityCount": 50000,
+      "changedCount": 500,
+      "processCount": 3,
+      "processMedians": [
+        {
+          "scanUs": 40.45899999999847,
+          "graphUs": 5.172919999999976,
+          "scanOverGraph": 7.7631101570571746,
+          "graphWins": 41,
+          "scanWins": 0,
+          "outputParity": true
+        },
+        {
+          "scanUs": 40.33299999997553,
+          "graphUs": 5.139159999999947,
+          "scanOverGraph": 7.796282886793703,
+          "graphWins": 41,
+          "scanWins": 0,
+          "outputParity": true
+        },
+        {
+          "scanUs": 40.08300000003828,
+          "graphUs": 5.093750000000341,
+          "scanOverGraph": 7.8040638865322,
+          "graphWins": 41,
+          "scanWins": 0,
+          "outputParity": true
+        }
+      ],
+      "medianScanUsAcrossProcesses": 40.33299999997553,
+      "medianGraphUsAcrossProcesses": 5.139159999999947,
+      "medianScanOverGraphAcrossProcesses": 7.796282886793703,
+      "graphWinsAllProcesses": true,
+      "parityAllProcesses": true
+    },
+    {
+      "entityCount": 50000,
+      "changedCount": 5000,
+      "processCount": 3,
+      "processMedians": [
+        {
+          "scanUs": 40.75000000000273,
+          "graphUs": 50.962499999997135,
+          "scanOverGraph": 0.80299891681585,
+          "graphWins": 2,
+          "scanWins": 39,
+          "outputParity": true
+        },
+        {
+          "scanUs": 40.66699999998491,
+          "graphUs": 51.13749999999868,
+          "scanOverGraph": 0.798453633472239,
+          "graphWins": 0,
+          "scanWins": 41,
+          "outputParity": true
+        },
+        {
+          "scanUs": 40.62499999997726,
+          "graphUs": 51.087499999999864,
+          "scanOverGraph": 0.7973938910484437,
+          "graphWins": 0,
+          "scanWins": 41,
+          "outputParity": true
+        }
+      ],
+      "medianScanUsAcrossProcesses": 40.66699999998491,
+      "medianGraphUsAcrossProcesses": 51.087499999999864,
+      "medianScanOverGraphAcrossProcesses": 0.798453633472239,
+      "graphWinsAllProcesses": false,
+      "parityAllProcesses": true
+    },
+    {
+      "entityCount": 50000,
+      "changedCount": 50000,
+      "processCount": 3,
+      "processMedians": [
+        {
+          "scanUs": 73.5840000000394,
+          "graphUs": 447.749999999985,
+          "scanOverGraph": 0.16669804067437163,
+          "graphWins": 0,
+          "scanWins": 41,
+          "outputParity": true
+        },
+        {
+          "scanUs": 73.5419999999749,
+          "graphUs": 449.50000000000045,
+          "scanOverGraph": 0.1647986539540294,
+          "graphWins": 0,
+          "scanWins": 41,
+          "outputParity": true
+        },
+        {
+          "scanUs": 74.20799999999872,
+          "graphUs": 440.3750000000173,
+          "scanOverGraph": 0.1697916305917026,
+          "graphWins": 0,
+          "scanWins": 41,
+          "outputParity": true
+        }
+      ],
+      "medianScanUsAcrossProcesses": 73.5840000000394,
+      "medianGraphUsAcrossProcesses": 447.749999999985,
+      "medianScanOverGraphAcrossProcesses": 0.16669804067437163,
+      "graphWinsAllProcesses": false,
+      "parityAllProcesses": true
+    }
+  ]
+}

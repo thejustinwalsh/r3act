@@ -1,0 +1,182 @@
+{
+  "schema_version": 5,
+  "frontend": "OXC TSX parser + semantic resolver; binding extraction prototype",
+  "source_file": "compiler/fixtures/multi_trait_scene.tsx",
+  "host_nodes": [
+    {
+      "id": 0,
+      "tag": "span",
+      "span": {
+        "start": 238,
+        "end": 535
+      },
+      "attributes": [
+        {
+          "name": "key",
+          "span": {
+            "start": 252,
+            "end": 263
+          },
+          "source": "key={index}",
+          "dynamic": true,
+          "static_value": null
+        },
+        {
+          "name": "className",
+          "span": {
+            "start": 272,
+            "end": 294
+          },
+          "source": "className=\"scene-node\"",
+          "dynamic": false,
+          "static_value": "scene-node"
+        },
+        {
+          "name": "style",
+          "span": {
+            "start": 303,
+            "end": 526
+          },
+          "source": "style={{\n          transform: bind(node.x, (value) => `translateX(${value}px)`),\n          left: bind(node.x, (value) => `${value}px`),\n          opacity: bind(node.y, (value) => Math.max(0, Math.min(1, value))),\n        }}",
+          "dynamic": true,
+          "static_value": null
+        }
+      ],
+      "bindings": [
+        {
+          "attribute": "style",
+          "source_expression": "node.x",
+          "projection_expression": "(value) => `translateX(${value}px)`",
+          "host_property": "style.transform",
+          "projection_parameter": "value",
+          "projection_body_expression": "`translateX(${value}px)`",
+          "callee_resolves_to_import": true,
+          "source_root_resolves_to_parameter": true,
+          "span": {
+            "start": 333,
+            "end": 382
+          }
+        },
+        {
+          "attribute": "style",
+          "source_expression": "node.x",
+          "projection_expression": "(value) => `${value}px`",
+          "host_property": "style.left",
+          "projection_parameter": "value",
+          "projection_body_expression": "`${value}px`",
+          "callee_resolves_to_import": true,
+          "source_root_resolves_to_parameter": true,
+          "span": {
+            "start": 400,
+            "end": 437
+          }
+        },
+        {
+          "attribute": "style",
+          "source_expression": "node.y",
+          "projection_expression": "(value) => Math.max(0, Math.min(1, value))",
+          "host_property": "style.opacity",
+          "projection_parameter": "value",
+          "projection_body_expression": "Math.max(0, Math.min(1, value))",
+          "callee_resolves_to_import": true,
+          "source_root_resolves_to_parameter": true,
+          "span": {
+            "start": 458,
+            "end": 514
+          }
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "tag": "section",
+      "span": {
+        "start": 172,
+        "end": 555
+      },
+      "attributes": [
+        {
+          "name": "className",
+          "span": {
+            "start": 181,
+            "end": 198
+          },
+          "source": "className=\"scene\"",
+          "dynamic": false,
+          "static_value": "scene"
+        }
+      ],
+      "bindings": []
+    }
+  ],
+  "unsupported_bind_calls": [],
+  "repeated_host_plan": {
+    "collection_expression": "nodes",
+    "item_parameter": "node",
+    "index_parameter": "index",
+    "root_tag": "section",
+    "root_static_attributes": [
+      [
+        "className",
+        "scene"
+      ]
+    ],
+    "item_tag": "span",
+    "item_static_attributes": [
+      [
+        "className",
+        "scene-node"
+      ]
+    ],
+    "binding_source_parameter": "node",
+    "bindings": [
+      {
+        "property": "left",
+        "source_scope": "item",
+        "source_path": "node.x",
+        "source_slot": 0,
+        "projection_parameter": "value",
+        "projection_body_expression": "`${value}px`"
+      },
+      {
+        "property": "opacity",
+        "source_scope": "item",
+        "source_path": "node.y",
+        "source_slot": 1,
+        "projection_parameter": "value",
+        "projection_body_expression": "Math.max(0, Math.min(1, value))"
+      },
+      {
+        "property": "transform",
+        "source_scope": "item",
+        "source_path": "node.x",
+        "source_slot": 0,
+        "projection_parameter": "value",
+        "projection_body_expression": "`translateX(${value}px)`"
+      }
+    ],
+    "dependency_graph": {
+      "source_count": 2,
+      "source_paths": [
+        "node.x",
+        "node.y"
+      ],
+      "source_binding_offsets": [
+        0,
+        2,
+        3
+      ],
+      "binding_ids": [
+        0,
+        2,
+        1
+      ],
+      "shared_source_count": 0,
+      "shared_source_paths": [],
+      "shared_source_binding_offsets": [
+        0
+      ],
+      "shared_binding_ids": []
+    }
+  }
+}

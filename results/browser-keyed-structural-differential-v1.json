@@ -1,0 +1,87 @@
+{
+  "experiment": "keyed structural differential: React DOM vs retained VDOM",
+  "schemaVersion": 1,
+  "status": "PASS",
+  "collectedAt": "2026-10-10T00:17:27.535Z",
+  "source": "src/browser/keyed_structural_differential.ts",
+  "reactBaseline": {
+    "react": "19.3.0",
+    "reactDom": "19.3.0"
+  },
+  "browser": {
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+    "platform": "MacIntel",
+    "hardwareConcurrency": 10,
+    "devicePixelRatio": 2,
+    "viewport": {
+      "width": 1512,
+      "height": 806
+    }
+  },
+  "contract": "DOM output parity, keyed retention through reorder, removal detachment, and fresh identity after reinsertion",
+  "reinsertedKeyIdentity": {
+    "reactFresh": true,
+    "vdomFresh": true
+  },
+  "structuralTrace": {
+    "seed": 1592594996,
+    "steps": 128,
+    "generator": "Mulberry32, weighted insert/update/reorder/remove = 4/2/2/2, key pool 16, max rows 12",
+    "operationCounts": {
+      "insert": 45,
+      "update": 27,
+      "reorder": 18,
+      "remove": 38
+    },
+    "rowCountRange": {
+      "min": 0,
+      "max": 12
+    },
+    "allParity": true,
+    "allIdentity": true
+  },
+  "phases": [
+    {
+      "phase": "initial mount",
+      "domParity": true,
+      "reactHTML": "<li data-key=\"a\" data-revision=\"1\">Alpha</li><li data-key=\"b\" data-revision=\"1\">Beta</li><li data-key=\"c\" data-revision=\"1\">Gamma</li>",
+      "vdomHTML": "<li data-key=\"a\" data-revision=\"1\">Alpha</li><li data-key=\"b\" data-revision=\"1\">Beta</li><li data-key=\"c\" data-revision=\"1\">Gamma</li>",
+      "identityParity": {}
+    },
+    {
+      "phase": "prop update + keyed reorder",
+      "domParity": true,
+      "reactHTML": "<li data-key=\"c\" data-revision=\"1\">Gamma</li><li data-key=\"a\" data-revision=\"2\">Alpha updated</li><li data-key=\"b\" data-revision=\"1\">Beta</li>",
+      "vdomHTML": "<li data-key=\"c\" data-revision=\"1\">Gamma</li><li data-key=\"a\" data-revision=\"2\">Alpha updated</li><li data-key=\"b\" data-revision=\"1\">Beta</li>",
+      "identityParity": {
+        "a": true,
+        "b": true,
+        "c": true
+      }
+    },
+    {
+      "phase": "remove key",
+      "domParity": true,
+      "reactHTML": "<li data-key=\"c\" data-revision=\"1\">Gamma</li><li data-key=\"a\" data-revision=\"2\">Alpha updated</li>",
+      "vdomHTML": "<li data-key=\"c\" data-revision=\"1\">Gamma</li><li data-key=\"a\" data-revision=\"2\">Alpha updated</li>",
+      "identityParity": {
+        "a": true,
+        "c": true
+      },
+      "removedKeyDetached": {
+        "react": true,
+        "vdom": true
+      }
+    },
+    {
+      "phase": "reinsert removed key",
+      "domParity": true,
+      "reactHTML": "<li data-key=\"b\" data-revision=\"2\">Beta reinserted</li><li data-key=\"a\" data-revision=\"2\">Alpha updated</li><li data-key=\"c\" data-revision=\"1\">Gamma</li>",
+      "vdomHTML": "<li data-key=\"b\" data-revision=\"2\">Beta reinserted</li><li data-key=\"a\" data-revision=\"2\">Alpha updated</li><li data-key=\"c\" data-revision=\"1\">Gamma</li>",
+      "identityParity": {
+        "a": true,
+        "c": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,2144 @@
+{
+  "schemaVersion": 1,
+  "study": "compiled-product-mixed-world-dirty-journal-cpu-independent-verification",
+  "checkedAt": "2026-10-13T05:31:15.100Z",
+  "repairProvenance": {
+    "originalVerifierPath": "scripts/verify_product_mixed_world_journal_cpu.mjs",
+    "originalVerifierSha256": "63a0dc2e4270ba7575f04b3d79476c5bbe14795fc2aa494777f8867d00716bfc",
+    "currentVerifierPath": "scripts/verify_product_mixed_world_journal_cpu_v2.mjs",
+    "currentVerifierSha256": "a6990c9e3fbc2931b4574425be392acfd14aae3546b43c194a8d90440c045258",
+    "firstVerificationPath": "results/product-mixed-world-journal-cpu/verification.json",
+    "firstVerificationSha256": "053e25fef059224eda8adcdcf438242d92a16abfd112dbab1828d9de00b1b6bf",
+    "firstFailureLogPath": ".cache/world-journal-diagnostics/cpu-verification.log",
+    "firstFailureLogSha256": "87982550e1b79d16d9de801ddd35af7cd20e4defe8574c4c7f4168cd60d34c74",
+    "reason": "Original verifier copied two-edit pilot expectations into the eight-edit confirm workload and required diagnostics fields absent from the public harness schema. No raw data or frozen inputs changed."
+  },
+  "inputResults": "results/product-mixed-world-journal-cpu/results.json",
+  "runId": "7107cc77-8d90-4126-ba41-7d38c494ae43",
+  "status": "PASS",
+  "summary": {
+    "checkCount": 39,
+    "passed": 39,
+    "failed": 0,
+    "weightedProfileSelfTime": {
+      "react": {
+        "nodeCount": 243,
+        "sampleCount": 1779,
+        "timeDeltaCount": 1779,
+        "totalSelfTimeMicros": 2586092,
+        "totalSelfTimeMs": 2586.092,
+        "categoryTime": {
+          "program": {
+            "selfTimeMicros": 959627,
+            "sampleCount": 640,
+            "selfTimeMs": 959.627,
+            "selfTimePercent": 37.10722588368859
+          },
+          "idle": {
+            "selfTimeMicros": 792087,
+            "sampleCount": 524,
+            "selfTimeMs": 792.087,
+            "selfTimePercent": 30.6287247321441
+          },
+          "harness bundle": {
+            "selfTimeMicros": 459419,
+            "sampleCount": 307,
+            "selfTimeMs": 459.419,
+            "selfTimePercent": 17.76499057264784
+          },
+          "react arm bundle": {
+            "selfTimeMicros": 317321,
+            "sampleCount": 271,
+            "selfTimeMs": 317.321,
+            "selfTimePercent": 12.270290461437567
+          },
+          "gc": {
+            "selfTimeMicros": 56124,
+            "sampleCount": 36,
+            "selfTimeMs": 56.124,
+            "selfTimePercent": 2.170224415836714
+          },
+          "other runtime": {
+            "selfTimeMicros": 1514,
+            "sampleCount": 1,
+            "selfTimeMs": 1.514,
+            "selfTimePercent": 0.0585439342451854
+          }
+        }
+      },
+      "native": {
+        "nodeCount": 187,
+        "sampleCount": 1798,
+        "timeDeltaCount": 1798,
+        "totalSelfTimeMicros": 2599266,
+        "totalSelfTimeMs": 2599.266,
+        "categoryTime": {
+          "program": {
+            "selfTimeMicros": 952608,
+            "sampleCount": 637,
+            "selfTimeMs": 952.608,
+            "selfTimePercent": 36.64911555800753
+          },
+          "idle": {
+            "selfTimeMicros": 448088,
+            "sampleCount": 295,
+            "selfTimeMs": 448.088,
+            "selfTimePercent": 17.239020554264165
+          },
+          "harness bundle": {
+            "selfTimeMicros": 451613,
+            "sampleCount": 304,
+            "selfTimeMs": 451.613,
+            "selfTimePercent": 17.374635762557585
+          },
+          "native arm bundle": {
+            "selfTimeMicros": 710378,
+            "sampleCount": 541,
+            "selfTimeMs": 710.378,
+            "selfTimePercent": 27.329946223279958
+          },
+          "gc": {
+            "selfTimeMicros": 34480,
+            "sampleCount": 19,
+            "selfTimeMs": 34.48,
+            "selfTimePercent": 1.3265283353069675
+          },
+          "other runtime": {
+            "selfTimeMicros": 2099,
+            "sampleCount": 2,
+            "selfTimeMs": 2.099,
+            "selfTimePercent": 0.08075356658379712
+          }
+        }
+      }
+    },
+    "rankedIndependentlyComputedSelfCostFrames": {
+      "react": [
+        {
+          "functionName": "(program)",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1,
+          "sampleCount": 640,
+          "selfTimeMicros": 959627,
+          "category": "program",
+          "selfTimeMs": 959.627,
+          "selfTimePercent": 37.10722588368859
+        },
+        {
+          "functionName": "(idle)",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1,
+          "sampleCount": 524,
+          "selfTimeMicros": 792087,
+          "category": "idle",
+          "selfTimeMs": 792.087,
+          "selfTimePercent": 30.6287247321441
+        },
+        {
+          "functionName": "O",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product-mixed-v2-D04jqCdq.js",
+          "lineNumber": 0,
+          "columnNumber": 2942,
+          "sampleCount": 280,
+          "selfTimeMicros": 418519,
+          "category": "harness bundle",
+          "selfTimeMs": 418.519,
+          "selfTimePercent": 16.183453643567205
+        },
+        {
+          "functionName": "wn",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 10407,
+          "sampleCount": 79,
+          "selfTimeMicros": 114325,
+          "category": "react arm bundle",
+          "selfTimeMs": 114.325,
+          "selfTimePercent": 4.420763066433832
+        },
+        {
+          "functionName": "(garbage collector)",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1,
+          "sampleCount": 33,
+          "selfTimeMicros": 51571,
+          "category": "gc",
+          "selfTimeMs": 51.571,
+          "selfTimePercent": 1.994167260870843
+        },
+        {
+          "functionName": "Tn",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 10659,
+          "sampleCount": 21,
+          "selfTimeMicros": 30316,
+          "category": "react arm bundle",
+          "selfTimeMs": 30.316,
+          "selfTimePercent": 1.1722707467483755
+        },
+        {
+          "functionName": "D",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product-mixed-v2-D04jqCdq.js",
+          "lineNumber": 0,
+          "columnNumber": 2893,
+          "sampleCount": 13,
+          "selfTimeMicros": 19389,
+          "category": "harness bundle",
+          "selfTimeMs": 19.389,
+          "selfTimePercent": 0.7497413085071993
+        },
+        {
+          "functionName": "j",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product-mixed-v2-D04jqCdq.js",
+          "lineNumber": 0,
+          "columnNumber": 3585,
+          "sampleCount": 12,
+          "selfTimeMicros": 17302,
+          "category": "harness bundle",
+          "selfTimeMs": 17.302,
+          "selfTimePercent": 0.6690403899010553
+        },
+        {
+          "functionName": "y",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 8,
+          "columnNumber": 50995,
+          "sampleCount": 14,
+          "selfTimeMicros": 15629,
+          "category": "react arm bundle",
+          "selfTimeMs": 15.629,
+          "selfTimePercent": 0.6043481825085882
+        },
+        {
+          "functionName": "I",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 50249,
+          "sampleCount": 7,
+          "selfTimeMicros": 10560,
+          "category": "react arm bundle",
+          "selfTimeMs": 10.56,
+          "selfTimePercent": 0.40833814110248207
+        },
+        {
+          "functionName": "ip",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 8,
+          "columnNumber": 7943,
+          "sampleCount": 8,
+          "selfTimeMicros": 10174,
+          "category": "react arm bundle",
+          "selfTimeMs": 10.174,
+          "selfTimePercent": 0.39341214465687996
+        },
+        {
+          "functionName": "Ii",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 27409,
+          "sampleCount": 8,
+          "selfTimeMicros": 9396,
+          "category": "react arm bundle",
+          "selfTimeMs": 9.396,
+          "selfTimePercent": 0.36332814145823117
+        },
+        {
+          "functionName": "_l",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 82117,
+          "sampleCount": 9,
+          "selfTimeMicros": 9000,
+          "category": "react arm bundle",
+          "selfTimeMs": 9,
+          "selfTimePercent": 0.3480154611668881
+        },
+        {
+          "functionName": "$",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 8,
+          "columnNumber": 70,
+          "sampleCount": 5,
+          "selfTimeMicros": 7501,
+          "category": "react arm bundle",
+          "selfTimeMs": 7.501,
+          "selfTimePercent": 0.2900515526903142
+        },
+        {
+          "functionName": "os",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 49066,
+          "sampleCount": 6,
+          "selfTimeMicros": 7106,
+          "category": "react arm bundle",
+          "selfTimeMs": 7.106,
+          "selfTimePercent": 0.2747775407835452
+        },
+        {
+          "functionName": "_",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 43389,
+          "sampleCount": 5,
+          "selfTimeMicros": 6027,
+          "category": "react arm bundle",
+          "selfTimeMs": 6.027,
+          "selfTimePercent": 0.23305435382809273
+        },
+        {
+          "functionName": "Mu",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 109124,
+          "sampleCount": 5,
+          "selfTimeMicros": 5138,
+          "category": "react arm bundle",
+          "selfTimeMs": 5.138,
+          "selfTimePercent": 0.198678159941719
+        },
+        {
+          "functionName": "Vi",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 28255,
+          "sampleCount": 4,
+          "selfTimeMicros": 4711,
+          "category": "react arm bundle",
+          "selfTimeMs": 4.711,
+          "selfTimePercent": 0.18216675972857888
+        },
+        {
+          "functionName": "gc",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 59946,
+          "sampleCount": 3,
+          "selfTimeMicros": 4553,
+          "category": "gc",
+          "selfTimeMs": 4.553,
+          "selfTimePercent": 0.1760571549658713
+        },
+        {
+          "functionName": "ml",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 80717,
+          "sampleCount": 3,
+          "selfTimeMicros": 4523,
+          "category": "react arm bundle",
+          "selfTimeMs": 4.523,
+          "selfTimePercent": 0.17489710342864834
+        },
+        {
+          "functionName": "Bi",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 27877,
+          "sampleCount": 4,
+          "selfTimeMicros": 4262,
+          "category": "react arm bundle",
+          "selfTimeMs": 4.262,
+          "selfTimePercent": 0.16480465505480857
+        },
+        {
+          "functionName": "Li",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 27664,
+          "sampleCount": 4,
+          "selfTimeMicros": 4150,
+          "category": "react arm bundle",
+          "selfTimeMs": 4.15,
+          "selfTimePercent": 0.16047379598250952
+        },
+        {
+          "functionName": "Ki",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 28886,
+          "sampleCount": 3,
+          "selfTimeMicros": 4027,
+          "category": "react arm bundle",
+          "selfTimeMs": 4.027,
+          "selfTimePercent": 0.15571758467989538
+        },
+        {
+          "functionName": "vu",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 104317,
+          "sampleCount": 3,
+          "selfTimeMicros": 3375,
+          "category": "react arm bundle",
+          "selfTimeMs": 3.375,
+          "selfTimePercent": 0.13050579793758305
+        },
+        {
+          "functionName": "np",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 8,
+          "columnNumber": 5555,
+          "sampleCount": 2,
+          "selfTimeMicros": 3037,
+          "category": "react arm bundle",
+          "selfTimeMs": 3.037,
+          "selfTimePercent": 0.11743588395153769
+        },
+        {
+          "functionName": "pp",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 8,
+          "columnNumber": 12038,
+          "sampleCount": 3,
+          "selfTimeMicros": 3034,
+          "category": "react arm bundle",
+          "selfTimeMs": 3.034,
+          "selfTimePercent": 0.11731987879781539
+        },
+        {
+          "functionName": "e.flushSync",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 0,
+          "columnNumber": 9414,
+          "sampleCount": 2,
+          "selfTimeMicros": 3032,
+          "category": "react arm bundle",
+          "selfTimeMs": 3.032,
+          "selfTimePercent": 0.1172425420286672
+        },
+        {
+          "functionName": "ys",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 51494,
+          "sampleCount": 2,
+          "selfTimeMicros": 3027,
+          "category": "react arm bundle",
+          "selfTimeMs": 3.027,
+          "selfTimePercent": 0.1170492001057967
+        },
+        {
+          "functionName": "Ef",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 134013,
+          "sampleCount": 3,
+          "selfTimeMicros": 3024,
+          "category": "react arm bundle",
+          "selfTimeMs": 3.024,
+          "selfTimePercent": 0.11693319495207441
+        },
+        {
+          "functionName": "Hs",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 56525,
+          "sampleCount": 2,
+          "selfTimeMicros": 3022,
+          "category": "react arm bundle",
+          "selfTimeMs": 3.022,
+          "selfTimePercent": 0.11685585818292621
+        },
+        {
+          "functionName": "Lu",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 115561,
+          "sampleCount": 3,
+          "selfTimeMicros": 3019,
+          "category": "react arm bundle",
+          "selfTimeMs": 3.019,
+          "selfTimePercent": 0.11673985302920391
+        },
+        {
+          "functionName": "ms",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 50623,
+          "sampleCount": 2,
+          "selfTimeMicros": 3018,
+          "category": "react arm bundle",
+          "selfTimeMs": 3.018,
+          "selfTimePercent": 0.11670118464462981
+        },
+        {
+          "functionName": "bs",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 51528,
+          "sampleCount": 2,
+          "selfTimeMicros": 3008,
+          "category": "react arm bundle",
+          "selfTimeMs": 3.008,
+          "selfTimePercent": 0.11631450079888883
+        },
+        {
+          "functionName": "(anonymous)",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product-mixed-v2-D04jqCdq.js",
+          "lineNumber": 0,
+          "columnNumber": 0,
+          "sampleCount": 1,
+          "selfTimeMicros": 2862,
+          "category": "harness bundle",
+          "selfTimeMs": 2.862,
+          "selfTimePercent": 0.11066891665107041
+        },
+        {
+          "functionName": "(anonymous)",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 8,
+          "columnNumber": 52654,
+          "sampleCount": 2,
+          "selfTimeMicros": 2714,
+          "category": "react arm bundle",
+          "selfTimeMs": 2.714,
+          "selfTimePercent": 0.10494599573410382
+        },
+        {
+          "functionName": "Nu",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 113393,
+          "sampleCount": 2,
+          "selfTimeMicros": 2494,
+          "category": "react arm bundle",
+          "selfTimeMs": 2.494,
+          "selfTimePercent": 0.09643895112780211
+        },
+        {
+          "functionName": "n",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 8,
+          "columnNumber": 50709,
+          "sampleCount": 2,
+          "selfTimeMicros": 2178,
+          "category": "react arm bundle",
+          "selfTimeMs": 2.178,
+          "selfTimePercent": 0.08421974160238692
+        },
+        {
+          "functionName": "_s",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 51047,
+          "sampleCount": 5,
+          "selfTimeMicros": 2139,
+          "category": "react arm bundle",
+          "selfTimeMs": 2.139,
+          "selfTimePercent": 0.08271167460399707
+        },
+        {
+          "functionName": "Cl",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 87269,
+          "sampleCount": 3,
+          "selfTimeMicros": 1700,
+          "category": "react arm bundle",
+          "selfTimeMs": 1.7,
+          "selfTimePercent": 0.06573625377596776
+        },
+        {
+          "functionName": "El",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 94778,
+          "sampleCount": 5,
+          "selfTimeMicros": 1644,
+          "category": "react arm bundle",
+          "selfTimeMs": 1.644,
+          "selfTimePercent": 0.06357082423981823
+        },
+        {
+          "functionName": "(anonymous)",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 51223,
+          "sampleCount": 1,
+          "selfTimeMicros": 1545,
+          "category": "react arm bundle",
+          "selfTimeMs": 1.545,
+          "selfTimePercent": 0.05974265416698246
+        },
+        {
+          "functionName": "(anonymous)",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 0,
+          "columnNumber": 127,
+          "sampleCount": 1,
+          "selfTimeMicros": 1533,
+          "category": "react arm bundle",
+          "selfTimeMs": 1.533,
+          "selfTimePercent": 0.05927863355209327
+        },
+        {
+          "functionName": "Rl",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 96870,
+          "sampleCount": 2,
+          "selfTimeMicros": 1523,
+          "category": "react arm bundle",
+          "selfTimeMs": 1.523,
+          "selfTimePercent": 0.05889194970635229
+        },
+        {
+          "functionName": "dp",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 8,
+          "columnNumber": 11822,
+          "sampleCount": 1,
+          "selfTimeMicros": 1519,
+          "category": "react arm bundle",
+          "selfTimeMs": 1.519,
+          "selfTimePercent": 0.058737276168055894
+        },
+        {
+          "functionName": "UtilityScript",
+          "url": "",
+          "lineNumber": 6742,
+          "columnNumber": 13,
+          "sampleCount": 1,
+          "selfTimeMicros": 1514,
+          "category": "other runtime",
+          "selfTimeMs": 1.514,
+          "selfTimePercent": 0.0585439342451854
+        },
+        {
+          "functionName": "t",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 0,
+          "columnNumber": 11959,
+          "sampleCount": 1,
+          "selfTimeMicros": 1513,
+          "category": "react arm bundle",
+          "selfTimeMs": 1.513,
+          "selfTimePercent": 0.0585052658606113
+        },
+        {
+          "functionName": "s",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 39809,
+          "sampleCount": 2,
+          "selfTimeMicros": 1512,
+          "category": "react arm bundle",
+          "selfTimeMs": 1.512,
+          "selfTimePercent": 0.058466597476037205
+        },
+        {
+          "functionName": "m",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 41549,
+          "sampleCount": 1,
+          "selfTimeMicros": 1508,
+          "category": "react arm bundle",
+          "selfTimeMs": 1.508,
+          "selfTimePercent": 0.05831192393774081
+        },
+        {
+          "functionName": "Jd",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 126904,
+          "sampleCount": 2,
+          "selfTimeMicros": 1506,
+          "category": "react arm bundle",
+          "selfTimeMs": 1.506,
+          "selfTimePercent": 0.05823458716859261
+        },
+        {
+          "functionName": "Xc",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product_mixed_react_arm-CvytENDt.js",
+          "lineNumber": 7,
+          "columnNumber": 71807,
+          "sampleCount": 1,
+          "selfTimeMicros": 1505,
+          "category": "react arm bundle",
+          "selfTimeMs": 1.505,
+          "selfTimePercent": 0.05819591878401851
+        }
+      ],
+      "native": [
+        {
+          "functionName": "(program)",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1,
+          "sampleCount": 637,
+          "selfTimeMicros": 952608,
+          "category": "program",
+          "selfTimeMs": 952.608,
+          "selfTimePercent": 36.64911555800753
+        },
+        {
+          "functionName": "(idle)",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1,
+          "sampleCount": 295,
+          "selfTimeMicros": 448088,
+          "category": "idle",
+          "selfTimeMs": 448.088,
+          "selfTimePercent": 17.239020554264165
+        },
+        {
+          "functionName": "O",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product-mixed-v2-D04jqCdq.js",
+          "lineNumber": 0,
+          "columnNumber": 2942,
+          "sampleCount": 267,
+          "selfTimeMicros": 396135,
+          "category": "harness bundle",
+          "selfTimeMs": 396.135,
+          "selfTimePercent": 15.240263982216518
+        },
+        {
+          "functionName": "ke",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 78565,
+          "sampleCount": 95,
+          "selfTimeMicros": 140089,
+          "category": "native arm bundle",
+          "selfTimeMs": 140.089,
+          "selfTimePercent": 5.389559975777777
+        },
+        {
+          "functionName": "(anonymous)",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 60999,
+          "sampleCount": 87,
+          "selfTimeMicros": 81770,
+          "category": "native arm bundle",
+          "selfTimeMs": 81.77,
+          "selfTimePercent": 3.145888108412144
+        },
+        {
+          "functionName": "#We",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 136279,
+          "sampleCount": 50,
+          "selfTimeMicros": 69840,
+          "category": "native arm bundle",
+          "selfTimeMs": 69.84,
+          "selfTimePercent": 2.6869123821878946
+        },
+        {
+          "functionName": "setStyleProp",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 80340,
+          "sampleCount": 33,
+          "selfTimeMicros": 45193,
+          "category": "native arm bundle",
+          "selfTimeMs": 45.193,
+          "selfTimePercent": 1.7386831513204113
+        },
+        {
+          "functionName": "a.dispatch",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 28045,
+          "sampleCount": 26,
+          "selfTimeMicros": 39370,
+          "category": "native arm bundle",
+          "selfTimeMs": 39.37,
+          "selfTimePercent": 1.514658368939539
+        },
+        {
+          "functionName": "(garbage collector)",
+          "url": "",
+          "lineNumber": -1,
+          "columnNumber": -1,
+          "sampleCount": 19,
+          "selfTimeMicros": 34480,
+          "category": "gc",
+          "selfTimeMs": 34.48,
+          "selfTimePercent": 1.3265283353069675
+        },
+        {
+          "functionName": "scalarSourceForCell",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 30912,
+          "sampleCount": 22,
+          "selfTimeMicros": 33983,
+          "category": "native arm bundle",
+          "selfTimeMs": 33.983,
+          "selfTimePercent": 1.3074075527475832
+        },
+        {
+          "functionName": "j",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product-mixed-v2-D04jqCdq.js",
+          "lineNumber": 0,
+          "columnNumber": 3585,
+          "sampleCount": 22,
+          "selfTimeMicros": 32862,
+          "category": "harness bundle",
+          "selfTimeMs": 32.862,
+          "selfTimePercent": 1.2642799928903006
+        },
+        {
+          "functionName": "re",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 38091,
+          "sampleCount": 17,
+          "selfTimeMicros": 23646,
+          "category": "native arm bundle",
+          "selfTimeMs": 23.646,
+          "selfTimePercent": 0.9097183589521042
+        },
+        {
+          "functionName": "flush",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 99790,
+          "sampleCount": 15,
+          "selfTimeMicros": 22472,
+          "category": "native arm bundle",
+          "selfTimeMs": 22.472,
+          "selfTimePercent": 0.8645517619204807
+        },
+        {
+          "functionName": "versionForCell",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 31360,
+          "sampleCount": 15,
+          "selfTimeMicros": 21517,
+          "category": "native arm bundle",
+          "selfTimeMs": 21.517,
+          "selfTimePercent": 0.8278106203828312
+        },
+        {
+          "functionName": "D",
+          "url": "https://compiled-world-journal.localhost:1355/assets/product-mixed-v2-D04jqCdq.js",
+          "lineNumber": 0,
+          "columnNumber": 2893,
+          "sampleCount": 14,
+          "selfTimeMicros": 21114,
+          "category": "harness bundle",
+          "selfTimeMs": 21.114,
+          "selfTimePercent": 0.8123062433779382
+        },
+        {
+          "functionName": "mark",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 19650,
+          "sampleCount": 14,
+          "selfTimeMicros": 20831,
+          "category": "native arm bundle",
+          "selfTimeMs": 20.831,
+          "selfTimePercent": 0.8014185543149489
+        },
+        {
+          "functionName": "setCell",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 15722,
+          "sampleCount": 13,
+          "selfTimeMicros": 19682,
+          "category": "native arm bundle",
+          "selfTimeMs": 19.682,
+          "selfTimePercent": 0.7572137672712219
+        },
+        {
+          "functionName": "#q",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 67964,
+          "sampleCount": 13,
+          "selfTimeMicros": 18922,
+          "category": "native arm bundle",
+          "selfTimeMs": 18.922,
+          "selfTimePercent": 0.7279747436391658
+        },
+        {
+          "functionName": "delete",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 19943,
+          "sampleCount": 11,
+          "selfTimeMicros": 15766,
+          "category": "native arm bundle",
+          "selfTimeMs": 15.766,
+          "selfTimePercent": 0.6065558507671012
+        },
+        {
+          "functionName": "clearNativeThrough",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 17029,
+          "sampleCount": 9,
+          "selfTimeMicros": 12667,
+          "category": "native arm bundle",
+          "selfTimeMs": 12.667,
+          "selfTimePercent": 0.4873298846674407
+        },
+        {
+          "functionName": "isWithin",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 32508,
+          "sampleCount": 7,
+          "selfTimeMicros": 10681,
+          "category": "native arm bundle",
+          "selfTimeMs": 10.681,
+          "selfTimePercent": 0.4109236992289362
+        },
+        {
+          "functionName": "clearCellChangesThrough",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 31593,
+          "sampleCount": 6,
+          "selfTimeMicros": 9101,
+          "category": "native arm bundle",
+          "selfTimeMs": 9.101,
+          "selfTimePercent": 0.3501373079938721
+        },
+        {
+          "functionName": "#U",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 63306,
+          "sampleCount": 3,
+          "selfTimeMicros": 6489,
+          "category": "native arm bundle",
+          "selfTimeMs": 6.489,
+          "selfTimePercent": 0.2496474004584371
+        },
+        {
+          "functionName": "#be",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 114334,
+          "sampleCount": 5,
+          "selfTimeMicros": 6092,
+          "category": "native arm bundle",
+          "selfTimeMs": 6.092,
+          "selfTimePercent": 0.23437385785063938
+        },
+        {
+          "functionName": "read",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 83689,
+          "sampleCount": 4,
+          "selfTimeMicros": 5821,
+          "category": "native arm bundle",
+          "selfTimeMs": 5.821,
+          "selfTimePercent": 0.22394783758184042
+        },
+        {
+          "functionName": "#h",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 33683,
+          "sampleCount": 5,
+          "selfTimeMicros": 5278,
+          "category": "native arm bundle",
+          "selfTimeMs": 5.278,
+          "selfTimePercent": 0.20305732464472662
+        },
+        {
+          "functionName": "s.dispatch",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 24260,
+          "sampleCount": 4,
+          "selfTimeMicros": 4588,
+          "category": "native arm bundle",
+          "selfTimeMs": 4.588,
+          "selfTimePercent": 0.17651136897878092
+        },
+        {
+          "functionName": "captureNative",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 16283,
+          "sampleCount": 4,
+          "selfTimeMicros": 4531,
+          "category": "native arm bundle",
+          "selfTimeMs": 4.531,
+          "selfTimePercent": 0.1743184422063767
+        },
+        {
+          "functionName": "#Ce",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 115803,
+          "sampleCount": 3,
+          "selfTimeMicros": 3694,
+          "category": "native arm bundle",
+          "selfTimeMs": 3.694,
+          "selfTimePercent": 0.14211704381159912
+        },
+        {
+          "functionName": "versionForChange",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 31178,
+          "sampleCount": 2,
+          "selfTimeMicros": 3153,
+          "category": "native arm bundle",
+          "selfTimeMs": 3.153,
+          "selfTimePercent": 0.12130347567351706
+        },
+        {
+          "functionName": "#f",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 33473,
+          "sampleCount": 2,
+          "selfTimeMicros": 3114,
+          "category": "native arm bundle",
+          "selfTimeMs": 3.114,
+          "selfTimePercent": 0.11980305209239839
+        },
+        {
+          "functionName": "L",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 19343,
+          "sampleCount": 2,
+          "selfTimeMicros": 3033,
+          "category": "native arm bundle",
+          "selfTimeMs": 3.033,
+          "selfTimePercent": 0.11668678773161346
+        },
+        {
+          "functionName": "#a",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 17715,
+          "sampleCount": 2,
+          "selfTimeMicros": 3029,
+          "category": "native arm bundle",
+          "selfTimeMs": 3.029,
+          "selfTimePercent": 0.11653289813355001
+        },
+        {
+          "functionName": "(anonymous)",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 122501,
+          "sampleCount": 2,
+          "selfTimeMicros": 3022,
+          "category": "native arm bundle",
+          "selfTimeMs": 3.022,
+          "selfTimePercent": 0.11626359133693896
+        },
+        {
+          "functionName": "(anonymous)",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 152001,
+          "sampleCount": 2,
+          "selfTimeMicros": 3021,
+          "category": "native arm bundle",
+          "selfTimeMs": 3.021,
+          "selfTimePercent": 0.1162251189374231
+        },
+        {
+          "functionName": "#L.setStyleProp",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 45068,
+          "sampleCount": 2,
+          "selfTimeMicros": 3014,
+          "category": "native arm bundle",
+          "selfTimeMs": 3.014,
+          "selfTimePercent": 0.11595581214081206
+        },
+        {
+          "functionName": "(anonymous)",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 151789,
+          "sampleCount": 2,
+          "selfTimeMicros": 2986,
+          "category": "native arm bundle",
+          "selfTimeMs": 2.986,
+          "selfTimePercent": 0.11487858495436788
+        },
+        {
+          "functionName": "publish",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 27621,
+          "sampleCount": 2,
+          "selfTimeMicros": 2901,
+          "category": "native arm bundle",
+          "selfTimeMs": 2.901,
+          "selfTimePercent": 0.11160843099551951
+        },
+        {
+          "functionName": "#a",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 20630,
+          "sampleCount": 2,
+          "selfTimeMicros": 2532,
+          "category": "native arm bundle",
+          "selfTimeMs": 2.532,
+          "selfTimePercent": 0.09741211557416594
+        },
+        {
+          "functionName": "#Ge",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 137715,
+          "sampleCount": 2,
+          "selfTimeMicros": 2431,
+          "category": "native arm bundle",
+          "selfTimeMs": 2.431,
+          "selfTimePercent": 0.09352640322306374
+        },
+        {
+          "functionName": "n",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 72212,
+          "sampleCount": 2,
+          "selfTimeMicros": 2415,
+          "category": "native arm bundle",
+          "selfTimeMs": 2.415,
+          "selfTimePercent": 0.09291084483080993
+        },
+        {
+          "functionName": "#je",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 133088,
+          "sampleCount": 2,
+          "selfTimeMicros": 1858,
+          "category": "native arm bundle",
+          "selfTimeMs": 1.858,
+          "selfTimePercent": 0.07148171830047406
+        },
+        {
+          "functionName": "#ae",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 95232,
+          "sampleCount": 1,
+          "selfTimeMicros": 1678,
+          "category": "native arm bundle",
+          "selfTimeMs": 1.678,
+          "selfTimePercent": 0.06455668638761866
+        },
+        {
+          "functionName": "prepareKeyedRegionDeltas",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 52195,
+          "sampleCount": 2,
+          "selfTimeMicros": 1632,
+          "category": "native arm bundle",
+          "selfTimeMs": 1.632,
+          "selfTimePercent": 0.06278695600988894
+        },
+        {
+          "functionName": "Je",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 83258,
+          "sampleCount": 2,
+          "selfTimeMicros": 1576,
+          "category": "native arm bundle",
+          "selfTimeMs": 1.576,
+          "selfTimePercent": 0.060632501637000596
+        },
+        {
+          "functionName": "ue",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 39153,
+          "sampleCount": 2,
+          "selfTimeMicros": 1539,
+          "category": "native arm bundle",
+          "selfTimeMs": 1.539,
+          "selfTimePercent": 0.059209022854913654
+        },
+        {
+          "functionName": "r.forward",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 28220,
+          "sampleCount": 2,
+          "selfTimeMicros": 1529,
+          "category": "native arm bundle",
+          "selfTimeMs": 1.529,
+          "selfTimePercent": 0.05882429885975502
+        },
+        {
+          "functionName": "xe",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 42005,
+          "sampleCount": 1,
+          "selfTimeMicros": 1528,
+          "category": "native arm bundle",
+          "selfTimeMs": 1.528,
+          "selfTimePercent": 0.05878582646023916
+        },
+        {
+          "functionName": "#ae",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 71961,
+          "sampleCount": 1,
+          "selfTimeMicros": 1526,
+          "category": "native arm bundle",
+          "selfTimeMs": 1.526,
+          "selfTimePercent": 0.058708881661207434
+        },
+        {
+          "functionName": "(anonymous)",
+          "url": "https://compiled-world-journal.localhost:1355/assets/native_product_mixed_arm-Cm7RMFqO.js",
+          "lineNumber": 0,
+          "columnNumber": 138130,
+          "sampleCount": 1,
+          "selfTimeMicros": 1525,
+          "category": "native arm bundle",
+          "selfTimeMs": 1.525,
+          "selfTimePercent": 0.05867040926169157
+        }
+      ]
+    }
+  },
+  "checks": [
+    {
+      "id": "frozen-reference-paths",
+      "status": "PASS",
+      "detail": "Frozen preregistration references must point to the exact protocol, candidate, collector, verifier, schedule, and pilot inputs.",
+      "data": {
+        "checkpoint": "implementation/2026-10-13-world-dirty-journal/status.json",
+        "manifest": "implementation/2026-10-13-world-dirty-journal/verification/product-mixed-pilot/results.json",
+        "archive": "implementation/2026-10-13-world-dirty-journal/source-and-build.tar.gz",
+        "protocol": "product-mixed-world-journal-cpu-protocol.md",
+        "schedule": "src/browser/product_mixed_schedule.ts",
+        "collector": "scripts/profile_product_mixed_world_journal_cpu.mjs",
+        "verifier": "scripts/verify_product_mixed_world_journal_cpu.mjs"
+      }
+    },
+    {
+      "id": "checkpoint-qualification",
+      "status": "PASS",
+      "detail": "Frozen candidate qualification must match the protocol; it is eligibility evidence, not speed evidence.",
+      "data": {
+        "status": "WORLD_DIRTY_JOURNAL_CORRECTNESS_VERIFIED",
+        "runtimeTests": 582,
+        "rustTests": 29,
+        "integrationCommands": 9,
+        "pilotPages": 6,
+        "speedGate": "UNMEASURED_FOR_THIS_CANDIDATE"
+      }
+    },
+    {
+      "id": "archive-lock",
+      "status": "PASS",
+      "detail": "Candidate source/build archive must match the frozen SHA-256.",
+      "data": {
+        "expected": "262914378f2cebb79d77805e7dda341d6b9c58b00de9c9a7eba801d621202468",
+        "actual": "262914378f2cebb79d77805e7dda341d6b9c58b00de9c9a7eba801d621202468",
+        "checkpoint": "262914378f2cebb79d77805e7dda341d6b9c58b00de9c9a7eba801d621202468"
+      }
+    },
+    {
+      "id": "archive-inventory",
+      "status": "PASS",
+      "detail": "Archive inventory must contain exactly the 815 locked source/build files.",
+      "data": {
+        "archiveEntryCount": 815,
+        "lockCount": 815
+      }
+    },
+    {
+      "id": "archive-member-content-hashes",
+      "status": "PASS",
+      "detail": "Every archived source/build member must reproduce its registered content hash, not only its filename.",
+      "data": {
+        "memberCount": 815,
+        "error": null,
+        "mismatches": []
+      }
+    },
+    {
+      "id": "source-build-lock-inventory",
+      "status": "PASS",
+      "detail": "Preregistration source/build inventory must exactly match all 815 frozen checkpoint entries.",
+      "data": {
+        "preregistrationCount": 815,
+        "checkpointCount": 815
+      }
+    },
+    {
+      "id": "source-build-locks-current",
+      "status": "PASS",
+      "detail": "Every frozen source/build file must still match its preregistered SHA-256.",
+      "data": []
+    },
+    {
+      "id": "verification-evidence-lock-inventory",
+      "status": "PASS",
+      "detail": "Preregistration verification evidence must exactly match all frozen checkpoint verification hashes.",
+      "data": {
+        "preregistrationCount": 23,
+        "checkpointCount": 23
+      }
+    },
+    {
+      "id": "verification-evidence-current",
+      "status": "PASS",
+      "detail": "Every frozen checkpoint verification artifact must retain its locked bytes.",
+      "data": []
+    },
+    {
+      "id": "production-file-locks",
+      "status": "PASS",
+      "detail": "All five frozen production assets must be present in the source/build lock and match the production subset.",
+      "data": {
+        "productionFiles": {
+          "dist-product-mixed-world-journal/assets/native_product_mixed_arm-Cm7RMFqO.js": "2b71e153a1d2669acf8d32c4f4037424b675e8f07652938197aac9f882701749",
+          "dist-product-mixed-world-journal/assets/product-mixed-v2-D04jqCdq.js": "2807f184e8e7d043c614c8499ffc14f4c49349bde564987e7b4a9d62cf5bddd1",
+          "dist-product-mixed-world-journal/assets/product-mixed-v2-hg5qe9FO.css": "5c05640ebe7d1025a5c3a5670c77acfb93f291b4df6485e533aff88ae3821d43",
+          "dist-product-mixed-world-journal/assets/product_mixed_react_arm-CvytENDt.js": "e2f5de90ab5a4edd53aaad5e2fdf7fcc6b79ad3af8ce31f6a15e472e0631a816",
+          "dist-product-mixed-world-journal/product-mixed-v2.html": "f53298dc856f39b396eab40b6f5fba37a9f5d0bb41d6033102ee06184e87572e"
+        }
+      }
+    },
+    {
+      "id": "correctness-pilot-manifest",
+      "status": "PASS",
+      "detail": "The frozen pilot must contain exactly six PASS correctness-only records.",
+      "data": {
+        "status": "PASS",
+        "records": [
+          {
+            "arm": "native",
+            "size": 128,
+            "status": "PASS"
+          },
+          {
+            "arm": "react",
+            "size": 128,
+            "status": "PASS"
+          },
+          {
+            "arm": "native",
+            "size": 512,
+            "status": "PASS"
+          },
+          {
+            "arm": "react",
+            "size": 512,
+            "status": "PASS"
+          },
+          {
+            "arm": "native",
+            "size": 1024,
+            "status": "PASS"
+          },
+          {
+            "arm": "react",
+            "size": 1024,
+            "status": "PASS"
+          }
+        ]
+      }
+    },
+    {
+      "id": "correctness-pilot-page-locks",
+      "status": "PASS",
+      "detail": "All six pilot records must match content checks and their preregistered raw-page hashes.",
+      "data": []
+    },
+    {
+      "id": "compiler-proofs",
+      "status": "PASS",
+      "detail": "Pilot compiler proofs, four proof files, and execution proof must match frozen evidence.",
+      "data": []
+    },
+    {
+      "id": "frozen-schedule",
+      "status": "PASS",
+      "detail": "The frozen schedule must select sequence 20 React and sequence 21 native, pair 0, size 1,024.",
+      "data": [
+        {
+          "sequence": 20,
+          "pair": 0,
+          "arm": "react",
+          "size": 1024
+        },
+        {
+          "sequence": 21,
+          "pair": 0,
+          "arm": "native",
+          "size": 1024
+        }
+      ]
+    },
+    {
+      "id": "browser-profiler-configuration",
+      "status": "PASS",
+      "detail": "Preregistration must lock the headed, GPU-disabled, serial two-page CPU-profile protocol.",
+      "data": {
+        "status": "FROZEN_BEFORE_CPU_PROFILE",
+        "study": "compiled-product-mixed-world-journal-cpu-diagnostic",
+        "runId": "7107cc77-8d90-4126-ba41-7d38c494ae43",
+        "browser": {
+          "origin": "https://compiled-world-journal.localhost:1355",
+          "headless": false,
+          "gpu": false,
+          "viewport": {
+            "width": 1200,
+            "height": 900
+          },
+          "freshContext": true,
+          "foregroundPage": true,
+          "serial": true,
+          "profilerSamplingIntervalMicros": 1000,
+          "profilerStartsOnAboutBlankBeforeNavigation": true
+        },
+        "workload": {
+          "sequences": [
+            20,
+            21
+          ],
+          "size": 1024,
+          "arms": [
+            "react",
+            "native"
+          ],
+          "warmupFrames": 60,
+          "measuredFrames": 240,
+          "correctnessGate": "PASS and exactly 240 measured samples for each profiled page."
+        }
+      }
+    },
+    {
+      "id": "served-byte-preflight",
+      "status": "PASS",
+      "detail": "Preflight must fetch each of five production files once from the locked origin and match frozen bytes.",
+      "data": []
+    },
+    {
+      "id": "complete-frozen-input-locks",
+      "status": "PASS",
+      "detail": "Checkpoint, archive, protocol, schedule, collector/verifier, source/build, pilot, and proof locks must all match current bytes.",
+      "data": {
+        "lockCount": 843,
+        "failures": []
+      }
+    },
+    {
+      "id": "serialized-input-locks",
+      "status": "PASS",
+      "detail": "The frozen preregistration must serialize the complete input lock map used for the post-collection lock.",
+      "data": {
+        "serializedCount": 843,
+        "expectedCount": 843,
+        "missing": [],
+        "unexpected": []
+      }
+    },
+    {
+      "id": "post-collection-lock",
+      "status": "PASS",
+      "detail": "Post-collection lock must match the complete preregistered input inventory with no mismatches.",
+      "data": {
+        "status": "PASS",
+        "mismatchCount": 0,
+        "expectedCount": 843,
+        "verifierCount": 843
+      }
+    },
+    {
+      "id": "result-manifest",
+      "status": "PASS",
+      "detail": "Final manifest must be PASS, share the preregistered run ID, preserve the two records, and reference the frozen pilot and post-lock.",
+      "data": {
+        "status": "PASS",
+        "runId": "7107cc77-8d90-4126-ba41-7d38c494ae43",
+        "records": [
+          {
+            "sequence": 20,
+            "pair": 0,
+            "arm": "react",
+            "size": 1024,
+            "status": "PASS",
+            "file": "20-react-1024.json"
+          },
+          {
+            "sequence": 21,
+            "pair": 0,
+            "arm": "native",
+            "size": 1024,
+            "status": "PASS",
+            "file": "21-native-1024.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-identity-react",
+      "status": "PASS",
+      "detail": "Raw page must match the frozen sequence, pair, arm, size, origin, URL, run ID, and results record.",
+      "data": {
+        "sequence": 20,
+        "pair": 0,
+        "arm": "react",
+        "size": 1024,
+        "runId": "7107cc77-8d90-4126-ba41-7d38c494ae43",
+        "status": "PASS",
+        "file": "20-react-1024.json"
+      }
+    },
+    {
+      "id": "page-errors-react",
+      "status": "PASS",
+      "detail": "The page must PASS with no uncaught browser errors.",
+      "data": []
+    },
+    {
+      "id": "harness-correctness-react",
+      "status": "PASS",
+      "detail": "Harness must pass all five correctness checks with 60 warmup, frames 61–300, exactly eight expected structural frames, and finite sample timings.",
+      "data": {
+        "status": "PASS",
+        "warmup": 60,
+        "frames": 240,
+        "sampleCount": 240,
+        "checkNames": [
+          "identity",
+          "lifecycle",
+          "order",
+          "output",
+          "visible"
+        ],
+        "checks": {
+          "output": true,
+          "identity": true,
+          "lifecycle": true,
+          "visible": true,
+          "order": true
+        },
+        "structuralFrames": [
+          90,
+          120,
+          150,
+          180,
+          210,
+          240,
+          270,
+          300
+        ],
+        "harnessSamplesOK": true,
+        "rawResultStatus": "PASS",
+        "rawResultMode": "confirm",
+        "rawResultSamples": 240,
+        "rawResultErrors": [],
+        "rawResultBrowserErrors": null
+      }
+    },
+    {
+      "id": "lifecycle-react",
+      "status": "PASS",
+      "detail": "Mounted and post-teardown lifecycle fields must balance; native owner/store/collection/setter retention must be released.",
+      "data": {
+        "active": {
+          "renders": -1,
+          "mounts": 1088,
+          "cleanups": 64,
+          "writers": 1024
+        },
+        "mounts": 1088,
+        "cleanups": 64,
+        "activeWriters": 1024,
+        "postTeardown": {
+          "renders": -1,
+          "mounts": 1088,
+          "cleanups": 1088,
+          "writers": 0
+        },
+        "nativeLifecycleOK": true
+      }
+    },
+    {
+      "id": "loaded-assets-react",
+      "status": "PASS",
+      "detail": "Every loaded production response must match frozen bytes and include common plus the selected arm, excluding the other arm.",
+      "data": {
+        "requiredHtml": "product-mixed-v2.html",
+        "requiredCss": "product-mixed-v2-hg5qe9FO.css",
+        "requiredCommonJs": "product-mixed-v2-D04jqCdq.js",
+        "requiredArmJs": "product_mixed_react_arm-CvytENDt.js",
+        "loadedNames": [
+          "product-mixed-v2.html",
+          "product-mixed-v2-hg5qe9FO.css",
+          "product-mixed-v2-D04jqCdq.js",
+          "product_mixed_react_arm-CvytENDt.js"
+        ],
+        "loadedFailures": []
+      }
+    },
+    {
+      "id": "raw-profile-graph-react",
+      "status": "PASS",
+      "detail": "Raw CDP nodes must form a resolvable child graph; every sample ID must resolve and have one finite nonnegative timeDelta.",
+      "data": {
+        "nodeCount": 243,
+        "sampleCount": 1779,
+        "timeDeltaCount": 1779,
+        "duplicateIdCount": 0,
+        "graphRoots": [
+          1
+        ],
+        "multipleParentCount": 0,
+        "cycleCount": 0,
+        "unreachableNodeCount": 0,
+        "invalidEdgeCount": 0,
+        "missingSamples": [],
+        "invalidDeltas": [],
+        "startTime": 61516788512,
+        "endTime": 61519375224
+      }
+    },
+    {
+      "id": "independent-profile-aggregation-react",
+      "status": "PASS",
+      "detail": "Saved frame ranks and category totals must match an independent timeDelta-weighted aggregation of raw sample node IDs.",
+      "data": {
+        "sampleCount": 1779,
+        "savedSampleCount": 1779,
+        "independentSelfTimeMicros": 2586092,
+        "savedSelfTimeMicros": 2586092,
+        "topFrameCount": 50,
+        "independentCategories": {
+          "program": {
+            "selfTimeMicros": 959627,
+            "sampleCount": 640,
+            "selfTimeMs": 959.627,
+            "selfTimePercent": 37.10722588368859
+          },
+          "idle": {
+            "selfTimeMicros": 792087,
+            "sampleCount": 524,
+            "selfTimeMs": 792.087,
+            "selfTimePercent": 30.6287247321441
+          },
+          "harness bundle": {
+            "selfTimeMicros": 459419,
+            "sampleCount": 307,
+            "selfTimeMs": 459.419,
+            "selfTimePercent": 17.76499057264784
+          },
+          "react arm bundle": {
+            "selfTimeMicros": 317321,
+            "sampleCount": 271,
+            "selfTimeMs": 317.321,
+            "selfTimePercent": 12.270290461437567
+          },
+          "gc": {
+            "selfTimeMicros": 56124,
+            "sampleCount": 36,
+            "selfTimeMs": 56.124,
+            "selfTimePercent": 2.170224415836714
+          },
+          "other runtime": {
+            "selfTimeMicros": 1514,
+            "sampleCount": 1,
+            "selfTimeMs": 1.514,
+            "selfTimePercent": 0.0585439342451854
+          }
+        },
+        "savedCategories": {
+          "program": {
+            "selfTimeMicros": 959627,
+            "selfTimeMs": 959.627,
+            "selfTimePercent": 37.10722588368859
+          },
+          "idle": {
+            "selfTimeMicros": 792087,
+            "selfTimeMs": 792.087,
+            "selfTimePercent": 30.6287247321441
+          },
+          "harness bundle": {
+            "selfTimeMicros": 459419,
+            "selfTimeMs": 459.419,
+            "selfTimePercent": 17.76499057264784
+          },
+          "other runtime": {
+            "selfTimeMicros": 1514,
+            "selfTimeMs": 1.514,
+            "selfTimePercent": 0.0585439342451854
+          },
+          "react arm bundle": {
+            "selfTimeMicros": 317321,
+            "selfTimeMs": 317.321,
+            "selfTimePercent": 12.270290461437567
+          },
+          "gc": {
+            "selfTimeMicros": 56124,
+            "selfTimeMs": 56.124,
+            "selfTimePercent": 2.170224415836714
+          }
+        }
+      }
+    },
+    {
+      "id": "profile-category-method-react",
+      "status": "PASS",
+      "detail": "Category labels must retain the non-causal heuristic limitation."
+    },
+    {
+      "id": "source-excerpts-react",
+      "status": "PASS",
+      "detail": "Every emitted excerpt must reproduce exact locked production text and offsets; built-in/unresolved frames remain unlocated in raw evidence.",
+      "data": {
+        "excerptCount": 30,
+        "invalid": [],
+        "unresolvedSampleCount": 1198,
+        "unresolvedExamples": [
+          {
+            "sampleId": 2,
+            "functionName": "(program)",
+            "url": "",
+            "lineNumber": -1,
+            "columnNumber": -1
+          },
+          {
+            "sampleId": 2,
+            "functionName": "(program)",
+            "url": "",
+            "lineNumber": -1,
+            "columnNumber": -1
+          },
+          {
+            "sampleId": 2,
+            "functionName": "(program)",
+            "url": "",
+            "lineNumber": -1,
+            "columnNumber": -1
+          },
+          {
+            "sampleId": 2,
+            "functionName": "(program)",
+            "url": "",
+            "lineNumber": -1,
+            "columnNumber": -1
+          },
+          {
+            "sampleId": 2,
+            "functionName": "(program)",
+            "url": "",
+            "lineNumber": -1,
+            "columnNumber": -1
+          },
+          {
+            "sampleId": 3,
+            "functionName": "(idle)",
+            "url": "",
+            "lineNumber": -1,
+            "columnNumber": -1
+          },
+          {
+            "sampleId": 3,
+            "functionName": "(idle)",
+            "url": "",
+            "lineNumber": -1,
+            "columnNumber": -1
+          },
+          {
+            "sampleId": 3,
+            "functionName": "(idle)",
+            "url": "",
+            "lineNumber": -1,
+            "columnNumber": -1
+          },
+          {
+            "sampleId": 3,
+            "functionName": "(idle)",
+            "url": "",
+            "lineNumber": -1,
+            "columnNumber": -1
+          },
+          {
+            "sampleId": 2,
+            "functionName": "(program)",
+            "url": "",
+            "lineNumber": -1,
+            "columnNumber": -1
+          }
+        ],
+        "unresolvedHasNoExcerpt": true
+      }
+    },
+    {
+      "id": "page-identity-native",
+      "status": "PASS",
+      "detail": "Raw page must match the frozen sequence, pair, arm, size, origin, URL, run ID, and results record.",
+      "data": {
+        "sequence": 21,
+        "pair": 0,
+        "arm": "native",
+        "size": 1024,
+        "runId": "7107cc77-8d90-4126-ba41-7d38c494ae43",
+        "status": "PASS",
+        "file": "21-native-1024.json"
+      }
+    },
+    {
+      "id": "page-errors-native",
+      "status": "PASS",
+      "detail": "The page must PASS with no uncaught browser errors.",
+      "data": []
+    },
+    {
+      "id": "harness-correctness-native",
+      "status": "PASS",
+      "detail": "Harness must pass all five correctness checks with 60 warmup, frames 61–300, exactly eight expected structural frames, and finite sample timings.",
+      "data": {
+        "status": "PASS",
+        "warmup": 60,
+        "frames": 240,
+        "sampleCount": 240,
+        "checkNames": [
+          "identity",
+          "lifecycle",
+          "order",
+          "output",
+          "visible"
+        ],
+        "checks": {
+          "output": true,
+          "identity": true,
+          "lifecycle": true,
+          "visible": true,
+          "order": true
+        },
+        "structuralFrames": [
+          90,
+          120,
+          150,
+          180,
+          210,
+          240,
+          270,
+          300
+        ],
+        "harnessSamplesOK": true,
+        "rawResultStatus": "PASS",
+        "rawResultMode": "confirm",
+        "rawResultSamples": 240,
+        "rawResultErrors": [],
+        "rawResultBrowserErrors": null
+      }
+    },
+    {
+      "id": "lifecycle-native",
+      "status": "PASS",
+      "detail": "Mounted and post-teardown lifecycle fields must balance; native owner/store/collection/setter retention must be released.",
+      "data": {
+        "active": {
+          "renders": -1,
+          "mounts": 1088,
+          "cleanups": 64,
+          "writers": 1024,
+          "extra": {
+            "root": {
+              "version": 9,
+              "ownerCount": 1025,
+              "pendingChangeCount": 0,
+              "sourceValueSyncVisits": 3072,
+              "disposed": false
+            },
+            "collection": {
+              "entryInspections": 1256,
+              "anchorInspections": 0,
+              "retainedBatches": 0,
+              "readerCount": 1,
+              "listenerNotifications": 8,
+              "listenerErrors": 0
+            },
+            "collectionSize": 1024,
+            "collectionVersion": 8,
+            "registeredSetters": 1024
+          }
+        },
+        "mounts": 1088,
+        "cleanups": 64,
+        "activeWriters": 1024,
+        "postTeardown": {
+          "renders": -1,
+          "mounts": 1088,
+          "cleanups": 1088,
+          "writers": 0,
+          "extra": {
+            "root": {
+              "version": 9,
+              "ownerCount": 0,
+              "pendingChangeCount": 0,
+              "sourceValueSyncVisits": 3072,
+              "disposed": true
+            },
+            "collection": {
+              "entryInspections": 1256,
+              "anchorInspections": 0,
+              "retainedBatches": 0,
+              "readerCount": 0,
+              "listenerNotifications": 8,
+              "listenerErrors": 0
+            },
+            "collectionSize": 0,
+            "collectionVersion": null,
+            "registeredSetters": 0
+          }
+        },
+        "nativeLifecycleOK": true
+      }
+    },
+    {
+      "id": "loaded-assets-native",
+      "status": "PASS",
+      "detail": "Every loaded production response must match frozen bytes and include common plus the selected arm, excluding the other arm.",
+      "data": {
+        "requiredHtml": "product-mixed-v2.html",
+        "requiredCss": "product-mixed-v2-hg5qe9FO.css",
+        "requiredCommonJs": "product-mixed-v2-D04jqCdq.js",
+        "requiredArmJs": "native_product_mixed_arm-Cm7RMFqO.js",
+        "loadedNames": [
+          "product-mixed-v2.html",
+          "product-mixed-v2-hg5qe9FO.css",
+          "product-mixed-v2-D04jqCdq.js",
+          "native_product_mixed_arm-Cm7RMFqO.js"
+        ],
+        "loadedFailures": []
+      }
+    },
+    {
+      "id": "raw-profile-graph-native",
+      "status": "PASS",
+      "detail": "Raw CDP nodes must form a resolvable child graph; every sample ID must resolve and have one finite nonnegative timeDelta.",
+      "data": {
+        "nodeCount": 187,
+        "sampleCount": 1798,
+        "timeDeltaCount": 1798,
+        "duplicateIdCount": 0,
+        "graphRoots": [
+          1
+        ],
+        "multipleParentCount": 0,
+        "cycleCount": 0,
+        "unreachableNodeCount": 0,
+        "invalidEdgeCount": 0,
+        "missingSamples": [],
+        "invalidDeltas": [],
+        "startTime": 61519531505,
+        "endTime": 61522131482
+      }
+    },
+    {
+      "id": "independent-profile-aggregation-native",
+      "status": "PASS",
+      "detail": "Saved frame ranks and category totals must match an independent timeDelta-weighted aggregation of raw sample node IDs.",
+      "data": {
+        "sampleCount": 1798,
+        "savedSampleCount": 1798,
+        "independentSelfTimeMicros": 2599266,
+        "savedSelfTimeMicros": 2599266,
+        "topFrameCount": 50,
+        "independentCategories": {
+          "program": {
+            "selfTimeMicros": 952608,
+            "sampleCount": 637,
+            "selfTimeMs": 952.608,
+            "selfTimePercent": 36.64911555800753
+          },
+          "idle": {
+            "selfTimeMicros": 448088,
+            "sampleCount": 295,
+            "selfTimeMs": 448.088,
+            "selfTimePercent": 17.239020554264165
+          },
+          "harness bundle": {
+            "selfTimeMicros": 451613,
+            "sampleCount": 304,
+            "selfTimeMs": 451.613,
+            "selfTimePercent": 17.374635762557585
+          },
+          "native arm bundle": {
+            "selfTimeMicros": 710378,
+            "sampleCount": 541,
+            "selfTimeMs": 710.378,
+            "selfTimePercent": 27.329946223279958
+          },
+          "gc": {
+            "selfTimeMicros": 34480,
+            "sampleCount": 19,
+            "selfTimeMs": 34.48,
+            "selfTimePercent": 1.3265283353069675
+          },
+          "other runtime": {
+            "selfTimeMicros": 2099,
+            "sampleCount": 2,
+            "selfTimeMs": 2.099,
+            "selfTimePercent": 0.08075356658379712
+          }
+        },
+        "savedCategories": {
+          "program": {
+            "selfTimeMicros": 952608,
+            "selfTimeMs": 952.608,
+            "selfTimePercent": 36.64911555800753
+          },
+          "idle": {
+            "selfTimeMicros": 448088,
+            "selfTimeMs": 448.088,
+            "selfTimePercent": 17.239020554264165
+          },
+          "other runtime": {
+            "selfTimeMicros": 2099,
+            "selfTimeMs": 2.099,
+            "selfTimePercent": 0.08075356658379712
+          },
+          "native arm bundle": {
+            "selfTimeMicros": 710378,
+            "selfTimeMs": 710.378,
+            "selfTimePercent": 27.329946223279958
+          },
+          "gc": {
+            "selfTimeMicros": 34480,
+            "selfTimeMs": 34.48,
+            "selfTimePercent": 1.3265283353069675
+          },
+          "harness bundle": {
+            "selfTimeMicros": 451613,
+            "selfTimeMs": 451.613,
+            "selfTimePercent": 17.374635762557585
+          }
+        }
+      }
+    },
+    {
+      "id": "profile-category-method-native",
+      "status": "PASS",
+      "detail": "Category labels must retain the non-causal heuristic limitation."
+    },
+    {
+      "id": "source-excerpts-native",
+      "status": "PASS",
+      "detail": "Every emitted excerpt must reproduce exact locked production text and offsets; built-in/unresolved frames remain unlocated in raw evidence.",
+      "data": {
+        "excerptCount": 30,
+        "invalid": [],
+        "unresolvedSampleCount": 953,
+        "unresolvedExamples": [
+          {
+            "sampleId": 2,
+            "functionName": "(program)",
+            "url": "",
+            "lineNumber": -1,
+            "columnNumber": -1
+          },
+          {
+            "sampleId": 2,
+            "functionName": "(program)",
+            "url": "",
+            "lineNumber": -1,
+            "columnNumber": -1
+          },
+          {
+            "sampleId": 2,
+            "functionName": "(program)",
+            "url": "",
+            "lineNumber": -1,
+            "columnNumber": -1
+          },
+          {
+            "sampleId": 3,
+            "functionName": "(idle)",
+            "url": "",
+            "lineNumber": -1,
+            "columnNumber": -1
+          },
+          {
+            "sampleId": 3,
+            "functionName": "(idle)",
+            "url": "",
+            "lineNumber": -1,
+            "columnNumber": -1
+          },
+          {
+            "sampleId": 2,
+            "functionName": "(program)",
+            "url": "",
+            "lineNumber": -1,
+            "columnNumber": -1
+          },
+          {
+            "sampleId": 2,
+            "functionName": "(program)",
+            "url": "",
+            "lineNumber": -1,
+            "columnNumber": -1
+          },
+          {
+            "sampleId": 2,
+            "functionName": "(program)",
+            "url": "",
+            "lineNumber": -1,
+            "columnNumber": -1
+          },
+          {
+            "sampleId": 2,
+            "functionName": "(program)",
+            "url": "",
+            "lineNumber": -1,
+            "columnNumber": -1
+          },
+          {
+            "sampleId": 2,
+            "functionName": "(program)",
+            "url": "",
+            "lineNumber": -1,
+            "columnNumber": -1
+          }
+        ],
+        "unresolvedHasNoExcerpt": true
+      }
+    },
+    {
+      "id": "selected-page-statuses",
+      "status": "PASS",
+      "detail": "Both preregistered pages must remain present and PASS; failed records are preserved and invalidate verification.",
+      "data": [
+        {
+          "sequence": 20,
+          "arm": "react",
+          "status": "PASS"
+        },
+        {
+          "sequence": 21,
+          "arm": "native",
+          "status": "PASS"
+        }
+      ]
+    }
+  ],
+  "failures": [],
+  "interpretation": "Integrity and independent sampled-self-time recomputation only. Profiles include module import, mount, warmup, measured work, harness inspection, disposal, idle, and GC. Weighted self time is not exact instruction time or timed-step cost; categories are URL/name hints and do not establish causality. No latency verdict or phase-count attribution is derived."
+}

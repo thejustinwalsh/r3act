@@ -1,0 +1,418 @@
+diff -ru .cache/high-frequency-harness-stage-before-review/STAGE.md .cache/high-frequency-harness-stage/STAGE.md
+--- .cache/high-frequency-harness-stage-before-review/STAGE.md	2026-10-13 16:18:52
++++ .cache/high-frequency-harness-stage/STAGE.md	2026-10-13 16:19:52
+@@ -14,9 +14,17 @@
+ 
+ The harness keeps `lastFrameById` so untouched rows are compared against their
+ last committed values. It captures initial host nodes and checks every frame
+-for exact order, identity, and `x/y/rotation` output. It checks mounts, cleanup,
+-active writers, disposal, and invokes saved setters after disposal to check
+-that they do not restore rows. No direct DOM or Three-object mutation is used.
++for exact order, identity, and `x/y/rotation` output. Failed initial row-count
++or ID checks stop before the frame loop. Mount timing is named
++`mountAndFrameZeroInitializationMs`: it includes arm creation, mount, and the
++initial state commit. It is not a separate first-update measurement.
++
++The harness latches any transition to hidden visibility, publishes structured
++PASS/FAIL/ERROR results to `window.__highFrequencyResult`, and disposes a
++created controller in `finally` even when mounting, stepping, or inspection
++fails. Saved setters are probed after disposal; thrown calls are counted, while
++the correctness requirement is that they do not restore host rows or writers.
++No direct DOM or Three-object mutation is used.
+ 
+ Primary review should check Rust compiler support for the staged native file's
+ relative import of the existing public runtime API and verify that the config's
+diff -ru .cache/high-frequency-harness-stage-before-review/src/browser/high_frequency_contract.ts .cache/high-frequency-harness-stage/src/browser/high_frequency_contract.ts
+--- .cache/high-frequency-harness-stage-before-review/src/browser/high_frequency_contract.ts	2026-10-13 16:18:52
++++ .cache/high-frequency-harness-stage/src/browser/high_frequency_contract.ts	2026-10-13 16:19:17
+@@ -15,11 +15,12 @@
+ };
+ 
+ export interface HighFrequencyController {
++  mount(): void;
+   /** The caller prepares identical dirtyIds before timing this call. */
+   step(frame: number, dirtyIds: readonly number[]): void;
+   diagnostics(): HighFrequencyDiagnostics;
+   dispose(): void;
+-  probeDeadSetters(frame: number): void;
++  probeDeadSetters(frame: number): number;
+ }
+ 
+ export type HighFrequencyFactory = (
+diff -ru .cache/high-frequency-harness-stage-before-review/src/browser/high_frequency_harness.ts .cache/high-frequency-harness-stage/src/browser/high_frequency_harness.ts
+--- .cache/high-frequency-harness-stage-before-review/src/browser/high_frequency_harness.ts	2026-10-13 16:18:52
++++ .cache/high-frequency-harness-stage/src/browser/high_frequency_harness.ts	2026-10-13 16:19:49
+@@ -2,6 +2,7 @@
+   DirtyPlacement,
+   DirtyShape,
+   HighFrequencyController,
++  HighFrequencyDiagnostics,
+   HighFrequencyFactory,
+   ProgramMix,
+ } from "./high_frequency_contract";
+@@ -15,14 +16,21 @@
+ const dirty = params.get("dirty") ?? "all";
+ const placement = params.get("placement") ?? "contiguous";
+ const programs = params.get("programs") ?? "homogeneous";
+-if (arm !== "native" && arm !== "react") throw new Error("Unknown arm");
+-if (!allowedSizes.has(size)) throw new Error("Unsupported row count");
+-if (dirty !== "one" && dirty !== "bucket32" && dirty !== "all") throw new Error("Unknown dirty shape");
+-if (placement !== "contiguous" && placement !== "scattered") throw new Error("Unknown dirty placement");
+-if (programs !== "homogeneous" && programs !== "heterogeneous") throw new Error("Unknown program mix");
++const configurationError = arm !== "native" && arm !== "react"
++  ? "Unknown arm"
++  : !allowedSizes.has(size)
++  ? "Unsupported row count"
++  : dirty !== "one" && dirty !== "bucket32" && dirty !== "all"
++  ? "Unknown dirty shape"
++  : placement !== "contiguous" && placement !== "scattered"
++  ? "Unknown dirty placement"
++  : programs !== "homogeneous" && programs !== "heterogeneous"
++  ? "Unknown program mix"
++  : null;
+ 
+ const status = document.querySelector<HTMLElement>("#status")!;
+ const app = document.querySelector<HTMLElement>("#app")!;
++const output = document.querySelector<HTMLElement>("#result")!;
+ const checks = {
+   output: true,
+   order: true,
+@@ -36,11 +44,18 @@
+ const lastFrameById = new Map(ids.map((id) => [id, 0]));
+ const rows = () => Array.from(app.querySelectorAll<HTMLElement>("i.row"));
+ const nextFrame = () => new Promise<number>((resolve) => requestAnimationFrame(resolve));
+-const check = (condition: unknown, message: string, field: keyof typeof checks) => {
+-  if (condition) return;
++let hiddenSeen = document.visibilityState !== "visible";
++document.addEventListener("visibilitychange", () => {
++  if (document.visibilityState !== "visible") hiddenSeen = true;
++});
++
++const recordFailure = (message: string, field: keyof typeof checks) => {
+   checks[field] = false;
+   errors.push(message);
+ };
++const check = (condition: unknown, message: string, field: keyof typeof checks) => {
++  if (!condition) recordFailure(message, field);
++};
+ 
+ const selectDirtyIds = (frame: number): number[] => {
+   const count = dirty === "one" ? 1 : dirty === "bucket32" ? Math.min(32, size) : size;
+@@ -84,67 +99,116 @@
+   };
+ };
+ 
+-async function run() {
+-  const factory: HighFrequencyFactory = arm === "native"
+-    ? (await import("./native_high_frequency_arm.tsx")).createHighFrequencyNative
+-    : (await import("./react_high_frequency_arm.tsx")).createHighFrequencyReact;
+-  const mountStarted = performance.now();
+-  const controller: HighFrequencyController = factory(app, ids, programs as ProgramMix);
+-  const mountMs = performance.now() - mountStarted;
+-  const initialRows = rows();
+-  const identity = new Map(initialRows.map((node) => [Number(node.dataset.rowId), node]));
+-  check(initialRows.length === size, "Initial row count mismatch", "output");
+-  check(identity.size === size, "Initial IDs are not unique", "order");
+-  inspect(0, identity);
++function publish(result: Record<string, unknown>) {
++  (window as typeof window & { __highFrequencyResult?: unknown }).__highFrequencyResult = result;
++  try {
++    status.textContent = `${arm} · ${size} rows · ${dirty}/${placement} · ${String(result.status)}`;
++    output.textContent = JSON.stringify(result, null, 2);
++  } catch {
++    // The structured window result remains available if the display nodes fail.
++  }
++}
+ 
++async function run() {
++  let controller: HighFrequencyController | null = null;
++  let active: HighFrequencyDiagnostics | null = null;
++  let afterDispose: HighFrequencyDiagnostics | null = null;
++  let mountAndFrameZeroInitializationMs: number | null = null;
++  let disposeMs: number | null = null;
++  let deadSetterProbeCount = 0;
++  let deadSetterThrows = 0;
++  let fatal = false;
+   const warmupFrames = 60;
+   const measuredFrames = 240;
+   const warmupSamples: Array<{ frame: number; commitMs: number; intervalMs: number }> = [];
+   const samples: Array<{ frame: number; dirtyCount: number; commitMs: number; intervalMs: number }> = [];
+-  let previousFrameAt = await nextFrame();
+-  for (let frame = 1; frame <= warmupFrames + measuredFrames; frame++) {
+-    const now = await nextFrame();
+-    const intervalMs = now - previousFrameAt;
+-    previousFrameAt = now;
+-    const dirtyIds = selectDirtyIds(frame);
+-    const commitStarted = performance.now();
+-    controller.step(frame, dirtyIds);
+-    const commitMs = performance.now() - commitStarted;
+-    for (const id of dirtyIds) lastFrameById.set(id, frame);
+-    if (frame <= warmupFrames) {
+-      warmupSamples.push({ frame, commitMs, intervalMs });
+-    } else {
+-      samples.push({ frame, dirtyCount: dirtyIds.length, commitMs, intervalMs });
+-    }
+-    inspect(frame, identity);
+-    const d = controller.diagnostics();
+-    check(d.mounts === size && d.cleanups === 0 && d.writers === size,
+-      `Frame ${frame}: active lifecycle mismatch`, "lifecycle");
+-    if (errors.length) break;
+-  }
++  let identity = new Map<number, HTMLElement>();
+ 
+-  const beforeDispose = controller.diagnostics();
+-  const disposeStarted = performance.now();
+-  controller.dispose();
+-  const disposeMs = performance.now() - disposeStarted;
+-  const afterDispose = controller.diagnostics();
+-  check(beforeDispose.mounts === size && beforeDispose.cleanups === 0,
+-    "Pre-disposal lifecycle mismatch", "lifecycle");
+-  check(afterDispose.mounts === size && afterDispose.cleanups === size && afterDispose.writers === 0,
+-    "Disposal did not release every row writer", "lifecycle");
+-  check(rows().length === 0, "Host retained rows after disposal", "lifecycle");
+   try {
+-    controller.probeDeadSetters(1_000_000);
+-    check(rows().length === 0, "A dead setter repopulated the host", "deadSetters");
+-    check(controller.diagnostics().writers === 0, "A dead setter was re-registered", "deadSetters");
++    if (configurationError) throw new Error(configurationError);
++    const factory: HighFrequencyFactory = arm === "native"
++      ? (await import("./native_high_frequency_arm.tsx")).createHighFrequencyNative
++      : (await import("./react_high_frequency_arm.tsx")).createHighFrequencyReact;
++    const mountStarted = performance.now();
++    controller = factory(app, ids, programs as ProgramMix);
++    controller.mount();
++    mountAndFrameZeroInitializationMs = performance.now() - mountStarted;
++
++    const initialRows = rows();
++    identity = new Map(initialRows.map((node) => [Number(node.dataset.rowId), node]));
++    check(initialRows.length === size, "Initial row count mismatch", "output");
++    check(identity.size === size, "Initial IDs are not unique", "order");
++    if (initialRows.length !== size || identity.size !== size) {
++      throw new Error("Initial DOM row count or ID uniqueness failed; benchmark stopped");
++    }
++    inspect(0, identity);
++    if (errors.length) throw new Error("Initial DOM output failed; benchmark stopped");
++
++    let previousFrameAt = await nextFrame();
++    for (let frame = 1; frame <= warmupFrames + measuredFrames; frame++) {
++      const now = await nextFrame();
++      const intervalMs = now - previousFrameAt;
++      previousFrameAt = now;
++      const dirtyIds = selectDirtyIds(frame);
++      const commitStarted = performance.now();
++      controller.step(frame, dirtyIds);
++      const commitMs = performance.now() - commitStarted;
++      for (const id of dirtyIds) lastFrameById.set(id, frame);
++      if (frame <= warmupFrames) {
++        warmupSamples.push({ frame, commitMs, intervalMs });
++      } else {
++        samples.push({ frame, dirtyCount: dirtyIds.length, commitMs, intervalMs });
++      }
++      inspect(frame, identity);
++      const d = controller.diagnostics();
++      check(d.mounts === size && d.cleanups === 0 && d.writers === size,
++        `Frame ${frame}: active lifecycle mismatch`, "lifecycle");
++      if (errors.length) break;
++    }
+   } catch (error) {
+-    check(false, `Dead setter probe threw: ${String(error)}`, "deadSetters");
++    fatal = true;
++    recordFailure(String(error), "output");
++  } finally {
++    if (controller) {
++      try {
++        active = controller.diagnostics();
++      } catch (error) {
++        recordFailure(`Could not inspect active lifecycle: ${String(error)}`, "lifecycle");
++      }
++      const disposeStarted = performance.now();
++      try {
++        controller.dispose();
++      } catch (error) {
++        recordFailure(`Disposal failed: ${String(error)}`, "lifecycle");
++      }
++      disposeMs = performance.now() - disposeStarted;
++      try {
++        afterDispose = controller.diagnostics();
++        check(afterDispose.mounts === size && afterDispose.cleanups === size && afterDispose.writers === 0,
++          "Disposal did not release every row writer", "lifecycle");
++      } catch (error) {
++        recordFailure(`Could not inspect disposed lifecycle: ${String(error)}`, "lifecycle");
++      }
++      try {
++        check(rows().length === 0, "Host retained rows after disposal", "lifecycle");
++      } catch (error) {
++        recordFailure(`Could not inspect host after disposal: ${String(error)}`, "lifecycle");
++      }
++      try {
++        deadSetterProbeCount = active?.writers ?? size;
++        deadSetterThrows = controller.probeDeadSetters(1_000_000);
++        check(rows().length === 0, "A dead setter repopulated the host", "deadSetters");
++        check(controller.diagnostics().writers === 0, "A dead setter was re-registered", "deadSetters");
++      } catch (error) {
++        recordFailure(`Dead setter probe failed: ${String(error)}`, "deadSetters");
++      }
++    }
++    check(!hiddenSeen, "Page was hidden during the run", "visible");
+   }
+-  check(document.visibilityState === "visible", "Page became hidden during measurement", "visible");
+ 
+   const result = {
+     schemaVersion: "current-product-high-frequency-v1",
+-    status: Object.values(checks).every(Boolean) && errors.length === 0 && samples.length === measuredFrames
++    status: fatal ? "ERROR" : Object.values(checks).every(Boolean) && errors.length === 0 && samples.length === measuredFrames
+       ? "PASS"
+       : "FAIL",
+     arm,
+@@ -158,35 +222,22 @@
+     measuredFrames,
+     checks,
+     errors,
+-    mountMs,
++    mountAndFrameZeroInitializationMs,
+     warmupSamples,
+     samples,
+     disposeMs,
+-    active: beforeDispose,
+-    afterDispose: controller.diagnostics(),
+-    deadSetterProbeCount: size,
++    active,
++    afterDispose,
++    deadSetterProbeCount,
++    deadSetterThrows,
+     summary: {
+       warmup: summarize(warmupSamples.map((sample) => sample.commitMs)),
+       measured: summarize(samples.map((sample) => sample.commitMs)),
+       measuredP95: summarize(samples.map((sample) => sample.commitMs))?.p95Ms ?? null,
+     },
+-    timingContract: "dirtyIds are selected once by this shared harness before the commit timer; selection runs identically for both arms and is excluded. step includes per-ID setter dispatch and synchronous host commit. DOM inspection and correctness checks run after the timer.",
++    timingContract: "dirtyIds are selected once by this shared harness before the commit timer; selection runs identically for both arms and is excluded. step includes per-ID setter dispatch and synchronous host commit. DOM inspection and correctness checks run after the timer. mountAndFrameZeroInitializationMs includes arm creation, mount, and initial frame-zero state commit.",
+   };
+-  (window as typeof window & { __highFrequencyResult?: unknown }).__highFrequencyResult = result;
+-  status.textContent = `${arm} · ${size} rows · ${dirty}/${placement} · ${result.status}`;
+-  document.querySelector<HTMLElement>("#result")!.textContent = JSON.stringify(result, null, 2);
++  publish(result);
+ }
+ 
+-run().catch((error) => {
+-  status.textContent = String(error);
+-  document.querySelector<HTMLElement>("#result")!.textContent = JSON.stringify({
+-    schemaVersion: "current-product-high-frequency-v1",
+-    status: "ERROR",
+-    errors: [String(error)],
+-    arm,
+-    rows: size,
+-    dirty,
+-    placement,
+-    programs,
+-  }, null, 2);
+-});
++void run();
+diff -ru .cache/high-frequency-harness-stage-before-review/src/browser/native_high_frequency_arm.tsx .cache/high-frequency-harness-stage/src/browser/native_high_frequency_arm.tsx
+--- .cache/high-frequency-harness-stage-before-review/src/browser/native_high_frequency_arm.tsx	2026-10-13 16:18:52
++++ .cache/high-frequency-harness-stage/src/browser/native_high_frequency_arm.tsx	2026-10-13 16:19:19
+@@ -37,7 +37,7 @@
+       session.cleanups++;
+       if (session.setters.get(id) === setter) session.setters.delete(id);
+     };
+-  }, [id, session]);
++  });
+   return <i className="row" data-row-id={id} style={{ left: `${x}px`, top: `${y}px`, transform: `rotate(${rotation}deg)` }} />;
+ }
+ 
+@@ -58,7 +58,7 @@
+       session.cleanups++;
+       if (session.setters.get(id) === setter) session.setters.delete(id);
+     };
+-  }, [id, session]);
++  });
+   return <i className="row" data-row-id={id} style={{ left: `${x}px`, top: `${y}px`, transform: `rotate(${rotation}deg)` }} />;
+ }
+ 
+@@ -83,17 +83,19 @@
+   });
+   let disposed = false;
+   let staleSetters: FrameSetter[] = [];
+-  root.mount(<NativeBoard ids={ids} session={session} programs={programs} />);
+-  root.flush();
+-  for (const setter of session.setters.values()) setter(0);
+-  root.flush();
+-
+   const diagnostics = (): HighFrequencyDiagnostics => ({
+     mounts: session.mounts,
+     cleanups: session.cleanups,
+     writers: session.setters.size,
+   });
+   const controller: HighFrequencyController = {
++    mount() {
++      if (disposed || !root) throw new Error("Cannot mount a disposed native arm");
++      root.mount(<NativeBoard ids={ids} session={session} programs={programs} />);
++      root.flush();
++      for (const setter of session.setters.values()) setter(0);
++      root.flush();
++    },
+     step(frame, dirtyIds) {
+       if (disposed || !root) throw new Error("Cannot step a disposed native arm");
+       for (const id of dirtyIds) {
+@@ -112,7 +114,15 @@
+       root = null;
+     },
+     probeDeadSetters(frame) {
+-      for (const setter of staleSetters) setter(frame);
++      let thrown = 0;
++      for (const setter of staleSetters) {
++        try {
++          setter(frame);
++        } catch {
++          thrown++;
++        }
++      }
++      return thrown;
+     },
+   };
+   return controller;
+diff -ru .cache/high-frequency-harness-stage-before-review/src/browser/react_high_frequency_arm.tsx .cache/high-frequency-harness-stage/src/browser/react_high_frequency_arm.tsx
+--- .cache/high-frequency-harness-stage-before-review/src/browser/react_high_frequency_arm.tsx	2026-10-13 16:18:52
++++ .cache/high-frequency-harness-stage/src/browser/react_high_frequency_arm.tsx	2026-10-13 16:19:17
+@@ -78,17 +78,19 @@
+   let root: Root | null = createRoot(container);
+   let disposed = false;
+   let staleSetters: FrameSetter[] = [];
+-  flushSync(() => root!.render(<ReactBoard ids={ids} session={session} programs={programs} />));
+-  flushSync(() => {
+-    for (const setter of session.setters.values()) setter(0);
+-  });
+-
+   const diagnostics = (): HighFrequencyDiagnostics => ({
+     mounts: session.mounts,
+     cleanups: session.cleanups,
+     writers: session.setters.size,
+   });
+   const controller: HighFrequencyController = {
++    mount() {
++      if (disposed || !root) throw new Error("Cannot mount a disposed React arm");
++      flushSync(() => root!.render(<ReactBoard ids={ids} session={session} programs={programs} />));
++      flushSync(() => {
++        for (const setter of session.setters.values()) setter(0);
++      });
++    },
+     step(frame, dirtyIds) {
+       if (disposed || !root) throw new Error("Cannot step a disposed React arm");
+       flushSync(() => {
+@@ -109,7 +111,15 @@
+       root = null;
+     },
+     probeDeadSetters(frame) {
+-      for (const setter of staleSetters) setter(frame);
++      let thrown = 0;
++      for (const setter of staleSetters) {
++        try {
++          setter(frame);
++        } catch {
++          thrown++;
++        }
++      }
++      return thrown;
+     },
+   };
+   return controller;

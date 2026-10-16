@@ -1,0 +1,73 @@
+--- .cache/root-acceptance-cleanup-stage/before/src/component_state_runtime.ts	2026-10-13 17:21:37
++++ .cache/root-acceptance-cleanup-stage/proposed/src/component_state_runtime.ts	2026-10-13 17:21:43
+@@ -4857,7 +4857,27 @@
+       this.#nativeRowViews.length = 0;
+       this.#nativeChangedRows = new Uint32Array(0);
+       this.#nativeChangedSlots = new Uint32Array(0);
++    }
++  }
++
++  #acknowledgeNativeCellCut(count: number) {
++    if (this.#disposed) return;
++    for (let index = 0; index < count; index++) {
++      this.#lastSourceValues.set(
++        this.#numericProgramSources[index]!,
++        this.#numericProgramCurrentValues[index],
++      );
+     }
++    this.world.clearCellChangesThrough(
++      this.#nativeCellHandles,
++      this.#nativeCellVersions,
++      count,
++    );
++    this.#pendingChanges.clearNativeThrough(
++      this.#nativeCellHandles,
++      this.#nativeCellVersions,
++      count,
++    );
+   }
+ 
+   /** Execute one compiler-owned row plan per affected committed owner. */
+@@ -4949,15 +4969,7 @@
+       this.#count("numeric.row-batches");
+       this.#count("numeric.row-count", this.#nativeRowUsedCount);
+       this.#count("numeric.row-cells", count);
+-      if (!this.#disposed) {
+-        for (let index = 0; index < count; index++) {
+-          this.#lastSourceValues.set(
+-            this.#numericProgramSources[index]!, this.#numericProgramCurrentValues[index],
+-          );
+-        }
+-        this.world.clearCellChangesThrough(this.#nativeCellHandles, this.#nativeCellVersions, count);
+-        this.#pendingChanges.clearNativeThrough(this.#nativeCellHandles, this.#nativeCellVersions, count);
+-      }
++      this.#acknowledgeNativeCellCut(count);
+       return wrote || count > 0;
+     } finally {
+       this.#clearNativeRowBuffers();
+@@ -5049,24 +5061,7 @@
+       accepted = true;
+       this.#count("numeric.lane-batches");
+       this.#count("numeric.lane-cells", count);
+-      if (!this.#disposed) {
+-        for (let index = 0; index < count; index++) {
+-          this.#lastSourceValues.set(
+-            this.#numericProgramSources[index]!,
+-            this.#numericProgramCurrentValues[index],
+-          );
+-        }
+-        this.world.clearCellChangesThrough(
+-          this.#nativeCellHandles,
+-          this.#nativeCellVersions,
+-          count,
+-        );
+-        this.#pendingChanges.clearNativeThrough(
+-          this.#nativeCellHandles,
+-          this.#nativeCellVersions,
+-          count,
+-        );
+-      }
++      this.#acknowledgeNativeCellCut(count);
+       return wrote || count > 0;
+     } finally {
+       if (!accepted) this.#clearNumericProgramBuffers();

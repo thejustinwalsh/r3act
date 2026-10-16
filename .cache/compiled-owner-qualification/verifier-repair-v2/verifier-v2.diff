@@ -1,0 +1,110 @@
+--- scripts/verify_product_mixed_compiled_owner_rows_evidence.mjs	2026-10-13 07:52:24
++++ scripts/verify_product_mixed_compiled_owner_rows_evidence_v2.mjs	2026-10-13 08:31:35
+@@ -11,8 +11,9 @@
+ const manifestPath = `${rawDir}/manifest.json`;
+ const postlockPath = `${rawDir}/postlock.json`;
+ const finalResultsPath = `${rawDir}/FINALresults.json`;
+-const summaryPath = `${rawDir}/summary.json`;
+-const verificationPath = `${rawDir}/verification.json`;
++const originalSummaryPath = `${rawDir}/summary.json`;
++const summaryPath = `${rawDir}/summary-v2.json`;
++const verificationPath = `${rawDir}/verification-v2.json`;
+ const checkpoint = "implementation/2026-10-13-compiled-owner-rows";
+ const statusPath = `${checkpoint}/status.json`;
+ const archivePath = `${checkpoint}/source-and-evidence.tar.gz`;
+@@ -40,6 +41,8 @@
+ const collectorPath = "scripts/collect_product_mixed_compiled_owner_rows.mjs";
+ const analyzerPath = "scripts/summarize_product_mixed_compiled_owner_rows.mjs";
+ const verifierPath = "scripts/verify_product_mixed_compiled_owner_rows_evidence.mjs";
++const v2AnalyzerPath = "scripts/summarize_product_mixed_compiled_owner_rows_v2.mjs";
++const v2VerifierPath = "scripts/verify_product_mixed_compiled_owner_rows_evidence_v2.mjs";
+ const pilotVerifierPath = "scripts/verify_product_mixed_compiled_owner_rows_pilot.mjs";
+ const buildDirectory = "dist-product-mixed-compiled-owner-rows";
+ const schedulePath = "src/browser/product_mixed_schedule.ts";
+@@ -108,9 +111,10 @@
+ const manifest = await readJson(manifestPath);
+ const postlock = await readJson(postlockPath);
+ const finalResults = await readJson(finalResultsPath);
++const originalSummary = await readJson(originalSummaryPath);
+ const summary = await readJson(summaryPath);
+ assert.equal(prereg.schemaVersion, 1);
+-assert.equal(prereg.study, "compiled-product-mixed-compiled-owner-rows-confirmation");
++assert.equal(prereg.study, "compiled-product-mixed-owner-rows-confirmation");
+ assert.deepEqual(prereg.schedule, expectedSchedule, "Frozen schedule must be five alternating pairs at each size");
+ assert.equal(prereg.archive, archivePath);
+ assert.equal(prereg.archiveSha256, expectedArchiveHash);
+@@ -226,6 +230,8 @@
+ assert.equal(prereg.analyzer.sha256, prereg.inputLocks[analyzerPath]);
+ assert.equal(prereg.verifier.path, verifierPath);
+ assert.equal(prereg.verifier.sha256, prereg.inputLocks[verifierPath]);
++assert.equal(prereg.inputLocks[analyzerPath], await hashFile(analyzerPath), "Original preregistered V1 analyzer changed");
++assert.equal(prereg.inputLocks[verifierPath], await hashFile(verifierPath), "Original preregistered V1 verifier changed");
+ assert.equal(prereg.scheduleSource.path, schedulePath);
+ assert.equal(prereg.scheduleSource.sha256, prereg.inputLocks[schedulePath]);
+ 
+@@ -545,11 +551,65 @@
+ assert.equal(prereg.timingEnvironment.baseConfigSha256, prereg.inputLocks[baseConfigPath]);
+ assert.equal(prereg.scheduleSource.path, schedulePath);
+ assert.equal(prereg.scheduleSource.sha256, prereg.inputLocks[schedulePath]);
++
++// V2 analysis is a repair of the V1 tool interpretation, not a new collection.
++const originalValidationErrors = [
++  ...originalSummary.validation.preregistrationErrors,
++  ...originalSummary.validation.archiveContentErrors,
++  ...originalSummary.validation.directoryErrors,
++  ...originalSummary.validation.invalidPages.flatMap(({ filename, validationErrors }) =>
++    validationErrors.map((error) => `${filename}: ${error}`)),
++];
++assert.equal(originalSummary.gate, "INVALID");
++assert.equal(originalSummary.counts.scheduled, 30);
++assert.equal(originalSummary.counts.loaded, 30);
++assert.equal(originalSummary.counts.invalid, 30);
++assert.equal(summary.schemaVersion, "product-mixed-compiled-owner-rows-confirmation-analysis-v2");
++assert.equal(summary.study, prereg.study);
++assert.deepEqual(summary.repairProvenance.originalAnalyzer, {
++  path: analyzerPath,
++  sha256: prereg.inputLocks[analyzerPath],
++});
++assert.deepEqual(summary.repairProvenance.originalVerifier, {
++  path: verifierPath,
++  sha256: prereg.inputLocks[verifierPath],
++});
++assert.deepEqual(summary.repairProvenance.originalSummary, {
++  path: originalSummaryPath,
++  sha256: await hashFile(originalSummaryPath),
++  gate: originalSummary.gate,
++  validation: originalSummary.validation,
++  validationErrors: originalValidationErrors,
++});
++assert.deepEqual(summary.repairProvenance.v2Analyzer, {
++  path: v2AnalyzerPath,
++  sha256: await hashFile(v2AnalyzerPath),
++});
++assert.deepEqual(summary.repairProvenance.v2Verifier, {
++  path: v2VerifierPath,
++  sha256: await hashFile(v2VerifierPath),
++});
++assert.ok(typeof summary.repairProvenance.v2Run.generatedAt === "string");
++assert.ok(Number.isFinite(Date.parse(summary.repairProvenance.v2Run.generatedAt)));
++assert.equal(summary.repairProvenance.v2Run.rawRunId, prereg.runId);
++assert.equal(summary.repairProvenance.v2Run.reusedRawRecords, true);
++assert.equal(summary.repairProvenance.v2Run.recordCount, 30);
+ 
+ // Validate every raw page and compute timing statistics independently.
+ const directoryFiles = await readdir(rawDir);
+ const sequenceFiles = directoryFiles.filter((name) => /^sequence-\d{2}\.json$/.test(name)).sort();
+ assert.deepEqual(sequenceFiles, expectedSchedule.map(({ sequence }) => `sequence-${String(sequence).padStart(2, "0")}.json`));
++const allowedJsonFiles = [
++  "FINALresults.json", "manifest.json", "postlock.json", "preregistration.json",
++  "summary.json", "summary-v2.json", ...sequenceFiles,
++].sort();
++const observedJsonFiles = directoryFiles.filter((name) => name.endsWith(".json")).sort();
++assert.ok(
++  JSON.stringify(observedJsonFiles) === JSON.stringify(allowedJsonFiles) ||
++  JSON.stringify(observedJsonFiles) === JSON.stringify([...allowedJsonFiles, "verification-v2.json"].sort()) ||
++  JSON.stringify(observedJsonFiles) === JSON.stringify([...allowedJsonFiles, "verification.json"].sort()) ||
++  JSON.stringify(observedJsonFiles) === JSON.stringify([...allowedJsonFiles, "verification.json", "verification-v2.json"].sort()),
++  "Raw directory must retain V1 artifacts and allow only V2 summary/verifier outputs in addition");
+ const manifestBySequence = new Map(manifest.files.map((entry) => [entry.sequence, entry]));
+ assert.equal(manifestBySequence.size, 30);
+ const pages = [];

@@ -1,0 +1,10 @@
+[
+  {
+    "find": "    step(frame, dirtyIds) {\n      if (disposed || !root) throw new Error(\"Cannot step a disposed native arm\");\n      for (const id of dirtyIds) {",
+    "replace": "    step(frame, dirtyIds) {\n      if (disposed || !root) throw new Error(\"Cannot step a disposed native arm\");\n      const ledger = (globalThis as typeof globalThis & {__denseLedger?: {mark(s:string):void;count(s:string,n?:number):void}}).__denseLedger;\n      ledger?.mark(\"native.dispatch.start\");\n      ledger?.count(\"native.setter.calls\", dirtyIds.length);\n      for (const id of dirtyIds) {"
+  },
+  {
+    "find": "        setter(frame);\n      }\n      root.flush();\n    },",
+    "replace": "        setter(frame);\n      }\n      ledger?.mark(\"native.dispatch.end\");\n      ledger?.mark(\"native.flush.start\");\n      root.flush();\n      ledger?.mark(\"native.flush.end\");\n    },"
+  }
+]

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Component tree shape: React vs compiled runtime</title>
+    <style>
+      body { font: 15px/1.5 ui-monospace, monospace; margin: 2rem; }
+      label, button { margin-right: .75rem; }
+      #result { white-space: pre-wrap; overflow-wrap: anywhere; }
+      .pass { color: #087443; }
+      .fail { color: #b42318; }
+      .roots { position: fixed; left: -200vw; top: 0; opacity: 0; pointer-events: none; contain: layout; }
+    </style>
+  </head>
+  <body>
+    <h1>Same 10,000 leaf DOM nodes, different component tree shapes</h1>
+    <p>Only component grouping changes. Each measured update clicks one leaf-local boolean state and checks committed output. Fragment groups add no host DOM nodes.</p>
+    <label>Groups <select id="group-count"><option value="0">Flat</option><option value="10">10 × 1,000</option><option value="100">100 × 100</option><option value="1000">1,000 × 10</option></select></label>
+    <label>Components <select id="count"><option selected>10000</option></select></label>
+    <label>Seed <input id="seed" type="number" value="71001000" /></label>
+    <button id="run">Run paired study</button>
+    <button id="export" disabled>Export JSON</button>
+    <pre id="result">Ready.</pre>
+    <div class="roots"><div id="react-root"></div><div id="runtime-root"></div></div>
+    <script type="module" src="/src/browser/component_state_react_benchmark.tsx"></script>
+  </body>
+</html>

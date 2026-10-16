@@ -1,0 +1,1 @@
+../../../../src/vdom_scalar_keyed_delta_test.ts

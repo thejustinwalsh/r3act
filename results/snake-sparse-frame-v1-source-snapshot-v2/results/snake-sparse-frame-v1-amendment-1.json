@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "snake-sparse-frame-browser-v1-amendment",
+  "amendment": 1,
+  "status": "PRE_ACCEPTED_COLLECTION_CORRECTION",
+  "issuedDate": "2026-10-10",
+  "reason": "The first browser smoke/rehearsal review found that the timed update loop wrote duplicate expected-coordinate arrays alongside the actual x/y input columns. Those shadow writes are verification instrumentation rather than UI work and would add work to every arm's timed callback.",
+  "correction": "Remove expected-coordinate writes from the timed callback. Reconstruct final expected positions once in finish(), after timing has stopped, from the deterministic dirty-row set and final frame index.",
+  "measurementDesignChanges": false,
+  "acceptedCollectionAction": "Reject and preserve all browser records collected under the prior source lock in snake-sparse-frame-v1-pilot-rejected-expected-array-overhead/. Re-run the complete preregistered 288-page schedule from sequence 0 using the amended source lock before creating the accepted manifest.",
+  "pilotSourceLock": "results/snake-sparse-frame-v1-pilot-source-lock.json",
+  "acceptedSourceLock": "results/snake-sparse-frame-v1-source-lock.json",
+  "preregistration": "results/snake-sparse-frame-v1-preregistration.json"
+}

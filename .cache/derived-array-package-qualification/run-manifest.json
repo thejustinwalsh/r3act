@@ -1,0 +1,68 @@
+{
+  "status": "PASS",
+  "scope": "one-shot fresh native package build and installed-consumer qualification; no browser/server/benchmark",
+  "inputMutationCheck": "PASS; prebuild-inputs.sha256 and postrun-inputs.sha256 are byte-identical",
+  "package": {
+    "tarball": "compiled-ui-runtime.tgz",
+    "tarballSha256": "ba82b21a4958f6b47880264bf60d6f2dbf66cdd74bd6e44d35d27ea7d2167bfa",
+    "report": "package-report.json",
+    "reportSha256": "21bb396f539b8297dacb5bd4f20eab72a3d93d55eaa59aa7b24ce5ac1f41d1b2",
+    "compilerBinarySha256": "e76181913b5d00795b3165786e1bd2a803d19d3a60bf1445b2bd52b7654e4417",
+    "sourceMaps": {
+      "count": 68,
+      "javascript": 34,
+      "declarations": 34,
+      "mappedSources": 34,
+      "packagedSources": 35
+    },
+    "buildLog": "build.log",
+    "consumerVerifier": {
+      "status": "PASS",
+      "result": "consumer-results.json",
+      "checks": 8
+    }
+  },
+  "installedConsumerProofs": {
+    "derivedPrimitiveKernel": {
+      "status": "PASS",
+      "result": "installed-owner-kernel-result.json",
+      "schemaVersion": 2,
+      "kernelCalls": 1,
+      "componentRenders": 1,
+      "cargoInvoked": false
+    },
+    "derivedThreeArrayPreparedRow": {
+      "status": "PASS",
+      "result": "installed-three-array-row-result-v2.json",
+      "script": "verify_installed_three_array_row_v2.mjs",
+      "path": "prepared owner-row executor; compiler emitted numeric array bindings and a state layout, with no compiled owner-kernel claim",
+      "preparedRowCuts": 1,
+      "componentRenders": 1,
+      "transition": "0 to 3; position [3,4,6], rotation [1,0,0], roughness 0.3",
+      "equalStateUpdateInert": true,
+      "stableThreePositionIdentity": true,
+      "disposalPassed": true,
+      "cargoInvoked": false
+    }
+  },
+  "preservedFailedAttempts": [
+    "installed-owner-kernel-failure-8f136c5e-8335-40a4-a72c-2060fff2718d.json: array fixture correctly did not produce the primitive-only owner kernel",
+    "installed-three-array-kernel-failure-7d758840-01f2-4ef2-9bd5-22d6bebaacfb.json: mixed scalar/array fixture correctly used prepared owner-row path rather than compiled owner kernel",
+    "installed-three-array-kernel-failure-e9fca30f-3cb1-4933-922f-2e3fb1b22f9f.json: initial strengthened fixture asserted parity at mount by mistake; retained",
+    "installed-three-array-kernel-failure-a1b5ecc3-0a94-4379-8dcd-7a49a51e55a9.json: first retry asserted stale parity expectation; retained",
+    "installed-three-array-row-proof-v2.log: PNPM frozen temporary-consumer lockfile rejection; retained",
+    "installed-three-array-row-proof-v2-retry.log: assertion mismatch from initial expectation placement; retained"
+  ],
+  "sourceHashesBeforeAndAfter": {
+    "before": "prebuild-inputs.sha256",
+    "after": "postrun-inputs.sha256",
+    "diff": "input-hash-diff.txt"
+  },
+  "outputHashes": "output-hashes.sha256",
+  "priorArtifactsPreserved": "prior/",
+  "proofHistory": {
+    "initialArrayRowResult": "installed-three-array-row-result.json",
+    "correctedParitySensitiveResult": "installed-three-array-row-result-v2.json",
+    "correctedRunLog": "installed-three-array-row-proof-v2-pass.log"
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "priorChromiumProcessCheck": {
+    "pid": 81041,
+    "method": "kill -0 signal-zero check",
+    "result": "absent",
+    "exitCode": 1
+  },
+  "initialOverlappingPreviewAttempt": {
+    "original": {
+      "sessionId": 39810,
+      "appPort": 4852,
+      "route": "https://react-runtime-headless.localhost:1355"
+    },
+    "diagnostic": {
+      "sessionId": 62082,
+      "appPort": 4054,
+      "route": "https://dense-ledger.localhost:1355"
+    },
+    "finding": "Diagnostic route served locked assets; original HTTPS route returned 404 while original local Vite port served the original HTML. No collector ran against this overlapping setup.",
+    "cleanup": {
+      "sessionsExitedByCtrlC": [
+        39810,
+        62082
+      ],
+      "exitCodes": [
+        130,
+        130
+      ]
+    }
+  },
+  "collectorPreviewSessions": {
+    "original": {
+      "sessionId": 70009,
+      "appPort": 4629,
+      "route": "https://react-runtime-headless.localhost:1355",
+      "servedHashesVerified": true,
+      "collectorRecord": "../runs/original-native-128-1791945964756-90d662d3-1bb7-4b31-8e5c-c2d88be2edaa/record.json",
+      "cleanupResult": "Ctrl-C; exit 130"
+    },
+    "diagnostic": {
+      "sessionId": 50289,
+      "appPort": 4087,
+      "route": "https://dense-ledger.localhost:1355",
+      "servedHashesVerified": true,
+      "collectorRecords": [
+        "../runs/off-native-128-1791945999907-9af3e35b-3c68-4a3b-af0b-1d9735c20cfb/record.json",
+        "../runs/on-native-128-1791946019146-5baa9fc1-48a3-44ee-a3f9-97c8f4bc2e3f/record.json",
+        "../runs/count-native-128-1791946039714-e64b0417-36b6-423a-94bf-9e30c4ded5cf/record.json"
+      ],
+      "cleanupResult": "write_stdin reported unknown process ID; post-cleanup checks verified the route returns proxy 404 and local port refuses connections; no owned listener remained."
+    }
+  },
+  "routesBeforePath": "portless-routes-before.txt",
+  "routesAfterCleanupPath": "portless-routes-after-stop.txt",
+  "routeListsByteIdentical": true,
+  "postCleanupOriginChecksPath": "route-check-after-stop.txt",
+  "localPortsAfterCleanup": {
+    "4629": "connection refused",
+    "4087": "connection refused"
+  },
+  "sharedProxy": "left running",
+  "preexistingAliasesPreserved": [
+    "yacht-club-test-access.localhost",
+    "yacht-agent-settings.localhost",
+    "yacht-simdeck.localhost"
+  ],
+  "portlessCleanOrPruneUsed": false
+}

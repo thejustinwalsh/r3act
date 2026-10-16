@@ -1,0 +1,49 @@
+import { flushSync } from "react-dom";
+import { createRoot } from "react-dom/client";
+import { ReactArrayBoard } from "../react_array.tsx";
+import { jsx as _jsx } from "react/jsx-runtime";
+export function mountReact(container, initialIds, life) {
+	const root = createRoot(container);
+	let setIds = null;
+	const registerIdsSetter = (setter) => {
+		if (setIds !== null) throw new Error("duplicate React setter");
+		setIds = setter;
+		return () => {
+			if (setIds === setter) setIds = null;
+		};
+	};
+	try {
+		flushSync(() => root.render(/* @__PURE__ */ _jsx(ReactArrayBoard, {
+			initialIds,
+			life,
+			registerIdsSetter
+		})));
+	} catch (error) {
+		try {
+			flushSync(() => root.unmount());
+		} catch (disposeError) {
+			throw new Error(`React mount failed: ${String(error)}; disposal failed: ${String(disposeError)}`);
+		}
+		throw error;
+	}
+	return {
+		click(id) {
+			const node = [...container.querySelectorAll("li[data-id]")].find((item) => item.dataset.id === id);
+			if (!node) throw new Error(`missing click target ${id}`);
+			flushSync(() => node.click());
+		},
+		edit(_edit, next) {
+			if (!setIds) throw new Error("React setter unregistered");
+			flushSync(() => setIds(next));
+			return {};
+		},
+		dispose() {
+			flushSync(() => root.unmount());
+			return {
+				readerCount: null,
+				ownerCount: null,
+				setterRegistered: setIds !== null
+			};
+		}
+	};
+}

@@ -1,0 +1,70 @@
+# Numeric lane identity audit
+
+## Scope and conclusion
+
+This is a read-only lifecycle audit of `OwnerStateWorld` identity resolution and the candidate dispatch forwarding closure. It makes no performance claim.
+
+For **physical World liveness**, an entry found in `#committedCellsByIdentity` under `handle.cellIdentity`, combined with matching `handle.owner` and `handle.site`, is sufficient to establish that the identity has not been destroyed and still names that owner/site's committed cell. The proof depends on current lifecycle invariants: identities are only installed for cells already in `#stateByOwner`; cells are not replaced in that map while their owner remains live; destruction deletes the identity before dropping the owner’s cell map; and owner IDs are monotonic and not reused. A captured-version comparison is a separate freshness condition and remains essential for exact lane capture and acknowledgement.
+
+That proves **physical cell liveness**, not necessarily current keyed-slot occupancy during the short staged-owner publication sequence. `activateStagedOwner` replaces the slot mapping, and the caller then retires the old owner. Until retirement calls `destroyOwner`, the old owner and identity still exist. If callers require “currently occupies the keyed slot” rather than World-live, they need a slot-occupancy check or a stronger atomic lifecycle boundary.
+
+## Identity and cell lifecycle
+
+- `#stateByOwner` stores committed cells by owner/site; `#committedCellsByIdentity` is a weak identity-to-entry index. The entry retains owner, site, cell object, and the frozen public handle ([owner_state_world.ts:94-106](src/owner_state_world.ts#L94), [owner_state_world.ts:211-215](src/owner_state_world.ts#L211)).
+- Ordinary `useState` creates a cell only when the owner/site map has no cell, then stores it in that map ([owner_state_world.ts:1304-1337](src/owner_state_world.ts#L1304)). A cell receives an identity on its first non-`Object.is` committed dispatch. That dispatch creates one identity object and frozen handle, then inserts the identity entry ([owner_state_world.ts:1598-1644](src/owner_state_world.ts#L1598)). No-op writes do not create an identity.
+- Candidate `useState` cells live in `candidateCells`; candidate dispatch changes only that private copy and does not add an identity entry ([owner_state_world.ts:585-675](src/owner_state_world.ts#L585), [owner_state_world.ts:753-817](src/owner_state_world.ts#L753)). Discard and private-subtree cancellation clear candidate values and dispatch controls; these cells were never in either committed map ([owner_state_world.ts:908-1045](src/owner_state_world.ts#L908), [owner_state_world.ts:1171-1198](src/owner_state_world.ts#L1171)). Rollback restores candidate-local values/versions and does not touch committed identity entries ([owner_state_world.ts:785-802], [owner_state_world.ts:868-893]).
+- Candidate publication inserts a newly prepared cell only if the committed owner/site slot is still empty. If a committed cell already exists, publication mutates that existing object rather than replacing it. Thus existing `cellIdentity`, handle, setter closure, and identity entry remain attached to the same live cell ([owner_state_world.ts:1075-1084], [owner_state_world.ts:1098-1147]). A newly published candidate cell starts without a committed identity; its first later committed dispatch creates one.
+- `destroyOwner` recursively destroys children, removes the owner from `#owners`, deletes each cell identity entry, releases its lane, clears the retained cell value/source, then removes the owner’s cell map and dirty entries ([owner_state_world.ts:1542-1574]). A retained dead setter therefore still closes over a cleared cell, but dispatch fails at `#assertOwner` before it can mutate or emit ([owner_state_world.ts:1577-1580], [owner_state_world.ts:1598-1605]). Identity-map absence is the decisive dead-cell signal.
+- `createStagedOwner` gives the staged owner its own monotonic ID and adds it to `#owners`; `activateStagedOwner` changes the keyed-slot mapping but does not itself destroy the previous owner ([owner_state_world.ts:1253-1293]). In the collection caller, activation is followed by retirement of the previous owner ([component_state_runtime.ts:4303-4315]); retirement eventually calls World destruction. Consequently, identity presence proves World liveness during that interval, not slot occupancy.
+- Same-schema layout reactivation keeps the cell’s canonical layout and lane; it does not replace the committed cell or identity. The layout signature/canonicalization work is at [owner_state_world.ts:256-288](src/owner_state_world.ts#L256), and the regression is [owner_numeric_layout_test.ts:183-206](src/owner_numeric_layout_test.ts#L183). A fresh descriptor with the same schema does not change the identity proof.
+- Shared roots subscribe to the same World cell identity/version, but each root owns a separate pending queue. A World acknowledgement may remove the shared World dirty entry while another root’s independent queue still contains its own handle/version. This does not affect identity liveness; the test demonstrates two root queues over one World cell ([native_cell_cut_test.ts:285-307](src/native_cell_cut_test.ts#L285)).
+
+## Existing resolution checks
+
+`numericLaneForCell` currently checks identity-map membership, the stored handle identity, owner/site equality, owner liveness, owner/site-to-cell map equality, captured version equality, then `#laneIsCurrent` ([owner_state_world.ts:1350-1367](src/owner_state_world.ts#L1350)). `#laneIsCurrent` checks layout storage, owner row and generation, site slot/column, lane owner/site, cell-to-lane object identity, current owner/site map membership, promotion state, and numeric value ([owner_state_world.ts:290-307](src/owner_state_world.ts#L290)).
+
+| Check | Audit finding | Reason / boundary |
+| --- | --- | --- |
+| WeakMap lookup by `handle.cellIdentity` | Essential | Establishes that the opaque identity was actually minted for a committed cell and has not been explicitly deleted. A fresh forged identity misses. |
+| `entry.owner === handle.owner` and `entry.site === handle.site` | Essential | A caller can copy a real identity into a forged handle with altered owner/site. Rejecting wrong address fields is covered by the tests ([native_cell_cut_test.ts:225-247](src/native_cell_cut_test.ts#L225)). A clone with the same identity and matching fields is intentionally accepted; it is an equivalent bearer handle, not a forged address. |
+| `entry.handle.cellIdentity === handle.cellIdentity` | Redundant under current construction | The WeakMap was queried with that key, and the stored frozen handle was created with the same identity before insertion. No code mutates it. This remains a defensive consistency assertion, not an independent liveness proof. |
+| `#owners.has(handle.owner)` | Redundant for physical liveness if identity deletion invariant is trusted | `destroyOwner` deletes the identity entry and never reuses owner IDs. It is a useful defensive check if a future teardown path forgets to delete entries. It does not prove keyed-slot occupancy. |
+| `#stateByOwner.get(owner)?.get(site) === entry.cell` | Redundant under current map lifecycle if identity deletion invariant is trusted | Ordinary creation stores once; candidate publish reuses an existing cell or installs a fresh cell only into an empty slot; destruction deletes the identity and owner map together. This check catches future accidental cell replacement or a missing identity deletion, so removing it trades defense-in-depth for one fewer lookup. |
+| `entry.cell.version === capturedVersion` in `numericLaneForCell` | Essential | Lane capture must describe the exact version whose value is to be applied. A newer reentrant write makes the captured lane stale and must decline this route. The test confirms the old captured version resolves null after a newer write ([owner_numeric_layout_test.ts:112-116](src/owner_numeric_layout_test.ts#L112)). |
+| Layout storage / owner row / row generation / slot-column agreement | Essential to prove the returned lane address is current | Owner/site liveness alone does not prove that a lane still exists or that a row has not been retired and reused. Generation changes on final row release ([owner_state_world.ts:352-375](src/owner_state_world.ts#L352)); the row-reuse regression checks a new generation ([owner_numeric_layout_test.ts:121-138](src/owner_numeric_layout_test.ts#L121)). |
+| `lane.owner` / `lane.site`, and `cell.lane === lane` in `#laneIsCurrent` | Defensive/redundant under private immutable-address invariants | The lane is fetched from the cell and created as a frozen World address with those fields. They do not establish that the owner/site cell is live; the identity lookup does that. They can catch future corruption or an improperly assigned lane. |
+| `!cell.promoted` and numeric logical value | Essential | Promotion releases the lane and is sticky; a numeric value later assigned to that boxed cell must not silently restore lane eligibility ([owner_state_world.ts:1609-1625](src/owner_state_world.ts#L1609), [owner_numeric_layout_test.ts:72-91](src/owner_numeric_layout_test.ts#L72)). |
+
+`numericLane(owner, site)` has no identity handle/version argument and is also used for initialized numeric cells before the first dispatch creates an identity. It cannot rely on the identity map; its existing map/lane validity checks remain useful ([owner_state_world.ts:1340-1347](src/owner_state_world.ts#L1340)).
+
+## Acknowledgement checks
+
+`clearCellChangesThrough` checks each captured handle’s identity entry and matching owner/site, owner liveness, and owner/site-to-cell equality, then preserves the dirty journal entry if the current cell version is greater than the captured version; otherwise it deletes that owner/site journal entry ([owner_state_world.ts:1436-1459](src/owner_state_world.ts#L1436)).
+
+The identity lookup and owner/site tuple checks are the liveness/address proof. The explicit owner and current-cell map checks are redundant under the lifecycle proof above but provide consistency protection. The version comparison is essential: it keeps a newer reentrant write dirty when an older cut is acknowledged; the regression captures version 1, advances to 2, acknowledges 1, and verifies the newer dirty change remains ([native_cell_cut_test.ts:195-222](src/native_cell_cut_test.ts#L195)). `#dirtyJournal.has(owner, site)` is also required to avoid deleting an absent entry and is O(1) membership rather than scanning journal entries ([owner_state_world.ts:1461-1470](src/owner_state_world.ts#L1461)).
+
+There is one API-boundary caveat: the current `entry.cell.version > capturedVersion` rule accepts a forged *larger* version for a valid handle and can acknowledge the current dirty entry even though the caller did not capture that version. Root fills this argument from its captured queue cut ([component_state_runtime.ts:4802-4811](src/component_state_runtime.ts#L4802)); within that intended path, versions are monotonic and the guard preserves newer writes. If `clearCellChangesThrough` is intended to be safe for arbitrary public callers, equality (`entry.cell.version !== capturedVersion` means skip) is the stricter equivalent for genuine captures and rejects forged future versions. That change is a correctness/API decision, not required to remove redundant liveness map lookups.
+
+The root’s paired `PendingStateChanges.clearNativeThrough` independently checks its own queued identity, owner/site and version cut ([pending_state_changes.ts:145-172](src/pending_state_changes.ts#L145)). The World identity proof does not replace that check because the World dirty journal and each root queue have separate lifetimes.
+
+## Smaller resolution contract, conditional on lifecycle invariants
+
+If the project accepts the current lifecycle invariants as the authority, a smaller World helper can resolve an identity-bearing handle by:
+
+1. Read `entry = #committedCellsByIdentity.get(handle.cellIdentity)`; return null unless present and `entry.owner/site` match.
+2. For lane capture, require `entry.cell.version === capturedVersion`; return null unless `entry.cell.lane` is present and not promoted.
+3. Validate row/generation/column address if retaining defense against lane bookkeeping corruption; this step is lane-validity proof, not cell-liveness proof.
+
+The current explicit `#owners.has` and `#stateByOwner` membership checks can then be removed from identity-based resolution/ack paths, while kept in debug assertions if desired. Do not remove the captured-version guard, promotion/numeric eligibility, or row-generation validation without separately accepting their respective correctness risks. Preserve `numericLane(owner, site)`’s checks because it has no identity handle. Do not apply this reduction to arbitrary untrusted caller-provided version values without deciding whether acknowledgement should require equality.
+
+## Candidate dispatch forwarding closure
+
+At publication, each retained candidate setter control is changed to forward through a newly allocated wrapper `(action) => live.dispatch(action)` ([owner_state_world.ts:1150-1157](src/owner_state_world.ts#L1150)). `live.dispatch` is already an arrow function created for that cell and closes over its owner/site/cell ([owner_state_world.ts:1329-1330](src/owner_state_world.ts#L1329)); it does not depend on a dynamic receiver. Assigning `control.forward = live?.dispatch` therefore removes one forwarding closure per published candidate dispatch control without changing behavior:
+
+- open candidate: `control.candidateCell` receives private writes;
+- discarded candidate: `control.discarded` returns false before forwarding;
+- published candidate with live cell: directly invokes the same committed arrow;
+- absent cell: `undefined` keeps current false-return behavior;
+- later owner destruction: the committed arrow still reaches `#assertOwner` and throws as the current wrapper does.
+
+This is a source-level allocation observation only; it has not been benchmarked here.

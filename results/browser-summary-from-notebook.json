@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "userObservation": {
+    "benchmark": "React state + JSX props vs compiled graph prototype",
+    "provenance": "User-reported browser run",
+    "date": "2026-10-09",
+    "scenario": {
+      "entities": 10000,
+      "changedFraction": 1,
+      "reportedWorkPerBatch": 10000
+    },
+    "measurements": {
+      "react": {
+        "medianMs": 10.7,
+        "p95Ms": 12.8,
+        "reportedWork": "10000 leaf updates / batch"
+      },
+      "compiledGraph": {
+        "medianMs": 2.7,
+        "p95Ms": 3.2,
+        "reportedWork": "10000 bound props / batch"
+      }
+    },
+    "derivedRatios": {
+      "medianReactOverGraph": 3.962962962962963,
+      "p95ReactOverGraph": 4
+    },
+    "environment": null,
+    "rawSamples": null,
+    "limitations": [
+      "Reported paths are not yet semantically equivalent: React performs component state updates, React Compiler work, React DOM diffing, and DOM commits; graph prototype updates pre-bound props via its runtime adapter and lacks a JSX compiler.",
+      "Browser/device metadata, raw samples, and exact run order were not captured in the report.",
+      "Exploratory observation only; not a validated general performance claim."
+    ]
+  },
+  "pilotSummary": [
+    {
+      "mode": "react",
+      "runCount": 3,
+      "samplesPerRun": 41,
+      "medianOfRunMediansMs": 20.199999999254942,
+      "medianOfRunP95sMs": 25.199999999254942,
+      "pooledFrameMedianMs": 20.200000002980232,
+      "pooledFrameP95Ms": 137.30000000074506,
+      "minRunMedianMs": 19.899999998509884,
+      "maxRunMedianMs": 21,
+      "minRunP95Ms": 24.5,
+      "maxRunP95Ms": 205.30000000074506
+    },
+    {
+      "mode": "graph",
+      "runCount": 3,
+      "samplesPerRun": 41,
+      "medianOfRunMediansMs": 16.199999999254942,
+      "medianOfRunP95sMs": 43.30000000074506,
+      "pooledFrameMedianMs": 15.600000001490116,
+      "pooledFrameP95Ms": 41.399999998509884,
+      "minRunMedianMs": 12.800000000745058,
+      "maxRunMedianMs": 17.399999998509884,
+      "minRunP95Ms": 23.899999998509884,
+      "maxRunP95Ms": 44.899999998509884
+    }
+  ],
+  "pilotProtocol": "10k entities, 100% changed, 8 warmup batches, 41 timed batches per run; React x3 then graph x3; not paired or randomized"
+}

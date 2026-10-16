@@ -1,0 +1,506 @@
+[
+  {
+    "name": "deno",
+    "command": [
+      "deno",
+      "test",
+      "--config",
+      "deno.browser.json",
+      "src"
+    ],
+    "exitCode": 0,
+    "seconds": 7.726274251937866
+  },
+  {
+    "name": "rust",
+    "command": [
+      "cargo",
+      "test",
+      "--manifest-path",
+      "compiler/oxc-spike/Cargo.toml"
+    ],
+    "exitCode": 0,
+    "seconds": 0.2328040599822998
+  },
+  {
+    "name": "smoke",
+    "command": [
+      "pnpm",
+      "compiler:native:smoke"
+    ],
+    "exitCode": 0,
+    "seconds": 0.5487678050994873
+  },
+  {
+    "name": "typecheck",
+    "command": [
+      "deno",
+      "check",
+      "--config",
+      "deno.native.json",
+      "src/native_runtime_api.ts",
+      "src/native_task_execution.ts",
+      "src/native_task_transition.ts",
+      "src/browser/native_task_transitions.tsx",
+      "src/native_task_generation_lease_test.ts",
+      "src/store_projection_matrix_test.ts",
+      "src/store_scope_contract_test.ts",
+      "src/native_task_store_matrix_test.ts",
+      "src/native_late_reader_matrix_test.ts"
+    ],
+    "exitCode": 0,
+    "seconds": 0.5116608142852783
+  },
+  {
+    "name": "build",
+    "command": [
+      "pnpm",
+      "build"
+    ],
+    "exitCode": 0,
+    "seconds": 2.5188231468200684
+  },
+  {
+    "name": "execution-state",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_state_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.3228158950805664
+  },
+  {
+    "name": "execution-store",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_store_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.30289196968078613
+  },
+  {
+    "name": "execution-collection",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_collection_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.4023921489715576
+  },
+  {
+    "name": "execution-root_queue",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_root_queue_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.3310129642486572
+  },
+  {
+    "name": "execution-resource",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_resource_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.3902089595794678
+  },
+  {
+    "name": "execution-task_transition",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_task_transition_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 2.353296995162964
+  },
+  {
+    "name": "execution-promise_store_race",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_promise_store_race_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.35048770904541016
+  },
+  {
+    "name": "retention-owner_preparation",
+    "command": [
+      "node",
+      "--expose-gc",
+      "--experimental-transform-types",
+      "scripts/verify_owner_preparation_retention.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.10356426239013672
+  },
+  {
+    "name": "retention-native_candidate",
+    "command": [
+      "node",
+      "--expose-gc",
+      "--experimental-transform-types",
+      "scripts/verify_native_candidate_retention.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.1549990177154541
+  },
+  {
+    "name": "retention-native_resource",
+    "command": [
+      "node",
+      "--expose-gc",
+      "--experimental-transform-types",
+      "scripts/verify_native_resource_retention.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.15038204193115234
+  },
+  {
+    "name": "dom-browser",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "scripts/verify_dom_input_contract.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 2.6602261066436768
+  },
+  {
+    "name": "input-browser",
+    "command": [
+      "node",
+      "scripts/verify_native_input_transition_contract.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 4.332192897796631
+  },
+  {
+    "name": "browser",
+    "command": [
+      "node",
+      ".cache/namespace-three-milestone/browser-check.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 10.71451210975647
+  },
+  {
+    "name": "hmr",
+    "command": [
+      "node",
+      ".cache/namespace-three-milestone/hmr-check.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 1.8935060501098633
+  },
+  {
+    "name": "resource-regression",
+    "command": [
+      "node",
+      ".cache/namespace-three-milestone/resource-regression/browser-check.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 12.256419658660889
+  },
+  {
+    "name": "composed-plugin",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/vite_native_plugin_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.4288809299468994
+  },
+  {
+    "name": "namespace-browser",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "scripts/verify_dom_namespace_contract.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 2.082610845565796
+  },
+  {
+    "name": "react-adapter-browser",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/react_native_adapter_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 2.116316795349121
+  },
+  {
+    "name": "tooling-typecheck",
+    "command": [
+      "pnpm",
+      "check:native-tooling"
+    ],
+    "exitCode": 0,
+    "seconds": 0.9487223625183105
+  },
+  {
+    "name": "three-host-execution",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/three_host_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.35090184211730957
+  },
+  {
+    "name": "three-extension",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/three_host_extension_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.32571887969970703
+  },
+  {
+    "name": "three-browser",
+    "command": [
+      "node",
+      "scripts/verify_native_three_host.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 3.979419231414795
+  },
+  {
+    "name": "collection-differential",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_collection_differential_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.3411571979522705
+  },
+  {
+    "name": "native-package-build",
+    "command": [
+      "pnpm",
+      "package:native"
+    ],
+    "exitCode": 0,
+    "seconds": 1.6050422191619873
+  },
+  {
+    "name": "native-package-consumer",
+    "command": [
+      "pnpm",
+      "check:native-package"
+    ],
+    "exitCode": 0,
+    "seconds": 2.7187209129333496
+  },
+  {
+    "name": "store-owner-execution",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_store_owner_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 2.5103812217712402
+  },
+  {
+    "name": "numeric-commit-execution",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_numeric_commit_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.3196282386779785
+  },
+  {
+    "name": "index-fallback-execution",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_index_fallback_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.3167738914489746
+  },
+  {
+    "name": "binding-index-execution",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_binding_index_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.32701897621154785
+  },
+  {
+    "name": "binding-retention",
+    "command": [
+      "node",
+      "--expose-gc",
+      "--experimental-transform-types",
+      "scripts/verify_vdom_binding_retention.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.1210172176361084
+  },
+  {
+    "name": "sparse-store-execution",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_sparse_store_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 2.2917897701263428
+  },
+  {
+    "name": "sparse-store-retention",
+    "command": [
+      "node",
+      "--expose-gc",
+      "--experimental-transform-types",
+      "scripts/verify_sparse_store_retention.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.1648578643798828
+  },
+  {
+    "name": "host-leaf-compiler",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_host_leaf_compiler_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.18559622764587402
+  },
+  {
+    "name": "namespace-three",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_namespace_three_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.340116024017334
+  },
+  {
+    "name": "typed-collection",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_typed_collection_compiler_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.248795747756958
+  },
+  {
+    "name": "three-inferred-types",
+    "command": [
+      "pnpm",
+      "exec",
+      "tsgo",
+      "-p",
+      "tsconfig.three-inferred.json"
+    ],
+    "exitCode": 0,
+    "seconds": 0.661182165145874
+  },
+  {
+    "name": "product-mixed-build",
+    "command": [
+      "pnpm",
+      "exec",
+      "vite",
+      "build",
+      "--config",
+      "vite.product-mixed-state-resolution.config.ts"
+    ],
+    "exitCode": 0,
+    "seconds": 0.8076450824737549
+  },
+  {
+    "name": "typed-collection-execution",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_typed_collection_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.3164858818054199
+  },
+  {
+    "name": "host-jsx-generator",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/host_jsx_declarations_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.06444501876831055
+  },
+  {
+    "name": "host-jsx-vite",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/vite_host_jsx_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 1.5941588878631592
+  },
+  {
+    "name": "compiled-direct-writers",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_direct_writers_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.33325791358947754
+  },
+  {
+    "name": "compiled-unary-binding",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_unary_binding_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.3310229778289795
+  },
+  {
+    "name": "compiled-numeric-cut",
+    "command": [
+      "node",
+      "--experimental-transform-types",
+      "compiler/native_numeric_cut_execution_test.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.3154177665710449
+  },
+  {
+    "name": "state-identity-retention",
+    "command": [
+      "node",
+      "--expose-gc",
+      "--experimental-transform-types",
+      "scripts/verify_state_identity_retention.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.10557293891906738
+  }
+]

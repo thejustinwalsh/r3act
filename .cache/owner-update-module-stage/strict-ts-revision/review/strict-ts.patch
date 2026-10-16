@@ -1,0 +1,125 @@
+--- ../slot-count-revision/compiler/oxc-spike/src/main.rs	2026-10-13 16:18:57
++++ compiler/oxc-spike/src/main.rs	2026-10-13 16:27:52
+@@ -3733,6 +3733,7 @@
+     numeric_programs: &[Sink],
+     state_layouts: &BTreeMap<String, Vec<NativeStateLayoutSlotMetadata>>,
+     kernel_alias: &str,
++    helper_module: &str,
+ ) -> (String, BTreeMap<String, usize>) {
+     let mut owners = BTreeSet::new();
+     for program in numeric_programs {
+@@ -3759,7 +3760,13 @@
+     if kernels.is_empty() {
+         return (String::new(), indices);
+     }
+-    (format!("\nconst {kernel_alias} = [{}];", kernels.join(", ")), indices)
++    (
++        format!(
++            "\nconst {kernel_alias}: readonly import({helper_module}).CompiledOwnerUpdateProgram[] = [{}];",
++            kernels.join(", ")
++        ),
++        indices,
++    )
+ }
+ 
+ fn transform_native_component_source(
+@@ -3831,7 +3838,7 @@
+         format!("\nconst {} = [{descriptors}] as const;", aliases[8])
+     };
+     let (owner_kernel_table, owner_kernel_indices) =
+-        emit_primitive_owner_cut_kernels(numeric_programs, state_layouts, &aliases[9]);
++        emit_primitive_owner_cut_kernels(numeric_programs, state_layouts, &aliases[9], &module);
+     let mut edits = Vec::new();
+     let mut registrations = String::new();
+     for component in &plan.components {
+@@ -6953,7 +6960,10 @@
+         let vector = components.iter().find(|component| component.name == "Vector").unwrap();
+         assert_ne!(row.component_site_id, same_shape.component_site_id);
+         let code = plan.component_module.unwrap();
+-        assert!(code.contains("const __nativeOwnerCutKernels = ["), "{code}");
++        assert!(
++            code.contains("const __nativeOwnerCutKernels: readonly import(\"native_runtime_api.ts\").CompiledOwnerUpdateProgram[] = ["),
++            "{code}"
++        );
+         assert_eq!(code.matches("slotCount: 2").count(), 2, "{code}");
+         assert!(code.contains("ownerUpdateProgram: __nativeOwnerCutKernels[0]"), "{code}");
+         assert!(code.contains("ownerUpdateProgram: __nativeOwnerCutKernels[1]"), "{code}");
+@@ -6967,7 +6977,14 @@
+         // The primitive kernel has a static switch and inline SameValue semantics;
+         // it does not call Object.is or invoke host writers.
+         assert!(code.contains("switch (changedSlots[changeIndex])"), "{code}");
+-        assert!(code.contains("last === next ? (last !== 0 || 1 / last === 1 / next)"), "{code}");
++        assert!(
++            code.contains("last === next ? (typeof next !== 'number'"),
++            "{code}"
++        );
++        assert!(
++            code.contains("typeof last === 'number' && typeof next === 'number' && last !== last && next !== next"),
++            "{code}"
++        );
+         assert!(!code.contains("Object.is(last, next)"), "{code}");
+         assert!(code.contains("rowState.inputValues[0] > 0 ? \"positive\" : \"nonpositive\""), "{code}");
+         assert!(code.contains("data-escaped"), "{code}");
+--- ../slot-count-revision/compiler/oxc-spike/src/owner_update_program.rs	2026-10-13 16:18:57
++++ compiler/oxc-spike/src/owner_update_program.rs	2026-10-13 16:25:59
+@@ -157,14 +157,13 @@
+             let bit = 1u32 << sink_index;
+             let expression = &rewritten_expressions[sink_index];
+             case_body.push_str(&format!(
+-                "if ((rowState.seenMask & {bit}) === 0) {{ rowState.seenMask |= {bit}; const next = ({expression}); const sinkState = rowState.sinks[{sink_index}]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) {{ stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = {sink_index}; stagedValues[stagedCount] = next; stagedCount++; }} }}"
++                "if ((rowState.seenMask & {bit}) === 0) {{ rowState.seenMask |= {bit}; const next = ({expression}); const sinkState = rowState.sinks[{sink_index}]; const last = sinkState.lastValue; const same = last === next ? (typeof next !== 'number' || (typeof last === 'number' && (last !== 0 || 1 / last === 1 / next))) : (typeof last === 'number' && typeof next === 'number' && last !== last && next !== next); if (!same) {{ stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = {sink_index}; stagedValues[stagedCount] = next; stagedCount++; }} }}"
+             ));
+         }
+         switch_cases.push_str(&format!("case {slot_index}: {{{case_body} break;}}"));
+     }
+     Some(format!(
+-        "{{ schemaVersion: 1, programId: {owner_id}, slotCount: {}, sinkIds: [{sink_ids}], executeCut: function(changedRows, changedSlots, changeCount, rowStates, stagedRows, stagedSinkIds, stagedValues) {{ let stagedCount = 0; for (let changeIndex = 0; changeIndex < changeCount; changeIndex++) {{ const rowIndex = changedRows[changeIndex]; const rowState = rowStates[rowIndex]; switch (changedSlots[changeIndex]) {{ {switch_cases} }} }} return stagedCount; }} }}",
++        "{{ schemaVersion: 1, programId: {owner_id}, slotCount: {}, sinkIds: [{sink_ids}], executeCut: function(changedRows, changedSlots, changeCount, rowStates, stagedRows, stagedSinkIds, stagedValues) {{ let stagedCount = 0; for (let changeIndex = 0; changeIndex < changeCount; changeIndex++) {{ const rowIndex = changedRows[changeIndex]; const rowState = rowStates[rowIndex]!; switch (changedSlots[changeIndex]) {{ {switch_cases} }} }} return stagedCount; }} }}",
+         ordered_layout_site_ids.len(),
+     ))
+ }
+-
+--- ../slot-count-revision/node-proof/execute_owner_cut_kernel.mjs	2026-10-13 16:18:57
++++ node-proof/execute_owner_cut_kernel.mjs	2026-10-13 16:28:08
+@@ -4,6 +4,7 @@
+ import path from "node:path";
+ import vm from "node:vm";
+ import { fileURLToPath } from "node:url";
++import { transformWithOxc } from "vite";
+ 
+ const scriptPath = fileURLToPath(import.meta.url);
+ const stageRoot = path.resolve(path.dirname(scriptPath), "..");
+@@ -39,11 +40,18 @@
+ assert.equal(typeof emitted, "string");
+ 
+ function extractKernelDeclaration(source, name) {
+-  const prefix = `const ${name} =`;
++  const prefix = `const ${name}`;
+   const start = source.indexOf(prefix);
+   assert.notEqual(start, -1, "compiler did not emit owner cut kernels");
+   let cursor = start + prefix.length;
+   while (/\s/.test(source[cursor] ?? "")) cursor++;
++  assert.equal(source[cursor], ":", "kernel table has contextual type annotation");
++  assert.ok(
++    source.slice(cursor, source.indexOf("=", cursor)).includes("CompiledOwnerUpdateProgram[]"),
++    "kernel table uses the public owner-program type",
++  );
++  cursor = source.indexOf("=", cursor) + 1;
++  while (/\s/.test(source[cursor] ?? "")) cursor++;
+   assert.equal(source[cursor], "[");
+ 
+   const delimiters = ["]"];
+@@ -111,7 +119,12 @@
+ }
+ 
+ const declaration = extractKernelDeclaration(emitted, "__nativeOwnerCutKernels");
+-const kernels = vm.runInNewContext(`${declaration}; __nativeOwnerCutKernels`);
++const executableDeclaration = await transformWithOxc(
++  declaration,
++  "owner-cut-kernels.ts",
++  { lang: "ts" },
++);
++const kernels = vm.runInNewContext(`${executableDeclaration.code}; __nativeOwnerCutKernels`);
+ assert.equal(kernels.length, 2, "only primitive Row and SameShape should get kernels");
+ assert.notEqual(kernels[0].programId, kernels[1].programId, "same-shaped components must have isolated programs");
+ assert.equal(kernels[0].slotCount, 2, "owner kernel declares its ordered state-layout width");

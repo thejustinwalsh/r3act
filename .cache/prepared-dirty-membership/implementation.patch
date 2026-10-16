@@ -1,0 +1,664 @@
+--- a/src/world_dirty_journal.ts
++++ b/src/world_dirty_journal.ts
+@@ -2,7 +2,9 @@
+ 
+ type DirtySiteEntry = {
+   readonly site: StateSiteId;
++  readonly bucket: DirtyOwnerBucket;
+   active: boolean;
++  prepared?: PreparedDirtyMembership;
+   previous?: DirtySiteEntry;
+   next?: DirtySiteEntry;
+ };
+@@ -11,6 +13,8 @@
+   readonly owner: OwnerId;
+   /** Retained for reuse until removeOwner; values contain identifiers and links only. */
+   readonly sites: Map<StateSiteId, DirtySiteEntry>;
++  /** Set permanently when this bucket is removed; prepared tokens then go stale. */
++  retired: boolean;
+   active: boolean;
+   firstSite?: DirtySiteEntry;
+   lastSite?: DirtySiteEntry;
+@@ -18,6 +22,65 @@
+   next?: DirtyOwnerBucket;
+ };
+ 
++/** Opaque payload-free owner/site node reference prepared by one journal. */
++declare const preparedDirtyMembershipType: unique symbol;
++export interface PreparedDirtyMembership {
++  readonly [preparedDirtyMembershipType]: never;
++}
++
++const preparedMembershipAuthority = {};
++
++/** Runtime-opaque token; private data retains one bucket/node, never the journal. */
++class PreparedDirtyMembershipToken implements PreparedDirtyMembership {
++  declare readonly [preparedDirtyMembershipType]: never;
++
++  #journalIdentity: object | undefined;
++  #entry: DirtySiteEntry | undefined;
++
++  constructor(
++    authority: object,
++    journalIdentity: object,
++    entry: DirtySiteEntry,
++  ) {
++    if (authority !== preparedMembershipAuthority) {
++      throw new TypeError("Prepared dirty membership is not constructible");
++    }
++    this.#journalIdentity = journalIdentity;
++    this.#entry = entry;
++    Object.freeze(this);
++  }
++
++  static resolve(
++    value: unknown,
++    journalIdentity: object,
++  ): DirtySiteEntry | null {
++    if (
++      (typeof value !== "object" && typeof value !== "function") ||
++      value === null || !(#entry in value)
++    ) return null;
++    const token = value as PreparedDirtyMembershipToken;
++    const entry = token.#entry;
++    return token.#journalIdentity === journalIdentity && entry &&
++        !entry.bucket.retired
++      ? entry
++      : null;
++  }
++
++  static retire(
++    value: PreparedDirtyMembership | undefined,
++    journalIdentity: object,
++  ): void {
++    if (
++      (typeof value !== "object" && typeof value !== "function") ||
++      value === null || !(#entry in value)
++    ) return;
++    const token = value as PreparedDirtyMembershipToken;
++    if (token.#journalIdentity !== journalIdentity) return;
++    token.#journalIdentity = undefined;
++    token.#entry = undefined;
++  }
++}
++
+ /**
+  * Owner-major ordered dirty membership for OwnerStateWorld.
+  *
+@@ -26,6 +89,7 @@
+  * closures, or payloads.
+  */
+ export class WorldDirtyJournal {
++  #identity = {};
+   #owners = new Map<OwnerId, DirtyOwnerBucket>();
+   #firstOwner: DirtyOwnerBucket | undefined;
+   #lastOwner: DirtyOwnerBucket | undefined;
+@@ -43,17 +107,58 @@
+ 
+   /** Mark an owner/site dirty, coalescing repeated writes without reordering. */
+   mark(owner: OwnerId, site: StateSiteId): void {
++    const entry = this.#entryFor(owner, site);
++    this.#markEntry(entry.bucket, entry);
++  }
++
++  /** Prepare one reusable node; subsequent marks/deletes avoid owner/site Maps. */
++  prepareMembership(
++    owner: OwnerId,
++    site: StateSiteId,
++  ): PreparedDirtyMembership {
++    const entry = this.#entryFor(owner, site);
++    if (!entry.prepared) {
++      entry.prepared = new PreparedDirtyMembershipToken(
++        preparedMembershipAuthority,
++        this.#identity,
++        entry,
++      );
++    }
++    return entry.prepared;
++  }
++
++  /** Mark a previously prepared node in O(1); foreign or retired nodes decline. */
++  markPrepared(token: PreparedDirtyMembership): boolean {
++    const data = PreparedDirtyMembershipToken.resolve(token, this.#identity);
++    if (!data) return false;
++    this.#markEntry(data.bucket, data);
++    return true;
++  }
++
++  /** Delete a previously prepared node in O(1); foreign or retired nodes decline. */
++  deletePrepared(token: PreparedDirtyMembership): boolean {
++    const data = PreparedDirtyMembershipToken.resolve(token, this.#identity);
++    if (!data) return false;
++    this.#deleteEntry(data.bucket, data);
++    return true;
++  }
++
++  #entryFor(owner: OwnerId, site: StateSiteId): DirtySiteEntry {
+     let bucket = this.#owners.get(owner);
+     if (!bucket) {
+-      bucket = { owner, sites: new Map(), active: false };
++      bucket = { owner, sites: new Map(), retired: false, active: false };
+       this.#owners.set(owner, bucket);
+     }
+ 
+     let entry = bucket.sites.get(site);
+     if (!entry) {
+-      entry = { site, active: false };
++      entry = { site, bucket, active: false };
+       bucket.sites.set(site, entry);
+     }
++    return entry;
++  }
++
++  #markEntry(bucket: DirtyOwnerBucket, entry: DirtySiteEntry): void {
+     if (entry.active) return;
+ 
+     entry.active = true;
+@@ -72,6 +177,12 @@
+     const entry = bucket?.sites.get(site);
+     if (!bucket || !entry?.active) return;
+ 
++    this.#deleteEntry(bucket, entry);
++  }
++
++  #deleteEntry(bucket: DirtyOwnerBucket, entry: DirtySiteEntry): void {
++    if (!entry.active) return;
++
+     this.#unlinkSite(bucket, entry);
+     if (!bucket.firstSite) this.#deactivateOwner(bucket);
+   }
+@@ -81,6 +192,17 @@
+     const bucket = this.#owners.get(owner);
+     if (!bucket) return;
+     if (bucket.active) this.#deactivateOwner(bucket);
++    bucket.retired = true;
++    for (const entry of bucket.sites.values()) {
++      entry.active = false;
++      entry.previous = undefined;
++      entry.next = undefined;
++      PreparedDirtyMembershipToken.retire(
++        entry.prepared,
++        this.#identity,
++      );
++      entry.prepared = undefined;
++    }
+     bucket.firstSite = undefined;
+     bucket.lastSite = undefined;
+     bucket.sites.clear();
+--- a/src/owner_state_world.ts
++++ b/src/owner_state_world.ts
+@@ -7,7 +7,10 @@
+   type CompiledStateLayout,
+   type NumericLaneAddress,
+ } from "./compiled_state_layout.ts";
+-import { WorldDirtyJournal } from "./world_dirty_journal.ts";
++import {
++  type PreparedDirtyMembership,
++  WorldDirtyJournal,
++} from "./world_dirty_journal.ts";
+ 
+ /** A component instance in the owner graph. IDs are allocated once and never reused. */
+ export type OwnerId = number;
+@@ -31,6 +34,8 @@
+   /** Allocated only on the first committed dispatch for this cell. */
+   cellIdentity?: object;
+   cellHandle?: StateCellHandle;
++  /** Reusable owner/site journal node; it contains no cell payload. */
++  dirtyMembership?: PreparedDirtyMembership;
+   source?: ScalarSource;
+   dispatch: (action: StateAction<T>) => boolean;
+ };
+@@ -91,6 +96,7 @@
+   cell.lane = undefined;
+   cell.cellIdentity = undefined;
+   cell.cellHandle = undefined;
++  cell.dirtyMembership = undefined;
+   cell.promoted = args.promoted;
+   return cell;
+ }
+@@ -733,6 +739,7 @@
+           ...(stateLayout ? { numericLaneSlot, laneSlotResolved: true } : {}),
+           ...(promoted ? { promoted: true } : {}),
+           ...(source ? { source } : {}),
++          dirtyMembership: undefined,
+           dispatch: () => false,
+         };
+       }
+@@ -1196,7 +1203,7 @@
+                   typeof candidate.value === "number" &&
+                   existing.stateLayout && !existing.promoted
+                 ) this.#ensureNumericLane(owner, site, existing);
+-                this.#dirtyJournal.mark(owner, site);
++                this.#markCellDirty(owner, site, existing);
+               } else if (
+                 typeof existing.value === "number" && existing.stateLayout &&
+                 !existing.promoted
+@@ -1213,7 +1220,7 @@
+               typeof candidate.value === "number"
+             ) this.#ensureNumericLane(owner, site, candidate);
+             if (candidate.version > 0) {
+-              this.#dirtyJournal.mark(owner, site);
++              this.#markCellDirty(owner, site, candidate);
+             }
+           }
+         }
+@@ -1413,6 +1420,7 @@
+           value,
+           version: 0,
+           ...(normalizedLayout ? { stateLayout: normalizedLayout } : {}),
++          dirtyMembership: undefined,
+           dispatch: () => false,
+         };
+         if (source) cell.source = source;
+@@ -1521,8 +1529,7 @@
+     if (
+       !entry || entry.handle.cellIdentity !== handle.cellIdentity ||
+       entry.owner !== handle.owner ||
+-      entry.site !== handle.site || !this.#owners.has(handle.owner) ||
+-      this.#stateByOwner.get(handle.owner)?.get(handle.site) !== entry.cell
++      entry.site !== handle.site
+     ) return null;
+     return entry.cell.version;
+   }
+@@ -1544,11 +1551,11 @@
+       if (
+         !entry || entry.handle.cellIdentity !== handle.cellIdentity ||
+         entry.owner !== handle.owner ||
+-        entry.site !== handle.site || !this.#owners.has(handle.owner) ||
+-        this.#stateByOwner.get(handle.owner)?.get(handle.site) !== entry.cell
++        entry.site !== handle.site
+       ) continue;
+       if (entry.cell.version > versions[index]) continue;
+-      this.#dirtyJournal.delete(handle.owner, handle.site);
++      const membership = entry.cell.dirtyMembership;
++      if (membership) this.#dirtyJournal.deletePrepared(membership);
+     }
+   }
+ 
+@@ -1658,6 +1665,7 @@
+         this.#committedCellsByIdentity.delete(cell.cellIdentity);
+       }
+       this.#releaseNumericLane(owner, site, cell);
++      cell.dirtyMembership = undefined;
+       // Retained dead setters still close over the cell, so release its payload
+       // and numeric source after removing the owner from the live world.
+       cell.value = undefined;
+@@ -1674,6 +1682,17 @@
+     }
+   }
+ 
++  #markCellDirty(owner: OwnerId, site: StateSiteId, cell: StateCell<unknown>) {
++    let membership = cell.dirtyMembership;
++    if (!membership) {
++      membership = this.#dirtyJournal.prepareMembership(owner, site);
++      cell.dirtyMembership = membership;
++    }
++    if (!this.#dirtyJournal.markPrepared(membership)) {
++      throw new Error("Committed cell has stale dirty membership");
++    }
++  }
++
+   #parentChildrenVersion(parent: OwnerId | null): number {
+     return parent === null
+       ? this.#rootChildrenVersion
+@@ -1697,9 +1716,16 @@
+   ): boolean {
+     this.#assertOwner(owner);
+     const previous = cell.value;
+-    const next = typeof action === "function"
++    const isUpdater = typeof action === "function";
++    const next = isUpdater
+       ? (action as (previous: T) => T)(previous)
+       : action;
++    // User code may synchronously destroy this owner while calculating next.
++    // Reject that dispatch before it can dirty or recreate a dead identity.
++    if (
++      isUpdater && (!this.#owners.has(owner) ||
++        this.#stateByOwner.get(owner)?.get(site) !== cell)
++    ) return false;
+     if (Object.is(previous, next)) return false;
+     if (cell.lane && typeof next !== "number") {
+       this.#releaseNumericLane(owner, site, cell as StateCell<unknown>);
+@@ -1718,7 +1744,7 @@
+       cell.source ??= new ScalarSource(OwnerStateWorld.#nextSourceId++, next);
+       cell.source.value = next;
+     }
+-    this.#dirtyJournal.mark(owner, site);
++    this.#markCellDirty(owner, site, cell as StateCell<unknown>);
+     let cellIdentity = cell.cellIdentity;
+     if (!cellIdentity) {
+       cellIdentity = {};
+--- /dev/null
++++ b/src/prepared_dirty_membership_test.ts
+@@ -0,0 +1,331 @@
++import { OwnerStateWorld, type StateCellHandle } from "./owner_state_world.ts";
++import { WorldDirtyJournal } from "./world_dirty_journal.ts";
++import type { CompiledStateLayout } from "./compiled_state_layout.ts";
++
++const numericLayout: CompiledStateLayout = Object.freeze({
++  schemaVersion: 1,
++  slots: Object.freeze([Object.freeze({ siteId: "value", slot: 0 })]),
++});
++
++const assert: (condition: unknown, message: string) => asserts condition = (
++  condition,
++  message,
++) => {
++  if (!condition) throw new Error(message);
++};
++
++const assertEntries = (
++  journal: WorldDirtyJournal,
++  expected: readonly (readonly [number, string])[],
++  label: string,
++) => {
++  const actual = [...journal.entries()];
++  assert(actual.length === expected.length, `${label}: entry count`);
++  for (let index = 0; index < expected.length; index++) {
++    assert(actual[index][0] === expected[index][0], `${label}: owner ${index}`);
++    assert(actual[index][1] === expected[index][1], `${label}: site ${index}`);
++  }
++};
++
++Deno.test("prepared dirty nodes preserve ordering and reject foreign/stale tokens", () => {
++  const first = new WorldDirtyJournal();
++  const second = new WorldDirtyJournal();
++  const firstA = first.prepareMembership(1, "a");
++  const firstB = first.prepareMembership(1, "b");
++  const secondX = first.prepareMembership(2, "x");
++
++  assert(
++    Reflect.ownKeys(firstA).length === 0,
++    "token exposes internal payload",
++  );
++  assert(first.markPrepared(firstA), "current prepared mark was rejected");
++  assert(first.markPrepared(secondX), "second prepared mark was rejected");
++  assert(first.markPrepared(firstB), "third prepared mark was rejected");
++  assert(!second.markPrepared(firstA), "foreign journal accepted a token");
++  assertEntries(first, [[1, "a"], [1, "b"], [2, "x"]], "owner-major");
++
++  assert(first.deletePrepared(firstA), "prepared delete was rejected");
++  assert(first.markPrepared(firstA), "prepared reactivation was rejected");
++  assertEntries(first, [[1, "b"], [1, "a"], [2, "x"]], "site reactivation");
++
++  first.clear();
++  assert(first.markPrepared(secondX), "clear invalidated a reusable token");
++  assert(first.markPrepared(firstA), "clear invalidated a reusable node");
++  assertEntries(first, [[2, "x"], [1, "a"]], "post-clear order");
++
++  first.removeOwner(1);
++  assert(!first.markPrepared(firstA), "removed owner's token was accepted");
++  assert(!first.deletePrepared(firstA), "removed owner's token deleted work");
++  assertEntries(first, [[2, "x"]], "removed owner leaves no linked siblings");
++
++  const malformed = new Proxy({}, {
++    getPrototypeOf() {
++      throw new Error("untrusted proxy trap");
++    },
++  });
++  assert(
++    !first.markPrepared(malformed as never),
++    "malformed token should decline without throwing",
++  );
++  assert(
++    !first.deletePrepared({} as never),
++    "forged tuple-shaped object should decline",
++  );
++});
++
++Deno.test("World native acknowledgement uses the exact prepared owner/site node", () => {
++  const world = new OwnerStateWorld();
++  const owner = world.resolveOwner(null, "fixture.prepared-dirty");
++  const [, set] = world.useState(owner, "value", 0);
++  let handle: StateCellHandle | undefined;
++  const unsubscribe = world.subscribeDirtyCells((next) => handle = next);
++  try {
++    assert(set(1), "first committed write was ignored");
++    const capturedHandle = handle;
++    assert(capturedHandle, "dispatch did not publish its stable handle");
++    const capturedVersion = world.versionForCell(capturedHandle);
++    assert(capturedVersion === 1, "exact committed version was not resolved");
++
++    assert(set(2), "reentrant/newer committed write was ignored");
++    world.clearCellChangesThrough([capturedHandle], [capturedVersion], 1);
++    assert(
++      world.hasPendingChanges(),
++      "old acknowledgement erased a newer write",
++    );
++
++    const latestVersion = world.versionForCell(capturedHandle);
++    assert(latestVersion === 2, "latest exact version was not resolved");
++    world.clearCellChangesThrough([capturedHandle], [latestVersion], 1);
++    assert(
++      !world.hasPendingChanges(),
++      "current acknowledgement left dirty work",
++    );
++
++    assert(set(3), "write after acknowledgement was ignored");
++    assert(world.hasPendingChanges(), "acknowledged node did not reactivate");
++    world.destroyOwner(owner);
++    assert(
++      world.versionForCell(capturedHandle) === null,
++      "dead handle resolved",
++    );
++    assert(
++      !world.hasPendingChanges(),
++      "destroy retained the owner's journal node",
++    );
++  } finally {
++    unsubscribe();
++  }
++});
++
++Deno.test("captured acknowledgement preserves future-version and row-reuse semantics", () => {
++  const world = new OwnerStateWorld();
++  const oldOwner = world.resolveOwner(null, "fixture.prepared-row", "old");
++  const [, oldSet] = world.useState(oldOwner, "value", 1, numericLayout);
++  let oldHandle: StateCellHandle | undefined;
++  const unsubscribe = world.subscribeDirtyCells((handle) => oldHandle = handle);
++  try {
++    assert(oldSet(2), "old owner write was ignored");
++    assert(oldHandle, "old owner did not publish a handle");
++    const oldLane = world.numericLane(oldOwner, "value");
++    assert(oldLane, "old owner did not receive its numeric row");
++    unsubscribe();
++    world.destroyOwner(oldOwner);
++
++    const newOwner = world.resolveOwner(null, "fixture.prepared-row", "new");
++    const [, newSet] = world.useState(newOwner, "value", 3, numericLayout);
++    assert(newSet(4), "replacement owner write was ignored");
++    const newLane = world.numericLane(newOwner, "value");
++    assert(newLane, "replacement owner did not receive its numeric row");
++    assert(
++      newLane.row === oldLane.row,
++      "fixture did not reuse the retired row",
++    );
++    assert(
++      newLane.generation !== oldLane.generation,
++      "reused row did not advance its generation",
++    );
++
++    world.clearCellChangesThrough([oldHandle], [Number.MAX_SAFE_INTEGER], 1);
++    assert(
++      world.hasPendingChanges(),
++      "a dead handle cleared a new owner's reused row membership",
++    );
++
++    let newHandle: StateCellHandle | undefined;
++    const unsubscribeNew = world.subscribeDirtyCells((handle) =>
++      newHandle = handle
++    );
++    try {
++      assert(newSet(5), "new owner follow-up write was ignored");
++      assert(newHandle, "new owner did not publish a handle");
++      // Captured versions are upper bounds; a future cut has historically
++      // acknowledged the current version and remains accepted.
++      world.clearCellChangesThrough(
++        [newHandle],
++        [Number.MAX_SAFE_INTEGER],
++        1,
++      );
++      assert(
++        !world.hasPendingChanges(),
++        "future captured version no longer acknowledges current work",
++      );
++    } finally {
++      unsubscribeNew();
++    }
++  } finally {
++    unsubscribe();
++  }
++});
++
++Deno.test("updaters that destroy their owner cannot dirty a dead cell", () => {
++  {
++    const world = new OwnerStateWorld();
++    const owner = world.resolveOwner(null, "fixture.destroy-in-updater.first");
++    const [, set] = world.useState(owner, "value", 0);
++    let notifications = 0;
++    const unsubscribe = world.subscribeDirtyCells(() => notifications++);
++    try {
++      const accepted = set((previous) => {
++        world.destroyOwner(owner);
++        return previous + 1;
++      });
++      assert(!accepted, "destroyed first-write updater was accepted");
++      assert(!world.hasPendingChanges(), "dead first write left dirty work");
++      assert(notifications === 0, "dead first write notified listeners");
++    } finally {
++      unsubscribe();
++    }
++  }
++
++  {
++    const world = new OwnerStateWorld();
++    const owner = world.resolveOwner(
++      null,
++      "fixture.destroy-in-updater.identified",
++    );
++    const [, set] = world.useState(owner, "value", 0);
++    let handle: StateCellHandle | undefined;
++    let notifications = 0;
++    const unsubscribeHandle = world.subscribeDirtyCells((next) =>
++      handle = next
++    );
++    const unsubscribeCount = world.subscribeDirtyCells(() => notifications++);
++    try {
++      assert(set(1), "setup write was ignored");
++      assert(handle, "setup write did not install its identity");
++      const version = world.versionForCell(handle);
++      assert(version !== null, "setup identity did not resolve");
++      world.clearCellChangesThrough([handle], [version], 1);
++      assert(!world.hasPendingChanges(), "setup acknowledgement failed");
++      notifications = 0;
++
++      const accepted = set((previous) => {
++        world.destroyOwner(owner);
++        return previous + 1;
++      });
++      assert(!accepted, "destroyed identified updater was accepted");
++      assert(
++        !world.hasPendingChanges(),
++        "dead identified update left dirty work",
++      );
++      assert(notifications === 0, "dead identified update notified listeners");
++      assert(
++        world.versionForCell(handle) === null,
++        "destroyed cell identity remained live",
++      );
++    } finally {
++      unsubscribeHandle();
++      unsubscribeCount();
++    }
++  }
++});
++
++Deno.test("destroying an updater owner before numeric row reuse cannot touch the replacement", () => {
++  const world = new OwnerStateWorld();
++  const oldOwner = world.resolveOwner(
++    null,
++    "fixture.destroy-in-updater.row",
++    "old",
++  );
++  const [, oldSet] = world.useState(oldOwner, "value", 1, numericLayout);
++  const oldLane = world.numericLane(oldOwner, "value");
++  assert(oldLane, "old owner did not receive a numeric row");
++  let notifications = 0;
++  const unsubscribe = world.subscribeDirtyCells(() => notifications++);
++  try {
++    const accepted = oldSet((previous) => {
++      world.destroyOwner(oldOwner);
++      const replacement = world.resolveOwner(
++        null,
++        "fixture.destroy-in-updater.row",
++        "new",
++      );
++      world.useState(replacement, "value", 41, numericLayout);
++      return previous + 1;
++    });
++    assert(!accepted, "updater write after owner destruction was accepted");
++
++    const replacement = world.resolveOwner(
++      null,
++      "fixture.destroy-in-updater.row",
++      "new",
++    );
++    const replacementLane = world.numericLane(replacement, "value");
++    assert(replacementLane, "replacement owner did not receive a row");
++    assert(
++      replacementLane.row === oldLane.row,
++      "test did not reuse the retired row",
++    );
++    assert(
++      replacementLane.generation !== oldLane.generation,
++      "replacement row generation did not advance",
++    );
++    assert(
++      replacementLane.column.values[replacementLane.row] === 41,
++      "dead updater overwrote the replacement numeric value",
++    );
++    assert(!world.hasPendingChanges(), "dead updater left dirty membership");
++    assert(notifications === 0, "dead updater notified listeners");
++  } finally {
++    unsubscribe();
++  }
++});
++
++Deno.test("private candidate writes never borrow or activate a committed journal node", () => {
++  const world = new OwnerStateWorld();
++  const owner = world.resolveOwner(null, "fixture.prepared-private");
++  const [, set] = world.useState(owner, "value", 1);
++  let handle: StateCellHandle | undefined;
++  const unsubscribe = world.subscribeDirtyCells((next) => handle = next);
++  assert(set(2), "setup write was ignored");
++  assert(handle, "setup dispatch did not expose its handle");
++  const version = world.versionForCell(handle);
++  assert(version !== null, "setup handle did not resolve");
++  world.clearCellChangesThrough(
++    [handle],
++    [version],
++    1,
++  );
++  assert(!world.hasPendingChanges(), "setup acknowledgement failed");
++
++  let notifications = 0;
++  const unsubscribeNotifications = world.subscribeDirtyCells(() =>
++    notifications++
++  );
++  const preparation = world.beginPreparation();
++  try {
++    const [, candidateSet] = preparation.useState(owner, "value", 1);
++    assert(candidateSet(3), "private candidate write was ignored");
++    assert(
++      !world.hasPendingChanges(),
++      "private write activated live membership",
++    );
++    assert(notifications === 0, "private write notified committed listeners");
++    preparation.discard();
++    assert(!world.hasPendingChanges(), "discard leaked candidate dirtiness");
++    assert(notifications === 0, "discard notified committed listeners");
++  } finally {
++    unsubscribe();
++    unsubscribeNotifications();
++  }
++});

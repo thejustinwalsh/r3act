@@ -1,0 +1,1 @@
+../../../../src/vdom_column_scratch_test.ts

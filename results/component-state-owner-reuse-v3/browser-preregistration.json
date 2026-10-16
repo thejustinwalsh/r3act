@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "component-state-owner-reuse-v3-browser-preregistration-v1",
+  "createdAt": "2026-10-11",
+  "status": "FROZEN_BEFORE_IMPLEMENTATION_AND_COLLECTION",
+  "motivation": {
+    "v2BrowserStatus": "The V2 production benchmark remains preserved, but its React entry module is not selected by the React Compiler plugin in the frozen Vite configuration. Its React arm therefore cannot be treated as a verified React Compiler baseline.",
+    "mechanismFollowUp": "The five-process V3 MemoryVDOMHost diagnostic passes its staged-delta mechanism thresholds but still has 1.23x generic total edge flush; browser relevance is unknown."
+  },
+  "question": "Does staged keyed-cache delta maintenance repair edge-replacement latency in an uninstrumented production browser build, while preserving the same-key rotation gain, compared with generic expansion and a verified React Compiler arm?",
+  "hypotheses": {
+    "edgeFallback": "For edge replacement, token-delta median paired update-to-host-commit ratio versus generic is <= 1.10 on at least four of five fresh pages.",
+    "rotationRuntime": "For the following same-key rotation, token-delta median paired ratio versus generic is <= 0.50 on at least four of five fresh pages.",
+    "rotationProduct": "For the following same-key rotation, token-delta median paired ratio versus the verified React Compiler arm is <= 0.90 on at least four of five fresh pages.",
+    "correctness": "All arms preserve output parity, surviving host identity, fresh identity for the inserted key, and the selected row's local state through edge replacement and the subsequent rotation."
+  },
+  "design": {
+    "arms": [
+      "react-19.3-react-compiler",
+      "generic-owner-expansion",
+      "v2-token-fallback",
+      "v3-token-delta-fallback"
+    ],
+    "count": 10000,
+    "sequencePerPair": [
+      "replace the final key with a new unique key and change the keyed-region version token",
+      "rotate the same membership and preserve the new version token"
+    ],
+    "state": "Seed row-0 selected before measurement; it must remain selected after each stage. The inserted row starts unselected.",
+    "warmupPairs": 8,
+    "measuredPairs": 24,
+    "order": "The 24 permutations of four arms each occur once in a seeded randomized order per page; warmup orders are seeded and shuffled.",
+    "pageReplications": 5,
+    "seeds": [83005301, 83005302, 83005303, 83005304, 83005305],
+    "implementationSmoke": "Before freezing the production build, one correctness smoke may use seed 83005300 with dryrun=1. It is not archived or included in summaries; all five preregistered page replications use distinct fresh loads after the source lock is frozen.",
+    "replicationUnit": "Fresh visible production browser page; samples within a page are repeated measures.",
+    "timing": "Time each update from state dispatch through the completed host commit. Record edge and rotation separately. Do not enable phase callbacks or work counters in latency mode.",
+    "reactCompiler": "The dedicated Vite config explicitly applies babel-plugin-react-compiler target 19 to the measured React component module. Before collection, build output must contain compiler memo-cache lowering for both ReactApp and ReactRow; the built assets are included in the frozen source lock.",
+    "browserProfile": "Use the same available Chrome profile/device, visible tab, production build, and viewport settings as prior owner-reuse browser studies. Record exact UA, platform, hardware concurrency, DPR, and visibility."
+  },
+  "decisionRules": {
+    "pass": "All correctness gates pass on all five pages, edgeFallback passes on at least four pages, and both rotation gates pass on at least four pages.",
+    "fail": "Any correctness failure or any missed latency threshold is reported directly; do not change thresholds or exclude performance samples after collection.",
+    "interpretation": "This isolates only single-key edge replacement followed by same-key rotation. It cannot repair the prior V2 React Compiler comparison or establish performance for filtering, multi-key edits, other devices, or arbitrary JSX."
+  },
+  "limitations": [
+    "One physical device and browser profile; no cross-device generalization.",
+    "Update-to-host-commit omits layout, paint, and display presentation.",
+    "React Compiler output is build-verified, but this focused study includes no manually memoized React arm.",
+    "The offscreen retained DOM fixture is a stateful keyed-list workload, not a general app or Three.js scene.",
+    "This follow-up has a narrow sequence and does not replace the original V2 production matrix."
+  ]
+}

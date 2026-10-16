@@ -1,0 +1,33 @@
+{
+  "benchmark": "React state + JSX props vs compiled graph prototype",
+  "provenance": "User-reported browser run",
+  "date": "2026-10-09",
+  "scenario": {
+    "entities": 10000,
+    "changedFraction": 1.0,
+    "reportedWorkPerBatch": 10000
+  },
+  "measurements": {
+    "react": {
+      "medianMs": 10.7,
+      "p95Ms": 12.8,
+      "reportedWork": "10000 leaf updates / batch"
+    },
+    "compiledGraph": {
+      "medianMs": 2.7,
+      "p95Ms": 3.2,
+      "reportedWork": "10000 bound props / batch"
+    }
+  },
+  "derivedRatios": {
+    "medianReactOverGraph": 3.962962962962963,
+    "p95ReactOverGraph": 4.0
+  },
+  "environment": null,
+  "rawSamples": null,
+  "limitations": [
+    "Reported paths are not yet semantically equivalent: React performs component state updates, React Compiler work, React DOM diffing, and DOM commits; graph prototype updates pre-bound props via its runtime adapter and lacks a JSX compiler.",
+    "Browser/device metadata, raw samples, and exact run order were not captured in the report.",
+    "Exploratory observation only; not a validated general performance claim."
+  ]
+}

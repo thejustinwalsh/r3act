@@ -1,0 +1,56 @@
+import assert from 'node:assert/strict';
+import {openBrowser} from 'vitexec/cli';
+import {writeFile} from 'node:fs/promises';
+const browser=await openBrowser({gpu:false});const errors=[];
+try{
+ const context=await browser.newContext({ignoreHTTPSErrors:true,viewport:{width:1440,height:1100}});
+ const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('https://async-transition-stress.localhost:1355/native-task-transitions.html',{waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>window.__nativeTaskTransitionDiagnostics);
+ const snapshot=()=>page.evaluate(()=>window.__nativeTaskTransitionDiagnostics.snapshot());
+ const main=page.locator('[data-native-root="task-transition-main"]');const fork=page.locator('[data-native-root="task-transition-fork"]');
+ assert.equal(await main.count(),1);assert.equal(await fork.count(),1);
+ const draft=main.getByRole('textbox',{name:'Local draft',exact:true});await draft.fill('Keep my draft through async work');
+ await page.getByRole('button',{name:/Deep.*1,800/}).click();
+ let pending=await snapshot();assert.equal(pending.operations.length,2);assert.equal(pending.activeProviderTimers,6);assert.equal(pending.stores.requests.activeScopes,2);
+ assert.equal(await main.locator('.projected-request').textContent(),'No projected request');
+ await main.getByRole('button',{name:'+ 18',exact:true}).click();
+ await page.waitForFunction(()=>window.__nativeTaskTransitionDiagnostics.snapshot().stores.score.value===19);
+ assert.equal(await main.getByRole('button',{name:'+ 19',exact:true}).count(),1);assert.equal(await fork.getByRole('button',{name:'+ 19',exact:true}).count(),1);
+ await page.waitForTimeout(1450);
+ await main.getByRole('textbox',{name:'Live query',exact:true}).fill('new frontier');
+ await draft.fill('Editing during a restarted search');await draft.focus();
+ await page.waitForFunction(()=>window.__nativeTaskTransitionDiagnostics.snapshot().operations.every(o=>o.status!=='pending'),null,{timeout:10000});
+ const reused=await snapshot();assert.ok(reused.operations.find(o=>o.lane==='main + fork').task.reused.includes('catalog'));
+ assert.ok((await main.locator('.result-card').textContent()).includes('new frontier'));
+ assert.equal(await draft.inputValue(),'Editing during a restarted search');assert.equal(await draft.evaluate(n=>n===document.activeElement),true);
+ await page.getByRole('button',{name:/Quick.*600/}).click();await page.getByRole('button',{name:/Steady.*1,200/}).click();await page.getByRole('button',{name:/Deep.*1,800/}).click();
+ await page.waitForFunction(()=>window.__nativeTaskTransitionDiagnostics.snapshot().operations.every(o=>o.status!=='pending'),null,{timeout:10000});
+ const complete=await snapshot();await writeFile('.cache/native-package-milestone/complete-debug.json',JSON.stringify(complete,null,2));assert.equal(complete.activeProviderTimers,0);
+ assert.equal(complete.stores.feed.state.items[0].pendingLikeOperationIds.length,0);
+ assert.equal(complete.stores.feed.state.items[0].confirmedLikes,11);
+ await page.getByRole('button',{name:/Deep.*1,800/}).click();await page.getByRole('button',{name:'Cancel latest',exact:true}).click();
+ await page.waitForFunction(()=>window.__nativeTaskTransitionDiagnostics.snapshot().operations.every(o=>o.status!=='pending'),null,{timeout:10000});
+ const canceled=await snapshot();assert.equal(canceled.operations.at(-1).status,'cancelled');assert.equal(canceled.stores.feed.state.items[0].pendingLikeOperationIds.length,0);
+ assert.equal(canceled.stores.feed.state.items[0].confirmedLikes,12);
+ assert.equal(canceled.stores.requests.activeScopes,0);
+ await page.getByRole('button',{name:'Fail next',exact:true}).click();await page.getByRole('button',{name:/Quick.*600/}).click();
+ await page.waitForFunction(()=>window.__nativeTaskTransitionDiagnostics.snapshot().operations.every(o=>o.status!=='pending'),null,{timeout:10000});
+ const failed=await snapshot();assert.equal(failed.operations.at(-1).status,'failed');assert.equal(failed.operations.at(-2).status,'failed');
+ assert.equal(failed.stores.feed.state.items[0].pendingLikeOperationIds.length,0);assert.equal(failed.stores.feed.state.items[0].confirmedLikes,12);assert.equal(failed.stores.requests.activeScopes,0);
+ assert.equal(await page.locator('.error-card').count(),2);
+ await draft.fill('Editing after a localized rejection');
+ await page.getByRole('button',{name:/Quick.*600/}).click();await page.waitForFunction(()=>window.__nativeTaskTransitionDiagnostics.snapshot().operations.every(o=>o.status!=='pending'),null,{timeout:10000});
+ assert.equal(await page.locator('.error-card').count(),0);assert.equal(await draft.inputValue(),'Editing after a localized rejection');
+ await page.screenshot({path:'.cache/native-package-milestone/desktop.png',fullPage:true});
+ await page.setViewportSize({width:390,height:844});await page.screenshot({path:'.cache/native-package-milestone/mobile.png',fullPage:true});
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Mobile horizontal overflow');
+ await page.goto('about:blank');
+ // pagehide cleanup is checked with an in-page event while retaining read-only diagnostics.
+ await page.goto('https://async-transition-stress.localhost:1355/native-task-transitions.html',{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.__nativeTaskTransitionDiagnostics);
+ const disposed=await page.evaluate(()=>{const d=window.__nativeTaskTransitionDiagnostics;window.dispatchEvent(new Event('pagehide'));return d.snapshot();});
+ assert.equal(disposed.activeProviderTimers,0);assert.equal(disposed.effects.active,0);
+ for(const store of Object.values(disposed.stores)){assert.equal(store.listeners,0);assert.equal(store.readers,0);assert.equal(store.roots,0);}
+ assert.deepEqual(errors,[]);
+ await writeFile('.cache/native-package-milestone/browser-results.json',JSON.stringify({status:'PASS',reused,complete,canceled,failed,disposed},null,2));console.log('PASS task transition browser: compiled TSX, hidden DAG startup, query restart/reuse, retained draft/focus, overlap, compensation, mobile bounds and disposal.');
+}finally{await browser.close();}

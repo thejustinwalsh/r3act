@@ -1,0 +1,1 @@
+../../../../src/native_compiled_eligibility_test.ts

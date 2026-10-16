@@ -1,0 +1,51 @@
+--- src/compiled_state_layout_cache_test.ts
++++ src/compiled_state_layout_cache_test.ts
+@@ -0,0 +1,48 @@
++import { assertEquals, assertStrictEquals, assertThrows } from "jsr:@std/assert";
++import {
++  compiledStateLayoutSignature,
++  compiledStateLayoutSlot,
++  normalizeCompiledStateLayout,
++} from "../candidate/compiled_state_layout.ts";
++
++Deno.test("compiled layout cache shares original and normalized aliases", () => {
++  const mutableSlots = [
++    { siteId: "card#state:0", slot: 0 },
++    { siteId: "card#state:1", slot: 1 },
++  ];
++  const input = { schemaVersion: 1 as const, programId: "card", slots: mutableSlots };
++  const normalized = normalizeCompiledStateLayout(input);
++  assertStrictEquals(normalizeCompiledStateLayout(input), normalized);
++  assertStrictEquals(normalizeCompiledStateLayout(normalized), normalized);
++  assertEquals(Object.isFrozen(normalized), true);
++  assertEquals(Object.isFrozen(normalized.slots), true);
++  assertEquals(Object.isFrozen(normalized.slots[0]), true);
++
++  const expected = JSON.stringify([
++    "card",
++    [["card#state:0", 0], ["card#state:1", 1]],
++  ]);
++  assertEquals(compiledStateLayoutSignature(input), expected);
++  assertEquals(compiledStateLayoutSignature(normalized), expected);
++  assertEquals(compiledStateLayoutSlot(input, "card#state:1"), 1);
++  assertEquals(compiledStateLayoutSlot(normalized, "card#state:1"), 1);
++  assertEquals(compiledStateLayoutSlot(input, "missing"), undefined);
++
++  mutableSlots[0].siteId = "mutated";
++  assertEquals(compiledStateLayoutSlot(normalized, "card#state:0"), 0);
++  assertEquals(compiledStateLayoutSignature(input), expected);
++});
++
++Deno.test("compiled layout cache continues rejecting invalid descriptors", () => {
++  assertThrows(() => normalizeCompiledStateLayout(null as never));
++  assertThrows(() => normalizeCompiledStateLayout({ schemaVersion: 2, slots: [] }));
++  assertThrows(() => normalizeCompiledStateLayout({ schemaVersion: 1, programId: "", slots: [] }));
++  assertThrows(() => normalizeCompiledStateLayout({
++    schemaVersion: 1,
++    slots: [{ siteId: "x", slot: 1 }],
++  }));
++  assertThrows(() => normalizeCompiledStateLayout({
++    schemaVersion: 1,
++    slots: [{ siteId: "x", slot: 0 }, { siteId: "x", slot: 1 }],
++  }));
++});

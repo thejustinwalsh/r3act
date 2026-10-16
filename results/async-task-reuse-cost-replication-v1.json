@@ -1,0 +1,5475 @@
+{
+  "schemaVersion": "async-task-reuse-cost-v1",
+  "status": "PASS",
+  "run": {
+    "recordedAt": "2026-10-10T03:21:36.062Z",
+    "denoVersion": "2.6.3",
+    "v8Version": "14.2.231.17-rusty",
+    "typescriptVersion": "5.9.2",
+    "target": "aarch64-apple-darwin",
+    "architecture": "aarch64"
+  },
+  "methodology": {
+    "benchmarkedOperation": "scheduler retry only, after prior completed values are available",
+    "topology": "one query-dependent chain plus independent leaf tasks and a final independent gate",
+    "invalidation": "query changes after all work tasks complete and while the gate remains pending",
+    "timing": "performance.now wall time on one Deno process; alternating strategy order",
+    "excluded": [
+      "candidate-root preparation and DOM commit",
+      "React comparison",
+      "browser frame presentation",
+      "worker execution or CPU parallelism"
+    ]
+  },
+  "repetitions": 31,
+  "cases": [
+    {
+      "totalTasks": 32,
+      "changedPercent": 10,
+      "workIterations": 0,
+      "fullRestart": {
+        "medianMs": 0.038415999999983796,
+        "p95Ms": 0.10970800000001191,
+        "medianStarted": 32
+      },
+      "reuseCompleted": {
+        "medianMs": 0.02916699999997263,
+        "p95Ms": 0.055499999999995,
+        "medianStarted": 3,
+        "medianReused": 29
+      },
+      "medianTimeSavedPercent": 24.075905872592323,
+      "correctnessPass": true,
+      "trials": [
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.15850000000000364,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.06937500000000796,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.055499999999995,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.10970800000001191,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.06979200000000674,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03783300000000622,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03345799999999599,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.0619999999999834,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.0463749999999834,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.031041999999985137,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.030666999999994005,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.0407910000000129,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.035750000000007276,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03929099999999153,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03499999999999659,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.03854200000000674,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.034667000000013104,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.02916699999997263,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.031833000000005995,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.037041999999985364,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.03450000000000841,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.029749999999978627,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.029542000000020607,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.03870800000001395,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.03683399999999892,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.032874999999989996,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.032083000000000084,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.043666999999999234,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.038415999999983796,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.04279099999999403,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.04370900000000688,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.03700000000000614,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.03149999999999409,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.021625000000000227,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.019166999999981726,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.03408300000000963,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.042709000000002106,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.019958000000002585,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.025958000000002812,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.04083400000001802,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.03504100000000676,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.021874999999994316,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.020833000000010315,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.03874999999999318,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.0321660000000179,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.01929199999997877,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.018332999999984168,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.03700000000000614,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.03333299999999895,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.019958000000002585,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.019249999999999545,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.04154100000002359,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.03237500000000182,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.017709000000024844,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.01783299999999599,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.04004199999997127,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.03624999999999545,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.019416999999975815,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.026499999999998636,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.03916699999996354,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.038415999999983796,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.01979199999999537,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        }
+      ]
+    },
+    {
+      "totalTasks": 32,
+      "changedPercent": 10,
+      "workIterations": 2000,
+      "fullRestart": {
+        "medianMs": 1.0053330000000074,
+        "p95Ms": 1.1364999999999554,
+        "medianStarted": 32
+      },
+      "reuseCompleted": {
+        "medianMs": 0.10983300000003737,
+        "p95Ms": 0.12279200000000401,
+        "medianStarted": 3,
+        "medianReused": 29
+      },
+      "medianTimeSavedPercent": 89.07496322113802,
+      "correctnessPass": true,
+      "trials": [
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.9970000000000141,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03770800000000918,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03237500000000182,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.16754200000002584,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.1715000000000373,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03520800000001145,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03237500000000182,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.17124999999998636,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.20187499999997272,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03616599999998016,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03258299999998826,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.0669999999999504,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.947749999999985,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03158300000001191,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.032833999999979824,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.9415000000000191,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.9266660000000115,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.04104100000000699,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.035124999999993634,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.9277500000000032,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.9254170000000386,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03754199999997354,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.032290999999986525,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.0351249999999936,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.0553750000000264,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.11941699999999855,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.11495899999999892,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.009457999999995,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.0041249999999877,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.11212499999999181,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.11187499999999773,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.0039580000000115,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.004000000000019,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.11120799999997644,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.11074999999999591,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.0038340000000403,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.0131250000000023,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.10983300000003737,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.11016700000004676,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.1369159999999852,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.1364999999999554,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.12279200000000401,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.12354200000004312,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.019124999999974,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.006832999999972,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.11400000000003274,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.11270799999999781,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.0201250000000073,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.009834000000012,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.109375,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.109375,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.0053330000000074,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.0102080000000342,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.11254100000002154,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.11683299999998553,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.0167920000000095,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.019125000000031,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.11091600000003154,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.11170800000002146,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.0020830000000274,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.0812499999999545,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.109375,
+          "startedWorkTasks": 3,
+          "reusedTasks": 29,
+          "correct": true
+        }
+      ]
+    },
+    {
+      "totalTasks": 32,
+      "changedPercent": 50,
+      "workIterations": 0,
+      "fullRestart": {
+        "medianMs": 0.03987500000005184,
+        "p95Ms": 0.05404199999998127,
+        "medianStarted": 32
+      },
+      "reuseCompleted": {
+        "medianMs": 0.03633399999989706,
+        "p95Ms": 0.04745900000000347,
+        "medianStarted": 16,
+        "medianReused": 16
+      },
+      "medianTimeSavedPercent": 8.880250784075681,
+      "correctnessPass": true,
+      "trials": [
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.03379200000000537,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03279199999997218,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.030250000000023647,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.04354200000000219,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.03224999999997635,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.02862500000003365,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.02783399999998437,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.034541000000047006,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.03012499999999818,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.027084000000002106,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.026542000000006283,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.04683399999998983,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.04466700000000401,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.04187500000000455,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.035833000000025095,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.04545899999993708,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.036083000000076026,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03720799999996416,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.037583000000040556,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.043000000000006366,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.04920800000002146,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03441699999996217,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.030542000000082226,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.03375000000005457,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.033542000000011285,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.02949999999998454,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.029708000000027823,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.03450000000009368,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.03737499999999727,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.029583999999999833,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03462500000000546,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.03475000000003092,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.03854200000000674,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03704199999992852,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03741700000000492,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.048792000000048574,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.04750000000001364,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.0428749999999809,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.06949999999994816,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.05737499999997908,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.05404199999998127,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.04508299999997689,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.04745900000000347,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.04458399999998619,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.04029099999991104,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.046540999999933774,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.040541999999959444,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.03987500000005184,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.039083000000005086,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.0428749999999809,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03750000000002274,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.038834000000065316,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.041624999999953616,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.042208999999957086,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03633399999989706,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.03849999999999909,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.04454199999997854,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03495900000007168,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.033916999999973996,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.03712499999994634,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.04370800000003783,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.040042000000084954,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        }
+      ]
+    },
+    {
+      "totalTasks": 32,
+      "changedPercent": 50,
+      "workIterations": 2000,
+      "fullRestart": {
+        "medianMs": 0.9363749999999982,
+        "p95Ms": 1.150833999999918,
+        "medianStarted": 32
+      },
+      "reuseCompleted": {
+        "medianMs": 0.4797080000000733,
+        "p95Ms": 0.6687079999999241,
+        "medianStarted": 16,
+        "medianReused": 16
+      },
+      "medianTimeSavedPercent": 48.76967027098393,
+      "correctnessPass": true,
+      "trials": [
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.418374999999969,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.6723750000001019,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.6687079999999241,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.1442499999999427,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.1221249999999827,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.5826670000000149,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.5842079999999896,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.139291000000071,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.150833999999918,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.519333999999958,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.5119590000000471,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.0030419999999367,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.1220840000000862,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.5267920000000004,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.5234580000000051,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.0104169999999613,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.00649999999996,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.5119999999999436,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.6277499999999918,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.041166999999973,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.0086669999999458,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.49529199999994944,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.5037499999999682,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.9351249999999709,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.9235410000000002,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.4713330000000724,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.4744999999999209,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.9513749999999845,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.9405409999999392,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.4803750000000946,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.4797080000000733,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.922040999999922,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.0475829999999178,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.4966670000000022,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.476833000000056,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.9213750000000118,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.9363749999999982,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.4880830000000742,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.47366599999998016,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.9283329999999523,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.9232920000000604,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.4724579999999605,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.4759589999999889,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.9277080000000524,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.9323330000000851,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.47687499999995,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.47412499999995816,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.9231250000000273,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.998416999999904,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.44354200000009314,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.4463749999999891,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.9356249999999591,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.9215000000000373,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.44299999999998363,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.4426250000000209,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.9114170000000286,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.8616250000000036,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.45316600000001017,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.44466699999998127,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.862166000000002,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.8628750000000309,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.4499160000000302,
+          "startedWorkTasks": 16,
+          "reusedTasks": 16,
+          "correct": true
+        }
+      ]
+    },
+    {
+      "totalTasks": 32,
+      "changedPercent": 90,
+      "workIterations": 0,
+      "fullRestart": {
+        "medianMs": 0.027500000000031832,
+        "p95Ms": 0.03641600000003109,
+        "medianStarted": 32
+      },
+      "reuseCompleted": {
+        "medianMs": 0.03329199999996035,
+        "p95Ms": 0.044208000000026004,
+        "medianStarted": 29,
+        "medianReused": 3
+      },
+      "medianTimeSavedPercent": -21.06181818153388,
+      "correctnessPass": true,
+      "trials": [
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.02604200000007495,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.032417000000009466,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03370800000004692,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.024750000000040018,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.024499999999989086,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03133300000001782,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.029542000000105872,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.02954099999999471,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.02808299999992414,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03145900000004076,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03962500000000091,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.026250000000004547,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.026292000000012195,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03174999999998818,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03475000000003092,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.026666999999974905,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.027791999999976724,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03220800000008239,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03133300000001782,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.02650000000005548,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.02745900000002166,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.031000000000062755,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.04279199999996308,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.028124999999931788,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.028999999999996362,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.033458999999993466,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03558399999997164,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.040458999999941625,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.02808299999992414,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.033625000000029104,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.035082999999985987,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.027625000000057298,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.02920799999992596,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03304200000002311,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.044208000000026004,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.027540999999928317,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.027708999999958905,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.032958000000007814,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03408300000000963,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.02666599999997743,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.02687500000001819,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03291699999999764,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03199999999992542,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.02695800000003601,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.028249999999957254,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.032291999999984,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.039540999999985615,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.03641600000003109,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.029125000000021828,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.038584000000014385,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03933400000005349,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.027041999999937616,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.027500000000031832,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03587500000003274,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.04908299999999599,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.026667000000088592,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.029583999999999833,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.03329199999996035,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.0326670000000604,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.027082999999947788,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.026957999999922322,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.032541999999921245,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        }
+      ]
+    },
+    {
+      "totalTasks": 32,
+      "changedPercent": 90,
+      "workIterations": 2000,
+      "fullRestart": {
+        "medianMs": 0.9981659999999692,
+        "p95Ms": 1.0402910000000247,
+        "medianStarted": 32
+      },
+      "reuseCompleted": {
+        "medianMs": 0.91212500000006,
+        "p95Ms": 0.93100000000004,
+        "medianStarted": 29,
+        "medianReused": 3
+      },
+      "medianTimeSavedPercent": 8.619908912937515,
+      "correctnessPass": true,
+      "trials": [
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.9998330000000806,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.9117909999999938,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.9117499999999836,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.9186670000000277,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.9905829999999014,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.9188339999999471,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.9279169999999795,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.0087089999999534,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.0402910000000247,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.9160000000000537,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.91212500000006,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.9981659999999692,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.0037079999999605,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.912166999999954,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.9147500000000264,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.9987080000000788,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.9975410000000693,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.9154579999999441,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.9210839999999507,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.0080000000000382,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.997957999999926,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.9202920000000177,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.9264170000000149,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.9997919999999567,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.0314999999999372,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.9157089999999926,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.9140830000000051,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.0354580000000624,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.9981669999999667,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.9237910000000511,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.9937919999999849,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.0881669999999986,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.0008749999999509,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.9119590000000244,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.9256669999999758,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.0081669999999576,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.0055000000000973,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.8470829999999978,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.8410839999999098,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.9178340000000844,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.9217080000000806,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.8592909999999847,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.93100000000004,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 1.025666000000001,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.8968330000000151,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.8017909999998665,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.7823750000000018,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.8184579999999642,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.831333000000086,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.7709999999999582,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.7257079999999405,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.7775420000000395,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.753582999999935,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.689583999999968,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.6602499999999054,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.7161250000001473,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.7204169999999976,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.6534159999998792,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.6714999999999236,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.7078749999998308,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.7077910000000429,
+          "startedWorkTasks": 32,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.6501659999998992,
+          "startedWorkTasks": 29,
+          "reusedTasks": 3,
+          "correct": true
+        }
+      ]
+    },
+    {
+      "totalTasks": 128,
+      "changedPercent": 10,
+      "workIterations": 0,
+      "fullRestart": {
+        "medianMs": 0.086165999999821,
+        "p95Ms": 0.11687499999993634,
+        "medianStarted": 128
+      },
+      "reuseCompleted": {
+        "medianMs": 0.049291999999923064,
+        "p95Ms": 0.06283300000018244,
+        "medianStarted": 13,
+        "medianReused": 115
+      },
+      "medianTimeSavedPercent": 42.794141540717376,
+      "correctnessPass": true,
+      "trials": [
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.0860419999999067,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.050625000000081855,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.050625000000081855,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.09591599999998834,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.08424999999988358,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.05237499999998363,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.051584000000048036,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.08133400000019719,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.08300000000008367,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.049250000000029104,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.06283300000018244,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.10049999999978354,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.09095800000000054,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.05262499999980719,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.051874999999881766,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.08183299999996052,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.08566599999994651,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.048125000000027285,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.047625000000152795,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.09079100000008111,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.09962500000006003,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.04645800000002964,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.04754200000002129,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.11704200000008314,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.11687499999993634,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.04691699999989396,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.044208000000026004,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.07666600000015933,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.10725000000002183,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.12754199999994853,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.05395799999996598,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.09529100000008839,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.0724169999998594,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.04795899999999165,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.04341699999986304,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.08633400000007896,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.07616600000005747,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.0515419999999267,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.051375000000007276,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.07899999999995089,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.08962500000006912,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.04500000000007276,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.04520900000011352,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.07512500000007094,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.08858399999985522,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.046832999999878666,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.049291999999923064,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.07937500000002728,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.0935829999998532,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.05316599999991922,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.048750000000154614,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.07904099999996106,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.07904200000007222,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.04733299999998053,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.05050000000005639,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.08245899999997164,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.086165999999821,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.04937500000005457,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.04791700000009769,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.09008300000004965,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.11491699999987759,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.049541999999973996,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        }
+      ]
+    },
+    {
+      "totalTasks": 128,
+      "changedPercent": 10,
+      "workIterations": 2000,
+      "fullRestart": {
+        "medianMs": 0.6283339999999953,
+        "p95Ms": 0.7174170000000686,
+        "medianStarted": 128
+      },
+      "reuseCompleted": {
+        "medianMs": 0.3187089999998989,
+        "p95Ms": 0.3611249999999018,
+        "medianStarted": 13,
+        "medianReused": 115
+      },
+      "medianTimeSavedPercent": 49.27713604549471,
+      "correctnessPass": true,
+      "trials": [
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.7057079999999587,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.3576250000000982,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.3611249999999018,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.7174170000000686,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.725791000000072,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.43537500000002183,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.34216700000001765,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.6567500000001019,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.6953750000000127,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.3307079999999587,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.3301249999999527,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.6779169999999795,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.635082999999895,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.3196250000000873,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.32179199999995944,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.6397500000000491,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.6387079999999514,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.3187089999998989,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.3424999999999727,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.6483749999999873,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.6264160000000629,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.3193330000001424,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.3132500000001528,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.6249159999999847,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.6260420000000977,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.31608300000016243,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.3152500000001055,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.6283339999999953,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.6224159999999301,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.3034580000000915,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.3160000000000309,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.6119160000000647,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.6201250000001437,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.30454200000008314,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.3101249999999709,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.6287500000000819,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.6302499999999327,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.3105829999999514,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.32808300000010604,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.6304169999998521,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.6256670000000213,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.3173330000001897,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.32529199999999037,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.60287500000004,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.6060419999998885,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.32395900000005895,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.3064999999999145,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.6039589999998043,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.6033749999999145,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.3093340000000353,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.30166699999995217,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.626166000000012,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.6028329999999187,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.3011670000000777,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.29966699999999946,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.6083329999999023,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.6415409999999611,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.3219169999999849,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.31349999999997635,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.637000000000171,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.6245000000001255,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.33329200000002857,
+          "startedWorkTasks": 13,
+          "reusedTasks": 115,
+          "correct": true
+        }
+      ]
+    },
+    {
+      "totalTasks": 128,
+      "changedPercent": 50,
+      "workIterations": 0,
+      "fullRestart": {
+        "medianMs": 0.08762500000011642,
+        "p95Ms": 0.10083299999996598,
+        "medianStarted": 128
+      },
+      "reuseCompleted": {
+        "medianMs": 0.08237499999995634,
+        "p95Ms": 0.09945799999991323,
+        "medianStarted": 64,
+        "medianReused": 64
+      },
+      "medianTimeSavedPercent": 5.991440799033491,
+      "correctnessPass": true,
+      "trials": [
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.07120800000006966,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.07304199999998673,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.07416700000021592,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.07491699999991397,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.06874999999990905,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.07162500000004002,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.07008300000006784,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.07587499999999636,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.07141699999988305,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.07320900000013353,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.06862500000011096,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.0785000000000764,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.09591699999987213,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.07912499999997635,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.08204100000011749,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.08016700000007404,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.07479200000011588,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.07450000000017099,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.07249999999976353,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.08262500000000728,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.08970800000020063,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.08749999999986358,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.07449999999971624,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.08933400000000802,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.07737500000007458,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.07424999999989268,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.07312499999989086,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.08370799999988776,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.08462500000018736,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.08741600000007566,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.07679200000006858,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.08737500000006548,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.08133399999996982,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.07704199999989214,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.08291600000006838,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.08808300000009694,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.08762500000011642,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.08591599999999744,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.08412499999985812,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.09054200000014134,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.08716600000002472,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.08516699999972843,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.08333399999992253,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.09191699999996672,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.09208300000000236,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.08341700000005403,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.08237499999995634,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.09658399999989342,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.09262499999999818,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.0887920000000122,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.08762500000011642,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.09800000000018372,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.09237500000017462,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.0882920000001377,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.09079200000019227,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.10200000000008913,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.10083299999996598,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.11312499999985448,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.09379199999989396,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.09979200000020683,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.09320800000000418,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.09945799999991323,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        }
+      ]
+    },
+    {
+      "totalTasks": 128,
+      "changedPercent": 50,
+      "workIterations": 2000,
+      "fullRestart": {
+        "medianMs": 0.4500420000001668,
+        "p95Ms": 0.555417000000034,
+        "medianStarted": 128
+      },
+      "reuseCompleted": {
+        "medianMs": 0.25458400000002257,
+        "p95Ms": 0.34066699999993943,
+        "medianStarted": 64,
+        "medianReused": 64
+      },
+      "medianTimeSavedPercent": 43.43105754575613,
+      "correctnessPass": true,
+      "trials": [
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.5700830000000678,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.33845900000005713,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.34066699999993943,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.5202500000000327,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.555417000000034,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.30199999999990723,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.3148750000000291,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.4638749999999163,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.5239160000000993,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.25212499999997817,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.25141599999983555,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.4370409999999083,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.4393330000000333,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.2581669999999576,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.3426670000001195,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.4638750000001437,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.4517080000000533,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.23908400000004804,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.2385420000000522,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.4180410000001302,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.41412499999978536,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.25604100000009566,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.25795800000014424,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.41479199999980665,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.41362499999991087,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.23420800000008057,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.24116699999990487,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.41479099999992286,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.41679199999998673,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.23391700000001947,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.23591699999997218,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.4139580000000933,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.41354200000000674,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.2429580000000442,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.24491600000010294,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.4435000000000855,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.43704200000001947,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.25470900000004804,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.2859169999999267,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.47895900000003166,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.4751249999999345,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.3036250000000109,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.252666999999974,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.4358750000001237,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.441124999999829,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.25458400000002257,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.2820000000001528,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.4894169999997757,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.5254159999999501,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.25316700000007586,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.24683399999980793,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.43279099999995196,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.4500420000001668,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.2642080000000533,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.2497080000000551,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.4566250000000309,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.4562500000001819,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.2708749999999327,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.26108300000009876,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.4578750000000582,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.46662500000002183,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.24399999999968713,
+          "startedWorkTasks": 64,
+          "reusedTasks": 64,
+          "correct": true
+        }
+      ]
+    },
+    {
+      "totalTasks": 128,
+      "changedPercent": 90,
+      "workIterations": 0,
+      "fullRestart": {
+        "medianMs": 0.09220800000002782,
+        "p95Ms": 0.11045799999988049,
+        "medianStarted": 128
+      },
+      "reuseCompleted": {
+        "medianMs": 0.10924999999997453,
+        "p95Ms": 0.1389169999997648,
+        "medianStarted": 115,
+        "medianReused": 13
+      },
+      "medianTimeSavedPercent": -18.482127364156657,
+      "correctnessPass": true,
+      "trials": [
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.086292000000185,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.10170800000014424,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.10187500000029104,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.08083400000009533,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.0834580000000642,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.09779200000002675,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.09570800000005875,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.09095899999988433,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.0835420000000795,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.1022080000002461,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.10545799999999872,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.08491700000013225,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.08637500000008913,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.10212499999988722,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.10037500000021282,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.08412500000008549,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.09058300000015151,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.10237499999993815,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.10112499999991087,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.08587499999998727,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.08474999999998545,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.10524999999984175,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.10541699999998855,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.0940840000002936,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.09016700000006495,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.10616699999991397,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.10549999999989268,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.09220800000002782,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.0887079999999969,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.10775000000012369,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.1125409999999647,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.0919170000001941,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.0907919999999649,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.10924999999997453,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.11870799999996962,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.09762499999987995,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.09645799999998417,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.12316600000008293,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.11633299999994051,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.09766700000000128,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.10058399999979883,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.11429099999986647,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.11354199999982484,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.09779200000002675,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.10370899999998073,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.11420799999996234,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.11716599999999744,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.1017500000000382,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.09816599999999198,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.1167920000000322,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.11504200000013043,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.1044170000000122,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.0989999999999327,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.11687499999993634,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.11370799999986048,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.09779100000014296,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.10745900000028996,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.1267089999998916,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.14458400000012261,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.12358399999993708,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.11045799999988049,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.1389169999997648,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        }
+      ]
+    },
+    {
+      "totalTasks": 128,
+      "changedPercent": 90,
+      "workIterations": 2000,
+      "fullRestart": {
+        "medianMs": 0.49829200000021956,
+        "p95Ms": 0.5974999999998545,
+        "medianStarted": 128
+      },
+      "reuseCompleted": {
+        "medianMs": 0.46670799999992596,
+        "p95Ms": 0.6008750000000873,
+        "medianStarted": 115,
+        "medianReused": 13
+      },
+      "medianTimeSavedPercent": 6.33845215260925,
+      "correctnessPass": true,
+      "trials": [
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.6313330000000406,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.6039590000000317,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.6008750000000873,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.5769159999999829,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.5686660000001211,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.5436250000002474,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.5410419999998339,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.5662500000000819,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.5727920000001632,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.5832500000001346,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.5347920000001523,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.5673749999998563,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.5974999999998545,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.5355830000000878,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.5351250000003347,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.5290420000001177,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.5198749999999563,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.4589169999999285,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.46629200000006676,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.46100000000001273,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.45983400000000074,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.44316600000001927,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.46058400000015354,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.48462499999982356,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.4968750000000455,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.457540999999992,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.4560839999999189,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.48862499999995634,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.5709999999999127,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.4735840000000735,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.46079100000019935,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.48700000000008004,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.4872499999996762,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.4652089999999589,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.4643750000000182,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.49829200000021956,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.48979200000030687,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.47775000000001455,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.433875000000171,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.4944590000000062,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.5072909999998956,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.45991700000013225,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.46362500000032014,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.48720800000000963,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.5327910000000884,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.47116700000015044,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.5266249999999673,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.4937499999996362,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.5002079999999296,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.47495900000012625,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.47100000000000364,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.4911250000000109,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.5007089999999152,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.46574999999984357,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.45899999999983265,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.5008749999997235,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.4857919999999467,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.5347090000000208,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.46670799999992596,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.46662500000002183,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "full-restart",
+          "durationMs": 0.4687919999996666,
+          "startedWorkTasks": 128,
+          "reusedTasks": 0,
+          "correct": true
+        },
+        {
+          "strategy": "reuse-completed",
+          "durationMs": 0.43516700000009223,
+          "startedWorkTasks": 115,
+          "reusedTasks": 13,
+          "correct": true
+        }
+      ]
+    }
+  ]
+}

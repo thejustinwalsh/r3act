@@ -1,0 +1,652 @@
+{
+  "schemaVersion": "snake-frame-lifecycle-v1-summary",
+  "status": "HYPOTHESIS_PASS",
+  "collectionStatus": "COMPLETE",
+  "preregistration": "snake-frame-lifecycle-preregistration-v1",
+  "preregistrationAmendments": [
+    {
+      "date": "2026-10-11",
+      "reason": "Production Chrome serializes inline fractional CSS positions to three decimal places; an exact floating-point equality check rejected correct output by under 0.001 CSS pixels during the excluded smoke run.",
+      "change": "Final x/y output parity is accepted within 0.01 CSS pixels. No latency threshold, page count, arm, or workload changed.",
+      "smokeDataExcluded": true
+    }
+  ],
+  "sourceLock": {
+    "status": "FROZEN_BEFORE_COLLECTION",
+    "includedFiles": 93,
+    "generatedAt": "2026-10-11T08:42:18.024Z"
+  },
+  "n": 30,
+  "rawManifest": "results/snake-frame-lifecycle-v1/manifest.json",
+  "correctnessPass": true,
+  "comparisons": [
+    {
+      "segmentCount": 512,
+      "arms": {
+        "react": {
+          "n": 5,
+          "cycleCostMs": {
+            "median": 219.09999978542328,
+            "p95": 241.89999994635582
+          },
+          "mountMs": 2.5999999940395355,
+          "teardownMs": 1.100000023841858,
+          "updateMedianMs": 0.699999988079071,
+          "updateP95Ms": 0.9000000059604645,
+          "medianPageRafElapsedMs": 6592.0999999940395,
+          "estimatedMsPerRafSlot": 16.85959079282363
+        },
+        "runtime-vdom": {
+          "n": 5,
+          "cycleCostMs": {
+            "median": 123.2999999821186,
+            "p95": 135.7000000178814
+          },
+          "mountMs": 2.7999999821186066,
+          "teardownMs": 0.7999999821186066,
+          "updateMedianMs": 0.4000000059604645,
+          "updateP95Ms": 0.5,
+          "medianPageRafElapsedMs": 6560.5,
+          "estimatedMsPerRafSlot": 16.778772378516624
+        },
+        "columnar-vdom": {
+          "n": 5,
+          "cycleCostMs": {
+            "median": 102.5,
+            "p95": 113.50000002980232
+          },
+          "mountMs": 4.300000011920929,
+          "teardownMs": 0.699999988079071,
+          "updateMedianMs": 0.30000001192092896,
+          "updateP95Ms": 0.4000000059604645,
+          "medianPageRafElapsedMs": 6563.299999982119,
+          "estimatedMsPerRafSlot": 16.785933503790584
+        }
+      },
+      "pairedColumnarVsReact": {
+        "pairs": [
+          {
+            "replication": 1,
+            "reactCycleMs": 241.89999994635582,
+            "columnarCycleMs": 113.50000002980232,
+            "columnarToReactCycleRatio": 0.4692021498758672,
+            "reactUpdateMedianMs": 0.800000011920929,
+            "columnarUpdateMedianMs": 0.3999999761581421,
+            "columnarToReactUpdateRatio": 0.49999996274709757
+          },
+          {
+            "replication": 2,
+            "reactCycleMs": 197.7999999821186,
+            "columnarCycleMs": 102.5,
+            "columnarToReactCycleRatio": 0.5182002022713151,
+            "reactUpdateMedianMs": 0.6000000238418579,
+            "columnarUpdateMedianMs": 0.30000001192092896,
+            "columnarToReactUpdateRatio": 0.5
+          },
+          {
+            "replication": 3,
+            "reactCycleMs": 193.00000017881393,
+            "columnarCycleMs": 98.99999991059303,
+            "columnarToReactCycleRatio": 0.5129533669371493,
+            "reactUpdateMedianMs": 0.5999999940395355,
+            "columnarUpdateMedianMs": 0.30000001192092896,
+            "columnarToReactUpdateRatio": 0.500000024835269
+          },
+          {
+            "replication": 4,
+            "reactCycleMs": 224.00000005960464,
+            "columnarCycleMs": 98.09999984502792,
+            "columnarToReactCycleRatio": 0.4379464277630548,
+            "reactUpdateMedianMs": 0.7000000178813934,
+            "columnarUpdateMedianMs": 0.30000001192092896,
+            "columnarToReactUpdateRatio": 0.42857143465353503
+          },
+          {
+            "replication": 5,
+            "reactCycleMs": 219.09999978542328,
+            "columnarCycleMs": 111.19999983906746,
+            "columnarToReactCycleRatio": 0.5075308076128332,
+            "reactUpdateMedianMs": 0.699999988079071,
+            "columnarUpdateMedianMs": 0.3999999761581421,
+            "columnarToReactUpdateRatio": 0.5714285471001446
+          }
+        ],
+        "medianCycleRatio": 0.5075308076128332,
+        "cycleAdvantagePassCount": 5,
+        "updateMedianRatio": 0.5,
+        "updateNonworsePassCount": 5,
+        "cycleAdvantagePass": true,
+        "updateCostPreservedPass": true
+      }
+    },
+    {
+      "segmentCount": 1024,
+      "arms": {
+        "react": {
+          "n": 5,
+          "cycleCostMs": {
+            "median": 333.3999996781349,
+            "p95": 346.29999965429306
+          },
+          "mountMs": 3.7000000178813934,
+          "teardownMs": 1.5,
+          "updateMedianMs": 1.0999999940395355,
+          "updateP95Ms": 1.2000000178813934,
+          "medianPageRafElapsedMs": 6743.4000000059605,
+          "estimatedMsPerRafSlot": 17.24654731459325
+        },
+        "runtime-vdom": {
+          "n": 5,
+          "cycleCostMs": {
+            "median": 206.19999995827675,
+            "p95": 206.80000019073486
+          },
+          "mountMs": 5.0999999940395355,
+          "teardownMs": 1,
+          "updateMedianMs": 0.699999988079071,
+          "updateP95Ms": 0.800000011920929,
+          "medianPageRafElapsedMs": 6738.9000000059605,
+          "estimatedMsPerRafSlot": 17.2350383631866
+        },
+        "columnar-vdom": {
+          "n": 5,
+          "cycleCostMs": {
+            "median": 171.89999994635582,
+            "p95": 176.69999992847443
+          },
+          "mountMs": 6.4000000059604645,
+          "teardownMs": 1,
+          "updateMedianMs": 0.5999999940395355,
+          "updateP95Ms": 0.6000000238418579,
+          "medianPageRafElapsedMs": 6740,
+          "estimatedMsPerRafSlot": 17.237851662404093
+        }
+      },
+      "pairedColumnarVsReact": {
+        "pairs": [
+          {
+            "replication": 1,
+            "reactCycleMs": 330.0999998152256,
+            "columnarCycleMs": 176.69999992847443,
+            "columnarToReactCycleRatio": 0.5352923357388147,
+            "reactUpdateMedianMs": 1.0999999940395355,
+            "columnarUpdateMedianMs": 0.5999999940395355,
+            "columnarToReactUpdateRatio": 0.5454545429915436
+          },
+          {
+            "replication": 2,
+            "reactCycleMs": 346.29999965429306,
+            "columnarCycleMs": 162.80000004172325,
+            "columnarToReactCycleRatio": 0.4701126197061636,
+            "reactUpdateMedianMs": 1.100000023841858,
+            "columnarUpdateMedianMs": 0.5,
+            "columnarToReactUpdateRatio": 0.4545454446934474
+          },
+          {
+            "replication": 3,
+            "reactCycleMs": 341.8000003397465,
+            "columnarCycleMs": 175.1000000834465,
+            "columnarToReactCycleRatio": 0.5122878873885269,
+            "reactUpdateMedianMs": 1.0999999940395355,
+            "columnarUpdateMedianMs": 0.5999999940395355,
+            "columnarToReactUpdateRatio": 0.5454545429915436
+          },
+          {
+            "replication": 4,
+            "reactCycleMs": 333.3999996781349,
+            "columnarCycleMs": 171.89999994635582,
+            "columnarToReactCycleRatio": 0.5155968809607332,
+            "reactUpdateMedianMs": 1.0999999940395355,
+            "columnarUpdateMedianMs": 0.5999999940395355,
+            "columnarToReactUpdateRatio": 0.5454545429915436
+          },
+          {
+            "replication": 5,
+            "reactCycleMs": 331.0000001490116,
+            "columnarCycleMs": 169.69999998807907,
+            "columnarToReactCycleRatio": 0.5126888214854456,
+            "reactUpdateMedianMs": 1.0999999940395355,
+            "columnarUpdateMedianMs": 0.5,
+            "columnarToReactUpdateRatio": 0.4545454570084564
+          }
+        ],
+        "medianCycleRatio": 0.5126888214854456,
+        "cycleAdvantagePassCount": 5,
+        "updateMedianRatio": 0.5454545429915436,
+        "updateNonworsePassCount": 5,
+        "cycleAdvantagePass": true,
+        "updateCostPreservedPass": true
+      }
+    }
+  ],
+  "interpretation": "A pass establishes only a same-device, fixed-topology JavaScript-cycle-cost advantage for these arms and sizes. It does not establish a full cold-start win, smoothness, dynamic-topology performance, or a general React speedup.",
+  "limits": [
+    "Same physical device and browser profile; no independent-device replication.",
+    "Fixed topology, 512 and 1,024 entities, 300 measured updates per page.",
+    "Primary metric excludes navigation, network, parse, JavaScript evaluation, compiler work, layout, paint, GPU, and display wait.",
+    "Smoke pages are stored outside this production collection and are not analyzed here.",
+    "Exploratory cadence is full RAF wall time divided by scheduled callback slots; individual RAF intervals and physical presentation timestamps were not recorded."
+  ],
+  "records": [
+    {
+      "trialId": "lifecycle-v1-s1024-r3-columnar-vdom",
+      "replication": 3,
+      "arm": "columnar-vdom",
+      "segmentCount": 1024,
+      "mountMs": 6.300000011920929,
+      "updateCpuSumMs": 167.80000007152557,
+      "updateMedianMs": 0.5999999940395355,
+      "updateP95Ms": 0.699999988079071,
+      "teardownMs": 1,
+      "primaryCycleCostMs": 175.1000000834465,
+      "fullRafElapsedMs": 6723.5999999940395,
+      "estimatedMsPerRafSlot": 17.195907928373504
+    },
+    {
+      "trialId": "lifecycle-v1-s1024-r2-react",
+      "replication": 2,
+      "arm": "react",
+      "segmentCount": 1024,
+      "mountMs": 3.5999999940395355,
+      "updateCpuSumMs": 341.1999996602535,
+      "updateMedianMs": 1.100000023841858,
+      "updateP95Ms": 1.2999999821186066,
+      "teardownMs": 1.5,
+      "primaryCycleCostMs": 346.29999965429306,
+      "fullRafElapsedMs": 6760.300000011921,
+      "estimatedMsPerRafSlot": 17.289769821002356
+    },
+    {
+      "trialId": "lifecycle-v1-s1024-r4-react",
+      "replication": 4,
+      "arm": "react",
+      "segmentCount": 1024,
+      "mountMs": 3.5999999940395355,
+      "updateCpuSumMs": 328.1999996602535,
+      "updateMedianMs": 1.0999999940395355,
+      "updateP95Ms": 1.2000000178813934,
+      "teardownMs": 1.600000023841858,
+      "primaryCycleCostMs": 333.3999996781349,
+      "fullRafElapsedMs": 6743.4000000059605,
+      "estimatedMsPerRafSlot": 17.24654731459325
+    },
+    {
+      "trialId": "lifecycle-v1-s1024-r5-react",
+      "replication": 5,
+      "arm": "react",
+      "segmentCount": 1024,
+      "mountMs": 4.5,
+      "updateCpuSumMs": 325.10000014305115,
+      "updateMedianMs": 1.0999999940395355,
+      "updateP95Ms": 1.2000000178813934,
+      "teardownMs": 1.4000000059604645,
+      "primaryCycleCostMs": 331.0000001490116,
+      "fullRafElapsedMs": 6732.899999976158,
+      "estimatedMsPerRafSlot": 17.21969309456818
+    },
+    {
+      "trialId": "lifecycle-v1-s1024-r2-columnar-vdom",
+      "replication": 2,
+      "arm": "columnar-vdom",
+      "segmentCount": 1024,
+      "mountMs": 6.699999988079071,
+      "updateCpuSumMs": 155.20000004768372,
+      "updateMedianMs": 0.5,
+      "updateP95Ms": 0.6000000238418579,
+      "teardownMs": 0.9000000059604645,
+      "primaryCycleCostMs": 162.80000004172325,
+      "fullRafElapsedMs": 6751.100000023842,
+      "estimatedMsPerRafSlot": 17.26624040926814
+    },
+    {
+      "trialId": "lifecycle-v1-s1024-r2-runtime-vdom",
+      "replication": 2,
+      "arm": "runtime-vdom",
+      "segmentCount": 1024,
+      "mountMs": 5.0999999940395355,
+      "updateCpuSumMs": 200.5999999642372,
+      "updateMedianMs": 0.699999988079071,
+      "updateP95Ms": 0.800000011920929,
+      "teardownMs": 1.0999999940395355,
+      "primaryCycleCostMs": 206.79999995231628,
+      "fullRafElapsedMs": 6747.5999999940395,
+      "estimatedMsPerRafSlot": 17.2572890025423
+    },
+    {
+      "trialId": "lifecycle-v1-s1024-r1-runtime-vdom",
+      "replication": 1,
+      "arm": "runtime-vdom",
+      "segmentCount": 1024,
+      "mountMs": 6.5,
+      "updateCpuSumMs": 198.39999997615814,
+      "updateMedianMs": 0.699999988079071,
+      "updateP95Ms": 0.800000011920929,
+      "teardownMs": 1.2999999821186066,
+      "primaryCycleCostMs": 206.19999995827675,
+      "fullRafElapsedMs": 6738.9000000059605,
+      "estimatedMsPerRafSlot": 17.2350383631866
+    },
+    {
+      "trialId": "lifecycle-v1-s512-r4-columnar-vdom",
+      "replication": 4,
+      "arm": "columnar-vdom",
+      "segmentCount": 512,
+      "mountMs": 4.299999982118607,
+      "updateCpuSumMs": 93.19999986886978,
+      "updateMedianMs": 0.30000001192092896,
+      "updateP95Ms": 0.4000000059604645,
+      "teardownMs": 0.5999999940395355,
+      "primaryCycleCostMs": 98.09999984502792,
+      "fullRafElapsedMs": 6609.5999999940395,
+      "estimatedMsPerRafSlot": 16.904347826071714
+    },
+    {
+      "trialId": "lifecycle-v1-s512-r5-react",
+      "replication": 5,
+      "arm": "react",
+      "segmentCount": 512,
+      "mountMs": 3.100000023841858,
+      "updateCpuSumMs": 214.89999973773956,
+      "updateMedianMs": 0.699999988079071,
+      "updateP95Ms": 0.9000000059604645,
+      "teardownMs": 1.100000023841858,
+      "primaryCycleCostMs": 219.09999978542328,
+      "fullRafElapsedMs": 6563.299999982119,
+      "estimatedMsPerRafSlot": 16.785933503790584
+    },
+    {
+      "trialId": "lifecycle-v1-s1024-r1-columnar-vdom",
+      "replication": 1,
+      "arm": "columnar-vdom",
+      "segmentCount": 1024,
+      "mountMs": 7.199999988079071,
+      "updateCpuSumMs": 168.49999994039536,
+      "updateMedianMs": 0.5999999940395355,
+      "updateP95Ms": 0.699999988079071,
+      "teardownMs": 1,
+      "primaryCycleCostMs": 176.69999992847443,
+      "fullRafElapsedMs": 6742.700000017881,
+      "estimatedMsPerRafSlot": 17.244757033293816
+    },
+    {
+      "trialId": "lifecycle-v1-s1024-r3-runtime-vdom",
+      "replication": 3,
+      "arm": "runtime-vdom",
+      "segmentCount": 1024,
+      "mountMs": 5.199999988079071,
+      "updateCpuSumMs": 197.8000003695488,
+      "updateMedianMs": 0.699999988079071,
+      "updateP95Ms": 0.800000011920929,
+      "teardownMs": 1,
+      "primaryCycleCostMs": 204.00000035762787,
+      "fullRafElapsedMs": 6730.800000011921,
+      "estimatedMsPerRafSlot": 17.214322250669873
+    },
+    {
+      "trialId": "lifecycle-v1-s512-r4-runtime-vdom",
+      "replication": 4,
+      "arm": "runtime-vdom",
+      "segmentCount": 512,
+      "mountMs": 2.7999999821186066,
+      "updateCpuSumMs": 126.90000006556511,
+      "updateMedianMs": 0.4000000059604645,
+      "updateP95Ms": 0.5,
+      "teardownMs": 0.7999999821186066,
+      "primaryCycleCostMs": 130.50000002980232,
+      "fullRafElapsedMs": 6596.100000023842,
+      "estimatedMsPerRafSlot": 16.869820971927986
+    },
+    {
+      "trialId": "lifecycle-v1-s512-r1-runtime-vdom",
+      "replication": 1,
+      "arm": "runtime-vdom",
+      "segmentCount": 512,
+      "mountMs": 2.7000000178813934,
+      "updateCpuSumMs": 116.29999965429306,
+      "updateMedianMs": 0.4000000059604645,
+      "updateP95Ms": 0.5,
+      "teardownMs": 1.0999999940395355,
+      "primaryCycleCostMs": 120.09999966621399,
+      "fullRafElapsedMs": 6560.5,
+      "estimatedMsPerRafSlot": 16.778772378516624
+    },
+    {
+      "trialId": "lifecycle-v1-s512-r3-columnar-vdom",
+      "replication": 3,
+      "arm": "columnar-vdom",
+      "segmentCount": 512,
+      "mountMs": 4.300000011920929,
+      "updateCpuSumMs": 94.09999990463257,
+      "updateMedianMs": 0.30000001192092896,
+      "updateP95Ms": 0.4000000059604645,
+      "teardownMs": 0.5999999940395355,
+      "primaryCycleCostMs": 98.99999991059303,
+      "fullRafElapsedMs": 6611.199999988079,
+      "estimatedMsPerRafSlot": 16.908439897667723
+    },
+    {
+      "trialId": "lifecycle-v1-s512-r5-runtime-vdom",
+      "replication": 5,
+      "arm": "runtime-vdom",
+      "segmentCount": 512,
+      "mountMs": 3.0999999940395355,
+      "updateCpuSumMs": 132.00000002980232,
+      "updateMedianMs": 0.4000000059604645,
+      "updateP95Ms": 0.5,
+      "teardownMs": 0.5999999940395355,
+      "primaryCycleCostMs": 135.7000000178814,
+      "fullRafElapsedMs": 6551,
+      "estimatedMsPerRafSlot": 16.754475703324808
+    },
+    {
+      "trialId": "lifecycle-v1-s512-r4-react",
+      "replication": 4,
+      "arm": "react",
+      "segmentCount": 512,
+      "mountMs": 2.4000000059604645,
+      "updateCpuSumMs": 220.80000004172325,
+      "updateMedianMs": 0.7000000178813934,
+      "updateP95Ms": 1,
+      "teardownMs": 0.800000011920929,
+      "primaryCycleCostMs": 224.00000005960464,
+      "fullRafElapsedMs": 6592.0999999940395,
+      "estimatedMsPerRafSlot": 16.85959079282363
+    },
+    {
+      "trialId": "lifecycle-v1-s512-r1-columnar-vdom",
+      "replication": 1,
+      "arm": "columnar-vdom",
+      "segmentCount": 512,
+      "mountMs": 4.5999999940395355,
+      "updateCpuSumMs": 108.10000002384186,
+      "updateMedianMs": 0.3999999761581421,
+      "updateP95Ms": 0.5,
+      "teardownMs": 0.800000011920929,
+      "primaryCycleCostMs": 113.50000002980232,
+      "fullRafElapsedMs": 6563.299999982119,
+      "estimatedMsPerRafSlot": 16.785933503790584
+    },
+    {
+      "trialId": "lifecycle-v1-s512-r3-runtime-vdom",
+      "replication": 3,
+      "arm": "runtime-vdom",
+      "segmentCount": 512,
+      "mountMs": 2.7999999821186066,
+      "updateCpuSumMs": 109.69999977946281,
+      "updateMedianMs": 0.3999999761581421,
+      "updateP95Ms": 0.5,
+      "teardownMs": 0.5999999940395355,
+      "primaryCycleCostMs": 113.09999975562096,
+      "fullRafElapsedMs": 6597.799999982119,
+      "estimatedMsPerRafSlot": 16.874168797908233
+    },
+    {
+      "trialId": "lifecycle-v1-s512-r5-columnar-vdom",
+      "replication": 5,
+      "arm": "columnar-vdom",
+      "segmentCount": 512,
+      "mountMs": 4.4000000059604645,
+      "updateCpuSumMs": 106.09999984502792,
+      "updateMedianMs": 0.3999999761581421,
+      "updateP95Ms": 0.5,
+      "teardownMs": 0.699999988079071,
+      "primaryCycleCostMs": 111.19999983906746,
+      "fullRafElapsedMs": 6548.300000011921,
+      "estimatedMsPerRafSlot": 16.747570332511305
+    },
+    {
+      "trialId": "lifecycle-v1-s512-r2-react",
+      "replication": 2,
+      "arm": "react",
+      "segmentCount": 512,
+      "mountMs": 2.4000000059604645,
+      "updateCpuSumMs": 194.0999999642372,
+      "updateMedianMs": 0.6000000238418579,
+      "updateP95Ms": 0.7999999821186066,
+      "teardownMs": 1.300000011920929,
+      "primaryCycleCostMs": 197.7999999821186,
+      "fullRafElapsedMs": 6607.299999982119,
+      "estimatedMsPerRafSlot": 16.898465473100046
+    },
+    {
+      "trialId": "lifecycle-v1-s512-r2-columnar-vdom",
+      "replication": 2,
+      "arm": "columnar-vdom",
+      "segmentCount": 512,
+      "mountMs": 3.9000000059604645,
+      "updateCpuSumMs": 97.80000001192093,
+      "updateMedianMs": 0.30000001192092896,
+      "updateP95Ms": 0.4000000059604645,
+      "teardownMs": 0.7999999821186066,
+      "primaryCycleCostMs": 102.5,
+      "fullRafElapsedMs": 6558.5,
+      "estimatedMsPerRafSlot": 16.773657289002557
+    },
+    {
+      "trialId": "lifecycle-v1-s512-r3-react",
+      "replication": 3,
+      "arm": "react",
+      "segmentCount": 512,
+      "mountMs": 2.5999999940395355,
+      "updateCpuSumMs": 189.30000019073486,
+      "updateMedianMs": 0.5999999940395355,
+      "updateP95Ms": 0.7999999821186066,
+      "teardownMs": 1.0999999940395355,
+      "primaryCycleCostMs": 193.00000017881393,
+      "fullRafElapsedMs": 6605.9000000059605,
+      "estimatedMsPerRafSlot": 16.894884910501176
+    },
+    {
+      "trialId": "lifecycle-v1-s1024-r5-columnar-vdom",
+      "replication": 5,
+      "arm": "columnar-vdom",
+      "segmentCount": 1024,
+      "mountMs": 6.4000000059604645,
+      "updateCpuSumMs": 162.19999998807907,
+      "updateMedianMs": 0.5,
+      "updateP95Ms": 0.6000000238418579,
+      "teardownMs": 1.0999999940395355,
+      "primaryCycleCostMs": 169.69999998807907,
+      "fullRafElapsedMs": 6740,
+      "estimatedMsPerRafSlot": 17.237851662404093
+    },
+    {
+      "trialId": "lifecycle-v1-s512-r2-runtime-vdom",
+      "replication": 2,
+      "arm": "runtime-vdom",
+      "segmentCount": 512,
+      "mountMs": 2.9000000059604645,
+      "updateCpuSumMs": 119.59999996423721,
+      "updateMedianMs": 0.4000000059604645,
+      "updateP95Ms": 0.5,
+      "teardownMs": 0.800000011920929,
+      "primaryCycleCostMs": 123.2999999821186,
+      "fullRafElapsedMs": 6549.5999999940395,
+      "estimatedMsPerRafSlot": 16.750895140649718
+    },
+    {
+      "trialId": "lifecycle-v1-s512-r1-react",
+      "replication": 1,
+      "arm": "react",
+      "segmentCount": 512,
+      "mountMs": 5.5999999940395355,
+      "updateCpuSumMs": 234.0999999344349,
+      "updateMedianMs": 0.800000011920929,
+      "updateP95Ms": 1,
+      "teardownMs": 2.2000000178813934,
+      "primaryCycleCostMs": 241.89999994635582,
+      "fullRafElapsedMs": 6582.800000011921,
+      "estimatedMsPerRafSlot": 16.835805626628954
+    },
+    {
+      "trialId": "lifecycle-v1-s1024-r4-columnar-vdom",
+      "replication": 4,
+      "arm": "columnar-vdom",
+      "segmentCount": 1024,
+      "mountMs": 6.300000011920929,
+      "updateCpuSumMs": 164.69999992847443,
+      "updateMedianMs": 0.5999999940395355,
+      "updateP95Ms": 0.6000000238418579,
+      "teardownMs": 0.9000000059604645,
+      "primaryCycleCostMs": 171.89999994635582,
+      "fullRafElapsedMs": 6739.799999982119,
+      "estimatedMsPerRafSlot": 17.237340153406954
+    },
+    {
+      "trialId": "lifecycle-v1-s1024-r1-react",
+      "replication": 1,
+      "arm": "react",
+      "segmentCount": 1024,
+      "mountMs": 3.7000000178813934,
+      "updateCpuSumMs": 324.99999979138374,
+      "updateMedianMs": 1.0999999940395355,
+      "updateP95Ms": 1.2000000178813934,
+      "teardownMs": 1.4000000059604645,
+      "primaryCycleCostMs": 330.0999998152256,
+      "fullRafElapsedMs": 6740.0999999940395,
+      "estimatedMsPerRafSlot": 17.23810741686455
+    },
+    {
+      "trialId": "lifecycle-v1-s1024-r3-react",
+      "replication": 3,
+      "arm": "react",
+      "segmentCount": 1024,
+      "mountMs": 4.4000000059604645,
+      "updateCpuSumMs": 335.900000333786,
+      "updateMedianMs": 1.0999999940395355,
+      "updateP95Ms": 1.300000011920929,
+      "teardownMs": 1.5,
+      "primaryCycleCostMs": 341.8000003397465,
+      "fullRafElapsedMs": 6745.9000000059605,
+      "estimatedMsPerRafSlot": 17.252941176485834
+    },
+    {
+      "trialId": "lifecycle-v1-s1024-r5-runtime-vdom",
+      "replication": 5,
+      "arm": "runtime-vdom",
+      "segmentCount": 1024,
+      "mountMs": 4.9000000059604645,
+      "updateCpuSumMs": 201.00000017881393,
+      "updateMedianMs": 0.699999988079071,
+      "updateP95Ms": 0.800000011920929,
+      "teardownMs": 0.9000000059604645,
+      "primaryCycleCostMs": 206.80000019073486,
+      "fullRafElapsedMs": 6740.0999999940395,
+      "estimatedMsPerRafSlot": 17.23810741686455
+    },
+    {
+      "trialId": "lifecycle-v1-s1024-r4-runtime-vdom",
+      "replication": 4,
+      "arm": "runtime-vdom",
+      "segmentCount": 1024,
+      "mountMs": 5,
+      "updateCpuSumMs": 188.39999970793724,
+      "updateMedianMs": 0.5999999940395355,
+      "updateP95Ms": 0.7999999821186066,
+      "teardownMs": 1,
+      "primaryCycleCostMs": 194.39999970793724,
+      "fullRafElapsedMs": 6729.800000011921,
+      "estimatedMsPerRafSlot": 17.21176470591284
+    }
+  ]
+}

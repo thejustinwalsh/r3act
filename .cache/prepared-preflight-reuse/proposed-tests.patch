@@ -1,0 +1,194 @@
+--- a/src/native_prepared_cell_cut_test.ts
++++ b/src/native_prepared_cell_cut_test.ts
+@@ -73,18 +73,32 @@
+ Deno.test("prepared cell tokens refresh after binding changes and decline after removal", () => {
+   let setter!: (value: number) => boolean;
+   let prepareCalls = 0;
+-  let staleChecks = 0;
++  let currentChecks = 0;
++  let executeCalls = 0;
++  let preflightDeclines = 0;
++  let scalarFallbackCalls = 0;
+   const originalPrepare = VDOMSnapshotRoot.prototype.prepareNumericCellProgram;
+   const originalCurrent = VDOMSnapshotRoot.prototype.isPreparedNumericCellProgramCurrent;
++  const originalExecute = VDOMSnapshotRoot.prototype.executePreparedNumericCells;
++  const originalScalarExecute = VDOMSnapshotRoot.prototype.executeSourceProgram;
+   VDOMSnapshotRoot.prototype.prepareNumericCellProgram = function (...args) {
+     prepareCalls++;
+     return originalPrepare.apply(this, args);
+   };
+   VDOMSnapshotRoot.prototype.isPreparedNumericCellProgramCurrent = function (token) {
+-    const current = originalCurrent.call(this, token);
+-    if (!current) staleChecks++;
+-    return current;
++    currentChecks++;
++    return originalCurrent.call(this, token);
+   };
++  VDOMSnapshotRoot.prototype.executePreparedNumericCells = function (...args) {
++    executeCalls++;
++    const result = originalExecute.apply(this, args);
++    if (result === null) preflightDeclines++;
++    return result;
++  };
++  VDOMSnapshotRoot.prototype.executeSourceProgram = function (...args) {
++    scalarFallbackCalls++;
++    return originalScalarExecute.apply(this, args);
++  };
+   const host = new MemoryVDOMHost();
+   const container = host.createContainer();
+   const root = new ComponentStateRoot(host, container, { scheduleCommit() {} });
+@@ -108,45 +122,72 @@
+     root.mount(jsx(Output, { first: true, second: false }));
+     setter(2);
+     root.flush();
++    equal(executeCalls, 1, "the initial cut executes once");
++    equal(preflightDeclines, 0, "the initial token passes VDOM preflight");
+     equal(container.children[0].props.first, 2, "first prepared writer updates");
+ 
+     root.update(jsx(Output, { first: true, second: true }));
+     setter(3);
+     root.flush();
++    equal(executeCalls, 3, "stale cached token is preflighted then retried once");
++    equal(preflightDeclines, 1, "binding refresh is detected by VDOM preflight");
+     equal(container.children[0].props.first, 3, "retained writer uses refreshed fanout");
+     equal(container.children[0].props.second, 6, "new writer is included after refresh");
+ 
+     root.update(jsx(Output, { first: true, second: false }));
+     setter(4);
+     root.flush();
++    equal(executeCalls, 5, "writer removal refreshes by one preflight retry");
++    equal(preflightDeclines, 2, "removing one writer invalidates the old token");
+     equal(container.children[0].props.first, 4, "writer removal refreshes surviving fanout");
+     equal("second" in container.children[0].props, false, "removed writer is absent");
+ 
+     root.update(jsx(Output, { first: false, second: false }));
+     setter(5);
++    const beforeFallback = root.publicationVersion;
+     root.flush();
++    equal(executeCalls, 6, "unbound refresh gets one declined preflight");
++    equal(preflightDeclines, 3, "removed final writer leaves cached token stale");
++    equal(scalarFallbackCalls, 1, "failed reprepare uses the existing scalar fallback");
++    equal(root.publicationVersion, beforeFallback + 1, "only fallback publishes the declined cut");
+     equal("first" in container.children[0].props, false, "no-writer state falls back cleanly");
+     equal(root.diagnostics().pendingChangeCount, 0, "fallback retires the exact dirty version");
+-    equal(prepareCalls >= 3, true, "first use and stale structural edges prepare tokens");
+-    equal(staleChecks >= 2, true, "binding refresh/removal invalidates cached tokens");
++    equal(prepareCalls, 4, "first use and each stale edge prepare or attempt to prepare");
++    equal(currentChecks, 0, "Root relies on execution preflight instead of a duplicate query");
+   } finally {
+     VDOMSnapshotRoot.prototype.prepareNumericCellProgram = originalPrepare;
+     VDOMSnapshotRoot.prototype.isPreparedNumericCellProgramCurrent = originalCurrent;
++    VDOMSnapshotRoot.prototype.executePreparedNumericCells = originalExecute;
++    VDOMSnapshotRoot.prototype.executeSourceProgram = originalScalarExecute;
+     root.dispose();
+   }
+ });
+ 
+-Deno.test("prepared cut preflight decline adds no publication before fallback", () => {
++Deno.test("prepared cut null preflight retries once and publishes only the accepted retry", () => {
+   let setter!: (value: number) => boolean;
+   let decline = false;
++  let prepareCalls = 0;
++  let executeCalls = 0;
++  let scalarFallbackCalls = 0;
++  const originalPrepare = VDOMSnapshotRoot.prototype.prepareNumericCellProgram;
+   const originalExecute = VDOMSnapshotRoot.prototype.executePreparedNumericCells;
++  const originalScalarExecute = VDOMSnapshotRoot.prototype.executeSourceProgram;
++  VDOMSnapshotRoot.prototype.prepareNumericCellProgram = function (...args) {
++    prepareCalls++;
++    return originalPrepare.apply(this, args);
++  };
+   VDOMSnapshotRoot.prototype.executePreparedNumericCells = function (...args) {
++    executeCalls++;
+     if (decline) {
+       decline = false;
+       return null;
+     }
+     return originalExecute.apply(this, args);
+   };
++  VDOMSnapshotRoot.prototype.executeSourceProgram = function (...args) {
++    scalarFallbackCalls++;
++    return originalScalarExecute.apply(this, args);
++  };
+   const host = new MemoryVDOMHost();
+   const container = host.createContainer();
+   const root = new ComponentStateRoot(host, container, { scheduleCommit() {} });
+@@ -158,15 +199,76 @@
+   }, metadata());
+   try {
+     root.mount(jsx(Output, {}));
++    setter(2);
++    root.flush();
++    const callsBeforeRetry = executeCalls;
+     const before = root.publicationVersion;
+     setter(6);
+     decline = true;
+     root.flush();
+-    equal(container.children[0].props.value, 6, "fallback publishes the current value");
+-    equal(root.publicationVersion, before + 1, "declined preflight itself did not publish");
++    equal(container.children[0].props.value, 6, "accepted retry publishes the captured value");
++    equal(executeCalls, callsBeforeRetry + 2, "one null preflight is followed by one retry");
++    equal(prepareCalls, 2, "the null-only path refreshes preparation before retry");
++    equal(scalarFallbackCalls, 0, "successful retry does not invoke generic fallback");
++    equal(root.publicationVersion, before + 1, "the retry publishes exactly once");
++    equal(root.diagnostics().pendingChangeCount, 0, "acknowledgement follows the accepted retry");
++  } finally {
++    VDOMSnapshotRoot.prototype.prepareNumericCellProgram = originalPrepare;
++    VDOMSnapshotRoot.prototype.executePreparedNumericCells = originalExecute;
++    VDOMSnapshotRoot.prototype.executeSourceProgram = originalScalarExecute;
++    root.dispose();
++  }
++});
++
++Deno.test("two prepared preflight declines fall back without early publication or acknowledgement", () => {
++  let root!: ComponentStateRoot<MemoryNode>;
++  let setter!: (value: number) => boolean;
++  let declineCount = 0;
++  let executeCalls = 0;
++  let fallbackCalls = 0;
++  let beforeDeclinedCut = 0;
++  const originalExecute = VDOMSnapshotRoot.prototype.executePreparedNumericCells;
++  const originalScalarExecute = VDOMSnapshotRoot.prototype.executeSourceProgram;
++  VDOMSnapshotRoot.prototype.executePreparedNumericCells = function (...args) {
++    executeCalls++;
++    if (declineCount > 0) {
++      equal(root.publicationVersion, beforeDeclinedCut, "a declined attempt must not publish");
++      equal(root.diagnostics().pendingChangeCount, 1, "a declined attempt must not acknowledge");
++      declineCount--;
++      return null;
++    }
++    return originalExecute.apply(this, args);
++  };
++  VDOMSnapshotRoot.prototype.executeSourceProgram = function (...args) {
++    fallbackCalls++;
++    return originalScalarExecute.apply(this, args);
++  };
++  const host = new MemoryVDOMHost();
++  const container = host.createContainer();
++  root = new ComponentStateRoot(host, container, { scheduleCommit() {} });
++  const Output = defineComponent("prepared-cut.double-decline", () => {
++    [, setter] = useStateAt("value", 1);
++    return jsx("output", {
++      value: bindStatePropAt("value", (value) => value, numericProgram("double-decline.value")),
++    });
++  }, metadata());
++  try {
++    root.mount(jsx(Output, {}));
++    setter(2);
++    root.flush();
++    const callsBeforeDeclinedCut = executeCalls;
++    beforeDeclinedCut = root.publicationVersion;
++    setter(7);
++    declineCount = 2;
++    root.flush();
++    equal(executeCalls, callsBeforeDeclinedCut + 2, "both prepared attempts decline before fallback");
++    equal(fallbackCalls, 1, "generic scalar fallback runs once after both declines");
++    equal(container.children[0].props.value, 7, "fallback publishes the latest committed value");
++    equal(root.publicationVersion, beforeDeclinedCut + 1, "only fallback advances publication");
+     equal(root.diagnostics().pendingChangeCount, 0, "fallback acknowledges after its successful commit");
+   } finally {
+     VDOMSnapshotRoot.prototype.executePreparedNumericCells = originalExecute;
++    VDOMSnapshotRoot.prototype.executeSourceProgram = originalScalarExecute;
+     root.dispose();
+   }
+ });

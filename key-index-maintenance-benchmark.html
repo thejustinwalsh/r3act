@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light" />
+    <title>Key-index maintenance: rebuild vs delta</title>
+    <style>
+      body { margin: 32px auto; padding: 0 20px; max-width: 1000px; color: #17202a; font: 15px/1.5 system-ui, sans-serif; }
+      h1 { margin-bottom: 8px; font-size: 30px; }
+      p { max-width: 850px; color: #52606d; }
+      button, input { padding: 8px 12px; font: inherit; }
+      #status { white-space: pre-wrap; font-family: ui-monospace, monospace; }
+      #roots { position: fixed; left: -200vw; top: 0; opacity: 0; pointer-events: none; contain: layout; }
+      #roots > div { width: 2px; height: 2px; overflow: hidden; }
+      ul { margin: 0; padding: 0; list-style: none; }
+      li { height: 1px; overflow: hidden; }
+    </style>
+  </head>
+  <body>
+    <h1>Key-index maintenance experiment</h1>
+    <p>Compare the previous keyed-subtree index remove/reinsert walks with delta maintenance inside the same VDOM reconciler. React is included as a contextual reference. The page measures structural commits, mount, and teardown; it does not measure paint or display presentation.</p>
+    <label>Seed <input id="seed" type="number" value="83002001" min="1" max="4294967295" step="1" /></label>
+    <button id="run" type="button">Run this page</button>
+    <pre id="status">Ready.</pre>
+    <details><summary>Raw page record</summary><pre id="record">No run yet.</pre></details>
+    <div id="roots" aria-hidden="true">
+      <div id="react-root"></div>
+      <div id="rebuild-root"></div>
+      <div id="delta-root"></div>
+    </div>
+    <script type="module" src="/src/browser/key_index_maintenance_benchmark.tsx"></script>
+  </body>
+</html>

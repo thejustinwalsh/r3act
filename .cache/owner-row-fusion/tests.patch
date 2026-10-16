@@ -1,0 +1,106 @@
+--- a/src/prepared_owner_row_program_test.ts
++++ b/src/prepared_owner_row_program_test.ts
+@@ -537,6 +537,11 @@
+   }));
+   const sourceX = x.value;
+   const baseProjections = projections;
++  same(root.executePreparedNumericRows(
++    [token], new Uint32Array([1]), new Uint32Array([0]), [8], 1,
++  ), null, "an invalid first token index declines before record scratch is used");
++  same(x.value, sourceX, "invalid first token index leaves sources untouched");
++  same(projections, baseProjections, "invalid first token index leaves sinks untouched");
+   xColumn.values[0] = 8;
+   sources[1] = undefined; // World promotion revokes the untouched y dependency.
+   same(root.executePreparedNumericRows(
+@@ -553,9 +558,56 @@
+   ), null, "retired untouched column lease declines the cut");
+   same(x.value, sourceX, "retired lease still declines before source mirroring");
+   same(projections, baseProjections, "retired lease still declines before projection");
++  columns.push(yColumn);
++  same(root.executePreparedNumericRows(
++    [token], new Uint32Array([0]), new Uint32Array([0]), [8], 1,
++  ), true, "a valid cut succeeds after later lease-validation failure");
++  same(container.children[0].props.value, 10, "later valid cut publishes after lease failure");
+   root.dispose();
+ });
++
++Deno.test("owner-row record scratch clears after early decline and repeated cuts", () => {
++  const host = new MemoryVDOMHost();
++  const container = host.createContainer();
++  const root = new VDOMSnapshotRoot(host, container);
++  const source = new ScalarSource(725, 1);
++  const column = new NumericColumn(726, 0, new Float64Array([1]));
++  const binding = owned(bind(source, (value) => value), 725, ["x"], "scratch.x");
++  root.commit(jsx("output", { value: binding }), undefined, true);
++  const token = mustToken(root.prepareNumericRowProgram({
++    owner: 725,
++    layout,
++    rowIdentity: {},
++    row: 0,
++    generation: 1,
++    sources: [source, undefined],
++    columns: [column, new NumericColumn(727, 1, new Float64Array([0]))],
++  }));
+ 
++  same(root.executePreparedNumericRows(
++    [token], new Uint32Array([1]), new Uint32Array([0]), [2], 1,
++  ), null, "invalid first input declines");
++  same(root.executePreparedNumericRows(
++    [token], new Uint32Array([0]), new Uint32Array([0]), [2], 1,
++  ), true, "first valid cut succeeds after early decline");
++  same(root.executePreparedNumericRows(
++    [token], new Uint32Array([0, 0]), new Uint32Array([0, 0]), [4, 5], 2,
++  ), null, "later conflicting input declines after retaining only scratch references");
++  same(source.value, 2, "conflict after a valid prefix does not mirror that prefix");
++  same(root.executePreparedNumericRows(
++    [token], new Uint32Array([0]), new Uint32Array([0]), [2], 1,
++  ), false, "scratch cleanup survives a late conflict without another host write");
++  same(root.executePreparedNumericRows(
++    [token], new Uint32Array([0]), new Uint32Array([0]), [3], 1,
++  ), true, "reused scratch accepts a second cut");
++  same(root.executePreparedNumericRows(
++    [token], new Uint32Array([0]), new Uint32Array([0]), [3], 1,
++  ), false, "unchanged cut completes without a write");
++  same(source.value, 3, "source mirror follows the latest accepted cut");
++  same(container.children[0].props.value, 3, "host value follows the latest accepted cut");
++  root.dispose();
++});
++
+ Deno.test("owner-row work visits grow linearly across one thousand rows", () => {
+   const host = new MemoryVDOMHost();
+   const container = host.createContainer();
+@@ -593,15 +645,26 @@
+     })));
+     columns[0].values[row] = row + 1;
+   }
+-  same(root.executePreparedNumericRows(
+-    tokens,
+-    Uint32Array.from({ length: rowCount }, (_, row) => row),
+-    new Uint32Array(rowCount).fill(0),
+-    Array.from({ length: rowCount }, (_, row) => row + 1),
+-    rowCount,
+-  ), true, "all row sinks are reached");
++  const originalWeakMapGet = WeakMap.prototype.get;
++  let weakMapGets = 0;
++  WeakMap.prototype.get = function (key) {
++    weakMapGets++;
++    return originalWeakMapGet.call(this, key);
++  };
++  try {
++    same(root.executePreparedNumericRows(
++      tokens,
++      Uint32Array.from({ length: rowCount }, (_, row) => row),
++      new Uint32Array(rowCount).fill(0),
++      Array.from({ length: rowCount }, (_, row) => row + 1),
++      rowCount,
++    ), true, "all row sinks are reached");
++  } finally {
++    WeakMap.prototype.get = originalWeakMapGet;
++  }
++  same(weakMapGets, rowCount, "each dirty input resolves its prepared record once");
+   const visits = root.diagnostics().preparedNumericRowWorkVisits;
+-  assert(visits <= 8000, `row work visits should be linear, got ${visits}`);
++  same(visits, 6000, "dependency lease validation and capture share one slot pass");
+   same(container.children[0].children[999].props.value, 1000, "last row projects correctly");
+   root.dispose();
+ });

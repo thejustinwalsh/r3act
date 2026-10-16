@@ -1,0 +1,24 @@
+--- a/src/vdom_snapshot_runtime.ts
++++ b/src/vdom_snapshot_runtime.ts
+@@ -3309,6 +3309,8 @@
+       const epoch = this.#ownerRowCutEpoch;
+ 
+       // Validate the packed dirty cut before source mirrors or projections.
++      let previousToken: PreparedNumericRowProgram | undefined;
++      let previousRecord: PreparedNumericRowProgramRecord<H> | undefined;
+       for (let index = 0; index < count; index++) {
+         if (countVisits) this.#ownerRowWorkVisits++;
+         const tokenIndex = changedRowIndices[index];
+@@ -3319,7 +3321,11 @@
+           !Number.isSafeInteger(tokenIndex) || tokenIndex >= tokens.length ||
+           !token || !Number.isSafeInteger(slotIndex) || typeof value !== "number"
+         ) return null;
+-        const record = this.#preparedNumericRowPrograms.get(token);
++        const record = token === previousToken
++          ? previousRecord
++          : this.#preparedNumericRowPrograms.get(token);
++        previousToken = token;
++        previousRecord = record;
+         if (
+           !record || record.root !== this || !record.active ||
+           record.token !== token || !record.layout.programId ||

@@ -1,0 +1,1 @@
+../../../../src/vdom_full_commit_index_test.ts

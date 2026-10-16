@@ -1,0 +1,161 @@
+--- ../strict-ts-revision/compiler/oxc-spike/src/main.rs	2026-10-13 16:27:52
++++ compiler/oxc-spike/src/main.rs	2026-10-13 16:32:14
+@@ -6969,6 +6969,11 @@
+         assert!(code.contains("ownerUpdateProgram: __nativeOwnerCutKernels[1]"), "{code}");
+         assert!(!vector.prop_only_sites.is_empty());
+         assert!(!code.contains("ownerUpdateProgram: __nativeOwnerCutKernels[2]"), "{code}");
++        assert_eq!(code.matches("schemaVersion: 2, programId:").count(), 2, "{code}");
++        assert!(code.contains("executeCut: function(changedSlots, changeCount, rowStates, stagedInputIndices, stagedSinkIds, stagedValues)"), "{code}");
++        assert!(code.contains("rowStates[changeIndex]!"), "{code}");
++        assert!(code.contains("stagedInputIndices[stagedCount] = changeIndex"), "{code}");
++        assert!(!code.contains("stagedRows[stagedCount]"), "{code}");
+         // V2 descriptors and sink projectors remain the fallback representation.
+         assert!(code.contains("schemaVersion: 2, ownerProgramId:"), "{code}");
+         assert!(code.contains("data-sum={__nativeBindStatePropsAt("), "{code}");
+--- ../strict-ts-revision/compiler/oxc-spike/src/owner_update_program.rs	2026-10-13 16:25:59
++++ compiler/oxc-spike/src/owner_update_program.rs	2026-10-13 16:32:03
+@@ -157,13 +157,13 @@
+             let bit = 1u32 << sink_index;
+             let expression = &rewritten_expressions[sink_index];
+             case_body.push_str(&format!(
+-                "if ((rowState.seenMask & {bit}) === 0) {{ rowState.seenMask |= {bit}; const next = ({expression}); const sinkState = rowState.sinks[{sink_index}]; const last = sinkState.lastValue; const same = last === next ? (typeof next !== 'number' || (typeof last === 'number' && (last !== 0 || 1 / last === 1 / next))) : (typeof last === 'number' && typeof next === 'number' && last !== last && next !== next); if (!same) {{ stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = {sink_index}; stagedValues[stagedCount] = next; stagedCount++; }} }}"
++                "if ((rowState.seenMask & {bit}) === 0) {{ rowState.seenMask |= {bit}; const next = ({expression}); const sinkState = rowState.sinks[{sink_index}]; const last = sinkState.lastValue; const same = last === next ? (typeof next !== 'number' || (typeof last === 'number' && (last !== 0 || 1 / last === 1 / next))) : (typeof last === 'number' && typeof next === 'number' && last !== last && next !== next); if (!same) {{ stagedInputIndices[stagedCount] = changeIndex; stagedSinkIds[stagedCount] = {sink_index}; stagedValues[stagedCount] = next; stagedCount++; }} }}"
+             ));
+         }
+         switch_cases.push_str(&format!("case {slot_index}: {{{case_body} break;}}"));
+     }
+     Some(format!(
+-        "{{ schemaVersion: 1, programId: {owner_id}, slotCount: {}, sinkIds: [{sink_ids}], executeCut: function(changedRows, changedSlots, changeCount, rowStates, stagedRows, stagedSinkIds, stagedValues) {{ let stagedCount = 0; for (let changeIndex = 0; changeIndex < changeCount; changeIndex++) {{ const rowIndex = changedRows[changeIndex]; const rowState = rowStates[rowIndex]!; switch (changedSlots[changeIndex]) {{ {switch_cases} }} }} return stagedCount; }} }}",
++        "{{ schemaVersion: 2, programId: {owner_id}, slotCount: {}, sinkIds: [{sink_ids}], executeCut: function(changedSlots, changeCount, rowStates, stagedInputIndices, stagedSinkIds, stagedValues) {{ let stagedCount = 0; for (let changeIndex = 0; changeIndex < changeCount; changeIndex++) {{ const rowState = rowStates[changeIndex]!; switch (changedSlots[changeIndex]) {{ {switch_cases} }} }} return stagedCount; }} }}",
+         ordered_layout_site_ids.len(),
+     ))
+ }
+--- ../strict-ts-revision/node-proof/execute_owner_cut_kernel.mjs	2026-10-13 16:28:08
++++ node-proof/execute_owner_cut_kernel.mjs	2026-10-13 16:33:44
+@@ -126,11 +126,15 @@
+ );
+ const kernels = vm.runInNewContext(`${executableDeclaration.code}; __nativeOwnerCutKernels`);
+ assert.equal(kernels.length, 2, "only primitive Row and SameShape should get kernels");
++assert.equal(kernels[0].schemaVersion, 2, "owner kernel uses ordinal input-record ABI v2");
++assert.equal(kernels[1].schemaVersion, 2, "each kernel uses ordinal input-record ABI v2");
+ assert.notEqual(kernels[0].programId, kernels[1].programId, "same-shaped components must have isolated programs");
+ assert.equal(kernels[0].slotCount, 2, "owner kernel declares its ordered state-layout width");
+ assert.equal(kernels[1].slotCount, 2, "each owner kernel declares its own layout width");
+ assert.equal(kernels[0].sinkIds.length, 7);
+ assert.equal(typeof kernels[0].executeCut, "function");
++assert.equal(kernels[0].executeCut.length, 6, "kernel consumes only the six-argument ordinal ABI");
++assert.doesNotMatch(declaration, /changedRows/, "kernel declaration has no changed-row input");
+ 
+ const runRows = [
+   { seenMask: 0, inputValues: [1, 2], sinks: Array.from({ length: 7 }, () => ({ lastValue: null, forceWrite: false })) },
+@@ -138,7 +142,8 @@
+ ];
+ const changedRows = new Uint32Array([0, 1, 0]);
+ const changedSlots = new Uint16Array([1, 0, 0]);
+-const stagedRows = new Uint32Array(16);
++const inputRecords = [runRows[0], runRows[1], runRows[0]];
++const stagedInputIndices = new Uint32Array(16);
+ const stagedSinkIds = new Uint16Array(16);
+ const stagedValues = new Array(16);
+ let wholeCutCalls = 0;
+@@ -147,35 +152,35 @@
+   return kernels[0].executeCut(...args);
+ };
+ const stagedCount = executeOnce(
+-  changedRows,
+   changedSlots,
+   changedRows.length,
+-  runRows,
+-  stagedRows,
++  inputRecords,
++  stagedInputIndices,
+   stagedSinkIds,
+   stagedValues,
+ );
+ assert.equal(wholeCutCalls, 1, "homogeneous multi-row cut calls one emitted kernel");
+ assert.deepEqual(
+   Array.from({ length: stagedCount }, (_, index) => ({
+-    row: stagedRows[index],
++    input: stagedInputIndices[index],
++    row: changedRows[stagedInputIndices[index]],
+     sink: stagedSinkIds[index],
+     value: stagedValues[index],
+   })),
+   [
+-    { row: 0, sink: 0, value: 2 },
+-    { row: 0, sink: 1, value: 3 },
+-    { row: 1, sink: 1, value: 7 },
+-    { row: 1, sink: 2, value: "3px" },
+-    { row: 1, sink: 3, value: 3 },
+-    { row: 1, sink: 4, value: -3 },
+-    { row: 1, sink: 5, value: "positive" },
+-    { row: 1, sink: 6, value: "line\n3px" },
+-    { row: 0, sink: 2, value: "1px" },
+-    { row: 0, sink: 3, value: 1 },
+-    { row: 0, sink: 4, value: -1 },
+-    { row: 0, sink: 5, value: "positive" },
+-    { row: 0, sink: 6, value: "line\n1px" },
++    { input: 0, row: 0, sink: 0, value: 2 },
++    { input: 0, row: 0, sink: 1, value: 3 },
++    { input: 1, row: 1, sink: 1, value: 7 },
++    { input: 1, row: 1, sink: 2, value: "3px" },
++    { input: 1, row: 1, sink: 3, value: 3 },
++    { input: 1, row: 1, sink: 4, value: -3 },
++    { input: 1, row: 1, sink: 5, value: "positive" },
++    { input: 1, row: 1, sink: 6, value: "line\n3px" },
++    { input: 2, row: 0, sink: 2, value: "1px" },
++    { input: 2, row: 0, sink: 3, value: 1 },
++    { input: 2, row: 0, sink: 4, value: -1 },
++    { input: 2, row: 0, sink: 5, value: "positive" },
++    { input: 2, row: 0, sink: 6, value: "line\n1px" },
+   ],
+   "kernel must preserve interleaved row/slot first-touch order and deduplicate shared sinks",
+ );
+@@ -193,17 +198,15 @@
+   ],
+ };
+ equalityState.inputValues = new Float64Array([Number.NaN, 0]);
+-const equalityRows = new Uint32Array([0]);
+ const equalitySlots = new Uint16Array([0]);
+-const equalityStagedRows = new Uint32Array(5);
++const equalityStagedInputIndices = new Uint32Array(5);
+ const equalityStagedSinks = new Uint16Array(5);
+ const equalityStagedValues = new Array(5);
+ const equalityCount = kernels[0].executeCut(
+-  equalityRows,
+   equalitySlots,
+   1,
+   [equalityState],
+-  equalityStagedRows,
++  equalityStagedInputIndices,
+   equalityStagedSinks,
+   equalityStagedValues,
+ );
+@@ -218,15 +221,15 @@
+ equalityState.sinks[6].lastValue = "line\n0px";
+ equalityState.inputValues[0] = 0;
+ const signedZeroCount = kernels[0].executeCut(
+-  equalityRows,
+   equalitySlots,
+   1,
+   [equalityState],
+-  equalityStagedRows,
++  equalityStagedInputIndices,
+   equalityStagedSinks,
+   equalityStagedValues,
+ );
+ assert.equal(signedZeroCount, 1, "positive and negative zero are distinct");
++assert.equal(equalityStagedInputIndices[0], 0, "signed-zero update stages its input-record ordinal");
+ assert.equal(equalityStagedSinks[0], 4);
+ assert.ok(Object.is(equalityStagedValues[0], -0));
+ 
+--- ../strict-ts-revision/review/deno.json	2026-10-13 16:28:29
++++ review/deno.json	2026-10-13 16:32:35
+@@ -1,6 +1,6 @@
+ {
+   "imports": {
+-    "native_runtime_api.ts": "../../../compiled-owner-metadata-bridge-stage/src/native_runtime_api.ts"
++    "native_runtime_api.ts": "../../../compiled-owner-metadata-v2-stage/src/native_runtime_api.ts"
+   },
+   "compilerOptions": {
+     "strict": true,

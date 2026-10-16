@@ -1,0 +1,286 @@
+{
+  "schemaVersion": 1,
+  "experiment": "Shared-source dependency fan-out across independent Deno processes",
+  "processCount": 3,
+  "seeds": [
+    1063781101,
+    1063782211,
+    1063783307
+  ],
+  "environments": [
+    {
+      "deno": "2.6.3",
+      "v8": "14.2.231.17-rusty",
+      "os": "darwin",
+      "arch": "aarch64",
+      "hardwareConcurrency": 10,
+      "sampleDate": "2026-10-09T17:57:42.457Z"
+    },
+    {
+      "deno": "2.6.3",
+      "v8": "14.2.231.17-rusty",
+      "os": "darwin",
+      "arch": "aarch64",
+      "hardwareConcurrency": 10,
+      "sampleDate": "2026-10-09T17:57:42.457Z"
+    },
+    {
+      "deno": "2.6.3",
+      "v8": "14.2.231.17-rusty",
+      "os": "darwin",
+      "arch": "aarch64",
+      "hardwareConcurrency": 10,
+      "sampleDate": "2026-10-09T17:57:42.456Z"
+    }
+  ],
+  "rawSources": [
+    "results/deno-shared-dependency-1063781101.json",
+    "results/deno-shared-dependency-1063782211.json",
+    "results/deno-shared-dependency-1063783307.json"
+  ],
+  "scenarios": [
+    {
+      "entityCount": 10000,
+      "changedFraction": 0.01,
+      "changedEntities": 100,
+      "sharedMode": "none",
+      "affectedBindingsPerBatch": 200,
+      "medianUsAcrossProcesses": {
+        "graph": 1.1093750000004121,
+        "fullScan": 6.697906249999441
+      },
+      "p95UsAcrossProcesses": {
+        "graph": 1.4974062499995,
+        "fullScan": 8.386718749999744
+      },
+      "graphWinsByProcess": [
+        48,
+        48,
+        48
+      ],
+      "fullScanWinsByProcess": [
+        0,
+        0,
+        0
+      ],
+      "parityAllProcesses": true,
+      "orderBalancedAllProcesses": true
+    },
+    {
+      "entityCount": 10000,
+      "changedFraction": 0.1,
+      "changedEntities": 1000,
+      "sharedMode": "none",
+      "affectedBindingsPerBatch": 2000,
+      "medianUsAcrossProcesses": {
+        "graph": 17.260499999999013,
+        "fullScan": 25.65099999999987
+      },
+      "p95UsAcrossProcesses": {
+        "graph": 21.166750000002565,
+        "fullScan": 29.375000000001705
+      },
+      "graphWinsByProcess": [
+        46,
+        48,
+        48
+      ],
+      "fullScanWinsByProcess": [
+        2,
+        0,
+        0
+      ],
+      "parityAllProcesses": true,
+      "orderBalancedAllProcesses": true
+    },
+    {
+      "entityCount": 10000,
+      "changedFraction": 1,
+      "changedEntities": 10000,
+      "sharedMode": "none",
+      "affectedBindingsPerBatch": 20000,
+      "medianUsAcrossProcesses": {
+        "graph": 136.66599999999107,
+        "fullScan": 87.54100000004428
+      },
+      "p95UsAcrossProcesses": {
+        "graph": 152.20799999997325,
+        "fullScan": 98.99999999998954
+      },
+      "graphWinsByProcess": [
+        0,
+        1,
+        0
+      ],
+      "fullScanWinsByProcess": [
+        48,
+        47,
+        48
+      ],
+      "parityAllProcesses": true,
+      "orderBalancedAllProcesses": true
+    },
+    {
+      "entityCount": 10000,
+      "changedFraction": 0.01,
+      "changedEntities": 100,
+      "sharedMode": "scale",
+      "affectedBindingsPerBatch": 10100,
+      "medianUsAcrossProcesses": {
+        "graph": 58.52050000001441,
+        "fullScan": 24.77100000001542
+      },
+      "p95UsAcrossProcesses": {
+        "graph": 86.85400000001664,
+        "fullScan": 28.37500000001114
+      },
+      "graphWinsByProcess": [
+        0,
+        0,
+        0
+      ],
+      "fullScanWinsByProcess": [
+        48,
+        48,
+        48
+      ],
+      "parityAllProcesses": true,
+      "orderBalancedAllProcesses": true
+    },
+    {
+      "entityCount": 10000,
+      "changedFraction": 0.1,
+      "changedEntities": 1000,
+      "sharedMode": "scale",
+      "affectedBindingsPerBatch": 11000,
+      "medianUsAcrossProcesses": {
+        "graph": 72.9584999999986,
+        "fullScan": 28.020499999996673
+      },
+      "p95UsAcrossProcesses": {
+        "graph": 99.70799999999258,
+        "fullScan": 37.31250000001296
+      },
+      "graphWinsByProcess": [
+        0,
+        0,
+        0
+      ],
+      "fullScanWinsByProcess": [
+        48,
+        48,
+        48
+      ],
+      "parityAllProcesses": true,
+      "orderBalancedAllProcesses": true
+    },
+    {
+      "entityCount": 10000,
+      "changedFraction": 1,
+      "changedEntities": 10000,
+      "sharedMode": "scale",
+      "affectedBindingsPerBatch": 20000,
+      "medianUsAcrossProcesses": {
+        "graph": 143.93750000002115,
+        "fullScan": 77.68749999999613
+      },
+      "p95UsAcrossProcesses": {
+        "graph": 159.04150000000072,
+        "fullScan": 84.29150000000618
+      },
+      "graphWinsByProcess": [
+        0,
+        0,
+        0
+      ],
+      "fullScanWinsByProcess": [
+        48,
+        48,
+        48
+      ],
+      "parityAllProcesses": true,
+      "orderBalancedAllProcesses": true
+    },
+    {
+      "entityCount": 10000,
+      "changedFraction": 0.01,
+      "changedEntities": 100,
+      "sharedMode": "scaleAndOpacity",
+      "affectedBindingsPerBatch": 20100,
+      "medianUsAcrossProcesses": {
+        "graph": 104.9160000000029,
+        "fullScan": 28.542000000015832
+      },
+      "p95UsAcrossProcesses": {
+        "graph": 174.99999999995453,
+        "fullScan": 45.70899999998801
+      },
+      "graphWinsByProcess": [
+        0,
+        0,
+        0
+      ],
+      "fullScanWinsByProcess": [
+        48,
+        48,
+        48
+      ],
+      "parityAllProcesses": true,
+      "orderBalancedAllProcesses": true
+    },
+    {
+      "entityCount": 10000,
+      "changedFraction": 0.1,
+      "changedEntities": 1000,
+      "sharedMode": "scaleAndOpacity",
+      "affectedBindingsPerBatch": 21000,
+      "medianUsAcrossProcesses": {
+        "graph": 113.91600000001745,
+        "fullScan": 32.45800000001964
+      },
+      "p95UsAcrossProcesses": {
+        "graph": 203.708000000006,
+        "fullScan": 36.166999999977634
+      },
+      "graphWinsByProcess": [
+        0,
+        0,
+        0
+      ],
+      "fullScanWinsByProcess": [
+        48,
+        48,
+        48
+      ],
+      "parityAllProcesses": true,
+      "orderBalancedAllProcesses": true
+    },
+    {
+      "entityCount": 10000,
+      "changedFraction": 1,
+      "changedEntities": 10000,
+      "sharedMode": "scaleAndOpacity",
+      "affectedBindingsPerBatch": 30000,
+      "medianUsAcrossProcesses": {
+        "graph": 169.50000000002774,
+        "fullScan": 80.74999999996635
+      },
+      "p95UsAcrossProcesses": {
+        "graph": 191.0829999999919,
+        "fullScan": 87.7500000000282
+      },
+      "graphWinsByProcess": [
+        0,
+        0,
+        0
+      ],
+      "fullScanWinsByProcess": [
+        48,
+        48,
+        48
+      ],
+      "parityAllProcesses": true,
+      "orderBalancedAllProcesses": true
+    }
+  ]
+}

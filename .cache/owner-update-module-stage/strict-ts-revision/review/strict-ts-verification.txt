@@ -1,0 +1,8 @@
+Strict-TS revision results:
+- `CARGO_HOME="$PWD/../../cargo" CARGO_TARGET_DIR="$PWD/target" cargo test --locked --manifest-path "$PWD/compiler/oxc-spike/Cargo.toml"`: 34 passed, 0 failed (`review/rust-tests-pass.log`).
+- `PATH="/Users/tjw/.nvm/versions/node/v24.18.0/bin:$PATH" CARGO_HOME="$PWD/../../cargo" node node-proof/execute_owner_cut_kernel.mjs`: PASS staged primitive whole-cut owner-kernel proof (`review/node-proof-pass.log`). The proof uses Vite `transformWithOxc` to erase the generated TS annotation and non-null assertion before VM evaluation.
+- `node review/generate-kernel-table.mjs` plus `deno check --config review/deno.json review/generated-kernel-table.ts`: PASS strict contextual typing against the staged metadata overlay (`review/table-generation.log`, `review/deno-check.log`).
+
+Preserved failed attempts: `review/rust-tests-fail-01.log` captured the first run after only updating the table-declaration assertion; the old SameValue assertion correctly failed. `review/node-proof.log` captured the first Node attempt, which still expected an untyped table declaration. Both assertions were then updated to check the typed declaration and guarded SameValue semantics; no assertions were removed. The succeeding logs are listed above.
+
+Added typeof guards are present in the emitted per-sink equality path to make reciprocal arithmetic type-safe. This correctness/type-check change adds runtime branches; no performance claim is made.

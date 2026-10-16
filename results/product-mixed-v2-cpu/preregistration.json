@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "study": "compiled-product-mixed-v2-cpu-diagnostic",
+  "status": "FROZEN_BEFORE_CPU_PROFILE",
+  "runId": "9bfdd02e-f5a4-408c-80b8-c09b778469cc",
+  "createdAt": "2026-10-12T23:58:49.368Z",
+  "frozenInputs": {
+    "latencyPreregistrationPath": "results/product-mixed-v2-preregistration.json",
+    "latencyPreregistrationSha256": "22d31332675600394e6dba8dd896930c07f882f629d0d8295ada6a81052f4bf0",
+    "latencyManifestPath": "results/product-mixed-v2-manifest.json",
+    "latencyManifestSha256": "2e379214d7ffc5b96ce48ab14f02e17fe561058b49329df59ce33ddc0dc12b94",
+    "sourceBuildArchive": {
+      "path": "implementation/2026-10-12-namespace-three/source-and-build.tar.gz",
+      "sha256": "1e8206e5a6718b007e60c3650a3c092a132c944a74e4aff4d729c19847df709c"
+    },
+    "protocol": {
+      "path": "product-mixed-v2-protocol.md",
+      "sha256": "cea1983c396e6a664ca80c6cb4cfe8a552390401425f04a57f9a7b1e5b5c90c6"
+    },
+    "schedule": {
+      "path": "src/browser/product_mixed_schedule.ts",
+      "sha256": "01b61c212155b5d957393ebe683b638922bd0f9daff2afa3f1f51ad2f11926ef",
+      "pages": [
+        {
+          "size": 1024,
+          "pair": 0,
+          "arm": "react",
+          "sequence": 20
+        },
+        {
+          "size": 1024,
+          "pair": 0,
+          "arm": "native",
+          "sequence": 21
+        }
+      ]
+    },
+    "productionFiles": {
+      "dist-product-mixed-v2/assets/native_product_mixed_arm-VOmYigrE.js": "23e345a59a3ba8e8cafdcccfddcd902481badf3a7c46d4cad52764438abf19dd",
+      "dist-product-mixed-v2/assets/product-mixed-v2-ByC6pACu.js": "828f9ad15291ee845466ceeff3f1814425d84cd1c71207dd69c7a07408b4f5b0",
+      "dist-product-mixed-v2/assets/product-mixed-v2-hg5qe9FO.css": "5c05640ebe7d1025a5c3a5670c77acfb93f291b4df6485e533aff88ae3821d43",
+      "dist-product-mixed-v2/assets/product_mixed_react_arm-s2Fn1_1Z.js": "0359766ebd669fc0a98bd1612ba8841489ce6e386ee49a220b45eb5d5fa94d4c",
+      "dist-product-mixed-v2/product-mixed-v2.html": "e99376dae7e4b469a314f739740c67328b9336419a92b07e06ceb81effda64ea"
+    },
+    "compilerProof": {
+      "native": {
+        "arm": "native",
+        "compiled": true,
+        "bindings": 3,
+        "deltas": true,
+        "propOnly": true,
+        "deltaFallback": false
+      },
+      "react": {
+        "arm": "react",
+        "compiled": true,
+        "rowMemoCache": true,
+        "boardMemoCache": true
+      }
+    },
+    "profileScript": {
+      "path": "scripts/profile_product_mixed_v2_cpu.mjs",
+      "sha256": "6c3a134731a084248686192105b17e1a815b85e5dc4de4c166311113a8dff211"
+    },
+    "validatedLatencyRecordCount": 30
+  },
+  "browser": {
+    "origin": "https://compiled-product-mixed.localhost:1355",
+    "headless": false,
+    "gpu": false,
+    "viewport": {
+      "width": 1200,
+      "height": 900
+    },
+    "freshContext": true,
+    "foregroundPage": true,
+    "serial": true,
+    "profilerSamplingIntervalMicros": 1000,
+    "profilerStartsOnAboutBlankBeforeNavigation": true
+  },
+  "workload": {
+    "sequences": [
+      20,
+      21
+    ],
+    "size": 1024,
+    "arms": [
+      "react",
+      "native"
+    ],
+    "warmupFrames": 60,
+    "measuredFrames": 240,
+    "correctnessGate": "PASS and exactly 240 measured samples for each profiled page."
+  },
+  "profileScope": "Module import, initial mount, warmup, 240 measured frames, harness checks, and disposal; diagnostic profile, not latency confirmation.",
+  "interpretationLimits": [
+    "Time is estimated from CPU profiler sample timeDeltas, weighted by sampled self frames; it is not an exact instruction count or update-only cost.",
+    "The profile includes module import, initial mount, warmup, harness checks, and disposal, not just frame updates.",
+    "Function and URL labels are attribution hints, not proof of causality.",
+    "The minified native/react arm chunks combine authored app and runtime code; they cannot be separated reliably without source maps.",
+    "This is one machine and browser; no independent-device claim is supported."
+  ],
+  "machine": {
+    "platform": "darwin",
+    "architecture": "arm64",
+    "nodeVersion": "v24.18.0",
+    "cpuModel": "Apple M2 Pro",
+    "logicalCpuCount": 10,
+    "totalMemoryBytes": 34359738368
+  }
+}

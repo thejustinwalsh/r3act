@@ -1,0 +1,84 @@
+{
+  "schemaVersion": "component-state-structural-memory-profile-v1",
+  "status": "EXPLORATORY",
+  "collectedAt": "2026-10-11T05:08:24.077Z",
+  "runtime": {
+    "deno": "2.6.3",
+    "v8": "14.2.231.17-rusty",
+    "typescript": "5.9.2",
+    "os": "darwin",
+    "arch": "aarch64"
+  },
+  "workload": {
+    "rows": 10000,
+    "warmupsPerOperation": 2,
+    "measuredUpdatesPerOperation": 10,
+    "host": "MemoryVDOMHost",
+    "phases": "owner.render-and-key, owner.expand-and-cache, vdom.normalize, vdom.reconcile-host, vdom.index-snapshot, root.flush"
+  },
+  "limitations": [
+    "One Deno process; this diagnostic is not a replicated performance result.",
+    "MemoryVDOMHost uses an array-backed child list; its place/remove costs do not model browser DOM operations.",
+    "No React arm, browser layout, paint, or presentation is included.",
+    "Phase instrumentation adds timing calls and phase medians are not additive; compare them only as diagnostic proportions."
+  ],
+  "scenarios": [
+    {
+      "operation": "rotate",
+      "rows": 10000,
+      "measuredUpdates": 10,
+      "operationCountUpdates": 12,
+      "hostWrites": 12,
+      "hostPlacements": 12,
+      "hostRemovals": 0,
+      "medianWallMs": 15.167708000000005,
+      "phaseMedianMs": {
+        "owner.render-and-key": 0.9245410000000334,
+        "owner.expand-and-cache": 7.4100420000000895,
+        "vdom.normalize": 0.4157910000000129,
+        "vdom.reconcile-host": 3.387833999999998,
+        "vdom.index-snapshot": 1.997624999999971,
+        "root.flush": 15.126666999999998
+      },
+      "caveat": "Exploratory Deno MemoryVDOMHost diagnostic; not comparable to browser DOM or primary AP v4 timings."
+    },
+    {
+      "operation": "replace-edge",
+      "rows": 10000,
+      "measuredUpdates": 10,
+      "operationCountUpdates": 12,
+      "hostWrites": 60,
+      "hostPlacements": 24,
+      "hostRemovals": 12,
+      "medianWallMs": 15.01033300000006,
+      "phaseMedianMs": {
+        "owner.render-and-key": 0.8899589999999762,
+        "owner.expand-and-cache": 5.9056659999999965,
+        "vdom.normalize": 0.6573750000000018,
+        "vdom.reconcile-host": 3.0585829999999987,
+        "vdom.index-snapshot": 1.9932919999999967,
+        "root.flush": 14.920166999999992
+      },
+      "caveat": "Exploratory Deno MemoryVDOMHost diagnostic; not comparable to browser DOM or primary AP v4 timings."
+    },
+    {
+      "operation": "filter-half",
+      "rows": 10000,
+      "measuredUpdates": 10,
+      "operationCountUpdates": 12,
+      "hostWrites": 120012,
+      "hostPlacements": 60000,
+      "hostRemovals": 30000,
+      "medianWallMs": 49.59791700000005,
+      "phaseMedianMs": {
+        "owner.render-and-key": 0.8280409999999847,
+        "owner.expand-and-cache": 10.743000000000166,
+        "vdom.normalize": 2.8345829999998386,
+        "vdom.reconcile-host": 27.383624999999938,
+        "vdom.index-snapshot": 2.387958000000026,
+        "root.flush": 49.210166999999956
+      },
+      "caveat": "Exploratory Deno MemoryVDOMHost diagnostic; not comparable to browser DOM or primary AP v4 timings."
+    }
+  ]
+}

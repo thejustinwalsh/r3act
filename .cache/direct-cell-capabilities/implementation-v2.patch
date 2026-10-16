@@ -1,0 +1,932 @@
+--- a/src/owner_state_world.ts
++++ b/src/owner_state_world.ts
+@@ -34,6 +34,10 @@
+   /** Allocated only on the first committed dispatch for this cell. */
+   cellIdentity?: object;
+   cellHandle?: StateCellHandle;
++  /** Borrowed only while this committed cell occupies a numeric row slot. */
++  rowLease?: NumericRowLease;
++  /** Cached row projection; it contains no cell reference. */
++  rowView?: NumericCellRowView;
+   /** Reusable owner/site journal node; it contains no cell payload. */
+   dirtyMembership?: PreparedDirtyMembership;
+   source?: ScalarSource;
+@@ -97,14 +101,228 @@
+   cell.cellIdentity = undefined;
+   cell.cellHandle = undefined;
+   cell.dirtyMembership = undefined;
++  cell.rowLease = undefined;
++  cell.rowView = undefined;
+   cell.promoted = args.promoted;
+   return cell;
+ }
+ 
++/** Revocable, opaque authority for one committed cell. */
++class CommittedCellCapability {
++  #worldSecret: object | null;
++  readonly #owner: OwnerId;
++  readonly #site: StateSiteId;
++  #cell: StateCell<unknown> | null;
++
++  constructor(
++    worldSecret: object,
++    owner: OwnerId,
++    site: StateSiteId,
++    cell: StateCell<unknown>,
++  ) {
++    this.#worldSecret = worldSecret;
++    this.#owner = owner;
++    this.#site = site;
++    this.#cell = cell;
++    Object.setPrototypeOf(this, null);
++    Object.freeze(this);
++  }
++
++  static resolve(
++    candidate: unknown,
++    worldSecret: object,
++    owner: OwnerId,
++    site: StateSiteId,
++  ): StateCell<unknown> | null {
++    if (
++      (typeof candidate !== "object" && typeof candidate !== "function") ||
++      candidate === null || !(#cell in candidate)
++    ) return null;
++    const capability = candidate as CommittedCellCapability;
++    return capability.#worldSecret === worldSecret &&
++        capability.#owner === owner && capability.#site === site
++      ? capability.#cell
++      : null;
++  }
++
++  static revoke(candidate: object, worldSecret: object): void {
++    if (!(#cell in candidate)) return;
++    const capability = candidate as CommittedCellCapability;
++    if (capability.#worldSecret !== worldSecret) return;
++    capability.#cell = null;
++    capability.#worldSecret = null;
++  }
++}
++
++/** A row-scoped lease, deliberately free of cell and World references. */
++class NumericRowLease {
++  #active = true;
++  #owner: OwnerId;
++  #layout: CompiledStateLayout;
++  #row: number;
++  #generation: number;
++  #columns: NumericColumn[];
++  #sources: (ScalarSource | undefined)[];
++  #lanes: (NumericLaneAddress | undefined)[];
++
++  constructor(
++    owner: OwnerId,
++    layout: CompiledStateLayout,
++    row: number,
++    generation: number,
++    columns: NumericColumn[],
++  ) {
++    this.#owner = owner;
++    this.#layout = layout;
++    this.#row = row;
++    this.#generation = generation;
++    this.#columns = [...columns];
++    this.#sources = Array(columns.length);
++    this.#lanes = Array(columns.length);
++    Object.setPrototypeOf(this, null);
++    Object.freeze(this);
++  }
++
++  static columns(candidate: NumericRowLease): readonly NumericColumn[] {
++    return candidate.#columns;
++  }
++
++  static sources(
++    candidate: NumericRowLease,
++  ): readonly (ScalarSource | undefined)[] {
++    return candidate.#sources;
++  }
++
++  static isCurrent(
++    candidate: unknown,
++    owner: OwnerId,
++    site: StateSiteId,
++    layout: CompiledStateLayout,
++    lane: NumericLaneAddress,
++    slot: number,
++    source: ScalarSource,
++  ): candidate is NumericRowLease {
++    if (
++      (typeof candidate !== "object" && typeof candidate !== "function") ||
++      candidate === null || !(#active in candidate)
++    ) return false;
++    return candidate.#active && candidate.#owner === owner &&
++      candidate.#row === lane.row &&
++      candidate.#generation === lane.generation &&
++      candidate.#layout === layout && layout.slots[slot]?.siteId === site &&
++      candidate.#columns[slot] === lane.column &&
++      candidate.#sources[slot] === source &&
++      candidate.#lanes[slot] === lane &&
++      lane.owner === owner && lane.site === site;
++  }
++
++  static setSlot(
++    candidate: NumericRowLease,
++    slot: number,
++    lane: NumericLaneAddress,
++    source: ScalarSource | undefined,
++  ): void {
++    if (!candidate.#active) return;
++    candidate.#sources[slot] = source;
++    candidate.#lanes[slot] = lane;
++  }
++
++  static setSource(
++    candidate: NumericRowLease,
++    slot: number,
++    source: ScalarSource | undefined,
++  ): void {
++    if (candidate.#active) {
++      candidate.#sources[slot] = source;
++    }
++  }
++
++  static clearSlot(candidate: NumericRowLease, slot: number): void {
++    candidate.#sources[slot] = undefined;
++    candidate.#lanes[slot] = undefined;
++  }
++
++  static retire(candidate: NumericRowLease): void {
++    if (!candidate.#active) return;
++    candidate.#sources.fill(undefined);
++    candidate.#lanes.fill(undefined);
++    candidate.#active = false;
++  }
++}
++
++/** Cached compiled row binding for one committed state cell. */
++export type NumericCellRowView = Readonly<{
++  owner: OwnerId;
++  site: StateSiteId;
++  layout: CompiledStateLayout;
++  rowIdentity: object;
++  row: number;
++  generation: number;
++  slot: number;
++  lane: NumericLaneAddress;
++  source: ScalarSource;
++  sources: readonly (ScalarSource | undefined)[];
++  columns: readonly NumericColumn[];
++}>;
++
++function makeNumericCellRowView(
++  owner: OwnerId,
++  site: StateSiteId,
++  layout: CompiledStateLayout,
++  lease: NumericRowLease,
++  lane: NumericLaneAddress,
++  slot: number,
++  source: ScalarSource,
++  sources: readonly (ScalarSource | undefined)[],
++  columns: readonly NumericColumn[],
++): NumericCellRowView {
++  return Object.freeze({
++    owner,
++    site,
++    layout,
++    rowIdentity: lease,
++    row: lane.row,
++    generation: lane.generation,
++    slot,
++    lane,
++    source,
++    sources,
++    columns,
++  });
++}
++
++function refreshNumericCellRowView(
++  cell: StateCell<unknown>,
++  owner: OwnerId,
++  site: StateSiteId,
++): void {
++  const lane = cell.lane;
++  const source = cell.source;
++  const lease = cell.rowLease;
++  const layout = cell.stateLayout;
++  const slot = cell.numericLaneSlot;
++  cell.rowView = lane && source && lease && layout && slot !== undefined
++    ? makeNumericCellRowView(
++      owner,
++      site,
++      layout,
++      lease,
++      lane,
++      slot,
++      source,
++      NumericRowLease.sources(lease),
++      NumericRowLease.columns(lease),
++    )
++    : undefined;
++}
++
+ /** Install the column as the only logical-value storage for a committed cell. */
+ function attachNumericLane(
+   cell: StateCell<unknown>,
+   lane: NumericLaneAddress,
++  lease: NumericRowLease,
++  layout: CompiledStateLayout,
++  slot: number,
+ ): void {
+   const current = cell.value;
+   if (typeof current !== "number") {
+@@ -112,6 +330,9 @@
+   }
+   lane.column.values[lane.row] = current;
+   cell.lane = lane;
++  cell.rowLease = lease;
++  NumericRowLease.setSlot(lease, slot, lane, cell.source);
++  refreshNumericCellRowView(cell, lane.owner, lane.site);
+   if (isCompiledNumericStateCell(cell)) {
+     cell.boxedValue = undefined;
+   } else {
+@@ -124,6 +345,11 @@
+   const lane = cell.lane;
+   if (!lane) return null;
+   const value = lane.column.values[lane.row];
++  if (cell.rowLease && cell.numericLaneSlot !== undefined) {
++    NumericRowLease.clearSlot(cell.rowLease, cell.numericLaneSlot);
++  }
++  cell.rowLease = undefined;
++  cell.rowView = undefined;
+   if (isCompiledNumericStateCell(cell)) {
+     cell.boxedValue = value;
+     cell.lane = undefined;
+@@ -178,7 +404,12 @@
+   generations: number[];
+   freeRows: number[];
+   nextRow: number;
+-  rowsByOwner: Map<OwnerId, { row: number; generation: number; cells: number }>;
++  rowsByOwner: Map<OwnerId, {
++    row: number;
++    generation: number;
++    cells: number;
++    lease: NumericRowLease;
++  }>;
+ };
+ 
+ export type StateChange = {
+@@ -265,6 +496,7 @@
+   #rootChildrenVersion = 0;
+   #stateByOwner = new Map<OwnerId, Map<StateSiteId, StateCell<unknown>>>();
+   #numericLayouts = new WeakMap<object, NumericLayoutRecord>();
++  #identitySecret = Object.freeze({});
+   /** Explicit deletion on owner destruction releases cells even if identities survive. */
+   #committedCellsByIdentity = new WeakMap<object, CommittedCellIdentity>();
+   #dirtyJournal = new WorldDirtyJournal();
+@@ -359,15 +591,20 @@
+     cell: StateCell<T>,
+     lane: NumericLaneAddress,
+   ) {
+-    const storage = cell.stateLayout
+-      ? this.#numericLayouts.get(cell.stateLayout as object)
+-      : undefined;
+-    const row = storage?.rowsByOwner.get(owner);
+-    const slot = storage?.slotsBySite.get(site);
+-    return !!storage && !!row && slot !== undefined &&
+-      row.row === lane.row && row.generation === lane.generation &&
+-      storage.columns[slot] === lane.column && lane.owner === owner &&
+-      lane.site === site && cell.lane === lane &&
++    const layout = cell.stateLayout;
++    const slot = cell.numericLaneSlot;
++    const lease = cell.rowLease;
++    const source = cell.source;
++    return !!layout && slot !== undefined && !!lease && !!source &&
++      NumericRowLease.isCurrent(
++        lease,
++        owner,
++        site,
++        layout,
++        lane,
++        slot,
++        source,
++      ) && cell.lane === lane && cell.rowView?.rowIdentity === lease &&
+       !cell.promoted && typeof cell.value === "number";
+   }
+ 
+@@ -378,7 +615,6 @@
+   ): NumericLaneAddress | null {
+     const layout = cell.stateLayout;
+     if (!layout || cell.promoted) return null;
+-    const storage = this.#layoutRecord(owner, layout);
+     const slot = cell.numericLaneSlot;
+     if (slot === undefined) return null;
+     if (typeof cell.value !== "number") {
+@@ -387,9 +623,10 @@
+       return null;
+     }
+     const existing = cell.lane;
+-    if (existing && this.#laneIsCurrent(owner, site, cell, existing)) {
++    if (existing && this.#laneAddressIsCurrent(owner, site, cell, existing)) {
+       return existing;
+     }
++    const storage = this.#layoutRecord(owner, layout);
+     if (existing) this.#releaseNumericLane(owner, site, cell);
+     let row = storage.rowsByOwner.get(owner);
+     if (!row) {
+@@ -397,7 +634,12 @@
+       const generation = storage.generations[rowIndex] ?? 1;
+       storage.generations[rowIndex] = generation;
+       for (const column of storage.columns) column.reserve(rowIndex + 1);
+-      row = { row: rowIndex, generation, cells: 0 };
++      row = {
++        row: rowIndex,
++        generation,
++        cells: 0,
++        lease: new NumericRowLease(owner, layout, rowIndex, generation, storage.columns),
++      };
+       storage.rowsByOwner.set(owner, row);
+     }
+     const column = storage.columns[slot];
+@@ -410,7 +652,7 @@
+       site,
+     });
+     row.cells++;
+-    attachNumericLane(cell, lane);
++    attachNumericLane(cell, lane, row.lease, layout, slot);
+     return lane;
+   }
+ 
+@@ -432,6 +674,7 @@
+     lane.column.values[lane.row] = 0;
+     row.cells--;
+     if (row.cells !== 0) return;
++    NumericRowLease.retire(row.lease);
+     for (const column of storage.columns) column.values[row.row] = 0;
+     const nextGeneration = row.generation + 1;
+     storage.generations[row.row] = nextGeneration;
+@@ -740,6 +983,10 @@
+           ...(promoted ? { promoted: true } : {}),
+           ...(source ? { source } : {}),
+           dirtyMembership: undefined,
++          cellIdentity: undefined,
++          cellHandle: undefined,
++          rowLease: undefined,
++          rowView: undefined,
+           dispatch: () => false,
+         };
+       }
+@@ -1198,6 +1445,19 @@
+                     candidate.value,
+                   );
+                   existing.source.value = candidate.value;
++                  if (
++                    existing.rowLease &&
++                    existing.numericLaneSlot !== undefined
++                  ) {
++                    NumericRowLease.setSource(
++                      existing.rowLease,
++                      existing.numericLaneSlot,
++                      existing.source,
++                    );
++                    if (!existing.rowView) {
++                      refreshNumericCellRowView(existing, owner, site);
++                    }
++                  }
+                 }
+                 if (
+                   typeof candidate.value === "number" &&
+@@ -1420,7 +1680,11 @@
+           value,
+           version: 0,
+           ...(normalizedLayout ? { stateLayout: normalizedLayout } : {}),
++          cellIdentity: undefined,
++          cellHandle: undefined,
+           dirtyMembership: undefined,
++          rowLease: undefined,
++          rowView: undefined,
+           dispatch: () => false,
+         };
+         if (source) cell.source = source;
+@@ -1451,24 +1715,93 @@
+     handle: StateCellHandle,
+     version: number,
+   ): NumericLaneAddress | null {
+-    if (!Number.isSafeInteger(version)) return null;
+-    // Identity entries are installed only for committed cells and deleted by
+-    // destroyOwner before releasing storage. Publication retains existing cell
+-    // objects. Thus this exact entry proves physical cell liveness; it does not
+-    // prove that its owner currently occupies a particular keyed child slot.
+-    const entry = this.#committedCellsByIdentity.get(handle.cellIdentity);
+-    if (
+-      !entry || entry.handle.cellIdentity !== handle.cellIdentity ||
+-      entry.owner !== handle.owner || entry.site !== handle.site ||
+-      entry.cell.version !== version
+-    ) return null;
+-    const lane = entry.cell.lane;
+-    return lane &&
+-        this.#laneAddressIsCurrent(handle.owner, handle.site, entry.cell, lane)
++    const capturedVersion = version;
++    if (!Number.isSafeInteger(capturedVersion)) return null;
++    let owner: OwnerId;
++    let site: StateSiteId;
++    let identity: object;
++    try {
++      owner = handle.owner;
++      site = handle.site;
++      identity = handle.cellIdentity;
++    } catch {
++      return null;
++    }
++    const cell = this.#resolveCellIdentity(identity, owner, site);
++    if (!cell || cell.version !== capturedVersion) return null;
++    const lane = cell.lane;
++    return lane && this.#laneAddressIsCurrent(owner, site, cell, lane)
+       ? lane
+       : null;
++  }
++
++  /** Resolve a committed numeric cell to its cached row projection. */
++  numericRowForCell(
++    handle: StateCellHandle,
++    version: number,
++  ): NumericCellRowView | null {
++    const capturedVersion = version;
++    if (!Number.isSafeInteger(capturedVersion)) return null;
++    let owner: OwnerId;
++    let site: StateSiteId;
++    let identity: object;
++    try {
++      owner = handle.owner;
++      site = handle.site;
++      identity = handle.cellIdentity;
++    } catch {
++      return null;
++    }
++    const cell = this.#resolveCellIdentity(identity, owner, site);
++    if (!cell || cell.version !== capturedVersion) return null;
++    const lane = cell.lane;
++    const view = cell.rowView;
++    const lease = cell.rowLease;
++    const layout = cell.stateLayout;
++    const slot = cell.numericLaneSlot;
++    if (
++      !lane || !cell.source || !view || !lease || !layout ||
++      slot === undefined ||
++      view.rowIdentity !== lease || view.owner !== owner || view.site !== site ||
++      view.layout !== layout || view.row !== lane.row ||
++      view.generation !== lane.generation || view.slot !== slot ||
++      view.lane !== lane || view.source !== cell.source ||
++      !this.#laneAddressIsCurrent(owner, site, cell, lane)
++    ) return null;
++    return view;
+   }
+ 
++  #resolveCellIdentity(
++    identity: object,
++    owner: OwnerId,
++    site: StateSiteId,
++  ): StateCell<unknown> | null {
++    if (
++      !Number.isSafeInteger(owner) || typeof site !== "string" ||
++      site.length === 0
++    ) return null;
++    return CommittedCellCapability.resolve(
++      identity,
++      this.#identitySecret,
++      owner,
++      site,
++    );
++  }
++
++  #resolveCellHandle(handle: StateCellHandle): StateCell<unknown> | null {
++    let owner: OwnerId;
++    let site: StateSiteId;
++    let identity: object;
++    try {
++      owner = handle.owner;
++      site = handle.site;
++      identity = handle.cellIdentity;
++    } catch {
++      return null;
++    }
++    return this.#resolveCellIdentity(identity, owner, site);
++  }
++
+   version(owner: OwnerId, site: StateSiteId): number {
+     this.#assertOwner(owner);
+     return this.#stateByOwner.get(owner)?.get(site)?.version ?? 0;
+@@ -1499,15 +1832,9 @@
+ 
+   /** Resolve the canonical numeric source for an exact committed cell handle. */
+   scalarSourceForCell(handle: StateCellHandle): ScalarSource | null {
+-    const entry = this.#committedCellsByIdentity.get(handle.cellIdentity);
+-    if (
+-      !entry || entry.handle.cellIdentity !== handle.cellIdentity ||
+-      entry.owner !== handle.owner ||
+-      entry.site !== handle.site || !this.#owners.has(handle.owner) ||
+-      this.#stateByOwner.get(handle.owner)?.get(handle.site) !== entry.cell
+-    ) return null;
+-    return typeof entry.cell.value === "number"
+-      ? entry.cell.source ?? null
++    const cell = this.#resolveCellHandle(handle);
++    return cell && typeof cell.value === "number"
++      ? cell.source ?? null
+       : null;
+   }
+ 
+@@ -1525,13 +1852,7 @@
+ 
+   /** Resolve the current version for an exact committed cell handle. */
+   versionForCell(handle: StateCellHandle): number | null {
+-    const entry = this.#committedCellsByIdentity.get(handle.cellIdentity);
+-    if (
+-      !entry || entry.handle.cellIdentity !== handle.cellIdentity ||
+-      entry.owner !== handle.owner ||
+-      entry.site !== handle.site
+-    ) return null;
+-    return entry.cell.version;
++    return this.#resolveCellHandle(handle)?.version ?? null;
+   }
+ 
+   /** Clear dirty cells only when each exact cell has not advanced past its cut. */
+@@ -1545,16 +1866,18 @@
+       count > versions.length
+     ) throw new RangeError("Invalid native state change count");
+     for (let index = 0; index < count; index++) {
+-      const handle = handles[index];
+-      if (!handle || !Number.isSafeInteger(versions[index])) continue;
+-      const entry = this.#committedCellsByIdentity.get(handle.cellIdentity);
+-      if (
+-        !entry || entry.handle.cellIdentity !== handle.cellIdentity ||
+-        entry.owner !== handle.owner ||
+-        entry.site !== handle.site
+-      ) continue;
+-      if (entry.cell.version > versions[index]) continue;
+-      const membership = entry.cell.dirtyMembership;
++      let handle: StateCellHandle | undefined;
++      let version: number;
++      try {
++        handle = handles[index];
++        version = versions[index];
++      } catch {
++        continue;
++      }
++      if (!handle || !Number.isSafeInteger(version)) continue;
++      const cell = this.#resolveCellHandle(handle);
++      if (!cell || cell.version > version) continue;
++      const membership = cell.dirtyMembership;
+       if (membership) this.#dirtyJournal.deletePrepared(membership);
+     }
+   }
+@@ -1659,13 +1982,23 @@
+     }
+ 
+     this.#stagedOwners.delete(owner);
+-    this.#owners.delete(owner);
+-    for (const [site, cell] of this.#stateByOwner.get(owner) ?? []) {
+-      if (cell.cellIdentity) {
+-        this.#committedCellsByIdentity.delete(cell.cellIdentity);
++    const ownerCells = this.#stateByOwner.get(owner);
++    // Revoke every externally retained capability before marking the owner
++    // dead or releasing any cell/row payload.
++    for (const cell of ownerCells?.values() ?? []) {
++      const identity = cell.cellIdentity;
++      if (identity) {
++        CommittedCellCapability.revoke(identity, this.#identitySecret);
++        this.#committedCellsByIdentity.delete(identity);
+       }
++      cell.cellIdentity = undefined;
++      cell.cellHandle = undefined;
++    }
++    this.#owners.delete(owner);
++    for (const [site, cell] of ownerCells ?? []) {
+       this.#releaseNumericLane(owner, site, cell);
+       cell.dirtyMembership = undefined;
++      cell.rowView = undefined;
+       // Retained dead setters still close over the cell, so release its payload
+       // and numeric source after removing the owner from the live world.
+       cell.value = undefined;
+@@ -1743,11 +2076,30 @@
+       }
+       cell.source ??= new ScalarSource(OwnerStateWorld.#nextSourceId++, next);
+       cell.source.value = next;
++      if (cell.rowLease && cell.numericLaneSlot !== undefined) {
++        NumericRowLease.setSource(
++          cell.rowLease,
++          cell.numericLaneSlot,
++          cell.source,
++        );
++        if (!cell.rowView) {
++          refreshNumericCellRowView(
++            cell as StateCell<unknown>,
++            owner,
++            site,
++          );
++        }
++      }
+     }
+     this.#markCellDirty(owner, site, cell as StateCell<unknown>);
+     let cellIdentity = cell.cellIdentity;
+     if (!cellIdentity) {
+-      cellIdentity = {};
++      cellIdentity = new CommittedCellCapability(
++        this.#identitySecret,
++        owner,
++        site,
++        cell as StateCell<unknown>,
++      );
+       cell.cellIdentity = cellIdentity;
+       const handle: StateCellHandle = Object.freeze({
+         owner,
+--- /dev/null
++++ b/src/direct_cell_capability_test.ts
+@@ -0,0 +1,235 @@
++import { assertEquals } from "jsr:@std/assert";
++import {
++  OwnerStateWorld,
++  type NumericCellRowView,
++  type StateCellHandle,
++} from "./owner_state_world.ts";
++import type { CompiledStateLayout } from "./compiled_state_layout.ts";
++
++const layout: CompiledStateLayout = Object.freeze({
++  schemaVersion: 1,
++  slots: Object.freeze([
++    Object.freeze({ siteId: "x", slot: 0 }),
++    Object.freeze({ siteId: "y", slot: 1 }),
++  ]),
++});
++
++function captureHandle(
++  world: OwnerStateWorld,
++  owner: number,
++  site: string,
++  update: (set: (next: number) => boolean) => void = (set) => set(2),
++): StateCellHandle {
++  let captured: StateCellHandle | undefined;
++  world.subscribeDirtyCells((handle, version) => {
++    if (handle.owner === owner && handle.site === site && version > 0) {
++      captured = handle;
++    }
++  });
++  const [, set] = world.useState(owner, site, 1, layout);
++  update(set as (next: number) => boolean);
++  if (!captured) throw new Error("Expected committed cell handle");
++  return captured;
++}
++
++function assert(condition: unknown, message: string): asserts condition {
++  if (!condition) throw new Error(message);
++}
++
++Deno.test("direct capabilities preserve copied handle aliases and cached row views", () => {
++  const world = new OwnerStateWorld();
++  const owner = world.resolveOwner(null, "Board");
++  const handle = captureHandle(world, owner, "x");
++  const alias = Object.freeze({
++    owner: handle.owner,
++    site: handle.site,
++    cellIdentity: handle.cellIdentity,
++  });
++  const version = world.versionForCell(handle)!;
++  const view = world.numericRowForCell(handle, version);
++  assert(view, "Expected numeric row view");
++
++  assertEquals(world.numericLaneForCell(alias, version), view.lane);
++  assertEquals(world.numericRowForCell(alias, version), view);
++  assertEquals(world.versionForCell(alias), version);
++  assertEquals(world.scalarSourceForCell(alias), view.source);
++  assertEquals(view.owner, owner);
++  assertEquals(view.site, "x");
++  assertEquals(view.layout, layout);
++  assertEquals(view.rowIdentity !== handle.cellIdentity, true);
++  for (const key of ["lane", "source", "sources", "columns"] as const) {
++    const descriptor = Object.getOwnPropertyDescriptor(view, key);
++    assert(descriptor && "value" in descriptor, `${key} should be data`);
++  }
++  assertEquals(view.columns[0], view.lane.column);
++  assertEquals(view.sources[0], view.source);
++  assertEquals(world.numericRowForCell(alias, version)?.sources, view.sources);
++  assertEquals(world.numericRowForCell(alias, version)?.columns, view.columns);
++  assertEquals(world.numericRowForCell(alias, version - 1), null);
++  assertEquals(world.numericRowForCell(alias, version + 1), null);
++  assertEquals(world.numericLaneForCell(alias, version + 1), null);
++});
++
++Deno.test("forged, proxied, foreign, and mismatched identities fail closed", () => {
++  const world = new OwnerStateWorld();
++  const foreign = new OwnerStateWorld();
++  const owner = world.resolveOwner(null, "Board");
++  const foreignOwner = foreign.resolveOwner(null, "Board");
++  const handle = captureHandle(world, owner, "x");
++  const foreignHandle = captureHandle(foreign, foreignOwner, "x");
++  const version = world.versionForCell(handle)!;
++
++  assertEquals(world.versionForCell({
++    owner,
++    site: "x",
++    cellIdentity: {},
++  }), null);
++  assertEquals(world.versionForCell({
++    owner: owner + 1,
++    site: "x",
++    cellIdentity: handle.cellIdentity,
++  }), null);
++  assertEquals(world.versionForCell({
++    owner,
++    site: "y",
++    cellIdentity: handle.cellIdentity,
++  }), null);
++  assertEquals(world.versionForCell({
++    owner,
++    site: "x",
++    cellIdentity: new Proxy(handle.cellIdentity, {}),
++  }), null);
++  assertEquals(world.numericRowForCell(foreignHandle, version), null);
++  assertEquals(world.versionForCell(null as unknown as StateCellHandle), null);
++});
++
++Deno.test("all address getters run once before capability resolution", () => {
++  const world = new OwnerStateWorld();
++  const owner = world.resolveOwner(null, "Board");
++  const handle = captureHandle(world, owner, "x");
++  const counts = { owner: 0, site: 0, cellIdentity: 0 };
++  const alias = Object.freeze({
++    get owner() {
++      counts.owner++;
++      return owner;
++    },
++    get site() {
++      counts.site++;
++      return "x";
++    },
++    get cellIdentity() {
++      counts.cellIdentity++;
++      world.destroyOwner(owner);
++      return handle.cellIdentity;
++    },
++  }) as StateCellHandle;
++
++  assertEquals(world.versionForCell(alias), null);
++  assertEquals(counts, { owner: 1, site: 1, cellIdentity: 1 });
++  assertEquals(world.numericRowForCell(handle, 1), null);
++});
++
++Deno.test("batch acknowledgement snapshots both arrays before resolving handles", () => {
++  const world = new OwnerStateWorld();
++  const owner = world.resolveOwner(null, "Board");
++  const handle = captureHandle(world, owner, "x");
++  const version = world.versionForCell(handle)!;
++  const handles = Object.defineProperty([handle], "0", {
++    configurable: true,
++    get() {
++      world.destroyOwner(owner);
++      return handle;
++    },
++  });
++  const versions = [version];
++
++  world.clearCellChangesThrough(handles, versions, 1);
++  assertEquals(world.versionForCell(handle), null);
++});
++
++Deno.test("row leases scrub source slots and reject a reused row generation", () => {
++  const world = new OwnerStateWorld();
++  const firstOwner = world.resolveOwner(null, "Board", "first");
++  const firstHandle = captureHandle(world, firstOwner, "x");
++  const firstVersion = world.versionForCell(firstHandle)!;
++  const firstView = world.numericRowForCell(firstHandle, firstVersion)!;
++  const firstRow = firstView.row;
++  const firstGeneration = firstView.generation;
++  const retainedSources = firstView.sources;
++  const firstLane = firstView.lane;
++  const firstSource = firstView.source;
++
++  assertEquals(world.destroyOwner(firstOwner), true);
++  // The frozen view is a data snapshot and deliberately retains its lane and
++  // source references; the shared lease arrays themselves are scrubbed.
++  assertEquals(firstView.lane, firstLane);
++  assertEquals(firstView.source, firstSource);
++  assertEquals(retainedSources.every((source) => source === undefined), true);
++  assertEquals(world.numericRowForCell(firstHandle, firstVersion), null);
++
++  const secondOwner = world.resolveOwner(null, "Board", "second");
++  const secondHandle = captureHandle(world, secondOwner, "x", (set) => set(3));
++  const secondView = world.numericRowForCell(
++    secondHandle,
++    world.versionForCell(secondHandle)!,
++  )!;
++  assertEquals(secondView.row, firstRow);
++  assert(secondView.generation > firstGeneration, "row generation did not advance");
++  assert(secondView.rowIdentity !== firstView.rowIdentity, "row lease identity was reused");
++});
++
++Deno.test("acknowledgement preserves newer writes and retains future-cut behavior", () => {
++  const world = new OwnerStateWorld();
++  const owner = world.resolveOwner(null, "Board");
++  let handle: StateCellHandle | undefined;
++  world.subscribeDirtyCells((next) => handle = next);
++  const [, set] = world.useState(owner, "x", 1, layout);
++  set(2);
++  const first = handle!;
++  const firstVersion = world.versionForCell(first)!;
++  set(3);
++  const latestVersion = world.versionForCell(first)!;
++  assert(latestVersion > firstVersion, "expected a newer write");
++
++  world.clearCellChangesThrough([first], [firstVersion], 1);
++  assertEquals(world.pendingChanges().length, 1);
++  world.clearCellChangesThrough([first], [latestVersion + 1], 1);
++  assertEquals(world.pendingChanges().length, 0);
++});
++
++Deno.test("updater destruction revokes existing capabilities before row release", () => {
++  const world = new OwnerStateWorld();
++  const owner = world.resolveOwner(null, "Board");
++  let handle: StateCellHandle | undefined;
++  world.subscribeDirtyCells((next) => handle = next);
++  const [, set] = world.useState(owner, "x", 1, layout);
++  set(2);
++  const oldHandle = handle!;
++  const result = set((previous) => {
++    world.destroyOwner(owner);
++    return previous + 1;
++  });
++
++  assertEquals(result, false);
++  assertEquals(world.versionForCell(oldHandle), null);
++  assertEquals(world.scalarSourceForCell(oldHandle), null);
++  assertEquals(world.numericLaneForCell(oldHandle, 2), null);
++});
++
++Deno.test("throwing outer address getters fail without resolving identity", () => {
++  const world = new OwnerStateWorld();
++  const owner = world.resolveOwner(null, "Board");
++  const handle = captureHandle(world, owner, "x");
++  const throwing = Object.defineProperty({}, "owner", {
++    get() {
++      throw new Error("address trap");
++    },
++  }) as StateCellHandle;
++  assertEquals(world.versionForCell(throwing), null);
++  assertEquals(world.versionForCell(handle), 1);
++});
++
++// Keep the type in this suite as a compile-time assertion that cached row views
++// expose readonly, layout-specific source/column arrays.
++const _rowViewType: NumericCellRowView | null = null;
++void _rowViewType;
+--- /dev/null
++++ b/src/direct_cell_capability_retention_test.ts
+@@ -0,0 +1,50 @@
++import { assertEquals } from "jsr:@std/assert";
++import { OwnerStateWorld, type StateCellHandle } from "./owner_state_world.ts";
++
++type RetainedState = {
++  handle: StateCellHandle;
++  payload: WeakRef<object>;
++};
++
++function dispatchPayload(
++  setPayload: (value: object) => boolean,
++): WeakRef<object> {
++  const value = { text: "cell payload should be released" };
++  const reference = new WeakRef(value);
++  setPayload(value);
++  return reference;
++}
++
++function createRetainedState(): RetainedState {
++  const world = new OwnerStateWorld();
++  const owner = world.resolveOwner(null, "CapabilityRetention");
++  let handle: StateCellHandle | undefined;
++  world.subscribeDirtyCells((next) => {
++    handle = next;
++  });
++
++  const [, setPayload] = world.useState<object | null>(owner, "payload", null);
++  const payload = dispatchPayload(setPayload as (value: object) => boolean);
++  const retainedHandle = handle!;
++  assertEquals(world.destroyOwner(owner), true);
++
++  return { handle: retainedHandle, payload };
++}
++
++const gc = (globalThis as typeof globalThis & { gc?: () => void }).gc;
++if (!gc) throw new Error("Run with Deno --v8-flags=--expose-gc");
++
++// Keep only the copied public handle alive to prove the revoked private
++// cellIdentity does not retain the dead cell or its payload.
++const retained = createRetainedState();
++void retained.handle;
++
++for (let attempt = 0; attempt < 60; attempt++) {
++  const pressure = Array.from({ length: 10_000 }, () => ({}));
++  void pressure;
++  gc();
++  await new Promise((resolve) => setTimeout(resolve, 0));
++}
++
++assertEquals(retained.payload.deref(), undefined);
++console.log("direct cell capability retention: PASS");

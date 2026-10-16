@@ -1,0 +1,211 @@
+--- a/scripts/build_native_package.mjs
++++ b/scripts/build_native_package.mjs
+@@ -14,6 +14,64 @@
+ await rm(staging, { recursive: true, force: true });
+ await mkdir(staging, { recursive: true });
+ run("pnpm", ["exec", "tsgo", "-p", "tsconfig.native-package.json"]);
++// Ship authored TypeScript beside the package and rewrite emitted JS and
++// declaration maps to resolve within that package after installation.
++const dist = path.join(staging, "dist");
++const sourcesDirectory = path.join(staging, "sources");
++const mapFiles = [];
++const collectMaps = async (directory) => {
++  for (const entry of await readdir(directory, { withFileTypes: true })) {
++    const filename = path.join(directory, entry.name);
++    if (entry.isDirectory()) await collectMaps(filename);
++    else if (entry.name.endsWith(".js.map") || entry.name.endsWith(".d.ts.map")) mapFiles.push(filename);
++  }
++};
++await collectMaps(dist);
++if (mapFiles.length === 0) throw new Error("TypeScript emitted no JS or declaration source maps");
++const sourceHashes = new Map();
++for (const mapFile of mapFiles) {
++  const map = JSON.parse(await readFile(mapFile, "utf8"));
++  if (!Array.isArray(map.sources) || map.sources.length === 0) throw new Error(`Source map has no sources: ${mapFile}`);
++  const nextSources = [];
++  const sourcesContent = [];
++  for (const source of map.sources) {
++    if (typeof source !== "string" || source.startsWith("/") || /^[a-zA-Z][a-zA-Z\d+.-]*:/.test(source)) {
++      throw new Error(`Unsupported source map URL ${source} in ${mapFile}`);
++    }
++    const sourceRoot = map.sourceRoot ?? "";
++    if (sourceRoot && (path.isAbsolute(sourceRoot) || /^[a-zA-Z][a-zA-Z\d+.-]*:/.test(sourceRoot))) {
++      throw new Error(`Unsupported sourceRoot ${sourceRoot} in ${mapFile}`);
++    }
++    const originalSource = path.resolve(path.dirname(mapFile), sourceRoot, source);
++    const projectRelative = path.relative(root, originalSource);
++    if (projectRelative === ".." || projectRelative.startsWith(`..${path.sep}`) || path.isAbsolute(projectRelative)) {
++      throw new Error(`Source map leaves project root: ${source}`);
++    }
++    const contents = await readFile(originalSource, "utf8");
++    const packagedSource = path.join(sourcesDirectory, projectRelative);
++    await mkdir(path.dirname(packagedSource), { recursive: true });
++    await writeFile(packagedSource, contents);
++    nextSources.push(path.relative(path.dirname(mapFile), packagedSource).split(path.sep).join("/"));
++    sourcesContent.push(contents);
++    sourceHashes.set(path.relative(staging, packagedSource).split(path.sep).join("/"),
++      createHash("sha256").update(contents).digest("hex"));
++  }
++  map.sources = nextSources;
++  map.sourceRoot = "";
++  map.sourcesContent = sourcesContent;
++  await writeFile(mapFile, JSON.stringify(map));
++}
++// This authored declaration participates in JSX editor navigation but is not
++// emitted from a mapped TS source, so carry it explicitly too.
++const authoredDeclarations = ["src/native_jsx_types.d.ts"];
++for (const relativePath of authoredDeclarations) {
++  const contents = await readFile(path.join(root, relativePath), "utf8");
++  const destination = path.join(sourcesDirectory, relativePath);
++  await mkdir(path.dirname(destination), { recursive: true });
++  await writeFile(destination, contents);
++  sourceHashes.set(path.relative(staging, destination).split(path.sep).join("/"),
++    createHash("sha256").update(contents).digest("hex"));
++}
+ run("cargo", ["build", "--locked", "--release", "--manifest-path", "compiler/oxc-spike/Cargo.toml", "--bin", "ui-graph-compiler-spike"],
+   { ...process.env, CARGO_HOME: process.env.CARGO_HOME ?? path.join(root, ".cache/cargo") });
+ const suffix = process.platform === "win32" ? ".exe" : "";
+@@ -28,7 +86,7 @@
+ const manifest = {
+   name: "@compiled-ui/runtime", version: "0.0.0-private-alpha", type: "module",
+   description: "Private compiled JSX runtime integration artifact; not a published compatibility claim",
+-  files: ["dist", "README.md"], engines: { node: ">=24" },
++  files: ["dist", "sources", "README.md"], engines: { node: ">=24" },
+   os: [process.platform], cpu: [process.arch],
+   bin: {"compiled-ui-compiler": `./dist/compiler/bin/${process.platform}-${process.arch}/${binaryName}`},
+   exports: {
+@@ -48,7 +106,7 @@
+   peerDependenciesMeta: { react: { optional: true }, three: { optional: true } },
+ };
+ await writeFile(path.join(staging, "package.json"), JSON.stringify(manifest, null, 2) + "\n");
+-await writeFile(path.join(staging, "README.md"), `# Compiled UI private integration artifact\n\nThis is a platform-specific private alpha build, not a published package. Native authored TSX requires \`nativeModulePlugin()\` from \`@compiled-ui/runtime/vite\`. Use \`jsxImportSource: "@compiled-ui/runtime"\` for types. Uncompiled hooks fail explicitly. The package includes a Rust/OXC compiler executable for ${process.platform}-${process.arch}; consuming this artifact needs no Cargo build. Native HMR remounts roots; applications own teardown. State-preserving HMR, React library parity, other platform binaries, and performance/maintenance claims are not established.\n`);
++await writeFile(path.join(staging, "README.md"), `# Compiled UI private integration artifact\n\nThis is a platform-specific private alpha build, not a published package. Native authored TSX requires \`nativeModulePlugin()\` from \`@compiled-ui/runtime/vite\`. Use \`jsxImportSource: "@compiled-ui/runtime"\` for types. Uncompiled hooks fail explicitly. The package includes a Rust/OXC compiler executable for ${process.platform}-${process.arch}; consuming this artifact needs no Cargo build. Native HMR remounts roots; applications own teardown. State-preserving HMR, React library parity, other platform binaries, and performance/maintenance claims are not established.\n\nJavaScript and declaration source maps resolve to authored TypeScript files under \`sources/\` in the installed package for editor and debugger navigation.\n`);
+ run("pnpm", ["pack", "--out", path.join(root, ".cache/compiled-ui-runtime.tgz")], process.env, staging);
+ const files = [];
+ const collect = async (directory) => {
+@@ -59,6 +117,7 @@
+   }
+ };
+ await collect(path.join(staging,"dist"));
++await collect(path.join(staging,"sources"));
+ const tarball = await readFile(path.join(root,".cache/compiled-ui-runtime.tgz"));
+ await writeFile(path.join(staging,"package-report.json"), JSON.stringify({
+   schemaVersion:1,platform:`${process.platform}-${process.arch}`,published:false,
+@@ -66,4 +125,6 @@
+   compilerBinaryBytes:(await stat(path.join(binaryDirectory,binaryName))).size,
+   emittedJavaScriptBytes:files.filter(entry=>entry.file.endsWith(".js")).reduce((total,entry)=>total+entry.bytes,0),
+   note:"Emitted distribution bytes are not a minified consumer bundle or React size comparison.", files,
++  sourceMapPolicy:{mapCount:mapFiles.length,packageSourceDirectory:"sources",inlineSources:true,
++    authoredDeclarations,packagedSources:[...sourceHashes].map(([file,sha256])=>({file,sha256})).sort((a,b)=>a.file.localeCompare(b.file))},
+ },null,2)+"\n");
+--- a/scripts/verify_native_package.mjs
++++ b/scripts/verify_native_package.mjs
+@@ -1,11 +1,14 @@
+ import assert from "node:assert/strict";
+-import { mkdtemp, mkdir, writeFile, readFile, rm } from "node:fs/promises";
++import { mkdtemp, mkdir, writeFile, readFile, readdir, rm } from "node:fs/promises";
+ import { spawnSync } from "node:child_process";
++import { createHash } from "node:crypto";
+ import { tmpdir } from "node:os";
+ import path from "node:path";
+ import { fileURLToPath, pathToFileURL } from "node:url";
+ 
+ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
++const packageBuild = path.join(root, ".cache/native-package-build");
++const tarballPath = path.join(root, ".cache/compiled-ui-runtime.tgz");
+ const consumer = await mkdtemp(path.join(tmpdir(), "compiled-ui-consumer-"));
+ const record = { status: "RUNNING", platform: `${process.platform}-${process.arch}`, checks: [] };
+ const run = (args) => {
+@@ -13,10 +16,13 @@
+   assert.equal(result.status, 0, `${result.error ?? ""}\n${result.stdout}\n${result.stderr}`);
+ };
+ try {
++  const packageReport = JSON.parse(await readFile(path.join(packageBuild, "package-report.json"), "utf8"));
++  const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
++  assert.equal(packageReport.tarballSha256, sha256(await readFile(tarballPath)), "package report identifies tested tarball");
+   await writeFile(path.join(consumer, "package.json"), JSON.stringify({
+     name: "independent-native-consumer", private: true, type: "module",
+     dependencies: {
+-      "@compiled-ui/runtime": `file:${path.join(root, ".cache/compiled-ui-runtime.tgz")}`,
++      "@compiled-ui/runtime": `file:${tarballPath}`,
+       vite: "8.3.1", react: "19.3.0", three: "0.186.1",
+       "@types/react": "19.3.0", "@types/three": "0.186.0", "@types/node": "^24.19.2",
+       "@typescript/native-preview": "7.0.0-dev.20260707.2",
+@@ -24,6 +30,65 @@
+   }, null, 2));
+   run(["install", "--ignore-scripts"]);
+   record.checks.push("tarball installed in external directory, install scripts disabled");
++  const installed = path.join(consumer, "node_modules/@compiled-ui/runtime");
++  const mapFiles = [];
++  const collectMaps = async (directory) => {
++    for (const entry of await readdir(directory, { withFileTypes: true })) {
++      const filename = path.join(directory, entry.name);
++      if (entry.isDirectory()) await collectMaps(filename);
++      else if (entry.name.endsWith(".js.map") || entry.name.endsWith(".d.ts.map")) mapFiles.push(filename);
++    }
++  };
++  await collectMaps(path.join(installed, "dist"));
++  assert.equal(mapFiles.length, packageReport.sourceMapPolicy.mapCount, "installed tarball contains every audited map");
++  assert.equal(packageReport.sourceMapPolicy.packageSourceDirectory, "sources");
++  assert.equal(packageReport.sourceMapPolicy.inlineSources, true);
++  const expectedPackagedSources = new Map(packageReport.sourceMapPolicy.packagedSources.map((entry) => [entry.file, entry.sha256]));
++  const observedMapSources = new Map();
++  const mapKinds = { javascript: 0, declarations: 0 };
++  for (const mapFile of mapFiles) {
++    const map = JSON.parse(await readFile(mapFile, "utf8"));
++    assert.ok(Array.isArray(map.sources) && map.sources.length > 0, `${mapFile} has sources`);
++    assert.ok(Array.isArray(map.sourcesContent), `${mapFile} includes source text`);
++    assert.equal(map.sourcesContent.length, map.sources.length, `${mapFile} has one source text per source`);
++    assert.equal(map.sourceRoot ?? "", "", `${mapFile} has no external sourceRoot`);
++    if (mapFile.endsWith(".d.ts.map")) mapKinds.declarations++;
++    else mapKinds.javascript++;
++    for (let index = 0; index < map.sources.length; index++) {
++      const source = map.sources[index];
++      assert.equal(typeof source, "string");
++      assert.ok(!path.isAbsolute(source) && !/^[a-zA-Z][a-zA-Z\d+.-]*:/.test(source), `${mapFile} uses a relative source`);
++      const sourceFile = path.resolve(path.dirname(mapFile), source);
++      const inside = path.relative(installed, sourceFile);
++      assert.ok(inside !== ".." && !inside.startsWith(`..${path.sep}`) && !path.isAbsolute(inside), `${mapFile} source escapes package`);
++      assert.match(path.extname(sourceFile), /^\.tsx?$/, `${mapFile} resolves to TypeScript source`);
++      const contents = await readFile(sourceFile, "utf8");
++      assert.equal(map.sourcesContent[index], contents, `${mapFile} embedded text matches installed source`);
++      const packageRelativeSource = path.relative(installed, sourceFile).split(path.sep).join("/");
++      assert.ok(packageRelativeSource.startsWith("sources/"), `${mapFile} source is under sources/`);
++      const expectedHash = expectedPackagedSources.get(packageRelativeSource);
++      assert.ok(expectedHash, `${packageRelativeSource} appears in build source inventory`);
++      assert.equal(sha256(Buffer.from(contents)), expectedHash, `${packageRelativeSource} hash matches build report`);
++      observedMapSources.set(packageRelativeSource, expectedHash);
++    }
++  }
++  assert.ok(mapKinds.javascript > 0 && mapKinds.declarations > 0, "both JS and declaration maps are present");
++  const packedSourceFiles = [];
++  const collectSources = async (directory) => {
++    for (const entry of await readdir(directory, { withFileTypes: true })) {
++      const filename = path.join(directory, entry.name);
++      if (entry.isDirectory()) await collectSources(filename);
++      else packedSourceFiles.push(path.relative(installed, filename).split(path.sep).join("/"));
++    }
++  };
++  await collectSources(path.join(installed, "sources"));
++  assert.deepEqual(packedSourceFiles.sort(), [...expectedPackagedSources.keys()].sort(), "installed source tree matches package report exactly");
++  for (const [filename, expectedHash] of expectedPackagedSources) {
++    assert.equal(sha256(await readFile(path.join(installed, filename))), expectedHash, `${filename} matches package report hash`);
++  }
++  assert.ok(expectedPackagedSources.has("sources/src/native_jsx_types.d.ts"), "authored JSX declaration is included for navigation");
++  record.sourceMapAudit = { mapCount: mapFiles.length, mapKinds, mappedSourceCount: observedMapSources.size, packagedSourceCount: packedSourceFiles.length };
++  record.checks.push("installed tarball JS/declaration maps resolve to hash-checked authored sources inside package");
+   const source = `import { useState, use, createStore, asyncTask, createNativeRoot } from "@compiled-ui/runtime";
+ import type { VDOMHost } from "@compiled-ui/runtime/dom";
+ export const label = createStore("ready");
+@@ -68,10 +133,9 @@
+   }, files: ["three-app.tsx"] }));
+   run(["exec", "tsgo", "-p", "tsconfig.three.json"]);
+   record.checks.push("installed Three JSX backend infers namespace constructors/props and rejects bad args/method props");
+-  const installed = path.join(consumer, "node_modules/@compiled-ui/runtime");
+   for (const filename of ["src/component_state_runtime.js", "src/pending_state_changes.js", "src/vdom_snapshot_runtime.js", "src/three_host.js", "src/three_property_writer.js", "src/three_jsx_runtime.js", "compiler/vite_native_module.js", "compiler/vite_native_plugin.js", "compiler/host_jsx_declarations.js"]) {
+     const installedCode = await readFile(path.join(installed, "dist", filename), "utf8");
+-    const builtCode = await readFile(path.join(root, ".cache/native-package-build/dist", filename), "utf8");
++    const builtCode = await readFile(path.join(packageBuild, "dist", filename), "utf8");
+     assert.equal(installedCode, builtCode, `installed ${filename} differs from the newly packed build`);
+   }
+   record.checks.push("installed core and compiler code match the newly packed build exactly");

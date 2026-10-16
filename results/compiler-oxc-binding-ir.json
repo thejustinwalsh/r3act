@@ -1,0 +1,157 @@
+{
+  "schema_version": 5,
+  "frontend": "OXC TSX parser + semantic resolver; binding extraction prototype",
+  "source_file": "src/browser/jsx_binding_view.tsx",
+  "host_nodes": [
+    {
+      "id": 0,
+      "tag": "div",
+      "span": {
+        "start": 342,
+        "end": 579
+      },
+      "attributes": [
+        {
+          "name": "key",
+          "span": {
+            "start": 355,
+            "end": 363
+          },
+          "source": "key={id}",
+          "dynamic": true,
+          "static_value": null
+        },
+        {
+          "name": "className",
+          "span": {
+            "start": 372,
+            "end": 392
+          },
+          "source": "className=\"particle\"",
+          "dynamic": false,
+          "static_value": "particle"
+        },
+        {
+          "name": "style",
+          "span": {
+            "start": 401,
+            "end": 570
+          },
+          "source": "style={{\n          transform: bind(source, (value) => `translate3d(${value % 320}px, 0, 0)`),\n          opacity: bind(source, (value) => (value % 100) / 100),\n        }}",
+          "dynamic": true,
+          "static_value": null
+        }
+      ],
+      "bindings": [
+        {
+          "attribute": "style",
+          "source_expression": "source",
+          "projection_expression": "(value) => `translate3d(${value % 320}px, 0, 0)`",
+          "host_property": "style.transform",
+          "projection_parameter": "value",
+          "projection_body_expression": "`translate3d(${value % 320}px, 0, 0)`",
+          "callee_resolves_to_import": true,
+          "source_root_resolves_to_parameter": true,
+          "span": {
+            "start": 431,
+            "end": 493
+          }
+        },
+        {
+          "attribute": "style",
+          "source_expression": "source",
+          "projection_expression": "(value) => (value % 100) / 100",
+          "host_property": "style.opacity",
+          "projection_parameter": "value",
+          "projection_body_expression": "(value % 100) / 100",
+          "callee_resolves_to_import": true,
+          "source_root_resolves_to_parameter": true,
+          "span": {
+            "start": 514,
+            "end": 558
+          }
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "tag": "div",
+      "span": {
+        "start": 270,
+        "end": 595
+      },
+      "attributes": [
+        {
+          "name": "className",
+          "span": {
+            "start": 275,
+            "end": 301
+          },
+          "source": "className=\"particle-layer\"",
+          "dynamic": false,
+          "static_value": "particle-layer"
+        }
+      ],
+      "bindings": []
+    }
+  ],
+  "unsupported_bind_calls": [],
+  "repeated_host_plan": {
+    "collection_expression": "sources",
+    "item_parameter": "source",
+    "index_parameter": "id",
+    "root_tag": "div",
+    "root_static_attributes": [
+      [
+        "className",
+        "particle-layer"
+      ]
+    ],
+    "item_tag": "div",
+    "item_static_attributes": [
+      [
+        "className",
+        "particle"
+      ]
+    ],
+    "binding_source_parameter": "source",
+    "bindings": [
+      {
+        "property": "opacity",
+        "source_scope": "item",
+        "source_path": "source",
+        "source_slot": 0,
+        "projection_parameter": "value",
+        "projection_body_expression": "(value % 100) / 100"
+      },
+      {
+        "property": "transform",
+        "source_scope": "item",
+        "source_path": "source",
+        "source_slot": 0,
+        "projection_parameter": "value",
+        "projection_body_expression": "`translate3d(${value % 320}px, 0, 0)`"
+      }
+    ],
+    "dependency_graph": {
+      "source_count": 1,
+      "source_paths": [
+        "source"
+      ],
+      "source_binding_offsets": [
+        0,
+        2
+      ],
+      "binding_ids": [
+        0,
+        1
+      ],
+      "shared_source_count": 0,
+      "shared_source_paths": [],
+      "shared_source_binding_offsets": [
+        0
+      ],
+      "shared_binding_ids": []
+    }
+  }
+}

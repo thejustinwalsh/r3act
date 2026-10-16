@@ -1,0 +1,3345 @@
+{
+  "schemaVersion": "component-state-structural-browser-phase-profile-v8",
+  "note": "Diagnostic timings add callback overhead and are not comparable with primary latency samples. Work counts are collected separately from phase timing: owner visits/renders/cache reuse, key-index nodes attached/detached by reconciliation, and DOM host method calls. The key-index visit counters now measure only the delta walks needed for inserted or removed mounted subtrees. totalUpdateMedianMs reuses the matching benchmark sample (programmatic click through microtask settle); outsideRootFlushMedianMs is the paired total minus root.flush. Dispatch path markers and structural gate/bail reasons cover the full-reconcile fallback as well as the keyed-owner path. mountScenario drains the initial row-selection update before the timed loop so it cannot batch with a structural update.",
+  "seed": 83004001,
+  "count": 10000,
+  "collectedAt": "2026-10-11T06:34:14.810Z",
+  "browser": {
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+    "platform": "MacIntel",
+    "hardwareConcurrency": 10,
+    "devicePixelRatio": 2,
+    "visibilityState": "visible"
+  },
+  "operations": [
+    {
+      "operation": "rotate",
+      "measuredUpdates": 24,
+      "totalUpdateMedianMs": 10.900000005960464,
+      "outsideRootFlushMedianMs": 1.800000011920929,
+      "pairedTotalFlushSamples": 24,
+      "phaseSummaries": {
+        "dispatch.diagnostic.dirty-owner-count.1": {
+          "calls": 24,
+          "medianMs": 0,
+          "p95Ms": 0
+        },
+        "dispatch.diagnostic.change-count.1": {
+          "calls": 24,
+          "medianMs": 0,
+          "p95Ms": 0
+        },
+        "owner.render-and-key": {
+          "calls": 24,
+          "medianMs": 0.800000011920929,
+          "p95Ms": 0.9000000059604645
+        },
+        "owner.expand-and-cache": {
+          "calls": 24,
+          "medianMs": 5.4000000059604645,
+          "p95Ms": 7.5
+        },
+        "vdom.normalize": {
+          "calls": 24,
+          "medianMs": 0.4000000059604645,
+          "p95Ms": 0.5
+        },
+        "vdom.reconcile-host": {
+          "calls": 24,
+          "medianMs": 1.5,
+          "p95Ms": 2.4000000059604645
+        },
+        "vdom.index-snapshot": {
+          "calls": 24,
+          "medianMs": 0,
+          "p95Ms": 0
+        },
+        "dispatch.path.structural-owner": {
+          "calls": 24,
+          "medianMs": 0,
+          "p95Ms": 0
+        },
+        "root.flush": {
+          "calls": 24,
+          "medianMs": 9.099999994039536,
+          "p95Ms": 11.300000011920929
+        }
+      },
+      "workCountMedians": {
+        "host.moves": 1,
+        "host.set-props": 1,
+        "owner.cached-reused": 10000,
+        "owner.component-renders": 1,
+        "owner.component-visits": 10000
+      },
+      "samples": [
+        {
+          "pair": 0,
+          "totalUpdateMs": 11.5,
+          "rootFlushMs": 9.5,
+          "outsideRootFlushMs": 2,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.9000000059604645
+            ],
+            "owner.expand-and-cache": [
+              5.800000011920929
+            ],
+            "vdom.normalize": [
+              0.3999999761581421
+            ],
+            "vdom.reconcile-host": [
+              1.600000023841858
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 10000,
+            "host.set-props": 1,
+            "host.moves": 1
+          },
+          "unattributedWithinFlushMs": 0.7999999821186066
+        },
+        {
+          "pair": 1,
+          "totalUpdateMs": 11,
+          "rootFlushMs": 10,
+          "outsideRootFlushMs": 1,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.7999999821186066
+            ],
+            "owner.expand-and-cache": [
+              6.5999999940395355
+            ],
+            "vdom.normalize": [
+              0.30000001192092896
+            ],
+            "vdom.reconcile-host": [
+              1.5
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 10000,
+            "host.set-props": 1,
+            "host.moves": 1
+          },
+          "unattributedWithinFlushMs": 0.800000011920929
+        },
+        {
+          "pair": 2,
+          "totalUpdateMs": 10.900000005960464,
+          "rootFlushMs": 9.099999994039536,
+          "outsideRootFlushMs": 1.800000011920929,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.699999988079071
+            ],
+            "owner.expand-and-cache": [
+              5.5
+            ],
+            "vdom.normalize": [
+              0.4000000059604645
+            ],
+            "vdom.reconcile-host": [
+              1.5
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 10000,
+            "host.set-props": 1,
+            "host.moves": 1
+          },
+          "unattributedWithinFlushMs": 1
+        },
+        {
+          "pair": 3,
+          "totalUpdateMs": 12.700000017881393,
+          "rootFlushMs": 11.300000011920929,
+          "outsideRootFlushMs": 1.4000000059604645,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.800000011920929
+            ],
+            "owner.expand-and-cache": [
+              7.5
+            ],
+            "vdom.normalize": [
+              0.5
+            ],
+            "vdom.reconcile-host": [
+              1.5999999940395355
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 10000,
+            "host.set-props": 1,
+            "host.moves": 1
+          },
+          "unattributedWithinFlushMs": 0.9000000059604645
+        },
+        {
+          "pair": 4,
+          "totalUpdateMs": 11.400000005960464,
+          "rootFlushMs": 9.300000011920929,
+          "outsideRootFlushMs": 2.0999999940395355,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.800000011920929
+            ],
+            "owner.expand-and-cache": [
+              5.699999988079071
+            ],
+            "vdom.normalize": [
+              0.5
+            ],
+            "vdom.reconcile-host": [
+              1.4000000059604645
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 10000,
+            "host.set-props": 1,
+            "host.moves": 1
+          },
+          "unattributedWithinFlushMs": 0.9000000059604645
+        },
+        {
+          "pair": 5,
+          "totalUpdateMs": 9.599999994039536,
+          "rootFlushMs": 8.699999988079071,
+          "outsideRootFlushMs": 0.9000000059604645,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.800000011920929
+            ],
+            "owner.expand-and-cache": [
+              5.199999988079071
+            ],
+            "vdom.normalize": [
+              0.30000001192092896
+            ],
+            "vdom.reconcile-host": [
+              1.5
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 10000,
+            "host.set-props": 1,
+            "host.moves": 1
+          },
+          "unattributedWithinFlushMs": 0.8999999761581421
+        },
+        {
+          "pair": 6,
+          "totalUpdateMs": 13.599999994039536,
+          "rootFlushMs": 11.300000011920929,
+          "outsideRootFlushMs": 2.2999999821186066,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.9000000059604645
+            ],
+            "owner.expand-and-cache": [
+              6.5
+            ],
+            "vdom.normalize": [
+              0.4000000059604645
+            ],
+            "vdom.reconcile-host": [
+              2.4000000059604645
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 10000,
+            "host.set-props": 1,
+            "host.moves": 1
+          },
+          "unattributedWithinFlushMs": 1.0999999940395355
+        },
+        {
+          "pair": 7,
+          "totalUpdateMs": 13.800000011920929,
+          "rootFlushMs": 11.099999994039536,
+          "outsideRootFlushMs": 2.7000000178813934,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.800000011920929
+            ],
+            "owner.expand-and-cache": [
+              7.300000011920929
+            ],
+            "vdom.normalize": [
+              0.4000000059604645
+            ],
+            "vdom.reconcile-host": [
+              1.5999999940395355
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 10000,
+            "host.set-props": 1,
+            "host.moves": 1
+          },
+          "unattributedWithinFlushMs": 0.9999999701976776
+        },
+        {
+          "pair": 8,
+          "totalUpdateMs": 10.900000005960464,
+          "rootFlushMs": 9,
+          "outsideRootFlushMs": 1.9000000059604645,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.800000011920929
+            ],
+            "owner.expand-and-cache": [
+              5.4000000059604645
+            ],
+            "vdom.normalize": [
+              0.4000000059604645
+            ],
+            "vdom.reconcile-host": [
+              1.5
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 10000,
+            "host.set-props": 1,
+            "host.moves": 1
+          },
+          "unattributedWithinFlushMs": 0.8999999761581421
+        },
+        {
+          "pair": 9,
+          "totalUpdateMs": 9.5,
+          "rootFlushMs": 8.599999994039536,
+          "outsideRootFlushMs": 0.9000000059604645,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.800000011920929
+            ],
+            "owner.expand-and-cache": [
+              5.200000017881393
+            ],
+            "vdom.normalize": [
+              0.19999998807907104
+            ],
+            "vdom.reconcile-host": [
+              1.5999999940395355
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 10000,
+            "host.set-props": 1,
+            "host.moves": 1
+          },
+          "unattributedWithinFlushMs": 0.7999999821186066
+        },
+        {
+          "pair": 10,
+          "totalUpdateMs": 11,
+          "rootFlushMs": 9.099999994039536,
+          "outsideRootFlushMs": 1.9000000059604645,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.7000000178813934
+            ],
+            "owner.expand-and-cache": [
+              5.4000000059604645
+            ],
+            "vdom.normalize": [
+              0.4000000059604645
+            ],
+            "vdom.reconcile-host": [
+              1.5
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 10000,
+            "host.set-props": 1,
+            "host.moves": 1
+          },
+          "unattributedWithinFlushMs": 1.0999999642372131
+        },
+        {
+          "pair": 11,
+          "totalUpdateMs": 11.5,
+          "rootFlushMs": 10.400000005960464,
+          "outsideRootFlushMs": 1.0999999940395355,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.800000011920929
+            ],
+            "owner.expand-and-cache": [
+              5.300000011920929
+            ],
+            "vdom.normalize": [
+              0.30000001192092896
+            ],
+            "vdom.reconcile-host": [
+              1.4000000059604645
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 10000,
+            "host.set-props": 1,
+            "host.moves": 1
+          },
+          "unattributedWithinFlushMs": 2.599999964237213
+        },
+        {
+          "pair": 12,
+          "totalUpdateMs": 10.700000017881393,
+          "rootFlushMs": 8.800000011920929,
+          "outsideRootFlushMs": 1.9000000059604645,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.800000011920929
+            ],
+            "owner.expand-and-cache": [
+              5.300000011920929
+            ],
+            "vdom.normalize": [
+              0.5
+            ],
+            "vdom.reconcile-host": [
+              1.4000000059604645
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 10000,
+            "host.set-props": 1,
+            "host.moves": 1
+          },
+          "unattributedWithinFlushMs": 0.7999999821186066
+        },
+        {
+          "pair": 13,
+          "totalUpdateMs": 10.799999982118607,
+          "rootFlushMs": 9,
+          "outsideRootFlushMs": 1.7999999821186066,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.7999999821186066
+            ],
+            "owner.expand-and-cache": [
+              5.4000000059604645
+            ],
+            "vdom.normalize": [
+              0.5
+            ],
+            "vdom.reconcile-host": [
+              1.399999976158142
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 10000,
+            "host.set-props": 1,
+            "host.moves": 1
+          },
+          "unattributedWithinFlushMs": 0.9000000357627869
+        },
+        {
+          "pair": 14,
+          "totalUpdateMs": 10.799999982118607,
+          "rootFlushMs": 8.799999982118607,
+          "outsideRootFlushMs": 2,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.699999988079071
+            ],
+            "owner.expand-and-cache": [
+              5.4000000059604645
+            ],
+            "vdom.normalize": [
+              0.29999998211860657
+            ],
+            "vdom.reconcile-host": [
+              1.5
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 10000,
+            "host.set-props": 1,
+            "host.moves": 1
+          },
+          "unattributedWithinFlushMs": 0.9000000059604645
+        },
+        {
+          "pair": 15,
+          "totalUpdateMs": 10.699999988079071,
+          "rootFlushMs": 8.900000005960464,
+          "outsideRootFlushMs": 1.7999999821186066,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.9000000059604645
+            ],
+            "owner.expand-and-cache": [
+              5.299999982118607
+            ],
+            "vdom.normalize": [
+              0.4000000059604645
+            ],
+            "vdom.reconcile-host": [
+              1.5
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 10000,
+            "host.set-props": 1,
+            "host.moves": 1
+          },
+          "unattributedWithinFlushMs": 0.800000011920929
+        },
+        {
+          "pair": 16,
+          "totalUpdateMs": 13.699999988079071,
+          "rootFlushMs": 11.699999988079071,
+          "outsideRootFlushMs": 2,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.9000000059604645
+            ],
+            "owner.expand-and-cache": [
+              7.9000000059604645
+            ],
+            "vdom.normalize": [
+              0.5
+            ],
+            "vdom.reconcile-host": [
+              1.5
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 10000,
+            "host.set-props": 1,
+            "host.moves": 1
+          },
+          "unattributedWithinFlushMs": 0.8999999761581421
+        },
+        {
+          "pair": 17,
+          "totalUpdateMs": 14.099999994039536,
+          "rootFlushMs": 11.199999988079071,
+          "outsideRootFlushMs": 2.9000000059604645,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.7999999821186066
+            ],
+            "owner.expand-and-cache": [
+              7.4000000059604645
+            ],
+            "vdom.normalize": [
+              0.5
+            ],
+            "vdom.reconcile-host": [
+              1.5999999940395355
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 10000,
+            "host.set-props": 1,
+            "host.moves": 1
+          },
+          "unattributedWithinFlushMs": 0.9000000059604645
+        },
+        {
+          "pair": 18,
+          "totalUpdateMs": 10.699999988079071,
+          "rootFlushMs": 8.799999982118607,
+          "outsideRootFlushMs": 1.9000000059604645,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.7999999821186066
+            ],
+            "owner.expand-and-cache": [
+              5.4000000059604645
+            ],
+            "vdom.normalize": [
+              0.3999999761581421
+            ],
+            "vdom.reconcile-host": [
+              1.5
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 10000,
+            "host.set-props": 1,
+            "host.moves": 1
+          },
+          "unattributedWithinFlushMs": 0.7000000178813934
+        },
+        {
+          "pair": 19,
+          "totalUpdateMs": 10.5,
+          "rootFlushMs": 8.800000011920929,
+          "outsideRootFlushMs": 1.699999988079071,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.800000011920929
+            ],
+            "owner.expand-and-cache": [
+              5.199999988079071
+            ],
+            "vdom.normalize": [
+              0.5
+            ],
+            "vdom.reconcile-host": [
+              1.4000000059604645
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 10000,
+            "host.set-props": 1,
+            "host.moves": 1
+          },
+          "unattributedWithinFlushMs": 0.9000000059604645
+        },
+        {
+          "pair": 20,
+          "totalUpdateMs": 10.700000017881393,
+          "rootFlushMs": 8.900000005960464,
+          "outsideRootFlushMs": 1.800000011920929,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.7000000178813934
+            ],
+            "owner.expand-and-cache": [
+              5.4000000059604645
+            ],
+            "vdom.normalize": [
+              0.30000001192092896
+            ],
+            "vdom.reconcile-host": [
+              1.5
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 10000,
+            "host.set-props": 1,
+            "host.moves": 1
+          },
+          "unattributedWithinFlushMs": 0.9999999701976776
+        },
+        {
+          "pair": 21,
+          "totalUpdateMs": 12.5,
+          "rootFlushMs": 10.699999988079071,
+          "outsideRootFlushMs": 1.800000011920929,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.8999999761581421
+            ],
+            "owner.expand-and-cache": [
+              5.699999988079071
+            ],
+            "vdom.normalize": [
+              0.4000000059604645
+            ],
+            "vdom.reconcile-host": [
+              1.4000000059604645
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 10000,
+            "host.set-props": 1,
+            "host.moves": 1
+          },
+          "unattributedWithinFlushMs": 2.300000011920929
+        },
+        {
+          "pair": 22,
+          "totalUpdateMs": 10.800000011920929,
+          "rootFlushMs": 9,
+          "outsideRootFlushMs": 1.800000011920929,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.7000000178813934
+            ],
+            "owner.expand-and-cache": [
+              5.5
+            ],
+            "vdom.normalize": [
+              0.4000000059604645
+            ],
+            "vdom.reconcile-host": [
+              1.5
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 10000,
+            "host.set-props": 1,
+            "host.moves": 1
+          },
+          "unattributedWithinFlushMs": 0.8999999761581421
+        },
+        {
+          "pair": 23,
+          "totalUpdateMs": 12.700000017881393,
+          "rootFlushMs": 10.700000017881393,
+          "outsideRootFlushMs": 2,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.800000011920929
+            ],
+            "owner.expand-and-cache": [
+              5.700000017881393
+            ],
+            "vdom.normalize": [
+              0.4000000059604645
+            ],
+            "vdom.reconcile-host": [
+              3
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 10000,
+            "host.set-props": 1,
+            "host.moves": 1
+          },
+          "unattributedWithinFlushMs": 0.7999999821186066
+        }
+      ],
+      "unattributedWithinFlushMedianMs": 0.9000000059604645,
+      "negativeResidualCount": 0
+    },
+    {
+      "operation": "replace-edge",
+      "measuredUpdates": 24,
+      "totalUpdateMedianMs": 11,
+      "outsideRootFlushMedianMs": 1.9000000059604645,
+      "pairedTotalFlushSamples": 24,
+      "phaseSummaries": {
+        "dispatch.diagnostic.dirty-owner-count.1": {
+          "calls": 24,
+          "medianMs": 0,
+          "p95Ms": 0
+        },
+        "dispatch.diagnostic.change-count.1": {
+          "calls": 24,
+          "medianMs": 0,
+          "p95Ms": 0
+        },
+        "owner.render-and-key": {
+          "calls": 24,
+          "medianMs": 0.7999999821186066,
+          "p95Ms": 0.8999999761581421
+        },
+        "owner.expand-and-cache": {
+          "calls": 24,
+          "medianMs": 5.4000000059604645,
+          "p95Ms": 7.0999999940395355
+        },
+        "vdom.normalize": {
+          "calls": 24,
+          "medianMs": 0.4000000059604645,
+          "p95Ms": 1.5999999940395355
+        },
+        "vdom.reconcile-host": {
+          "calls": 24,
+          "medianMs": 1.5,
+          "p95Ms": 2.7000000178813934
+        },
+        "vdom.index-snapshot": {
+          "calls": 24,
+          "medianMs": 0,
+          "p95Ms": 0
+        },
+        "dispatch.path.structural-owner": {
+          "calls": 24,
+          "medianMs": 0,
+          "p95Ms": 0
+        },
+        "root.flush": {
+          "calls": 24,
+          "medianMs": 9.199999988079071,
+          "p95Ms": 11.099999994039536
+        }
+      },
+      "workCountMedians": {
+        "host.create-elements": 1,
+        "host.create-text-nodes": 1,
+        "host.insertions": 2,
+        "host.removals": 1,
+        "host.set-props": 5,
+        "owner.cached-reused": 9999,
+        "owner.component-renders": 2,
+        "owner.component-visits": 10000,
+        "owner.created": 1,
+        "owner.retired": 1,
+        "vdom.key-index.incremental-new-visits": 2,
+        "vdom.key-index.incremental-old-visits": 2
+      },
+      "samples": [
+        {
+          "pair": 0,
+          "totalUpdateMs": 10.800000011920929,
+          "rootFlushMs": 8.900000005960464,
+          "outsideRootFlushMs": 1.9000000059604645,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.800000011920929
+            ],
+            "owner.expand-and-cache": [
+              5.4000000059604645
+            ],
+            "vdom.normalize": [
+              0.30000001192092896
+            ],
+            "vdom.reconcile-host": [
+              1.5
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 2,
+            "owner.component-visits": 10000,
+            "owner.created": 1,
+            "owner.cached-reused": 9999,
+            "vdom.key-index.incremental-old-visits": 2,
+            "vdom.key-index.incremental-new-visits": 2,
+            "owner.retired": 1,
+            "host.set-props": 5,
+            "host.create-elements": 1,
+            "host.create-text-nodes": 1,
+            "host.insertions": 2,
+            "host.removals": 1
+          },
+          "unattributedWithinFlushMs": 0.8999999761581421
+        },
+        {
+          "pair": 1,
+          "totalUpdateMs": 12.400000005960464,
+          "rootFlushMs": 10.300000011920929,
+          "outsideRootFlushMs": 2.0999999940395355,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.7000000178813934
+            ],
+            "owner.expand-and-cache": [
+              5.4000000059604645
+            ],
+            "vdom.normalize": [
+              0.30000001192092896
+            ],
+            "vdom.reconcile-host": [
+              2.9000000059604645
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 2,
+            "owner.component-visits": 10000,
+            "owner.created": 1,
+            "owner.cached-reused": 9999,
+            "vdom.key-index.incremental-old-visits": 2,
+            "vdom.key-index.incremental-new-visits": 2,
+            "owner.retired": 1,
+            "host.set-props": 5,
+            "host.create-elements": 1,
+            "host.create-text-nodes": 1,
+            "host.insertions": 2,
+            "host.removals": 1
+          },
+          "unattributedWithinFlushMs": 0.9999999701976776
+        },
+        {
+          "pair": 2,
+          "totalUpdateMs": 10.800000011920929,
+          "rootFlushMs": 8.800000011920929,
+          "outsideRootFlushMs": 2,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.7000000178813934
+            ],
+            "owner.expand-and-cache": [
+              5.300000011920929
+            ],
+            "vdom.normalize": [
+              0.4000000059604645
+            ],
+            "vdom.reconcile-host": [
+              1.5
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 2,
+            "owner.component-visits": 10000,
+            "owner.created": 1,
+            "owner.cached-reused": 9999,
+            "vdom.key-index.incremental-old-visits": 2,
+            "vdom.key-index.incremental-new-visits": 2,
+            "owner.retired": 1,
+            "host.set-props": 5,
+            "host.create-elements": 1,
+            "host.create-text-nodes": 1,
+            "host.insertions": 2,
+            "host.removals": 1
+          },
+          "unattributedWithinFlushMs": 0.8999999761581421
+        },
+        {
+          "pair": 3,
+          "totalUpdateMs": 10.5,
+          "rootFlushMs": 9.300000011920929,
+          "outsideRootFlushMs": 1.199999988079071,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.800000011920929
+            ],
+            "owner.expand-and-cache": [
+              5.4000000059604645
+            ],
+            "vdom.normalize": [
+              0.5999999940395355
+            ],
+            "vdom.reconcile-host": [
+              1.600000023841858
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 2,
+            "owner.component-visits": 10000,
+            "owner.created": 1,
+            "owner.cached-reused": 9999,
+            "vdom.key-index.incremental-old-visits": 2,
+            "vdom.key-index.incremental-new-visits": 2,
+            "owner.retired": 1,
+            "host.set-props": 5,
+            "host.create-elements": 1,
+            "host.create-text-nodes": 1,
+            "host.insertions": 2,
+            "host.removals": 1
+          },
+          "unattributedWithinFlushMs": 0.8999999761581421
+        },
+        {
+          "pair": 4,
+          "totalUpdateMs": 10.800000011920929,
+          "rootFlushMs": 9,
+          "outsideRootFlushMs": 1.800000011920929,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.800000011920929
+            ],
+            "owner.expand-and-cache": [
+              5.5
+            ],
+            "vdom.normalize": [
+              0.19999998807907104
+            ],
+            "vdom.reconcile-host": [
+              1.5
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 2,
+            "owner.component-visits": 10000,
+            "owner.created": 1,
+            "owner.cached-reused": 9999,
+            "vdom.key-index.incremental-old-visits": 2,
+            "vdom.key-index.incremental-new-visits": 2,
+            "owner.retired": 1,
+            "host.set-props": 5,
+            "host.create-elements": 1,
+            "host.create-text-nodes": 1,
+            "host.insertions": 2,
+            "host.removals": 1
+          },
+          "unattributedWithinFlushMs": 1
+        },
+        {
+          "pair": 5,
+          "totalUpdateMs": 11.599999994039536,
+          "rootFlushMs": 10.300000011920929,
+          "outsideRootFlushMs": 1.2999999821186066,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.800000011920929
+            ],
+            "owner.expand-and-cache": [
+              6.9000000059604645
+            ],
+            "vdom.normalize": [
+              0.30000001192092896
+            ],
+            "vdom.reconcile-host": [
+              1.399999976158142
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 2,
+            "owner.component-visits": 10000,
+            "owner.created": 1,
+            "owner.cached-reused": 9999,
+            "vdom.key-index.incremental-old-visits": 2,
+            "vdom.key-index.incremental-new-visits": 2,
+            "owner.retired": 1,
+            "host.set-props": 5,
+            "host.create-elements": 1,
+            "host.create-text-nodes": 1,
+            "host.insertions": 2,
+            "host.removals": 1
+          },
+          "unattributedWithinFlushMs": 0.9000000059604645
+        },
+        {
+          "pair": 6,
+          "totalUpdateMs": 13.099999994039536,
+          "rootFlushMs": 11,
+          "outsideRootFlushMs": 2.0999999940395355,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.7999999821186066
+            ],
+            "owner.expand-and-cache": [
+              5.800000011920929
+            ],
+            "vdom.normalize": [
+              1.5999999940395355
+            ],
+            "vdom.reconcile-host": [
+              1.800000011920929
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 2,
+            "owner.component-visits": 10000,
+            "owner.created": 1,
+            "owner.cached-reused": 9999,
+            "vdom.key-index.incremental-old-visits": 2,
+            "vdom.key-index.incremental-new-visits": 2,
+            "owner.retired": 1,
+            "host.set-props": 5,
+            "host.create-elements": 1,
+            "host.create-text-nodes": 1,
+            "host.insertions": 2,
+            "host.removals": 1
+          },
+          "unattributedWithinFlushMs": 1
+        },
+        {
+          "pair": 7,
+          "totalUpdateMs": 11,
+          "rootFlushMs": 9.200000017881393,
+          "outsideRootFlushMs": 1.7999999821186066,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.7000000178813934
+            ],
+            "owner.expand-and-cache": [
+              5.600000023841858
+            ],
+            "vdom.normalize": [
+              0.3999999761581421
+            ],
+            "vdom.reconcile-host": [
+              1.4000000059604645
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 2,
+            "owner.component-visits": 10000,
+            "owner.created": 1,
+            "owner.cached-reused": 9999,
+            "vdom.key-index.incremental-old-visits": 2,
+            "vdom.key-index.incremental-new-visits": 2,
+            "owner.retired": 1,
+            "host.set-props": 5,
+            "host.create-elements": 1,
+            "host.create-text-nodes": 1,
+            "host.insertions": 2,
+            "host.removals": 1
+          },
+          "unattributedWithinFlushMs": 1.0999999940395355
+        },
+        {
+          "pair": 8,
+          "totalUpdateMs": 11.199999988079071,
+          "rootFlushMs": 9.299999982118607,
+          "outsideRootFlushMs": 1.9000000059604645,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.7999999821186066
+            ],
+            "owner.expand-and-cache": [
+              5.5
+            ],
+            "vdom.normalize": [
+              0.5
+            ],
+            "vdom.reconcile-host": [
+              1.4000000059604645
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 2,
+            "owner.component-visits": 10000,
+            "owner.created": 1,
+            "owner.cached-reused": 9999,
+            "vdom.key-index.incremental-old-visits": 2,
+            "vdom.key-index.incremental-new-visits": 2,
+            "owner.retired": 1,
+            "host.set-props": 5,
+            "host.create-elements": 1,
+            "host.create-text-nodes": 1,
+            "host.insertions": 2,
+            "host.removals": 1
+          },
+          "unattributedWithinFlushMs": 1.0999999940395355
+        },
+        {
+          "pair": 9,
+          "totalUpdateMs": 10.899999976158142,
+          "rootFlushMs": 9,
+          "outsideRootFlushMs": 1.899999976158142,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.800000011920929
+            ],
+            "owner.expand-and-cache": [
+              5.399999976158142
+            ],
+            "vdom.normalize": [
+              0.4000000059604645
+            ],
+            "vdom.reconcile-host": [
+              1.5
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 2,
+            "owner.component-visits": 10000,
+            "owner.created": 1,
+            "owner.cached-reused": 9999,
+            "vdom.key-index.incremental-old-visits": 2,
+            "vdom.key-index.incremental-new-visits": 2,
+            "owner.retired": 1,
+            "host.set-props": 5,
+            "host.create-elements": 1,
+            "host.create-text-nodes": 1,
+            "host.insertions": 2,
+            "host.removals": 1
+          },
+          "unattributedWithinFlushMs": 0.9000000059604645
+        },
+        {
+          "pair": 10,
+          "totalUpdateMs": 10.800000011920929,
+          "rootFlushMs": 8.800000011920929,
+          "outsideRootFlushMs": 2,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.800000011920929
+            ],
+            "owner.expand-and-cache": [
+              5.200000017881393
+            ],
+            "vdom.normalize": [
+              0.4000000059604645
+            ],
+            "vdom.reconcile-host": [
+              1.5
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 2,
+            "owner.component-visits": 10000,
+            "owner.created": 1,
+            "owner.cached-reused": 9999,
+            "vdom.key-index.incremental-old-visits": 2,
+            "vdom.key-index.incremental-new-visits": 2,
+            "owner.retired": 1,
+            "host.set-props": 5,
+            "host.create-elements": 1,
+            "host.create-text-nodes": 1,
+            "host.insertions": 2,
+            "host.removals": 1
+          },
+          "unattributedWithinFlushMs": 0.8999999761581421
+        },
+        {
+          "pair": 11,
+          "totalUpdateMs": 11.099999994039536,
+          "rootFlushMs": 9.800000011920929,
+          "outsideRootFlushMs": 1.2999999821186066,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.800000011920929
+            ],
+            "owner.expand-and-cache": [
+              5.300000011920929
+            ],
+            "vdom.normalize": [
+              0.29999998211860657
+            ],
+            "vdom.reconcile-host": [
+              2.7000000178813934
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 2,
+            "owner.component-visits": 10000,
+            "owner.created": 1,
+            "owner.cached-reused": 9999,
+            "vdom.key-index.incremental-old-visits": 2,
+            "vdom.key-index.incremental-new-visits": 2,
+            "owner.retired": 1,
+            "host.set-props": 5,
+            "host.create-elements": 1,
+            "host.create-text-nodes": 1,
+            "host.insertions": 2,
+            "host.removals": 1
+          },
+          "unattributedWithinFlushMs": 0.699999988079071
+        },
+        {
+          "pair": 12,
+          "totalUpdateMs": 16.19999998807907,
+          "rootFlushMs": 13.700000017881393,
+          "outsideRootFlushMs": 2.4999999701976776,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.9000000059604645
+            ],
+            "owner.expand-and-cache": [
+              7.0999999940395355
+            ],
+            "vdom.normalize": [
+              2.9000000059604645
+            ],
+            "vdom.reconcile-host": [
+              1.699999988079071
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 2,
+            "owner.component-visits": 10000,
+            "owner.created": 1,
+            "owner.cached-reused": 9999,
+            "vdom.key-index.incremental-old-visits": 2,
+            "vdom.key-index.incremental-new-visits": 2,
+            "owner.retired": 1,
+            "host.set-props": 5,
+            "host.create-elements": 1,
+            "host.create-text-nodes": 1,
+            "host.insertions": 2,
+            "host.removals": 1
+          },
+          "unattributedWithinFlushMs": 1.100000023841858
+        },
+        {
+          "pair": 13,
+          "totalUpdateMs": 11,
+          "rootFlushMs": 9.099999994039536,
+          "outsideRootFlushMs": 1.9000000059604645,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.7999999821186066
+            ],
+            "owner.expand-and-cache": [
+              5.5999999940395355
+            ],
+            "vdom.normalize": [
+              0.4000000059604645
+            ],
+            "vdom.reconcile-host": [
+              1.399999976158142
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 2,
+            "owner.component-visits": 10000,
+            "owner.created": 1,
+            "owner.cached-reused": 9999,
+            "vdom.key-index.incremental-old-visits": 2,
+            "vdom.key-index.incremental-new-visits": 2,
+            "owner.retired": 1,
+            "host.set-props": 5,
+            "host.create-elements": 1,
+            "host.create-text-nodes": 1,
+            "host.insertions": 2,
+            "host.removals": 1
+          },
+          "unattributedWithinFlushMs": 0.9000000357627869
+        },
+        {
+          "pair": 14,
+          "totalUpdateMs": 13.199999988079071,
+          "rootFlushMs": 11.099999994039536,
+          "outsideRootFlushMs": 2.0999999940395355,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.7999999821186066
+            ],
+            "owner.expand-and-cache": [
+              7.5
+            ],
+            "vdom.normalize": [
+              0.5
+            ],
+            "vdom.reconcile-host": [
+              1.399999976158142
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 2,
+            "owner.component-visits": 10000,
+            "owner.created": 1,
+            "owner.cached-reused": 9999,
+            "vdom.key-index.incremental-old-visits": 2,
+            "vdom.key-index.incremental-new-visits": 2,
+            "owner.retired": 1,
+            "host.set-props": 5,
+            "host.create-elements": 1,
+            "host.create-text-nodes": 1,
+            "host.insertions": 2,
+            "host.removals": 1
+          },
+          "unattributedWithinFlushMs": 0.9000000357627869
+        },
+        {
+          "pair": 15,
+          "totalUpdateMs": 11,
+          "rootFlushMs": 9.099999994039536,
+          "outsideRootFlushMs": 1.9000000059604645,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.699999988079071
+            ],
+            "owner.expand-and-cache": [
+              5.5
+            ],
+            "vdom.normalize": [
+              0.4000000059604645
+            ],
+            "vdom.reconcile-host": [
+              1.5999999940395355
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 2,
+            "owner.component-visits": 10000,
+            "owner.created": 1,
+            "owner.cached-reused": 9999,
+            "vdom.key-index.incremental-old-visits": 2,
+            "vdom.key-index.incremental-new-visits": 2,
+            "owner.retired": 1,
+            "host.set-props": 5,
+            "host.create-elements": 1,
+            "host.create-text-nodes": 1,
+            "host.insertions": 2,
+            "host.removals": 1
+          },
+          "unattributedWithinFlushMs": 0.9000000059604645
+        },
+        {
+          "pair": 16,
+          "totalUpdateMs": 10.799999982118607,
+          "rootFlushMs": 8.799999982118607,
+          "outsideRootFlushMs": 2,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.7999999821186066
+            ],
+            "owner.expand-and-cache": [
+              5.300000011920929
+            ],
+            "vdom.normalize": [
+              0.29999998211860657
+            ],
+            "vdom.reconcile-host": [
+              1.5
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 2,
+            "owner.component-visits": 10000,
+            "owner.created": 1,
+            "owner.cached-reused": 9999,
+            "vdom.key-index.incremental-old-visits": 2,
+            "vdom.key-index.incremental-new-visits": 2,
+            "owner.retired": 1,
+            "host.set-props": 5,
+            "host.create-elements": 1,
+            "host.create-text-nodes": 1,
+            "host.insertions": 2,
+            "host.removals": 1
+          },
+          "unattributedWithinFlushMs": 0.9000000059604645
+        },
+        {
+          "pair": 17,
+          "totalUpdateMs": 9.699999988079071,
+          "rootFlushMs": 8.599999994039536,
+          "outsideRootFlushMs": 1.0999999940395355,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.7000000178813934
+            ],
+            "owner.expand-and-cache": [
+              5.200000017881393
+            ],
+            "vdom.normalize": [
+              0.3999999761581421
+            ],
+            "vdom.reconcile-host": [
+              1.5
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 2,
+            "owner.component-visits": 10000,
+            "owner.created": 1,
+            "owner.cached-reused": 9999,
+            "vdom.key-index.incremental-old-visits": 2,
+            "vdom.key-index.incremental-new-visits": 2,
+            "owner.retired": 1,
+            "host.set-props": 5,
+            "host.create-elements": 1,
+            "host.create-text-nodes": 1,
+            "host.insertions": 2,
+            "host.removals": 1
+          },
+          "unattributedWithinFlushMs": 0.7999999821186066
+        },
+        {
+          "pair": 18,
+          "totalUpdateMs": 12.800000011920929,
+          "rootFlushMs": 10.800000011920929,
+          "outsideRootFlushMs": 2,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.7000000178813934
+            ],
+            "owner.expand-and-cache": [
+              5.4000000059604645
+            ],
+            "vdom.normalize": [
+              0.4000000059604645
+            ],
+            "vdom.reconcile-host": [
+              1.399999976158142
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 2,
+            "owner.component-visits": 10000,
+            "owner.created": 1,
+            "owner.cached-reused": 9999,
+            "vdom.key-index.incremental-old-visits": 2,
+            "vdom.key-index.incremental-new-visits": 2,
+            "owner.retired": 1,
+            "host.set-props": 5,
+            "host.create-elements": 1,
+            "host.create-text-nodes": 1,
+            "host.insertions": 2,
+            "host.removals": 1
+          },
+          "unattributedWithinFlushMs": 2.9000000059604645
+        },
+        {
+          "pair": 19,
+          "totalUpdateMs": 9.900000005960464,
+          "rootFlushMs": 8.900000005960464,
+          "outsideRootFlushMs": 1,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.800000011920929
+            ],
+            "owner.expand-and-cache": [
+              5.4000000059604645
+            ],
+            "vdom.normalize": [
+              0.30000001192092896
+            ],
+            "vdom.reconcile-host": [
+              1.5
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 2,
+            "owner.component-visits": 10000,
+            "owner.created": 1,
+            "owner.cached-reused": 9999,
+            "vdom.key-index.incremental-old-visits": 2,
+            "vdom.key-index.incremental-new-visits": 2,
+            "owner.retired": 1,
+            "host.set-props": 5,
+            "host.create-elements": 1,
+            "host.create-text-nodes": 1,
+            "host.insertions": 2,
+            "host.removals": 1
+          },
+          "unattributedWithinFlushMs": 0.8999999761581421
+        },
+        {
+          "pair": 20,
+          "totalUpdateMs": 10.699999988079071,
+          "rootFlushMs": 8.799999982118607,
+          "outsideRootFlushMs": 1.9000000059604645,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.699999988079071
+            ],
+            "owner.expand-and-cache": [
+              5.300000011920929
+            ],
+            "vdom.normalize": [
+              0.29999998211860657
+            ],
+            "vdom.reconcile-host": [
+              1.5999999940395355
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 2,
+            "owner.component-visits": 10000,
+            "owner.created": 1,
+            "owner.cached-reused": 9999,
+            "vdom.key-index.incremental-old-visits": 2,
+            "vdom.key-index.incremental-new-visits": 2,
+            "owner.retired": 1,
+            "host.set-props": 5,
+            "host.create-elements": 1,
+            "host.create-text-nodes": 1,
+            "host.insertions": 2,
+            "host.removals": 1
+          },
+          "unattributedWithinFlushMs": 0.9000000059604645
+        },
+        {
+          "pair": 21,
+          "totalUpdateMs": 10.699999988079071,
+          "rootFlushMs": 9.399999976158142,
+          "outsideRootFlushMs": 1.300000011920929,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.8999999761581421
+            ],
+            "owner.expand-and-cache": [
+              5.699999988079071
+            ],
+            "vdom.normalize": [
+              0.5
+            ],
+            "vdom.reconcile-host": [
+              1.5999999940395355
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 2,
+            "owner.component-visits": 10000,
+            "owner.created": 1,
+            "owner.cached-reused": 9999,
+            "vdom.key-index.incremental-old-visits": 2,
+            "vdom.key-index.incremental-new-visits": 2,
+            "owner.retired": 1,
+            "host.set-props": 5,
+            "host.create-elements": 1,
+            "host.create-text-nodes": 1,
+            "host.insertions": 2,
+            "host.removals": 1
+          },
+          "unattributedWithinFlushMs": 0.7000000178813934
+        },
+        {
+          "pair": 22,
+          "totalUpdateMs": 11.199999988079071,
+          "rootFlushMs": 9.199999988079071,
+          "outsideRootFlushMs": 2,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.699999988079071
+            ],
+            "owner.expand-and-cache": [
+              5.5
+            ],
+            "vdom.normalize": [
+              0.5
+            ],
+            "vdom.reconcile-host": [
+              1.5
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 2,
+            "owner.component-visits": 10000,
+            "owner.created": 1,
+            "owner.cached-reused": 9999,
+            "vdom.key-index.incremental-old-visits": 2,
+            "vdom.key-index.incremental-new-visits": 2,
+            "owner.retired": 1,
+            "host.set-props": 5,
+            "host.create-elements": 1,
+            "host.create-text-nodes": 1,
+            "host.insertions": 2,
+            "host.removals": 1
+          },
+          "unattributedWithinFlushMs": 1
+        },
+        {
+          "pair": 23,
+          "totalUpdateMs": 11.5,
+          "rootFlushMs": 9.300000011920929,
+          "outsideRootFlushMs": 2.199999988079071,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.699999988079071
+            ],
+            "owner.expand-and-cache": [
+              5.600000023841858
+            ],
+            "vdom.normalize": [
+              0.3999999761581421
+            ],
+            "vdom.reconcile-host": [
+              1.600000023841858
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 2,
+            "owner.component-visits": 10000,
+            "owner.created": 1,
+            "owner.cached-reused": 9999,
+            "vdom.key-index.incremental-old-visits": 2,
+            "vdom.key-index.incremental-new-visits": 2,
+            "owner.retired": 1,
+            "host.set-props": 5,
+            "host.create-elements": 1,
+            "host.create-text-nodes": 1,
+            "host.insertions": 2,
+            "host.removals": 1
+          },
+          "unattributedWithinFlushMs": 1
+        }
+      ],
+      "unattributedWithinFlushMedianMs": 0.9000000059604645,
+      "negativeResidualCount": 0
+    },
+    {
+      "operation": "filter-half",
+      "measuredUpdates": 24,
+      "totalUpdateMedianMs": 24.700000017881393,
+      "outsideRootFlushMedianMs": 9.799999982118607,
+      "pairedTotalFlushSamples": 24,
+      "phaseSummaries": {
+        "dispatch.diagnostic.dirty-owner-count.1": {
+          "calls": 24,
+          "medianMs": 0,
+          "p95Ms": 0
+        },
+        "dispatch.diagnostic.change-count.1": {
+          "calls": 24,
+          "medianMs": 0,
+          "p95Ms": 0
+        },
+        "owner.render-and-key": {
+          "calls": 24,
+          "medianMs": 0.5,
+          "p95Ms": 0.9000000059604645
+        },
+        "owner.expand-and-cache": {
+          "calls": 24,
+          "medianMs": 3.699999988079071,
+          "p95Ms": 13.199999988079071
+        },
+        "vdom.normalize": {
+          "calls": 24,
+          "medianMs": 1.4000000059604645,
+          "p95Ms": 2.800000011920929
+        },
+        "vdom.reconcile-host": {
+          "calls": 24,
+          "medianMs": 9.099999994039536,
+          "p95Ms": 13.799999982118607
+        },
+        "vdom.index-snapshot": {
+          "calls": 24,
+          "medianMs": 0,
+          "p95Ms": 0
+        },
+        "dispatch.path.structural-owner": {
+          "calls": 24,
+          "medianMs": 0,
+          "p95Ms": 0
+        },
+        "root.flush": {
+          "calls": 24,
+          "medianMs": 16.30000001192093,
+          "p95Ms": 27.799999982118607
+        }
+      },
+      "workCountMedians": {
+        "host.create-elements": 0,
+        "host.create-text-nodes": 0,
+        "host.insertions": 0,
+        "host.removals": 0,
+        "host.set-props": 5001,
+        "owner.cached-reused": 5000,
+        "owner.component-renders": 1,
+        "owner.component-visits": 5000,
+        "owner.created": 0,
+        "owner.retired": 0,
+        "vdom.key-index.incremental-new-visits": 0,
+        "vdom.key-index.incremental-old-visits": 0
+      },
+      "samples": [
+        {
+          "pair": 0,
+          "totalUpdateMs": 19.799999982118607,
+          "rootFlushMs": 13,
+          "outsideRootFlushMs": 6.799999982118607,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.4000000059604645
+            ],
+            "owner.expand-and-cache": [
+              3.5
+            ],
+            "vdom.normalize": [
+              0.4000000059604645
+            ],
+            "vdom.reconcile-host": [
+              6.5999999940395355
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 5000,
+            "owner.cached-reused": 5000,
+            "vdom.key-index.incremental-old-visits": 10000,
+            "owner.retired": 5000,
+            "host.set-props": 5001,
+            "host.removals": 5000
+          },
+          "unattributedWithinFlushMs": 2.0999999940395355
+        },
+        {
+          "pair": 1,
+          "totalUpdateMs": 33.099999994039536,
+          "rootFlushMs": 23.19999998807907,
+          "outsideRootFlushMs": 9.900000005960464,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.800000011920929
+            ],
+            "owner.expand-and-cache": [
+              8.799999982118607
+            ],
+            "vdom.normalize": [
+              2.2000000178813934
+            ],
+            "vdom.reconcile-host": [
+              10.099999994039536
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 5001,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 5000,
+            "owner.created": 5000,
+            "vdom.key-index.incremental-new-visits": 10000,
+            "host.set-props": 15001,
+            "host.create-elements": 5000,
+            "host.create-text-nodes": 5000,
+            "host.insertions": 10000
+          },
+          "unattributedWithinFlushMs": 1.2999999821186066
+        },
+        {
+          "pair": 2,
+          "totalUpdateMs": 23.200000017881393,
+          "rootFlushMs": 13.200000017881393,
+          "outsideRootFlushMs": 10,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.29999998211860657
+            ],
+            "owner.expand-and-cache": [
+              3.5
+            ],
+            "vdom.normalize": [
+              0.3999999761581421
+            ],
+            "vdom.reconcile-host": [
+              6.9000000059604645
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 5000,
+            "owner.cached-reused": 5000,
+            "vdom.key-index.incremental-old-visits": 10000,
+            "owner.retired": 5000,
+            "host.set-props": 5001,
+            "host.removals": 5000
+          },
+          "unattributedWithinFlushMs": 2.1000000536441803
+        },
+        {
+          "pair": 3,
+          "totalUpdateMs": 37.19999998807907,
+          "rootFlushMs": 25.600000023841858,
+          "outsideRootFlushMs": 11.599999964237213,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.7000000178813934
+            ],
+            "owner.expand-and-cache": [
+              12.099999994039536
+            ],
+            "vdom.normalize": [
+              2.100000023841858
+            ],
+            "vdom.reconcile-host": [
+              9.5
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 5001,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 5000,
+            "owner.created": 5000,
+            "vdom.key-index.incremental-new-visits": 10000,
+            "host.set-props": 15001,
+            "host.create-elements": 5000,
+            "host.create-text-nodes": 5000,
+            "host.insertions": 10000
+          },
+          "unattributedWithinFlushMs": 1.199999988079071
+        },
+        {
+          "pair": 4,
+          "totalUpdateMs": 21.5,
+          "rootFlushMs": 12.900000005960464,
+          "outsideRootFlushMs": 8.599999994039536,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.4000000059604645
+            ],
+            "owner.expand-and-cache": [
+              3.2000000178813934
+            ],
+            "vdom.normalize": [
+              0.4000000059604645
+            ],
+            "vdom.reconcile-host": [
+              7
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 5000,
+            "owner.cached-reused": 5000,
+            "vdom.key-index.incremental-old-visits": 10000,
+            "owner.retired": 5000,
+            "host.set-props": 5001,
+            "host.removals": 5000
+          },
+          "unattributedWithinFlushMs": 1.899999976158142
+        },
+        {
+          "pair": 5,
+          "totalUpdateMs": 39.5,
+          "rootFlushMs": 27.19999998807907,
+          "outsideRootFlushMs": 12.300000011920929,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.699999988079071
+            ],
+            "owner.expand-and-cache": [
+              9.199999988079071
+            ],
+            "vdom.normalize": [
+              2.4000000059604645
+            ],
+            "vdom.reconcile-host": [
+              13.5
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 5001,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 5000,
+            "owner.created": 5000,
+            "vdom.key-index.incremental-new-visits": 10000,
+            "host.set-props": 15001,
+            "host.create-elements": 5000,
+            "host.create-text-nodes": 5000,
+            "host.insertions": 10000
+          },
+          "unattributedWithinFlushMs": 1.4000000059604645
+        },
+        {
+          "pair": 6,
+          "totalUpdateMs": 24.700000017881393,
+          "rootFlushMs": 13.800000011920929,
+          "outsideRootFlushMs": 10.900000005960464,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.4000000059604645
+            ],
+            "owner.expand-and-cache": [
+              3.0999999940395355
+            ],
+            "vdom.normalize": [
+              0.5
+            ],
+            "vdom.reconcile-host": [
+              7.699999988079071
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 5000,
+            "owner.cached-reused": 5000,
+            "vdom.key-index.incremental-old-visits": 10000,
+            "owner.retired": 5000,
+            "host.set-props": 5001,
+            "host.removals": 5000
+          },
+          "unattributedWithinFlushMs": 2.100000023841858
+        },
+        {
+          "pair": 7,
+          "totalUpdateMs": 17,
+          "rootFlushMs": 13.400000005960464,
+          "outsideRootFlushMs": 3.5999999940395355,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.4000000059604645
+            ],
+            "owner.expand-and-cache": [
+              3.300000011920929
+            ],
+            "vdom.normalize": [
+              0.4000000059604645
+            ],
+            "vdom.reconcile-host": [
+              6.799999982118607
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 5000,
+            "owner.cached-reused": 5000,
+            "vdom.key-index.incremental-old-visits": 10000,
+            "owner.retired": 5000,
+            "host.set-props": 5001,
+            "host.removals": 5000
+          },
+          "unattributedWithinFlushMs": 2.5
+        },
+        {
+          "pair": 8,
+          "totalUpdateMs": 43.5,
+          "rootFlushMs": 27,
+          "outsideRootFlushMs": 16.5,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.7000000178813934
+            ],
+            "owner.expand-and-cache": [
+              13.199999988079071
+            ],
+            "vdom.normalize": [
+              2
+            ],
+            "vdom.reconcile-host": [
+              9.600000023841858
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 5001,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 5000,
+            "owner.created": 5000,
+            "vdom.key-index.incremental-new-visits": 10000,
+            "host.set-props": 15001,
+            "host.create-elements": 5000,
+            "host.create-text-nodes": 5000,
+            "host.insertions": 10000
+          },
+          "unattributedWithinFlushMs": 1.4999999701976776
+        },
+        {
+          "pair": 9,
+          "totalUpdateMs": 35.79999998211861,
+          "rootFlushMs": 26.599999994039536,
+          "outsideRootFlushMs": 9.199999988079071,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.9000000059604645
+            ],
+            "owner.expand-and-cache": [
+              12.5
+            ],
+            "vdom.normalize": [
+              2.2000000178813934
+            ],
+            "vdom.reconcile-host": [
+              9.799999982118607
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 5001,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 5000,
+            "owner.created": 5000,
+            "vdom.key-index.incremental-new-visits": 10000,
+            "host.set-props": 15001,
+            "host.create-elements": 5000,
+            "host.create-text-nodes": 5000,
+            "host.insertions": 10000
+          },
+          "unattributedWithinFlushMs": 1.199999988079071
+        },
+        {
+          "pair": 10,
+          "totalUpdateMs": 20.900000005960464,
+          "rootFlushMs": 13.599999994039536,
+          "outsideRootFlushMs": 7.300000011920929,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.4000000059604645
+            ],
+            "owner.expand-and-cache": [
+              3.2999999821186066
+            ],
+            "vdom.normalize": [
+              0.5
+            ],
+            "vdom.reconcile-host": [
+              7.4000000059604645
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 5000,
+            "owner.cached-reused": 5000,
+            "vdom.key-index.incremental-old-visits": 10000,
+            "owner.retired": 5000,
+            "host.set-props": 5001,
+            "host.removals": 5000
+          },
+          "unattributedWithinFlushMs": 2
+        },
+        {
+          "pair": 11,
+          "totalUpdateMs": 41.099999994039536,
+          "rootFlushMs": 27.099999994039536,
+          "outsideRootFlushMs": 14,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              3.5
+            ],
+            "owner.expand-and-cache": [
+              9.400000005960464
+            ],
+            "vdom.normalize": [
+              2.2999999821186066
+            ],
+            "vdom.reconcile-host": [
+              10.400000005960464
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 5001,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 5000,
+            "owner.created": 5000,
+            "vdom.key-index.incremental-new-visits": 10000,
+            "host.set-props": 15001,
+            "host.create-elements": 5000,
+            "host.create-text-nodes": 5000,
+            "host.insertions": 10000
+          },
+          "unattributedWithinFlushMs": 1.5
+        },
+        {
+          "pair": 12,
+          "totalUpdateMs": 23.80000001192093,
+          "rootFlushMs": 13.099999994039536,
+          "outsideRootFlushMs": 10.700000017881393,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.4000000059604645
+            ],
+            "owner.expand-and-cache": [
+              3.2000000178813934
+            ],
+            "vdom.normalize": [
+              0.5
+            ],
+            "vdom.reconcile-host": [
+              7
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 5000,
+            "owner.cached-reused": 5000,
+            "vdom.key-index.incremental-old-visits": 10000,
+            "owner.retired": 5000,
+            "host.set-props": 5001,
+            "host.removals": 5000
+          },
+          "unattributedWithinFlushMs": 1.9999999701976776
+        },
+        {
+          "pair": 13,
+          "totalUpdateMs": 37.19999998807907,
+          "rootFlushMs": 27.599999994039536,
+          "outsideRootFlushMs": 9.599999994039536,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.800000011920929
+            ],
+            "owner.expand-and-cache": [
+              9.599999994039536
+            ],
+            "vdom.normalize": [
+              6.700000017881393
+            ],
+            "vdom.reconcile-host": [
+              9.099999994039536
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 5001,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 5000,
+            "owner.created": 5000,
+            "vdom.key-index.incremental-new-visits": 10000,
+            "host.set-props": 15001,
+            "host.create-elements": 5000,
+            "host.create-text-nodes": 5000,
+            "host.insertions": 10000
+          },
+          "unattributedWithinFlushMs": 1.399999976158142
+        },
+        {
+          "pair": 14,
+          "totalUpdateMs": 23.5,
+          "rootFlushMs": 13.700000017881393,
+          "outsideRootFlushMs": 9.799999982118607,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.5
+            ],
+            "owner.expand-and-cache": [
+              3.699999988079071
+            ],
+            "vdom.normalize": [
+              0.4000000059604645
+            ],
+            "vdom.reconcile-host": [
+              6.9000000059604645
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 5000,
+            "owner.cached-reused": 5000,
+            "vdom.key-index.incremental-old-visits": 10000,
+            "owner.retired": 5000,
+            "host.set-props": 5001,
+            "host.removals": 5000
+          },
+          "unattributedWithinFlushMs": 2.2000000178813934
+        },
+        {
+          "pair": 15,
+          "totalUpdateMs": 21.30000001192093,
+          "rootFlushMs": 16.30000001192093,
+          "outsideRootFlushMs": 5,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.3999999761581421
+            ],
+            "owner.expand-and-cache": [
+              3.0999999940395355
+            ],
+            "vdom.normalize": [
+              0.4000000059604645
+            ],
+            "vdom.reconcile-host": [
+              10.199999988079071
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 5000,
+            "owner.cached-reused": 5000,
+            "vdom.key-index.incremental-old-visits": 10000,
+            "owner.retired": 5000,
+            "host.set-props": 5001,
+            "host.removals": 5000
+          },
+          "unattributedWithinFlushMs": 2.200000047683716
+        },
+        {
+          "pair": 16,
+          "totalUpdateMs": 45.900000005960464,
+          "rootFlushMs": 27.799999982118607,
+          "outsideRootFlushMs": 18.100000023841858,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.699999988079071
+            ],
+            "owner.expand-and-cache": [
+              9.099999994039536
+            ],
+            "vdom.normalize": [
+              2.800000011920929
+            ],
+            "vdom.reconcile-host": [
+              13.799999982118607
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 5001,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 5000,
+            "owner.created": 5000,
+            "vdom.key-index.incremental-new-visits": 10000,
+            "host.set-props": 15001,
+            "host.create-elements": 5000,
+            "host.create-text-nodes": 5000,
+            "host.insertions": 10000
+          },
+          "unattributedWithinFlushMs": 1.4000000059604645
+        },
+        {
+          "pair": 17,
+          "totalUpdateMs": 17.69999998807907,
+          "rootFlushMs": 13.799999982118607,
+          "outsideRootFlushMs": 3.9000000059604645,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.5
+            ],
+            "owner.expand-and-cache": [
+              3.4000000059604645
+            ],
+            "vdom.normalize": [
+              1.4000000059604645
+            ],
+            "vdom.reconcile-host": [
+              6.699999988079071
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 5000,
+            "owner.cached-reused": 5000,
+            "vdom.key-index.incremental-old-visits": 10000,
+            "owner.retired": 5000,
+            "host.set-props": 5001,
+            "host.removals": 5000
+          },
+          "unattributedWithinFlushMs": 1.7999999821186066
+        },
+        {
+          "pair": 18,
+          "totalUpdateMs": 22.099999994039536,
+          "rootFlushMs": 13.300000011920929,
+          "outsideRootFlushMs": 8.799999982118607,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.5
+            ],
+            "owner.expand-and-cache": [
+              3.2999999821186066
+            ],
+            "vdom.normalize": [
+              1.300000011920929
+            ],
+            "vdom.reconcile-host": [
+              6.4000000059604645
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 5000,
+            "owner.cached-reused": 5000,
+            "vdom.key-index.incremental-old-visits": 10000,
+            "owner.retired": 5000,
+            "host.set-props": 5001,
+            "host.removals": 5000
+          },
+          "unattributedWithinFlushMs": 1.800000011920929
+        },
+        {
+          "pair": 19,
+          "totalUpdateMs": 38.69999998807907,
+          "rootFlushMs": 27.099999994039536,
+          "outsideRootFlushMs": 11.599999994039536,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.800000011920929
+            ],
+            "owner.expand-and-cache": [
+              8.5
+            ],
+            "vdom.normalize": [
+              2.4000000059604645
+            ],
+            "vdom.reconcile-host": [
+              14.199999988079071
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 5001,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 5000,
+            "owner.created": 5000,
+            "vdom.key-index.incremental-new-visits": 10000,
+            "host.set-props": 15001,
+            "host.create-elements": 5000,
+            "host.create-text-nodes": 5000,
+            "host.insertions": 10000
+          },
+          "unattributedWithinFlushMs": 1.199999988079071
+        },
+        {
+          "pair": 20,
+          "totalUpdateMs": 46.70000001788139,
+          "rootFlushMs": 28,
+          "outsideRootFlushMs": 18.700000017881393,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.9000000059604645
+            ],
+            "owner.expand-and-cache": [
+              13.799999982118607
+            ],
+            "vdom.normalize": [
+              2.300000011920929
+            ],
+            "vdom.reconcile-host": [
+              9.699999988079071
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 5001,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 5000,
+            "owner.created": 5000,
+            "vdom.key-index.incremental-new-visits": 10000,
+            "host.set-props": 15001,
+            "host.create-elements": 5000,
+            "host.create-text-nodes": 5000,
+            "host.insertions": 10000
+          },
+          "unattributedWithinFlushMs": 1.300000011920929
+        },
+        {
+          "pair": 21,
+          "totalUpdateMs": 39.69999998807907,
+          "rootFlushMs": 26.899999976158142,
+          "outsideRootFlushMs": 12.800000011920929,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.8999999761581421
+            ],
+            "owner.expand-and-cache": [
+              9.099999994039536
+            ],
+            "vdom.normalize": [
+              2.199999988079071
+            ],
+            "vdom.reconcile-host": [
+              13.599999994039536
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 5001,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 5000,
+            "owner.created": 5000,
+            "vdom.key-index.incremental-new-visits": 10000,
+            "host.set-props": 15001,
+            "host.create-elements": 5000,
+            "host.create-text-nodes": 5000,
+            "host.insertions": 10000
+          },
+          "unattributedWithinFlushMs": 1.100000023841858
+        },
+        {
+          "pair": 22,
+          "totalUpdateMs": 22.30000001192093,
+          "rootFlushMs": 12.599999994039536,
+          "outsideRootFlushMs": 9.700000017881393,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.4000000059604645
+            ],
+            "owner.expand-and-cache": [
+              3.100000023841858
+            ],
+            "vdom.normalize": [
+              0.3999999761581421
+            ],
+            "vdom.reconcile-host": [
+              6.5
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 1,
+            "owner.component-visits": 5000,
+            "owner.cached-reused": 5000,
+            "vdom.key-index.incremental-old-visits": 10000,
+            "owner.retired": 5000,
+            "host.set-props": 5001,
+            "host.removals": 5000
+          },
+          "unattributedWithinFlushMs": 2.199999988079071
+        },
+        {
+          "pair": 23,
+          "totalUpdateMs": 32.79999998211861,
+          "rootFlushMs": 23.700000017881393,
+          "outsideRootFlushMs": 9.099999964237213,
+          "phaseCalls": {
+            "dispatch.diagnostic.dirty-owner-count.1": [
+              0
+            ],
+            "dispatch.diagnostic.change-count.1": [
+              0
+            ],
+            "owner.render-and-key": [
+              0.7000000178813934
+            ],
+            "owner.expand-and-cache": [
+              9.300000011920929
+            ],
+            "vdom.normalize": [
+              2.2999999821186066
+            ],
+            "vdom.reconcile-host": [
+              10
+            ],
+            "vdom.index-snapshot": [
+              0
+            ],
+            "dispatch.path.structural-owner": [
+              0
+            ]
+          },
+          "workCounts": {
+            "owner.component-renders": 5001,
+            "owner.component-visits": 10000,
+            "owner.cached-reused": 5000,
+            "owner.created": 5000,
+            "vdom.key-index.incremental-new-visits": 10000,
+            "host.set-props": 15001,
+            "host.create-elements": 5000,
+            "host.create-text-nodes": 5000,
+            "host.insertions": 10000
+          },
+          "unattributedWithinFlushMs": 1.4000000059604645
+        }
+      ],
+      "unattributedWithinFlushMedianMs": 1.5,
+      "negativeResidualCount": 0
+    }
+  ]
+}

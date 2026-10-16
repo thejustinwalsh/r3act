@@ -1,0 +1,1374 @@
+--- a/compiler/oxc-spike/src/main.rs
++++ b/compiler/oxc-spike/src/main.rs
+@@ -9,7 +9,7 @@
+ use oxc_ast::{
+     AstKind,
+     ast::{
+-        Argument, ArrayExpressionElement, BindingPattern, CallExpression, Expression,
++        Argument, ArrayExpressionElement, BindingPattern, CallExpression, Declaration, Expression,
+         FormalParameters, Function, FunctionBody, ImportDeclaration, ImportDeclarationSpecifier,
+         ImportOrExportKind, JSXAttributeItem, JSXAttributeName, JSXAttributeValue, JSXChild,
+         JSXElement, JSXElementName, JSXExpression, ModuleExportName, PropertyKey, Statement,
+@@ -22,7 +22,7 @@
+ use oxc_span::{GetSpan, SourceType};
+ 
+ mod owner_update_program;
+-use owner_update_program::{emit_owner_update_program, Sink, StateReference};
++use owner_update_program::{Sink, StateReference, emit_owner_update_program};
+ use serde::{Deserialize, Serialize};
+ 
+ #[derive(Clone, Debug, Serialize)]
+@@ -278,21 +278,225 @@
+     span: SourceSpan,
+     state_refs: BTreeSet<SymbolId>,
+     state_reference_sites: BTreeMap<(u32, u32), String>,
++    derived_reference_sites: BTreeMap<(u32, u32), SymbolId>,
++    expanded: Option<ExpandedNativeExpression>,
+     other_refs: bool,
++}
++
++#[derive(Clone)]
++struct NativeDerivedLocal {
++    owner_program_id: String,
++    reserved_identifier: bool,
++    declaration_start: u32,
++    initializer_span: SourceSpan,
++    initializer_references: Vec<(u32, u32, Option<SymbolId>)>,
++    initializer_syntax_supported: bool,
++    initializer_node_count: usize,
++}
++
++#[derive(Clone)]
++struct ExpandedNativeExpression {
++    source: String,
++    state_refs: BTreeSet<SymbolId>,
++    references: Vec<StateReference>,
++    derived_refs: BTreeSet<SymbolId>,
++    expanded_node_count: usize,
++}
++
++const MAX_DERIVED_LOCAL_EXPANSION_BYTES: usize = 4096;
++const MAX_DERIVED_LOCAL_EXPANSION_NODES: usize = 2048;
++const MAX_DERIVED_LOCAL_EXPANSION_DEPTH: usize = 64;
++const MAX_OWNER_DERIVED_EXPANSION_BYTES: usize = 16 * 1024;
++const MAX_OWNER_DERIVED_EXPANSION_NODES: usize = 8192;
++
++#[derive(Default)]
++struct ExpressionNodeCounter(usize);
++
++impl<'a> Visit<'a> for ExpressionNodeCounter {
++    fn visit_expression(&mut self, node: &Expression<'a>) {
++        self.0 = self.0.saturating_add(1);
++        walk::walk_expression(self, node);
++    }
++}
++
++struct NativeDerivedLocalCollector<'p, 'a> {
++    components: &'p [ComponentStateSiteIr],
++    semantic: &'p Semantic<'a>,
++    locals: BTreeMap<SymbolId, NativeDerivedLocal>,
++}
++
++impl<'a> Visit<'a> for NativeDerivedLocalCollector<'_, 'a> {
++    fn visit_function(&mut self, node: &Function<'a>, flags: ScopeFlags) {
++        let component = self.components.iter().find(|component| {
++            component.declaration.start == node.span.start
++                && component.declaration.end == node.span.end
++        });
++        if let (Some(component), Some(body)) = (component, node.body.as_ref()) {
++            for statement in &body.statements {
++                let Some(Declaration::VariableDeclaration(declaration)) =
++                    statement.as_declaration()
++                else {
++                    continue;
++                };
++                if declaration.kind != oxc_ast::ast::VariableDeclarationKind::Const {
++                    continue;
++                }
++                for declarator in &declaration.declarations {
++                    let (BindingPattern::BindingIdentifier(identifier), Some(initializer)) =
++                        (&declarator.id, declarator.init.as_ref())
++                    else {
++                        continue;
++                    };
++                    let Some(symbol) = identifier.symbol_id.get() else {
++                        continue;
++                    };
++                    let mut reference_collector = ExpressionReferenceCollector {
++                        semantic: self.semantic,
++                        references: Vec::new(),
++                    };
++                    reference_collector.visit_expression(initializer);
++                    let initializer_syntax_supported =
++                        owner_update_program::visit_closed_primitive_expression(
++                            initializer,
++                            owner_update_program::ClosedExpressionPolicy::Primitive,
++                            &mut |_| true,
++                        ) && !matches!(identifier.name.as_str(), "undefined" | "NaN" | "Infinity");
++                    let mut node_counter = ExpressionNodeCounter::default();
++                    node_counter.visit_expression(initializer);
++                    self.locals.insert(
++                        symbol,
++                        NativeDerivedLocal {
++                            owner_program_id: component.component_site_id.clone(),
++                            reserved_identifier: matches!(
++                                identifier.name.as_str(),
++                                "undefined" | "NaN" | "Infinity"
++                            ),
++                            declaration_start: declarator.span.start,
++                            initializer_span: span(
++                                initializer.span().start,
++                                initializer.span().end,
++                            ),
++                            initializer_references: reference_collector.references,
++                            initializer_syntax_supported,
++                            initializer_node_count: node_counter.0,
++                        },
++                    );
++                }
++            }
++        }
++        walk::walk_function(self, node, flags);
++    }
+ }
+ 
+ struct NativeStateUsageCollector<'s, 'a> {
+     semantic: &'s Semantic<'a>,
+     call_sites: BTreeMap<(u32, u32), String>,
+     bindings: BTreeMap<SymbolId, NativeStateBinding>,
++    derived_locals: BTreeMap<SymbolId, NativeDerivedLocal>,
+     setter_symbols: BTreeSet<SymbolId>,
+     current_declaration_is_const: bool,
+     candidates: Vec<NativePropCandidate>,
++    components: &'s [ComponentStateSiteIr],
++    source: &'s str,
+     intrinsic_opening: Vec<bool>,
+     outside_state_reads: BTreeSet<String>,
++    derived_initializer_state_reads: Vec<(SymbolId, SymbolId, String)>,
++    derived_initializer_reads: Vec<(SymbolId, SymbolId)>,
++    outside_derived_reads: BTreeSet<SymbolId>,
++    derived_expansion_totals: BTreeMap<String, (usize, usize)>,
++    over_budget_owners: BTreeSet<String>,
+     numeric_sites: BTreeSet<String>,
+ }
+ 
++impl<'s, 'a> NativeStateUsageCollector<'s, 'a> {
++    fn candidate(
++        &mut self,
++        candidate_span: SourceSpan,
++        expression: &Expression<'a>,
++    ) -> NativePropCandidate {
++        let mut references = ExpressionReferenceCollector {
++            semantic: self.semantic,
++            references: Vec::new(),
++        };
++        references.visit_expression(expression);
++        let expression_references = references.references;
++        let expression_syntax_supported = owner_update_program::visit_closed_primitive_expression(
++            expression,
++            owner_update_program::ClosedExpressionPolicy::Primitive,
++            &mut |_| true,
++        );
++        let mut node_counter = ExpressionNodeCounter::default();
++        node_counter.visit_expression(expression);
++        let expression_node_count = node_counter.0;
++        let derived_reference_sites: BTreeMap<_, _> = expression_references
++            .iter()
++            .filter_map(|(start, end, symbol)| {
++                symbol
++                    .filter(|symbol| self.derived_locals.contains_key(symbol))
++                    .map(|symbol| ((*start, *end), symbol))
++            })
++            .collect();
++        let roots: BTreeSet<_> = derived_reference_sites.values().copied().collect();
++        let owner_program_id = self
++            .components
++            .iter()
++            .find(|component| {
++                component.declaration.start <= candidate_span.start
++                    && candidate_span.end <= component.declaration.end
++            })
++            .map(|component| component.component_site_id.clone());
++        let mut expanded_node_count = expression_node_count;
++        let mut expanded = if roots.is_empty()
++            || owner_program_id
++                .as_ref()
++                .is_some_and(|owner| self.over_budget_owners.contains(owner))
++        {
++            None
++        } else {
++            owner_program_id.as_ref().and_then(|owner_program_id| {
++                expand_native_expression(
++                    self.source,
++                    &candidate_span,
++                    &expression_references,
++                    expression_syntax_supported,
++                    owner_program_id,
++                    candidate_span.start,
++                    &self.bindings,
++                    &self.derived_locals,
++                    &mut BTreeSet::new(),
++                    &mut expanded_node_count,
++                )
++            })
++        };
++        if let (Some(expanded_expression), Some(owner_id)) = (expanded.as_ref(), owner_program_id)
++            && !expanded_expression.state_refs.is_empty()
++        {
++            let total = self
++                .derived_expansion_totals
++                .entry(owner_id.clone())
++                .or_default();
++            total.0 = total.0.saturating_add(expanded_expression.source.len());
++            total.1 = total
++                .1
++                .saturating_add(expanded_expression.expanded_node_count);
++            if total.0 > MAX_OWNER_DERIVED_EXPANSION_BYTES
++                || total.1 > MAX_OWNER_DERIVED_EXPANSION_NODES
++            {
++                self.over_budget_owners.insert(owner_id);
++                expanded = None;
++            }
++        }
++        NativePropCandidate {
++            span: candidate_span,
++            state_refs: BTreeSet::new(),
++            state_reference_sites: BTreeMap::new(),
++            derived_reference_sites,
++            expanded,
++            other_refs: false,
++        }
++    }
++}
++
+ #[derive(Debug, Serialize)]
+ struct NativeTaskPlan {
+     id: String,
+@@ -1316,26 +1520,24 @@
+                                     property
+                                 {
+                                     if !property.computed && !property.method {
+-                                        self.candidates.push(NativePropCandidate {
+-                                            span: span(
++                                        let candidate = self.candidate(
++                                            span(
+                                                 property.value.span().start,
+                                                 property.value.span().end,
+                                             ),
+-                                            state_refs: BTreeSet::new(),
+-                                            state_reference_sites: BTreeMap::new(),
+-                                            other_refs: false,
+-                                        });
++                                            &property.value,
++                                        );
++                                        self.candidates.push(candidate);
+                                     }
+                                 }
+                             }
+                         }
+                     } else {
+-                        self.candidates.push(NativePropCandidate {
+-                            span: span(expression.span().start, expression.span().end),
+-                            state_refs: BTreeSet::new(),
+-                            state_reference_sites: BTreeMap::new(),
+-                            other_refs: false,
+-                        });
++                        let candidate = self.candidate(
++                            span(expression.span().start, expression.span().end),
++                            expression,
++                        );
++                        self.candidates.push(candidate);
+                     }
+                 }
+             }
+@@ -1366,13 +1568,49 @@
+                     candidate.span.start <= node.span.start && candidate.span.end >= node.span.end
+                 }) {
+                     candidate.state_refs.insert(symbol);
+-                    candidate.state_reference_sites.insert(
+-                        (node.span.start, node.span.end),
+-                        binding.site_id.clone(),
+-                    );
++                    candidate
++                        .state_reference_sites
++                        .insert((node.span.start, node.span.end), binding.site_id.clone());
++                } else if let Some((derived_symbol, local)) =
++                    self.derived_locals.iter().find(|(_, local)| {
++                        local.initializer_span.start <= node.span.start
++                            && local.initializer_span.end >= node.span.end
++                    })
++                {
++                    if local.initializer_syntax_supported {
++                        self.derived_initializer_state_reads.push((
++                            *derived_symbol,
++                            symbol,
++                            binding.site_id.clone(),
++                        ));
++                    } else {
++                        self.outside_state_reads.insert(binding.site_id.clone());
++                    }
+                 } else {
+                     self.outside_state_reads.insert(binding.site_id.clone());
+                 }
++            } else if self.derived_locals.contains_key(&symbol) {
++                if let Some(candidate) = self.candidates.iter_mut().find(|candidate| {
++                    candidate.span.start <= node.span.start && candidate.span.end >= node.span.end
++                }) {
++                    candidate
++                        .derived_reference_sites
++                        .insert((node.span.start, node.span.end), symbol);
++                } else if let Some((derived_symbol, local)) =
++                    self.derived_locals.iter().find(|(_, local)| {
++                        local.initializer_span.start <= node.span.start
++                            && local.initializer_span.end >= node.span.end
++                    })
++                {
++                    if local.initializer_syntax_supported {
++                        self.derived_initializer_reads
++                            .push((*derived_symbol, symbol));
++                    } else {
++                        self.outside_derived_reads.insert(symbol);
++                    }
++                } else {
++                    self.outside_derived_reads.insert(symbol);
++                }
+             } else if !self.setter_symbols.contains(&symbol) {
+                 for candidate in &mut self.candidates {
+                     if candidate.span.start <= node.span.start
+@@ -1387,11 +1625,167 @@
+                 if candidate.span.start <= node.span.start && candidate.span.end >= node.span.end {
+                     candidate.other_refs = true;
+                 }
++            }
++        }
++    }
++}
++
++struct ExpressionReferenceCollector<'s, 'a> {
++    semantic: &'s Semantic<'a>,
++    references: Vec<(u32, u32, Option<SymbolId>)>,
++}
++
++impl<'a> Visit<'a> for ExpressionReferenceCollector<'_, 'a> {
++    fn visit_identifier_reference(&mut self, node: &oxc_ast::ast::IdentifierReference<'a>) {
++        self.references.push((
++            node.span.start,
++            node.span.end,
++            reference_symbol(node, self.semantic),
++        ));
++    }
++}
++
++fn expand_native_expression(
++    source: &str,
++    expression_span: &SourceSpan,
++    expression_references: &[(u32, u32, Option<SymbolId>)],
++    syntax_supported: bool,
++    owner_program_id: &str,
++    use_position: u32,
++    state_bindings: &BTreeMap<SymbolId, NativeStateBinding>,
++    derived_locals: &BTreeMap<SymbolId, NativeDerivedLocal>,
++    active: &mut BTreeSet<SymbolId>,
++    expanded_node_count: &mut usize,
++) -> Option<ExpandedNativeExpression> {
++    if !syntax_supported
++        || expression_span.end < expression_span.start
++        || (expression_span.end - expression_span.start) as usize
++            > MAX_DERIVED_LOCAL_EXPANSION_BYTES
++    {
++        return None;
++    }
++    let mut expanded_source = String::with_capacity(
++        ((expression_span.end - expression_span.start) as usize)
++            .min(MAX_DERIVED_LOCAL_EXPANSION_BYTES),
++    );
++    let mut cursor = expression_span.start;
++    let mut state_refs = BTreeSet::new();
++    let mut references = Vec::new();
++    let mut expanded_derived_refs = BTreeSet::new();
++    let mut ordered_references = expression_references.to_vec();
++    ordered_references.sort_by_key(|reference| reference.0);
++    for (start, end, symbol) in ordered_references {
++        if start < cursor || end > expression_span.end {
++            return None;
++        }
++        expanded_source.push_str(source_range(source, cursor, start)?);
++        if expanded_source.len() > MAX_DERIVED_LOCAL_EXPANSION_BYTES {
++            return None;
++        }
++        let symbol = symbol?;
++        if let Some(binding) = state_bindings.get(&symbol) {
++            let output_start = u32::try_from(expanded_source.len()).ok()?;
++            expanded_source.push_str(source_range(source, start, end)?);
++            references.push(StateReference {
++                start: output_start,
++                end: u32::try_from(expanded_source.len()).ok()?,
++                site_id: binding.site_id.clone(),
++            });
++            state_refs.insert(symbol);
++        } else {
++            let local = derived_locals.get(&symbol)?;
++            if local.reserved_identifier
++                || local.owner_program_id != owner_program_id
++                || local.declaration_start >= use_position
++                || active.len() >= MAX_DERIVED_LOCAL_EXPANSION_DEPTH
++                || !active.insert(symbol)
++            {
++                return None;
++            }
++            *expanded_node_count = expanded_node_count.checked_add(local.initializer_node_count)?;
++            if *expanded_node_count > MAX_DERIVED_LOCAL_EXPANSION_NODES {
++                active.remove(&symbol);
++                return None;
++            }
++            let nested = expand_native_expression(
++                source,
++                &local.initializer_span,
++                &local.initializer_references,
++                local.initializer_syntax_supported,
++                owner_program_id,
++                local.declaration_start,
++                state_bindings,
++                derived_locals,
++                active,
++                expanded_node_count,
++            );
++            active.remove(&symbol);
++            let nested = nested?;
++            let base = u32::try_from(expanded_source.len()).ok()?;
++            expanded_source.push('(');
++            expanded_source.push_str(&nested.source);
++            expanded_source.push(')');
++            for reference in nested.references {
++                references.push(StateReference {
++                    start: base.checked_add(1)?.checked_add(reference.start)?,
++                    end: base.checked_add(1)?.checked_add(reference.end)?,
++                    site_id: reference.site_id,
++                });
+             }
++            state_refs.extend(nested.state_refs);
++            expanded_derived_refs.insert(symbol);
++            expanded_derived_refs.extend(nested.derived_refs);
+         }
++        if expanded_source.len() > MAX_DERIVED_LOCAL_EXPANSION_BYTES {
++            return None;
++        }
++        cursor = end;
+     }
++    expanded_source.push_str(source_range(source, cursor, expression_span.end)?);
++    if expanded_source.len() > MAX_DERIVED_LOCAL_EXPANSION_BYTES {
++        return None;
++    }
++    Some(ExpandedNativeExpression {
++        source: expanded_source,
++        state_refs,
++        references,
++        derived_refs: expanded_derived_refs,
++        expanded_node_count: *expanded_node_count,
++    })
+ }
+ 
++fn source_range(source: &str, start: u32, end: u32) -> Option<&str> {
++    let start = usize::try_from(start).ok()?;
++    let end = usize::try_from(end).ok()?;
++    source.get(start..end)
++}
++
++fn derived_dependency_closure(
++    roots: &BTreeSet<SymbolId>,
++    local_reads: &[(SymbolId, SymbolId)],
++    state_reads: &[(SymbolId, SymbolId, String)],
++) -> (BTreeSet<SymbolId>, BTreeMap<SymbolId, String>) {
++    let mut locals = BTreeSet::new();
++    let mut states = BTreeMap::new();
++    let mut pending: Vec<_> = roots.iter().copied().collect();
++    while let Some(local) = pending.pop() {
++        if !locals.insert(local) {
++            continue;
++        }
++        for (owner, dependency) in local_reads {
++            if *owner == local {
++                pending.push(*dependency);
++            }
++        }
++        for (owner, state, site) in state_reads {
++            if *owner == local {
++                states.insert(*state, site.clone());
++            }
++        }
++    }
++    (locals, states)
++}
++
+ fn is_numeric_state_initializer(expression: &Expression<'_>) -> bool {
+     match expression {
+         Expression::NumericLiteral(_) => true,
+@@ -3303,19 +3697,41 @@
+                 .map(|state| ((state.call.start, state.call.end), state.site_id.clone()))
+         })
+         .collect();
++    let mut derived_collector = NativeDerivedLocalCollector {
++        components: &state_plan.components,
++        semantic: &semantic,
++        locals: BTreeMap::new(),
++    };
++    derived_collector.visit_program(&parsed.program);
++    let derived_locals = derived_collector.locals;
+     let mut usage = NativeStateUsageCollector {
+         semantic: &semantic,
+         call_sites,
+         bindings: BTreeMap::new(),
++        derived_locals,
+         setter_symbols: BTreeSet::new(),
+         current_declaration_is_const: false,
+         candidates: Vec::new(),
++        components: &state_plan.components,
++        source,
+         intrinsic_opening: Vec::new(),
+         outside_state_reads: BTreeSet::new(),
++        derived_initializer_state_reads: Vec::new(),
++        derived_initializer_reads: Vec::new(),
++        outside_derived_reads: BTreeSet::new(),
++        derived_expansion_totals: BTreeMap::new(),
++        over_budget_owners: BTreeSet::new(),
+         numeric_sites: BTreeSet::new(),
+     };
+     usage.visit_program(&parsed.program);
+-    let mut prop_edits = Vec::<(SourceSpan, String, String, bool, Option<usize>)>::new();
++    let mut prop_edits = Vec::<(
++        SourceSpan,
++        String,
++        String,
++        bool,
++        Option<usize>,
++        Option<String>,
++    )>::new();
+     let mut numeric_programs = Vec::<Sink>::new();
+     let mut prop_sites = BTreeSet::new();
+     let mut fallback_sites = BTreeSet::new();
+@@ -3326,9 +3742,63 @@
+         site_ids: BTreeSet<String>,
+         certified: bool,
+     }
+-    let mut classifications = Vec::with_capacity(usage.candidates.len());
++    let mut expanded_candidates = Vec::with_capacity(usage.candidates.len());
++    let mut effective_state_refs = Vec::with_capacity(usage.candidates.len());
++    let mut used_derived_locals = BTreeSet::new();
++    let over_budget_owners = usage.over_budget_owners.clone();
+     for candidate in &usage.candidates {
+-        if candidate.state_refs.is_empty() {
++        let roots: BTreeSet<_> = candidate
++            .derived_reference_sites
++            .values()
++            .copied()
++            .collect();
++        let owner = state_plan.components.iter().find(|component| {
++            component.declaration.start <= candidate.span.start
++                && candidate.span.end <= component.declaration.end
++        });
++        let expanded =
++            if owner.is_some_and(|owner| over_budget_owners.contains(&owner.component_site_id)) {
++                None
++            } else {
++                candidate.expanded.clone()
++            };
++        let (_, derived_state_refs) = derived_dependency_closure(
++            &roots,
++            &usage.derived_initializer_reads,
++            &usage.derived_initializer_state_reads,
++        );
++        let mut refs = candidate.state_refs.clone();
++        refs.extend(derived_state_refs.keys().copied());
++        if let Some(expanded) = &expanded {
++            used_derived_locals.extend(expanded.derived_refs.iter().copied());
++            refs.extend(expanded.state_refs.iter().copied());
++        }
++        expanded_candidates.push(expanded);
++        effective_state_refs.push(refs);
++    }
++    for (derived, _, site) in &usage.derived_initializer_state_reads {
++        if !used_derived_locals.contains(derived) {
++            usage.outside_state_reads.insert(site.clone());
++        }
++    }
++    if !usage.outside_derived_reads.is_empty() {
++        let (_, outside_states) = derived_dependency_closure(
++            &usage.outside_derived_reads,
++            &usage.derived_initializer_reads,
++            &usage.derived_initializer_state_reads,
++        );
++        usage
++            .outside_state_reads
++            .extend(outside_states.into_values());
++    }
++    let mut classifications = Vec::with_capacity(usage.candidates.len());
++    for (candidate_index, candidate) in usage.candidates.iter().enumerate() {
++        let owner_component = state_plan.components.iter().find(|component| {
++            component.declaration.start <= candidate.span.start
++                && candidate.span.end <= component.declaration.end
++        });
++        let symbols = &effective_state_refs[candidate_index];
++        if symbols.is_empty() {
+             classifications.push(CandidateClassification {
+                 owner_program_id: None,
+                 bindings: Vec::new(),
+@@ -3337,16 +3807,15 @@
+             });
+             continue;
+         }
+-        let expression = slice(source, candidate.span.clone());
++        let expression = expanded_candidates[candidate_index]
++            .as_ref()
++            .map(|expanded| expanded.source.clone())
++            .unwrap_or_else(|| slice(source, candidate.span.clone()));
+         let mut bindings: Vec<_> = candidate
+             .state_refs
+-            .iter()
++            .union(symbols)
+             .filter_map(|symbol| usage.bindings.get(symbol))
+             .collect();
+-        let owner_component = state_plan.components.iter().find(|component| {
+-            component.declaration.start <= candidate.span.start
+-                && candidate.span.end <= component.declaration.end
+-        });
+         if let Some(component) = owner_component {
+             bindings.sort_by_key(|binding| {
+                 component
+@@ -3374,7 +3843,10 @@
+                 .iter()
+                 .all(|site| owner_sites.contains(site.as_str()))
+         });
++        let derived_is_closed = candidate.derived_reference_sites.is_empty()
++            || expanded_candidates[candidate_index].is_some();
+         let certified = !candidate.other_refs
++            && derived_is_closed
+             && owner_local
+             && !state_plan
+                 .components
+@@ -3383,7 +3855,7 @@
+                 .any(|store| {
+                     candidate.span.start <= store.call.start && candidate.span.end >= store.call.end
+                 })
+-            && bindings.len() == candidate.state_refs.len()
++            && bindings.len() == symbols.len()
+             && bindings.iter().all(|binding| binding.immutable)
+             && site_ids
+                 .iter()
+@@ -3405,8 +3877,10 @@
+             ineligible_numeric_sites.extend(classification.site_ids.iter().cloned());
+         }
+     }
+-    for (candidate, classification) in usage.candidates.iter().zip(&classifications) {
+-        if candidate.state_refs.is_empty() {
++    for (candidate_index, (candidate, classification)) in
++        usage.candidates.iter().zip(&classifications).enumerate()
++    {
++        if classification.site_ids.is_empty() {
+             continue;
+         }
+         let bindings = &classification.bindings;
+@@ -3443,16 +3917,24 @@
+                 .map(|binding| binding.site_id.clone())
+                 .collect();
+             let sink_id = format!("{path}#numeric-sink:{}", candidate.span.start);
+-            let expression = slice(source, candidate.span.clone());
+-            let references = candidate
+-                .state_reference_sites
+-                .iter()
+-                .map(|(&(start, end), site_id)| StateReference {
+-                    start: start - candidate.span.start,
+-                    end: end - candidate.span.start,
+-                    site_id: site_id.clone(),
+-                })
+-                .collect();
++            let expanded = expanded_candidates[candidate_index].as_ref();
++            let expression = expanded
++                .map(|expression| expression.source.clone())
++                .unwrap_or_else(|| slice(source, candidate.span.clone()));
++            let references = expanded.map_or_else(
++                || {
++                    candidate
++                        .state_reference_sites
++                        .iter()
++                        .map(|(&(start, end), site_id)| StateReference {
++                            start: start - candidate.span.start,
++                            end: end - candidate.span.start,
++                            site_id: site_id.clone(),
++                        })
++                        .collect()
++                },
++                |expanded| expanded.references.clone(),
++            );
+             numeric_programs.push(Sink {
+                 owner_program_id,
+                 sink_id,
+@@ -3466,6 +3948,11 @@
+                 "))".to_owned(),
+                 singular,
+                 Some(descriptor_index),
++                if candidate.derived_reference_sites.is_empty() {
++                    None
++                } else {
++                    Some(expression)
++                },
+             ));
+             prop_sites.extend(ordered.iter().map(|binding| binding.site_id.clone()));
+             layout_eligible_sites.extend(site_ids.iter().cloned());
+@@ -3595,137 +4082,16 @@
+ }
+ 
+ fn numeric_expression_is_pure(source: &str, state_names: &BTreeSet<String>) -> bool {
+-    if source.contains("=>")
+-        || source.contains("++")
+-        || source.contains("--")
+-        || source.contains("?.")
+-        || source.contains('=')
+-    {
++    let allocator = Allocator::default();
++    let Ok(expression) = Parser::new(&allocator, source, SourceType::tsx()).parse_expression()
++    else {
+         return false;
+-    }
+-    let chars: Vec<char> = source.chars().collect();
+-    let mut index = 0;
+-    while index < chars.len() {
+-        let current = chars[index];
+-        if current.is_whitespace() {
+-            index += 1;
+-            continue;
+-        }
+-        if current == '`' {
+-            index += 1;
+-            while index < chars.len() {
+-                if chars[index] == '\\' {
+-                    index += 2;
+-                    continue;
+-                }
+-                if chars[index] == '`' {
+-                    index += 1;
+-                    break;
+-                }
+-                if chars[index] == '$' && chars.get(index + 1) == Some(&'{') {
+-                    index += 2;
+-                    let expression_start = index;
+-                    let mut depth = 1usize;
+-                    while index < chars.len() && depth > 0 {
+-                        match chars[index] {
+-                            '{' => depth += 1,
+-                            '}' => depth -= 1,
+-                            _ => {}
+-                        }
+-                        if depth > 0 {
+-                            index += 1;
+-                        }
+-                    }
+-                    if depth != 0 {
+-                        return false;
+-                    }
+-                    let nested: String = chars[expression_start..index].iter().collect();
+-                    if !numeric_expression_is_pure(&nested, state_names) {
+-                        return false;
+-                    }
+-                    index += 1;
+-                    continue;
+-                }
+-                index += 1;
+-            }
+-            continue;
+-        }
+-        if current == '\'' || current == '"' {
+-            let quote = current;
+-            index += 1;
+-            while index < chars.len() {
+-                if chars[index] == '\\' {
+-                    index += 2;
+-                    continue;
+-                }
+-                if chars[index] == quote {
+-                    index += 1;
+-                    break;
+-                }
+-                index += 1;
+-            }
+-            continue;
+-        }
+-        if current.is_ascii_digit() {
+-            index += 1;
+-            while index < chars.len()
+-                && (chars[index].is_ascii_alphanumeric()
+-                    || matches!(chars[index], '.' | '_' | 'x' | 'X'))
+-            {
+-                index += 1;
+-            }
+-            continue;
+-        }
+-        if current == '_' || current == '$' || current.is_ascii_alphabetic() {
+-            let start = index;
+-            index += 1;
+-            while index < chars.len()
+-                && (chars[index] == '_'
+-                    || chars[index] == '$'
+-                    || chars[index].is_ascii_alphanumeric())
+-            {
+-                index += 1;
+-            }
+-            let name: String = chars[start..index].iter().collect();
+-            if !state_names.contains(&name)
+-                && !matches!(name.as_str(), "true" | "false" | "null" | "undefined")
+-            {
+-                return false;
+-            }
+-            let mut next = index;
+-            while next < chars.len() && chars[next].is_whitespace() {
+-                next += 1;
+-            }
+-            if next < chars.len() && chars[next] == '(' {
+-                return false;
+-            }
+-            continue;
+-        }
+-        if matches!(
+-            current,
+-            '+' | '-'
+-                | '*'
+-                | '/'
+-                | '%'
+-                | '?'
+-                | ':'
+-                | '('
+-                | ')'
+-                | '['
+-                | ']'
+-                | ','
+-                | '!'
+-                | '<'
+-                | '>'
+-                | '&'
+-                | '|'
+-        ) {
+-            index += 1;
+-            continue;
+-        }
+-        return false;
+-    }
+-    true
++    };
++    owner_update_program::visit_closed_primitive_expression(
++        &expression,
++        owner_update_program::ClosedExpressionPolicy::PrimitiveOrArray,
++        &mut |identifier| state_names.contains(identifier.name.as_str()),
++    )
+ }
+ 
+ fn emit_primitive_owner_cut_kernels(
+@@ -3741,15 +4107,15 @@
+     let mut kernels = Vec::new();
+     let mut indices = BTreeMap::new();
+     for owner in owners {
+-        let Some(layout) = state_layouts.get(&owner) else { continue };
++        let Some(layout) = state_layouts.get(&owner) else {
++            continue;
++        };
+         let sinks: Vec<_> = numeric_programs
+             .iter()
+             .filter(|program| program.owner_program_id == owner)
+             .collect();
+-        let ordered_layout_site_ids: Vec<_> = layout
+-            .iter()
+-            .map(|entry| entry.site_id.as_str())
+-            .collect();
++        let ordered_layout_site_ids: Vec<_> =
++            layout.iter().map(|entry| entry.site_id.as_str()).collect();
+         let Some(code) = emit_owner_update_program(&owner, &ordered_layout_site_ids, &sinks) else {
+             continue;
+         };
+@@ -3772,7 +4138,14 @@
+     path: &str,
+     source: &str,
+     plan: &ComponentStateSitesPlan,
+-    prop_edits: &[(SourceSpan, String, String, bool, Option<usize>)],
++    prop_edits: &[(
++        SourceSpan,
++        String,
++        String,
++        bool,
++        Option<usize>,
++        Option<String>,
++    )],
+     numeric_programs: &[Sink],
+     prop_sites: &BTreeMap<String, BTreeSet<String>>,
+     state_layouts: &BTreeMap<String, Vec<NativeStateLayoutSlotMetadata>>,
+@@ -3989,7 +4362,7 @@
+             ),
+         });
+     }
+-    for (prop_span, prefix, suffix, singular, descriptor_index) in prop_edits {
++    for (prop_span, prefix, suffix, singular, descriptor_index, expression_override) in prop_edits {
+         let helper_alias = if *singular { &aliases[7] } else { &aliases[4] };
+         edits.push(TextEdit {
+             start: prop_span.start as usize,
+@@ -4005,11 +4378,20 @@
+                 suffix.clone()
+             },
+         });
++        if let Some(expression) = expression_override {
++            edits.push(TextEdit {
++                start: prop_span.start as usize,
++                end: prop_span.end as usize,
++                replacement: expression.clone(),
++            });
++        }
+     }
+     edits.push(TextEdit {
+         start: import_span.end as usize,
+         end: import_span.end as usize,
+-        replacement: format!("{helper_import}{numeric_program_table}{owner_kernel_table}{registrations}"),
++        replacement: format!(
++            "{helper_import}{numeric_program_table}{owner_kernel_table}{registrations}"
++        ),
+     });
+     // Coalesce overlapping nested-use edits so Vite receives one non-overlapping
+     // source-map edit.
+@@ -6939,7 +7321,140 @@
+                 .as_deref()
+                 .unwrap_or_default()
+                 .contains("nested capitalized function components")
++        );
++    }
++
++    #[test]
++    fn closed_derived_locals_expand_into_numeric_programs() {
++        let response = compile_state(
++            "derived-owner-locals.tsx",
++            r#"import { useState } from "native_runtime_api.ts";
++export function Row() {
++  const [x] = useState(2);
++  const [y] = useState(3);
++  const offset = 2;
++  const moved = x + offset;
++  const sum = x + y;
++  const twice = sum + sum;
++  const label = `🙂 sum=${sum}; nested=${`${x}-${y}`}; escaped=\\n`;
++  return <div data-sum={sum} data-twice={twice} data-label={label} data-moved={moved} />;
++}"#,
++        );
++        assert!(response.error.is_none(), "{:?}", response.error);
++        let plan = response.plan.unwrap();
++        let row = &plan.components.as_ref().unwrap()[0];
++        let layout = row
++            .state_layout
++            .as_ref()
++            .expect("closed local chains qualify");
++        assert_eq!(layout.slots.len(), 2);
++        assert_eq!(row.prop_only_sites.len(), 2);
++        let code = plan.component_module.unwrap();
++        assert!(code.contains("(x + y)"), "{code}");
++        assert!(code.contains("(x + (2))"), "{code}");
++        assert!(code.contains("((x + y) + (x + y))"), "{code}");
++        assert!(code.contains("🙂 sum=${(x + y)}"), "{code}");
++        assert!(code.contains("nested=${`${x}-${y}`}"), "{code}");
++        assert!(code.contains("escaped=\\\\n"), "{code}");
++        assert!(code.contains("schemaVersion: 2, ownerProgramId:"), "{code}");
++    }
++
++    #[test]
++    fn unsupported_derived_local_uses_poison_the_owner_program() {
++        let cases = [
++            (
++                "let initializer",
++                "let value = x + 1; return <div data-value={value} />;",
++            ),
++            (
++                "call initializer",
++                "const value = Math.abs(x); return <div data-value={value} />;",
++            ),
++            (
++                "member initializer",
++                "const value = x.toString; return <div data-value={value} />;",
++            ),
++            (
++                "outside capture",
++                "const value = x + 1; const capture = () => value; return <div data-value={value} />;",
++            ),
++            (
++                "block scope",
++                "if (true) { const value = x + 1; } return <div data-value={value} />;",
++            ),
++            (
++                "forward reference",
++                "const value = later + 1; const later = x + 1; return <div data-value={value} />;",
++            ),
++            (
++                "mutated local",
++                "const value = x + 1; value++; return <div data-value={value} />;",
++            ),
++            (
++                "shadowed reference",
++                "const value = x + 1; return <div data-value={((x) => x)(value)} />;",
++            ),
++        ];
++        for (name, body) in cases {
++            let mut source = String::from(
++                r#"import { useState } from "native_runtime_api.ts"; export function Row() { const [x] = useState(2); "#,
++            );
++            source.push_str(body);
++            source.push_str(" }");
++            let response = compile_state("derived-owner-negative.tsx", &source);
++            assert!(response.error.is_none(), "{name}: {:?}", response.error);
++            let row = &response.plan.unwrap().components.unwrap()[0];
++            assert!(
++                row.state_layout.is_none(),
++                "{name} unexpectedly qualified: layout={:?}, prop_only={:?}",
++                row.state_layout,
++                row.prop_only_sites
++            );
++        }
++    }
++
++    #[test]
++    fn derived_local_expansion_has_deterministic_depth_and_size_budgets() {
++        let mut source = String::from(
++            r#"import { useState } from "native_runtime_api.ts"; export function Row() { const [x] = useState(2); const d0 = x + x; "#,
++        );
++        for index in 1..24 {
++            source.push_str(&format!(
++                "const d{index} = d{} + d{};",
++                index - 1,
++                index - 1
++            ));
++        }
++        source.push_str("return <div data-value={d23} />; }");
++        let response = compile_state("derived-owner-budget.tsx", &source);
++        assert!(response.error.is_none(), "{:?}", response.error);
++        let row = &response.plan.unwrap().components.unwrap()[0];
++        assert!(
++            row.state_layout.is_none(),
++            "exponential expansion must fall back"
++        );
++    }
++
++    #[test]
++    fn static_derived_outputs_do_not_consume_state_program_budget() {
++        let literal = format!("\"{}\"", "s".repeat(96));
++        let mut source = String::from(
++            r#"import { useState } from "native_runtime_api.ts"; export function Row() { const [x] = useState(2); const label = "#,
+         );
++        source.push_str(&literal);
++        source.push_str("; return <div data-value={x} ");
++        for index in 0..240 {
++            source.push_str(&format!("data-static-{index}={{label}} "));
++        }
++        source.push_str("/>; }");
++        let response = compile_state("derived-owner-static-budget.tsx", &source);
++        assert!(response.error.is_none(), "{:?}", response.error);
++        let row = &response.plan.unwrap().components.unwrap()[0];
++        assert!(
++            row.state_layout.is_some(),
++            "untracked static prop expansion must not exhaust the state-derived owner budget"
++        );
++        assert_eq!(row.prop_only_sites.len(), 1);
+     }
+ 
+     #[test]
+@@ -6951,9 +7466,18 @@
+         assert!(response.error.is_none(), "{:?}", response.error);
+         let plan = response.plan.unwrap();
+         let components = plan.components.as_ref().unwrap();
+-        let row = components.iter().find(|component| component.name == "Row").unwrap();
+-        let same_shape = components.iter().find(|component| component.name == "SameShape").unwrap();
+-        let vector = components.iter().find(|component| component.name == "Vector").unwrap();
++        let row = components
++            .iter()
++            .find(|component| component.name == "Row")
++            .unwrap();
++        let same_shape = components
++            .iter()
++            .find(|component| component.name == "SameShape")
++            .unwrap();
++        let vector = components
++            .iter()
++            .find(|component| component.name == "Vector")
++            .unwrap();
+         assert_ne!(row.component_site_id, same_shape.component_site_id);
+         let code = plan.component_module.unwrap();
+         assert!(
+@@ -6961,24 +7485,49 @@
+             "{code}"
+         );
+         assert_eq!(code.matches("slotCount: 2").count(), 2, "{code}");
+-        assert!(code.contains("ownerUpdateProgram: __nativeOwnerCutKernels[0]"), "{code}");
+-        assert!(code.contains("ownerUpdateProgram: __nativeOwnerCutKernels[1]"), "{code}");
++        assert!(
++            code.contains("ownerUpdateProgram: __nativeOwnerCutKernels[0]"),
++            "{code}"
++        );
++        assert!(
++            code.contains("ownerUpdateProgram: __nativeOwnerCutKernels[1]"),
++            "{code}"
++        );
+         assert!(!vector.prop_only_sites.is_empty());
+-        assert!(!code.contains("ownerUpdateProgram: __nativeOwnerCutKernels[2]"), "{code}");
+-        assert_eq!(code.matches("schemaVersion: 2, programId:").count(), 2, "{code}");
++        assert!(
++            !code.contains("ownerUpdateProgram: __nativeOwnerCutKernels[2]"),
++            "{code}"
++        );
++        assert_eq!(
++            code.matches("schemaVersion: 2, programId:").count(),
++            2,
++            "{code}"
++        );
+         assert!(code.contains("executeCut: function(changedSlots, changeCount, rowStates, stagedInputIndices, stagedSinkIds, stagedValues)"), "{code}");
+         assert!(code.contains("rowStates[changeIndex]!"), "{code}");
+-        assert!(code.contains("stagedInputIndices[stagedCount] = changeIndex"), "{code}");
++        assert!(
++            code.contains("stagedInputIndices[stagedCount] = changeIndex"),
++            "{code}"
++        );
+         assert!(!code.contains("stagedRows[stagedCount]"), "{code}");
+         // V2 descriptors and sink projectors remain the fallback representation.
+         assert!(code.contains("schemaVersion: 2, ownerProgramId:"), "{code}");
+-        assert!(code.contains("data-sum={__nativeBindStatePropsAt("), "{code}");
+-        assert!(code.contains("position={__nativeBindStatePropsAt("), "{code}");
++        assert!(
++            code.contains("data-sum={__nativeBindStatePropsAt("),
++            "{code}"
++        );
++        assert!(
++            code.contains("position={__nativeBindStatePropsAt("),
++            "{code}"
++        );
+         assert!(code.contains("Math.sin(x)"), "{code}");
+         // The primitive kernel has a static switch and inline SameValue semantics;
+         // it does not call Object.is or invoke host writers.
+-        assert!(code.contains("switch (changedSlots[changeIndex])"), "{code}");
+         assert!(
++            code.contains("switch (changedSlots[changeIndex])"),
++            "{code}"
++        );
++        assert!(
+             code.contains("last === next ? (typeof next !== 'number'"),
+             "{code}"
+         );
+@@ -6987,14 +7536,38 @@
+             "{code}"
+         );
+         assert!(!code.contains("Object.is(last, next)"), "{code}");
+-        assert!(code.contains("rowState.inputValues[0] > 0 ? \"positive\" : \"nonpositive\""), "{code}");
++        assert!(
++            code.contains("rowState.inputValues[0] > 0 ? \"positive\" : \"nonpositive\""),
++            "{code}"
++        );
+         assert!(code.contains("data-escaped"), "{code}");
+-        assert_eq!(code.matches("ownerUpdateProgram: __nativeOwnerCutKernels[").count(), 2, "{code}");
+-        for name in ["Member", "Call", "ShadowedUndefined", "Mutation", "Opaque", "MixedCoverage"] {
+-            let component = components.iter().find(|component| component.name == name).unwrap();
+-            let marker = format!("__nativeDefineComponent(\"{}\"", component.component_site_id);
++        assert_eq!(
++            code.matches("ownerUpdateProgram: __nativeOwnerCutKernels[")
++                .count(),
++            2,
++            "{code}"
++        );
++        for name in [
++            "Member",
++            "Call",
++            "ShadowedUndefined",
++            "Mutation",
++            "Opaque",
++            "MixedCoverage",
++        ] {
++            let component = components
++                .iter()
++                .find(|component| component.name == name)
++                .unwrap();
++            let marker = format!(
++                "__nativeDefineComponent(\"{}\"",
++                component.component_site_id
++            );
+             let start = code.find(&marker).unwrap();
+-            let end = code[start..].find(");").map(|offset| start + offset + 2).unwrap();
++            let end = code[start..]
++                .find(");")
++                .map(|offset| start + offset + 2)
++                .unwrap();
+             assert!(!code[start..end].contains("ownerUpdateProgram"), "{code}");
+         }
+ 
+@@ -7004,7 +7577,10 @@
+         );
+         assert!(vector_only.error.is_none(), "{:?}", vector_only.error);
+         let vector_code = vector_only.plan.unwrap().component_module.unwrap();
+-        assert!(!vector_code.contains("__nativeOwnerCutKernels"), "{vector_code}");
++        assert!(
++            !vector_code.contains("__nativeOwnerCutKernels"),
++            "{vector_code}"
++        );
+         assert!(vector_code.contains("position={__nativeBindStatePropsAt([\"primitive-kernel-vector-fallback.tsx#component:Vector#state:0\", \"primitive-kernel-vector-fallback.tsx#component:Vector#state:1\"], ([x, y]) => ([x, y]), __nativeNumericPrograms[0])}"), "{vector_code}");
+     }
+ }
+--- a/compiler/oxc-spike/src/owner_update_program.rs
++++ b/compiler/oxc-spike/src/owner_update_program.rs
+@@ -1,7 +1,9 @@
+ use std::collections::BTreeMap;
+ 
+ use oxc_allocator::Allocator;
+-use oxc_ast::ast::{BinaryOperator, Expression, LogicalOperator, UnaryOperator};
++use oxc_ast::ast::{
++    BinaryOperator, Expression, IdentifierReference, LogicalOperator, UnaryOperator,
++};
+ use oxc_parser::Parser;
+ use oxc_span::SourceType;
+ 
+@@ -21,65 +23,89 @@
+     pub(super) site_id: String,
+ }
+ 
++#[derive(Clone, Copy)]
++pub(super) enum ClosedExpressionPolicy {
++    Primitive,
++    PrimitiveOrArray,
++}
++
++pub(super) fn visit_closed_primitive_expression(
++    expression: &Expression<'_>,
++    policy: ClosedExpressionPolicy,
++    identifier: &mut impl FnMut(&IdentifierReference<'_>) -> bool,
++) -> bool {
++    match expression {
++        Expression::NumericLiteral(_)
++        | Expression::StringLiteral(_)
++        | Expression::BooleanLiteral(_)
++        | Expression::NullLiteral(_) => true,
++        Expression::Identifier(reference) => identifier(reference),
++        Expression::ArrayExpression(array)
++            if matches!(policy, ClosedExpressionPolicy::PrimitiveOrArray) =>
++        {
++            array.elements.iter().all(|element| {
++                element.as_expression().is_some_and(|expression| {
++                    visit_closed_primitive_expression(expression, policy, identifier)
++                })
++            })
++        }
++        Expression::TemplateLiteral(template) => template
++            .expressions
++            .iter()
++            .all(|expression| visit_closed_primitive_expression(expression, policy, identifier)),
++        Expression::ParenthesizedExpression(parenthesized) => {
++            visit_closed_primitive_expression(&parenthesized.expression, policy, identifier)
++        }
++        Expression::UnaryExpression(unary) => {
++            matches!(
++                unary.operator,
++                UnaryOperator::UnaryPlus
++                    | UnaryOperator::UnaryNegation
++                    | UnaryOperator::LogicalNot
++                    | UnaryOperator::BitwiseNot
++            ) && visit_closed_primitive_expression(&unary.argument, policy, identifier)
++        }
++        Expression::BinaryExpression(binary) => {
++            !matches!(
++                binary.operator,
++                BinaryOperator::In | BinaryOperator::Instanceof
++            ) && visit_closed_primitive_expression(&binary.left, policy, identifier)
++                && visit_closed_primitive_expression(&binary.right, policy, identifier)
++        }
++        Expression::LogicalExpression(logical) => {
++            matches!(
++                logical.operator,
++                LogicalOperator::Or | LogicalOperator::And | LogicalOperator::Coalesce
++            ) && visit_closed_primitive_expression(&logical.left, policy, identifier)
++                && visit_closed_primitive_expression(&logical.right, policy, identifier)
++        }
++        Expression::ConditionalExpression(conditional) => {
++            visit_closed_primitive_expression(&conditional.test, policy, identifier)
++                && visit_closed_primitive_expression(&conditional.consequent, policy, identifier)
++                && visit_closed_primitive_expression(&conditional.alternate, policy, identifier)
++        }
++        _ => false,
++    }
++}
++
+ fn owner_kernel_expression(
+     source: &str,
+     references: &[StateReference],
+     slot_by_site: &BTreeMap<String, usize>,
+ ) -> Option<String> {
+-    fn visit(expression: &Expression<'_>, identifiers: &mut Vec<(u32, u32)>) -> bool {
+-        match expression {
+-            Expression::NumericLiteral(_)
+-            | Expression::StringLiteral(_)
+-            | Expression::BooleanLiteral(_)
+-            | Expression::NullLiteral(_) => true,
+-            Expression::Identifier(identifier) => {
+-                identifiers.push((identifier.span.start, identifier.span.end));
+-                true
+-            }
+-            Expression::TemplateLiteral(template) => {
+-                template.expressions.iter().all(|expression| visit(expression, identifiers))
+-            }
+-            Expression::ParenthesizedExpression(parenthesized) => {
+-                visit(&parenthesized.expression, identifiers)
+-            }
+-            Expression::UnaryExpression(unary) => {
+-                matches!(
+-                    unary.operator,
+-                    UnaryOperator::UnaryPlus
+-                        | UnaryOperator::UnaryNegation
+-                        | UnaryOperator::LogicalNot
+-                        | UnaryOperator::BitwiseNot
+-                ) && visit(&unary.argument, identifiers)
+-            }
+-            Expression::BinaryExpression(binary) => {
+-                !matches!(binary.operator, BinaryOperator::In | BinaryOperator::Instanceof)
+-                    && visit(&binary.left, identifiers)
+-                    && visit(&binary.right, identifiers)
+-            }
+-            Expression::LogicalExpression(logical) => {
+-                matches!(
+-                    logical.operator,
+-                    LogicalOperator::Or | LogicalOperator::And | LogicalOperator::Coalesce
+-                ) && visit(&logical.left, identifiers)
+-                    && visit(&logical.right, identifiers)
+-            }
+-            Expression::ConditionalExpression(conditional) => {
+-                visit(&conditional.test, identifiers)
+-                    && visit(&conditional.consequent, identifiers)
+-                    && visit(&conditional.alternate, identifiers)
+-            }
+-            // Calls, member access, assignment, update, arrays, objects, casts,
+-            // globals and every syntax form outside this whitelist stay on v2.
+-            _ => false,
+-        }
+-    }
+-
+     let allocator = Allocator::default();
+     let expression = Parser::new(&allocator, source, SourceType::tsx())
+         .parse_expression()
+         .ok()?;
+     let mut identifier_spans = Vec::new();
+-    if !visit(&expression, &mut identifier_spans) {
++    if !visit_closed_primitive_expression(
++        &expression,
++        ClosedExpressionPolicy::Primitive,
++        &mut |identifier| {
++            identifier_spans.push((identifier.span.start, identifier.span.end));
++            true
++        },
++    ) {
+         return None;
+     }
+ 
+@@ -151,7 +177,11 @@
+     for (slot_index, slot_site_id) in ordered_layout_site_ids.iter().enumerate() {
+         let mut case_body = String::new();
+         for (sink_index, sink) in sinks.iter().enumerate() {
+-            if !sink.source_sites.iter().any(|site| site.as_str() == *slot_site_id) {
++            if !sink
++                .source_sites
++                .iter()
++                .any(|site| site.as_str() == *slot_site_id)
++            {
+                 continue;
+             }
+             let bit = 1u32 << sink_index;

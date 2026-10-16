@@ -1,0 +1,33 @@
+--- ../candidate/compiler/oxc-spike/src/owner_update_program.rs	2026-10-13 16:16:35
++++ compiler/oxc-spike/src/owner_update_program.rs	2026-10-13 16:18:57
+@@ -163,7 +163,8 @@
+         switch_cases.push_str(&format!("case {slot_index}: {{{case_body} break;}}"));
+     }
+     Some(format!(
+-        "{{ schemaVersion: 1, programId: {owner_id}, sinkIds: [{sink_ids}], executeCut: function(changedRows, changedSlots, changeCount, rowStates, stagedRows, stagedSinkIds, stagedValues) {{ let stagedCount = 0; for (let changeIndex = 0; changeIndex < changeCount; changeIndex++) {{ const rowIndex = changedRows[changeIndex]; const rowState = rowStates[rowIndex]; switch (changedSlots[changeIndex]) {{ {switch_cases} }} }} return stagedCount; }} }}"
++        "{{ schemaVersion: 1, programId: {owner_id}, slotCount: {}, sinkIds: [{sink_ids}], executeCut: function(changedRows, changedSlots, changeCount, rowStates, stagedRows, stagedSinkIds, stagedValues) {{ let stagedCount = 0; for (let changeIndex = 0; changeIndex < changeCount; changeIndex++) {{ const rowIndex = changedRows[changeIndex]; const rowState = rowStates[rowIndex]; switch (changedSlots[changeIndex]) {{ {switch_cases} }} }} return stagedCount; }} }}",
++        ordered_layout_site_ids.len(),
+     ))
+ }
+ 
+--- ../candidate/compiler/oxc-spike/src/main.rs	2026-10-13 16:16:35
++++ compiler/oxc-spike/src/main.rs	2026-10-13 16:18:57
+@@ -6954,6 +6954,7 @@
+         assert_ne!(row.component_site_id, same_shape.component_site_id);
+         let code = plan.component_module.unwrap();
+         assert!(code.contains("const __nativeOwnerCutKernels = ["), "{code}");
++        assert_eq!(code.matches("slotCount: 2").count(), 2, "{code}");
+         assert!(code.contains("ownerUpdateProgram: __nativeOwnerCutKernels[0]"), "{code}");
+         assert!(code.contains("ownerUpdateProgram: __nativeOwnerCutKernels[1]"), "{code}");
+         assert!(!vector.prop_only_sites.is_empty());
+--- ../candidate/node-proof/execute_owner_cut_kernel.mjs	2026-10-13 16:16:35
++++ node-proof/execute_owner_cut_kernel.mjs	2026-10-13 16:18:57
+@@ -114,6 +114,8 @@
+ const kernels = vm.runInNewContext(`${declaration}; __nativeOwnerCutKernels`);
+ assert.equal(kernels.length, 2, "only primitive Row and SameShape should get kernels");
+ assert.notEqual(kernels[0].programId, kernels[1].programId, "same-shaped components must have isolated programs");
++assert.equal(kernels[0].slotCount, 2, "owner kernel declares its ordered state-layout width");
++assert.equal(kernels[1].slotCount, 2, "each owner kernel declares its own layout width");
+ assert.equal(kernels[0].sinkIds.length, 7);
+ assert.equal(typeof kernels[0].executeCut, "function");
+ 

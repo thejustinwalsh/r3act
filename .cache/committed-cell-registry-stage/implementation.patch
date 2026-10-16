@@ -1,0 +1,117 @@
+--- a/src/owner_state_world.ts
++++ b/src/owner_state_world.ts
+@@ -145,6 +145,24 @@
+       : null;
+   }
+ 
++  static resolveLegacyChange(
++    candidate: unknown,
++    worldSecret: object,
++    change: StateChange,
++  ): StateCell<unknown> | null {
++    if (
++      (typeof candidate !== "object" && typeof candidate !== "function") ||
++      candidate === null || !(#cell in candidate)
++    ) return null;
++    const capability = candidate as CommittedCellCapability;
++    if (capability.#worldSecret !== worldSecret) return null;
++    const cell = capability.#cell;
++    return capability.#owner === change.owner &&
++        capability.#site === change.site
++      ? cell
++      : null;
++  }
++
+   static revoke(candidate: object, worldSecret: object): void {
+     if (!(#cell in candidate)) return;
+     const capability = candidate as CommittedCellCapability;
+@@ -370,13 +388,6 @@
+   forward?: (action: StateAction<unknown>) => boolean;
+   discarded: boolean;
+   dispatch: (action: StateAction<unknown>) => boolean;
+-};
+-
+-type CommittedCellIdentity = {
+-  owner: OwnerId;
+-  site: StateSiteId;
+-  cell: StateCell<unknown>;
+-  handle: StateCellHandle;
+ };
+ 
+ /** Stable, payload-free address for a committed state cell. */
+@@ -497,8 +508,6 @@
+   #stateByOwner = new Map<OwnerId, Map<StateSiteId, StateCell<unknown>>>();
+   #numericLayouts = new WeakMap<object, NumericLayoutRecord>();
+   #identitySecret = Object.freeze({});
+-  /** Explicit deletion on owner destruction releases cells even if identities survive. */
+-  #committedCellsByIdentity = new WeakMap<object, CommittedCellIdentity>();
+   #dirtyJournal = new WorldDirtyJournal();
+   #changeListeners = new Set<(change: StateChange) => void>();
+   #dirtyCellListeners:
+@@ -1816,13 +1825,17 @@
+ 
+   /** Resolve the canonical source for an identity-bearing committed change. */
+   scalarSourceForChange(change: StateChange): ScalarSource | null {
+-    const entry = change.cellIdentity
+-      ? this.#committedCellsByIdentity.get(change.cellIdentity)
+-      : undefined;
+-    if (entry && entry.owner === change.owner && entry.site === change.site) {
++    const cell = change.cellIdentity
++      ? CommittedCellCapability.resolveLegacyChange(
++        change.cellIdentity,
++        this.#identitySecret,
++        change,
++      )
++      : null;
++    if (cell) {
+       this.#assertOwner(change.owner);
+-      return typeof entry.cell.value === "number"
+-        ? entry.cell.source ?? null
++      return typeof cell.value === "number"
++        ? cell.source ?? null
+         : null;
+     }
+     return this.scalarSource(change.owner, change.site);
+@@ -1838,12 +1851,16 @@
+ 
+   /** Resolve the current version for an identity-bearing committed change. */
+   versionForChange(change: StateChange): number {
+-    const entry = change.cellIdentity
+-      ? this.#committedCellsByIdentity.get(change.cellIdentity)
+-      : undefined;
+-    if (entry && entry.owner === change.owner && entry.site === change.site) {
++    const cell = change.cellIdentity
++      ? CommittedCellCapability.resolveLegacyChange(
++        change.cellIdentity,
++        this.#identitySecret,
++        change,
++      )
++      : null;
++    if (cell) {
+       this.#assertOwner(change.owner);
+-      return entry.cell.version;
++      return cell.version;
+     }
+     return this.version(change.owner, change.site);
+   }
+@@ -1987,7 +2004,6 @@
+       const identity = cell.cellIdentity;
+       if (identity) {
+         CommittedCellCapability.revoke(identity, this.#identitySecret);
+-        this.#committedCellsByIdentity.delete(identity);
+       }
+       cell.cellIdentity = undefined;
+       cell.cellHandle = undefined;
+@@ -2105,12 +2121,6 @@
+         cellIdentity,
+       });
+       cell.cellHandle = handle;
+-      this.#committedCellsByIdentity.set(cellIdentity, {
+-        owner,
+-        site,
+-        cell: cell as StateCell<unknown>,
+-        handle,
+-      });
+     }
+     const handle = cell.cellHandle;
+     const version = cell.version;

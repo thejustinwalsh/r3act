@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Async DAG frontier browser study</title>
+    <style>
+      body { max-width: 960px; margin: 32px auto; padding: 0 20px; font: 16px/1.5 system-ui, sans-serif; color: #172033; }
+      .note { color: #536078; }
+      .views { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+      .views section { border: 1px solid #cbd3df; border-radius: 8px; padding: 12px; min-height: 160px; }
+      #status { white-space: pre-wrap; background: #f4f6fa; padding: 12px; min-height: 100px; }
+      button { padding: 9px 14px; }
+    </style>
+  </head>
+  <body>
+    <h1>Async DAG frontier study</h1>
+    <p class="note">The page compares a serial route loader, prewarmed React Suspense, and the OXC task DAG. All requests use the same controlled same-origin endpoint; events and commit times are recorded.</p>
+    <button id="run">Run one paired page block</button>
+    <div class="views">
+      <section><h2>React Suspense</h2><div id="react-view" aria-live="polite"></div></section>
+      <section><h2>Compiled DAG VDOM</h2><div id="runtime-view" aria-live="polite"></div></section>
+    </div>
+    <pre id="status">Ready.</pre>
+    <script type="module" src="/src/browser/async_dag_frontier_benchmark.tsx"></script>
+  </body>
+</html>

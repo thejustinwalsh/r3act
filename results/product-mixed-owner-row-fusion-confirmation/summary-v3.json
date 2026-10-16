@@ -1,0 +1,2224 @@
+{
+  "schemaVersion": "product-mixed-owner-row-fusion-confirmation-analysis-v3",
+  "study": "compiled-product-mixed-owner-row-fusion-confirmation",
+  "gate": "FAIL",
+  "generatedAt": "2026-10-13T14:17:13.772Z",
+  "analysisTools": {
+    "analyzer": {
+      "path": "scripts/summarize_product_mixed_owner_row_fusion_v3.mjs",
+      "sha256": "a17132a18694a22d10372f14b8d2a54f087814cb6f1364906a59db16247f4a65"
+    },
+    "repair": {
+      "originalPath": "scripts/summarize_product_mixed_owner_row_fusion.mjs",
+      "originalSha256": "f6b34d439776c93fec13d28118e8dcb8b4d0b6e38cde95acfad819b3273048f7",
+      "failureLog": ".cache/owner-row-fusion-timing-primary/analysis.log",
+      "failureLogSha256": "1fb44fa0383f0e7f97eee13a6d504139c1791f0873803526334966be9fc527fb",
+      "scope": "Replace undefined metadata hash helper; same raw records, estimators and gates. Versioned output/provenance only."
+    },
+    "verifier": {
+      "path": "scripts/verify_product_mixed_owner_row_fusion_evidence.mjs",
+      "sha256": "7e3877f27112a7742dbc237ec6e8edb4ccbf7d26f7b006bb449bce7c104022a7"
+    },
+    "rawRunId": "d841ba17-eb9f-403f-a004-4da13198161f"
+  },
+  "preregistration": {
+    "path": "results/product-mixed-owner-row-fusion-confirmation/preregistration.json",
+    "sha256": "bd7a44a703484fa45966af5416a0a1cbf8c79c977ca32011a45211dc0a0627a9",
+    "archiveSha256": "cbe4ce3f557314fa093ac51214a2ba5e9cf0a5f0ad67b5429ce3a95a5e59a382",
+    "protocolSha256": "4123ced12c364e8f1ae09ae19187d8f7af9886ae5976220899fb0e430d913e34",
+    "actualArchiveSha256": "cbe4ce3f557314fa093ac51214a2ba5e9cf0a5f0ad67b5429ce3a95a5e59a382",
+    "actualProtocolSha256": "4123ced12c364e8f1ae09ae19187d8f7af9886ae5976220899fb0e430d913e34",
+    "collectionManifestPath": "results/product-mixed-owner-row-fusion-confirmation/manifest.json",
+    "collectionManifestSha256": "92e9f2c7f21393bf982e9e607942c61594fc6a07fb044cb98bd363590556f6bf",
+    "postCollectionChangedFiles": [],
+    "decision": {
+      "medianRatioMax": 0.8,
+      "medianSizesRequired": 2,
+      "p95RatioMax": 1.1,
+      "preregistrationClockMinPositiveDeltaMs": 0.004999995231628418,
+      "minDenominatorTicks": 5,
+      "denominatorRule": "max(preregistration,reactPage,nativePage) * minDenominatorTicks"
+    }
+  },
+  "counts": {
+    "scheduled": 30,
+    "loaded": 30,
+    "valid": 30,
+    "invalid": 0,
+    "missingOrUnreadable": 0
+  },
+  "validation": {
+    "preregistrationErrors": [],
+    "archiveContentErrors": [],
+    "directoryErrors": [],
+    "invalidPages": [],
+    "policy": "All 30 preregistered pages are retained; any missing, failed, mis-scheduled, or invalid page makes the overall gate INVALID."
+  },
+  "decision": {
+    "medianGate": "FAIL",
+    "medianPassingSizes": [],
+    "medianFailingSizes": [
+      128,
+      512,
+      1024
+    ],
+    "medianUnresolvedSizes": [],
+    "requiredPassingSizes": 2,
+    "p95Gate": "FAIL",
+    "p95FailingSizes": [
+      128,
+      512,
+      1024
+    ],
+    "p95UnresolvedSizes": [],
+    "requiredP95RatioAtEverySize": 1.1,
+    "overallGate": "FAIL"
+  },
+  "sizes": [
+    {
+      "size": 128,
+      "arms": {
+        "native": {
+          "validPages": 5,
+          "expectedPages": 5,
+          "pageMedianOfPageMediansMs": {
+            "all": 0.26999999582767487,
+            "ordinary": 0.26999999582767487,
+            "structural": 1.739999994635582
+          },
+          "pageMedianOfPageP95sMs": {
+            "all": 0.3700000047683716,
+            "ordinary": 0.3499999940395355,
+            "structural": 5.819999992847443
+          },
+          "pageMedianIntervalMs": 8.334999999999923,
+          "pageMedianIntervalP95Ms": 9.129999999999995,
+          "pageMedianMountMs": 14.864999994635582,
+          "pageMedianDisposeMs": 0.9150000065565109,
+          "pageMedianMeasuredStepsCpuMs": 83.70999996364117,
+          "pageMedianLifecycleCpuMs": 99.94499997794628
+        },
+        "react": {
+          "validPages": 5,
+          "expectedPages": 5,
+          "pageMedianOfPageMediansMs": {
+            "all": 0.22499999403953552,
+            "ordinary": 0.2199999988079071,
+            "structural": 0.4449999928474426
+          },
+          "pageMedianOfPageP95sMs": {
+            "all": 0.32499998807907104,
+            "ordinary": 0.2850000113248825,
+            "structural": 1.209999993443489
+          },
+          "pageMedianIntervalMs": 8.334999999999923,
+          "pageMedianIntervalP95Ms": 9.110000000000014,
+          "pageMedianMountMs": 5.905000001192093,
+          "pageMedianDisposeMs": 0.33000001311302185,
+          "pageMedianMeasuredStepsCpuMs": 57.25999993085861,
+          "pageMedianLifecycleCpuMs": 63.15999995172024
+        }
+      },
+      "paired": [
+        {
+          "pair": 0,
+          "valid": true,
+          "nativeSequence": 1,
+          "reactSequence": 0,
+          "clockFloorMs": 0.004999995231628418,
+          "denominatorResolutionMs": 0.02499997615814209,
+          "medianRatio": {
+            "status": "RESOLVED",
+            "descriptiveRatio": 1.3913043562766507,
+            "decisionRatio": 1.3913043562766507,
+            "reason": null
+          },
+          "p95Ratio": {
+            "status": "RESOLVED",
+            "descriptiveRatio": 2.8142857605097253,
+            "decisionRatio": 2.8142857605097253,
+            "reason": null
+          }
+        },
+        {
+          "pair": 1,
+          "valid": true,
+          "nativeSequence": 2,
+          "reactSequence": 3,
+          "clockFloorMs": 0.004999995231628418,
+          "denominatorResolutionMs": 0.02499997615814209,
+          "medianRatio": {
+            "status": "RESOLVED",
+            "descriptiveRatio": 1.255813913193183,
+            "decisionRatio": 1.255813913193183,
+            "reason": null
+          },
+          "p95Ratio": {
+            "status": "RESOLVED",
+            "descriptiveRatio": 2.000000047305274,
+            "decisionRatio": 2.000000047305274,
+            "reason": null
+          }
+        },
+        {
+          "pair": 2,
+          "valid": true,
+          "nativeSequence": 5,
+          "reactSequence": 4,
+          "clockFloorMs": 0.004999995231628418,
+          "denominatorResolutionMs": 0.02499997615814209,
+          "medianRatio": {
+            "status": "RESOLVED",
+            "descriptiveRatio": 1.1250000077610216,
+            "decisionRatio": 1.1250000077610216,
+            "reason": null
+          },
+          "p95Ratio": {
+            "status": "RESOLVED",
+            "descriptiveRatio": 1.0923076492794876,
+            "decisionRatio": 1.0923076492794876,
+            "reason": null
+          }
+        },
+        {
+          "pair": 3,
+          "valid": true,
+          "nativeSequence": 6,
+          "reactSequence": 7,
+          "clockFloorMs": 0.004999995231628418,
+          "denominatorResolutionMs": 0.02499997615814209,
+          "medianRatio": {
+            "status": "RESOLVED",
+            "descriptiveRatio": 1.2380952313373417,
+            "decisionRatio": 1.2380952313373417,
+            "reason": null
+          },
+          "p95Ratio": {
+            "status": "RESOLVED",
+            "descriptiveRatio": 1.1333333565129176,
+            "decisionRatio": 1.1333333565129176,
+            "reason": null
+          }
+        },
+        {
+          "pair": 4,
+          "valid": true,
+          "nativeSequence": 9,
+          "reactSequence": 8,
+          "clockFloorMs": 0.004999995231628418,
+          "denominatorResolutionMs": 0.02499997615814209,
+          "medianRatio": {
+            "status": "RESOLVED",
+            "descriptiveRatio": 1.2666666843273027,
+            "decisionRatio": 1.2666666843273027,
+            "reason": null
+          },
+          "p95Ratio": {
+            "status": "RESOLVED",
+            "descriptiveRatio": 1.1384615948919734,
+            "decisionRatio": 1.1384615948919734,
+            "reason": null
+          }
+        }
+      ],
+      "decision": {
+        "pairedMedianGeometricMeanRatio": 1.2525159697888,
+        "descriptiveMedianGeometricMeanRatio": 1.2525159697888,
+        "medianRatioStatus": "RESOLVED",
+        "medianRatioPass": false,
+        "medianPairsResolved": 5,
+        "medianPairsExpected": 5,
+        "medianPairedP95Ratio": 1.1384615948919734,
+        "descriptiveMedianPairedP95Ratio": 1.1384615948919734,
+        "p95RatioStatus": "RESOLVED",
+        "p95RatioPass": false,
+        "p95PairsResolved": 5,
+        "p95PairsExpected": 5
+      }
+    },
+    {
+      "size": 512,
+      "arms": {
+        "native": {
+          "validPages": 5,
+          "expectedPages": 5,
+          "pageMedianOfPageMediansMs": {
+            "all": 0.8950000107288361,
+            "ordinary": 0.8900000005960464,
+            "structural": 3.4849999994039536
+          },
+          "pageMedianOfPageP95sMs": {
+            "all": 1.155000001192093,
+            "ordinary": 1.0699999928474426,
+            "structural": 9.025000005960464
+          },
+          "pageMedianIntervalMs": 8.334999999999923,
+          "pageMedianIntervalP95Ms": 9.009999999999991,
+          "pageMedianMountMs": 30.66499999165535,
+          "pageMedianDisposeMs": 2.5250000059604645,
+          "pageMedianMeasuredStepsCpuMs": 245.71999998390675,
+          "pageMedianLifecycleCpuMs": 279.6649999320507
+        },
+        "react": {
+          "validPages": 5,
+          "expectedPages": 5,
+          "pageMedianOfPageMediansMs": {
+            "all": 0.6300000101327896,
+            "ordinary": 0.6299999952316284,
+            "structural": 1
+          },
+          "pageMedianOfPageP95sMs": {
+            "all": 0.7999999970197678,
+            "ordinary": 0.75,
+            "structural": 2.1000000089406967
+          },
+          "pageMedianIntervalMs": 8.335000000000036,
+          "pageMedianIntervalP95Ms": 8.664999999999964,
+          "pageMedianMountMs": 11.504999995231628,
+          "pageMedianDisposeMs": 0.7000000029802322,
+          "pageMedianMeasuredStepsCpuMs": 157.77500008046627,
+          "pageMedianLifecycleCpuMs": 169.5350000858307
+        }
+      },
+      "paired": [
+        {
+          "pair": 0,
+          "valid": true,
+          "nativeSequence": 11,
+          "reactSequence": 10,
+          "clockFloorMs": 0.004999995231628418,
+          "denominatorResolutionMs": 0.02499997615814209,
+          "medianRatio": {
+            "status": "RESOLVED",
+            "descriptiveRatio": 1.3333332939122726,
+            "decisionRatio": 1.3333332939122726,
+            "reason": null
+          },
+          "p95Ratio": {
+            "status": "RESOLVED",
+            "descriptiveRatio": 1.381249991734512,
+            "decisionRatio": 1.381249991734512,
+            "reason": null
+          }
+        },
+        {
+          "pair": 1,
+          "valid": true,
+          "nativeSequence": 12,
+          "reactSequence": 13,
+          "clockFloorMs": 0.004999995231628418,
+          "denominatorResolutionMs": 0.02499997615814209,
+          "medianRatio": {
+            "status": "RESOLVED",
+            "descriptiveRatio": 1.3384615642079238,
+            "decisionRatio": 1.3384615642079238,
+            "reason": null
+          },
+          "p95Ratio": {
+            "status": "RESOLVED",
+            "descriptiveRatio": 1.4036144508014554,
+            "decisionRatio": 1.4036144508014554,
+            "reason": null
+          }
+        },
+        {
+          "pair": 2,
+          "valid": true,
+          "nativeSequence": 15,
+          "reactSequence": 14,
+          "clockFloorMs": 0.004999995231628418,
+          "denominatorResolutionMs": 0.02499997615814209,
+          "medianRatio": {
+            "status": "RESOLVED",
+            "descriptiveRatio": 1.4634145969156003,
+            "decisionRatio": 1.4634145969156003,
+            "reason": null
+          },
+          "p95Ratio": {
+            "status": "RESOLVED",
+            "descriptiveRatio": 1.5400000015894573,
+            "decisionRatio": 1.5400000015894573,
+            "reason": null
+          }
+        },
+        {
+          "pair": 3,
+          "valid": true,
+          "nativeSequence": 16,
+          "reactSequence": 17,
+          "clockFloorMs": 0.004999995231628418,
+          "denominatorResolutionMs": 0.02499997615814209,
+          "medianRatio": {
+            "status": "RESOLVED",
+            "descriptiveRatio": 1.4206349484173832,
+            "decisionRatio": 1.4206349484173832,
+            "reason": null
+          },
+          "p95Ratio": {
+            "status": "RESOLVED",
+            "descriptiveRatio": 1.4713375878394983,
+            "decisionRatio": 1.4713375878394983,
+            "reason": null
+          }
+        },
+        {
+          "pair": 4,
+          "valid": true,
+          "nativeSequence": 19,
+          "reactSequence": 18,
+          "clockFloorMs": 0.004999995231628418,
+          "denominatorResolutionMs": 0.02499997615814209,
+          "medianRatio": {
+            "status": "RESOLVED",
+            "descriptiveRatio": 1.3969465496031446,
+            "decisionRatio": 1.3969465496031446,
+            "reason": null
+          },
+          "p95Ratio": {
+            "status": "RESOLVED",
+            "descriptiveRatio": 1.40697673753734,
+            "decisionRatio": 1.40697673753734,
+            "reason": null
+          }
+        }
+      ],
+      "decision": {
+        "pairedMedianGeometricMeanRatio": 1.3896801651067674,
+        "descriptiveMedianGeometricMeanRatio": 1.3896801651067674,
+        "medianRatioStatus": "RESOLVED",
+        "medianRatioPass": false,
+        "medianPairsResolved": 5,
+        "medianPairsExpected": 5,
+        "medianPairedP95Ratio": 1.40697673753734,
+        "descriptiveMedianPairedP95Ratio": 1.40697673753734,
+        "p95RatioStatus": "RESOLVED",
+        "p95RatioPass": false,
+        "p95PairsResolved": 5,
+        "p95PairsExpected": 5
+      }
+    },
+    {
+      "size": 1024,
+      "arms": {
+        "native": {
+          "validPages": 5,
+          "expectedPages": 5,
+          "pageMedianOfPageMediansMs": {
+            "all": 1.7150000035762787,
+            "ordinary": 1.709999993443489,
+            "structural": 5.790000006556511
+          },
+          "pageMedianOfPageP95sMs": {
+            "all": 2.6099999994039536,
+            "ordinary": 2.175000011920929,
+            "structural": 13.104999989271164
+          },
+          "pageMedianIntervalMs": 8.334999999999809,
+          "pageMedianIntervalP95Ms": 9.049999999999727,
+          "pageMedianMountMs": 49.60999999940395,
+          "pageMedianDisposeMs": 4.075000002980232,
+          "pageMedianMeasuredStepsCpuMs": 472.1299999952316,
+          "pageMedianLifecycleCpuMs": 528.984999999404
+        },
+        "react": {
+          "validPages": 5,
+          "expectedPages": 5,
+          "pageMedianOfPageMediansMs": {
+            "all": 1.260000005364418,
+            "ordinary": 1.2599999904632568,
+            "structural": 1.844999998807907
+          },
+          "pageMedianOfPageP95sMs": {
+            "all": 1.5450000017881393,
+            "ordinary": 1.510000005364418,
+            "structural": 3.3350000083446503
+          },
+          "pageMedianIntervalMs": 8.334999999999923,
+          "pageMedianIntervalP95Ms": 9.009999999999764,
+          "pageMedianMountMs": 15.640000000596046,
+          "pageMedianDisposeMs": 1.0750000029802322,
+          "pageMedianMeasuredStepsCpuMs": 311.94000005722046,
+          "pageMedianLifecycleCpuMs": 329.1100000590086
+        }
+      },
+      "paired": [
+        {
+          "pair": 0,
+          "valid": true,
+          "nativeSequence": 21,
+          "reactSequence": 20,
+          "clockFloorMs": 0.004999995231628418,
+          "denominatorResolutionMs": 0.02499997615814209,
+          "medianRatio": {
+            "status": "RESOLVED",
+            "descriptiveRatio": 1.388429736087137,
+            "decisionRatio": 1.388429736087137,
+            "reason": null
+          },
+          "p95Ratio": {
+            "status": "RESOLVED",
+            "descriptiveRatio": 1.4983388720108073,
+            "decisionRatio": 1.4983388720108073,
+            "reason": null
+          }
+        },
+        {
+          "pair": 1,
+          "valid": true,
+          "nativeSequence": 22,
+          "reactSequence": 23,
+          "clockFloorMs": 0.004999995231628418,
+          "denominatorResolutionMs": 0.02499997615814209,
+          "medianRatio": {
+            "status": "RESOLVED",
+            "descriptiveRatio": 1.435146455097277,
+            "decisionRatio": 1.435146455097277,
+            "reason": null
+          },
+          "p95Ratio": {
+            "status": "RESOLVED",
+            "descriptiveRatio": 2.2218542896372244,
+            "decisionRatio": 2.2218542896372244,
+            "reason": null
+          }
+        },
+        {
+          "pair": 2,
+          "valid": true,
+          "nativeSequence": 25,
+          "reactSequence": 24,
+          "clockFloorMs": 0.004999995231628418,
+          "denominatorResolutionMs": 0.02499997615814209,
+          "medianRatio": {
+            "status": "RESOLVED",
+            "descriptiveRatio": 1.3333333485580192,
+            "decisionRatio": 1.3333333485580192,
+            "reason": null
+          },
+          "p95Ratio": {
+            "status": "RESOLVED",
+            "descriptiveRatio": 1.399548534508136,
+            "decisionRatio": 1.399548534508136,
+            "reason": null
+          }
+        },
+        {
+          "pair": 3,
+          "valid": true,
+          "nativeSequence": 26,
+          "reactSequence": 27,
+          "clockFloorMs": 0.004999995231628418,
+          "denominatorResolutionMs": 0.02499997615814209,
+          "medianRatio": {
+            "status": "RESOLVED",
+            "descriptiveRatio": 1.3571428579875942,
+            "decisionRatio": 1.3571428579875942,
+            "reason": null
+          },
+          "p95Ratio": {
+            "status": "RESOLVED",
+            "descriptiveRatio": 1.4937106884641977,
+            "decisionRatio": 1.4937106884641977,
+            "reason": null
+          }
+        },
+        {
+          "pair": 4,
+          "valid": true,
+          "nativeSequence": 29,
+          "reactSequence": 28,
+          "clockFloorMs": 0.004999995231628418,
+          "denominatorResolutionMs": 0.02499997615814209,
+          "medianRatio": {
+            "status": "RESOLVED",
+            "descriptiveRatio": 1.404761907296116,
+            "decisionRatio": 1.404761907296116,
+            "reason": null
+          },
+          "p95Ratio": {
+            "status": "RESOLVED",
+            "descriptiveRatio": 1.6893203860085524,
+            "decisionRatio": 1.6893203860085524,
+            "reason": null
+          }
+        }
+      ],
+      "decision": {
+        "pairedMedianGeometricMeanRatio": 1.3833033593702877,
+        "descriptiveMedianGeometricMeanRatio": 1.3833033593702877,
+        "medianRatioStatus": "RESOLVED",
+        "medianRatioPass": false,
+        "medianPairsResolved": 5,
+        "medianPairsExpected": 5,
+        "medianPairedP95Ratio": 1.4983388720108073,
+        "descriptiveMedianPairedP95Ratio": 1.4983388720108073,
+        "p95RatioStatus": "RESOLVED",
+        "p95RatioPass": false,
+        "p95PairsResolved": 5,
+        "p95PairsExpected": 5
+      }
+    }
+  ],
+  "pages": [
+    {
+      "sequence": 0,
+      "filename": "sequence-00.json",
+      "sha256": "f26d0508ff4309a2872719c6a32f7c26b414874b718f0da017c220c0070ad5e0",
+      "schedule": {
+        "size": 128,
+        "pair": 0,
+        "arm": "react",
+        "sequence": 0
+      },
+      "resultIdentity": {
+        "arm": "react",
+        "size": 128,
+        "pair": 0,
+        "sequence": 0
+      },
+      "resultStatus": "PASS",
+      "valid": true,
+      "validationErrors": [],
+      "collectorError": null,
+      "browserErrors": [],
+      "transport": null,
+      "clockMinPositiveDeltaMs": 0.004999995231628418,
+      "metrics": {
+        "commits": {
+          "all": {
+            "medianMs": 0.23000000417232513,
+            "p95Ms": 0.3499999940395355,
+            "count": 240
+          },
+          "ordinary": {
+            "medianMs": 0.22500000894069672,
+            "p95Ms": 0.3200000077486038,
+            "count": 232
+          },
+          "structural": {
+            "medianMs": 0.4650000035762787,
+            "p95Ms": 1.219999998807907,
+            "count": 8
+          }
+        },
+        "interval": {
+          "medianMs": 8.335000000000036,
+          "p95Ms": 9.110000000000014,
+          "count": 240
+        },
+        "mountMs": 6.540000006556511,
+        "measuredStepsCpuMs": 59.62500001490116,
+        "measuredStepsFrames": 240,
+        "warmupStepsCpuMs": null,
+        "disposeMs": 0.32999999821186066,
+        "measuredLifecycleCpuMs": 66.49500001966953,
+        "lifecycleCpuFormula": "mountMs + sum(recorded 240 measured commitMs) + disposeMs; warmup-step CPU is not serialized; RAF intervals are separate"
+      }
+    },
+    {
+      "sequence": 1,
+      "filename": "sequence-01.json",
+      "sha256": "3e7cbfcdb3beceb6d6a6a4df8ebb64b7daf51efabb5e34435a95b82fed741a09",
+      "schedule": {
+        "size": 128,
+        "pair": 0,
+        "arm": "native",
+        "sequence": 1
+      },
+      "resultIdentity": {
+        "arm": "native",
+        "size": 128,
+        "pair": 0,
+        "sequence": 1
+      },
+      "resultStatus": "PASS",
+      "valid": true,
+      "validationErrors": [],
+      "collectorError": null,
+      "browserErrors": [],
+      "transport": null,
+      "clockMinPositiveDeltaMs": 0.004999995231628418,
+      "metrics": {
+        "commits": {
+          "all": {
+            "medianMs": 0.3200000077486038,
+            "p95Ms": 0.9849999994039536,
+            "count": 240
+          },
+          "ordinary": {
+            "medianMs": 0.3150000125169754,
+            "p95Ms": 0.5949999988079071,
+            "count": 232
+          },
+          "structural": {
+            "medianMs": 1.739999994635582,
+            "p95Ms": 6.634999990463257,
+            "count": 8
+          }
+        },
+        "interval": {
+          "medianMs": 8.335000000000036,
+          "p95Ms": 9.300000000000182,
+          "count": 240
+        },
+        "mountMs": 14.864999994635582,
+        "measuredStepsCpuMs": 102.33000008761883,
+        "measuredStepsFrames": 240,
+        "warmupStepsCpuMs": null,
+        "disposeMs": 2.6400000005960464,
+        "measuredLifecycleCpuMs": 119.83500008285046,
+        "lifecycleCpuFormula": "mountMs + sum(recorded 240 measured commitMs) + disposeMs; warmup-step CPU is not serialized; RAF intervals are separate"
+      }
+    },
+    {
+      "sequence": 2,
+      "filename": "sequence-02.json",
+      "sha256": "3febd0cd90a7758900cdc09c397915c36acd9057250bd07effc6a521ee0aaae2",
+      "schedule": {
+        "size": 128,
+        "pair": 1,
+        "arm": "native",
+        "sequence": 2
+      },
+      "resultIdentity": {
+        "arm": "native",
+        "size": 128,
+        "pair": 1,
+        "sequence": 2
+      },
+      "resultStatus": "PASS",
+      "valid": true,
+      "validationErrors": [],
+      "collectorError": null,
+      "browserErrors": [],
+      "transport": null,
+      "clockMinPositiveDeltaMs": 0.004999995231628418,
+      "metrics": {
+        "commits": {
+          "all": {
+            "medianMs": 0.26999999582767487,
+            "p95Ms": 0.6300000101327896,
+            "count": 240
+          },
+          "ordinary": {
+            "medianMs": 0.26999999582767487,
+            "p95Ms": 0.3700000047683716,
+            "count": 232
+          },
+          "structural": {
+            "medianMs": 1.7950000017881393,
+            "p95Ms": 5.6400000005960464,
+            "count": 8
+          }
+        },
+        "interval": {
+          "medianMs": 8.334999999999809,
+          "p95Ms": 9.260000000000218,
+          "count": 240
+        },
+        "mountMs": 35.21500000357628,
+        "measuredStepsCpuMs": 84.75000002980232,
+        "measuredStepsFrames": 240,
+        "warmupStepsCpuMs": null,
+        "disposeMs": 0.885000005364418,
+        "measuredLifecycleCpuMs": 120.85000003874302,
+        "lifecycleCpuFormula": "mountMs + sum(recorded 240 measured commitMs) + disposeMs; warmup-step CPU is not serialized; RAF intervals are separate"
+      }
+    },
+    {
+      "sequence": 3,
+      "filename": "sequence-03.json",
+      "sha256": "9732f76340fa76279ba9c03a05ee80b23280b24901861aded6f8c9730f0e4216",
+      "schedule": {
+        "size": 128,
+        "pair": 1,
+        "arm": "react",
+        "sequence": 3
+      },
+      "resultIdentity": {
+        "arm": "react",
+        "size": 128,
+        "pair": 1,
+        "sequence": 3
+      },
+      "resultStatus": "PASS",
+      "valid": true,
+      "validationErrors": [],
+      "collectorError": null,
+      "browserErrors": [],
+      "transport": null,
+      "clockMinPositiveDeltaMs": 0.004999995231628418,
+      "metrics": {
+        "commits": {
+          "all": {
+            "medianMs": 0.2150000035762787,
+            "p95Ms": 0.3149999976158142,
+            "count": 240
+          },
+          "ordinary": {
+            "medianMs": 0.2150000035762787,
+            "p95Ms": 0.2750000059604645,
+            "count": 232
+          },
+          "structural": {
+            "medianMs": 0.42000000178813934,
+            "p95Ms": 1.1600000113248825,
+            "count": 8
+          }
+        },
+        "interval": {
+          "medianMs": 8.315000000000055,
+          "p95Ms": 9.125,
+          "count": 240
+        },
+        "mountMs": 5.905000001192093,
+        "measuredStepsCpuMs": 55.13500002026558,
+        "measuredStepsFrames": 240,
+        "warmupStepsCpuMs": null,
+        "disposeMs": 0.33500000834465027,
+        "measuredLifecycleCpuMs": 61.37500002980232,
+        "lifecycleCpuFormula": "mountMs + sum(recorded 240 measured commitMs) + disposeMs; warmup-step CPU is not serialized; RAF intervals are separate"
+      }
+    },
+    {
+      "sequence": 4,
+      "filename": "sequence-04.json",
+      "sha256": "cd33ea6b588b41463b11a010182a686ae7090dde57c0baf65caf6ca9413f17c4",
+      "schedule": {
+        "size": 128,
+        "pair": 2,
+        "arm": "react",
+        "sequence": 4
+      },
+      "resultIdentity": {
+        "arm": "react",
+        "size": 128,
+        "pair": 2,
+        "sequence": 4
+      },
+      "resultStatus": "PASS",
+      "valid": true,
+      "validationErrors": [],
+      "collectorError": null,
+      "browserErrors": [],
+      "transport": null,
+      "clockMinPositiveDeltaMs": 0.004999995231628418,
+      "metrics": {
+        "commits": {
+          "all": {
+            "medianMs": 0.23999999463558197,
+            "p95Ms": 0.32500000298023224,
+            "count": 240
+          },
+          "ordinary": {
+            "medianMs": 0.23999999463558197,
+            "p95Ms": 0.29500000178813934,
+            "count": 232
+          },
+          "structural": {
+            "medianMs": 0.4699999988079071,
+            "p95Ms": 1.1649999916553497,
+            "count": 8
+          }
+        },
+        "interval": {
+          "medianMs": 8.334999999999582,
+          "p95Ms": 9.149999999999977,
+          "count": 240
+        },
+        "mountMs": 5.634999990463257,
+        "measuredStepsCpuMs": 60.450000032782555,
+        "measuredStepsFrames": 240,
+        "warmupStepsCpuMs": null,
+        "disposeMs": 0.33500000834465027,
+        "measuredLifecycleCpuMs": 66.42000003159046,
+        "lifecycleCpuFormula": "mountMs + sum(recorded 240 measured commitMs) + disposeMs; warmup-step CPU is not serialized; RAF intervals are separate"
+      }
+    },
+    {
+      "sequence": 5,
+      "filename": "sequence-05.json",
+      "sha256": "2f983eabc16631cc7a4793937bcd09aac57931e9bcd2646a3befacea7e85202f",
+      "schedule": {
+        "size": 128,
+        "pair": 2,
+        "arm": "native",
+        "sequence": 5
+      },
+      "resultIdentity": {
+        "arm": "native",
+        "size": 128,
+        "pair": 2,
+        "sequence": 5
+      },
+      "resultStatus": "PASS",
+      "valid": true,
+      "validationErrors": [],
+      "collectorError": null,
+      "browserErrors": [],
+      "transport": null,
+      "clockMinPositiveDeltaMs": 0.004999995231628418,
+      "metrics": {
+        "commits": {
+          "all": {
+            "medianMs": 0.26999999582767487,
+            "p95Ms": 0.35499998927116394,
+            "count": 240
+          },
+          "ordinary": {
+            "medianMs": 0.26500000059604645,
+            "p95Ms": 0.3399999886751175,
+            "count": 232
+          },
+          "structural": {
+            "medianMs": 1.5799999982118607,
+            "p95Ms": 5.819999992847443,
+            "count": 8
+          }
+        },
+        "interval": {
+          "medianMs": 8.335000000000036,
+          "p95Ms": 9.129999999999995,
+          "count": 240
+        },
+        "mountMs": 13.915000006556511,
+        "measuredStepsCpuMs": 80.8099999576807,
+        "measuredStepsFrames": 240,
+        "warmupStepsCpuMs": null,
+        "disposeMs": 1.030000001192093,
+        "measuredLifecycleCpuMs": 95.7549999654293,
+        "lifecycleCpuFormula": "mountMs + sum(recorded 240 measured commitMs) + disposeMs; warmup-step CPU is not serialized; RAF intervals are separate"
+      }
+    },
+    {
+      "sequence": 6,
+      "filename": "sequence-06.json",
+      "sha256": "1896fcd50a13505ffdf75220d3f1b2448636b57b6b383c3a2a1439fd8c0d9ae7",
+      "schedule": {
+        "size": 128,
+        "pair": 3,
+        "arm": "native",
+        "sequence": 6
+      },
+      "resultIdentity": {
+        "arm": "native",
+        "size": 128,
+        "pair": 3,
+        "sequence": 6
+      },
+      "resultStatus": "PASS",
+      "valid": true,
+      "validationErrors": [],
+      "collectorError": null,
+      "browserErrors": [],
+      "transport": null,
+      "clockMinPositiveDeltaMs": 0.004999995231628418,
+      "metrics": {
+        "commits": {
+          "all": {
+            "medianMs": 0.25999999046325684,
+            "p95Ms": 0.3400000035762787,
+            "count": 240
+          },
+          "ordinary": {
+            "medianMs": 0.2550000101327896,
+            "p95Ms": 0.32500000298023224,
+            "count": 232
+          },
+          "structural": {
+            "medianMs": 1.6050000041723251,
+            "p95Ms": 5.38000001013279,
+            "count": 8
+          }
+        },
+        "interval": {
+          "medianMs": 8.334999999999923,
+          "p95Ms": 8.735000000000014,
+          "count": 240
+        },
+        "mountMs": 14.424999997019768,
+        "measuredStepsCpuMs": 78.36499999463558,
+        "measuredStepsFrames": 240,
+        "warmupStepsCpuMs": null,
+        "disposeMs": 0.8549999892711639,
+        "measuredLifecycleCpuMs": 93.64499998092651,
+        "lifecycleCpuFormula": "mountMs + sum(recorded 240 measured commitMs) + disposeMs; warmup-step CPU is not serialized; RAF intervals are separate"
+      }
+    },
+    {
+      "sequence": 7,
+      "filename": "sequence-07.json",
+      "sha256": "3d8bda2930c648520a2d2c60209b162a3c1741772a36c99096b35f11cde2cb6a",
+      "schedule": {
+        "size": 128,
+        "pair": 3,
+        "arm": "react",
+        "sequence": 7
+      },
+      "resultIdentity": {
+        "arm": "react",
+        "size": 128,
+        "pair": 3,
+        "sequence": 7
+      },
+      "resultStatus": "PASS",
+      "valid": true,
+      "validationErrors": [],
+      "collectorError": null,
+      "browserErrors": [],
+      "transport": null,
+      "clockMinPositiveDeltaMs": 0.004999995231628418,
+      "metrics": {
+        "commits": {
+          "all": {
+            "medianMs": 0.20999999344348907,
+            "p95Ms": 0.29999999701976776,
+            "count": 240
+          },
+          "ordinary": {
+            "medianMs": 0.20999999344348907,
+            "p95Ms": 0.2749999910593033,
+            "count": 232
+          },
+          "structural": {
+            "medianMs": 0.4100000113248825,
+            "p95Ms": 1.260000005364418,
+            "count": 8
+          }
+        },
+        "interval": {
+          "medianMs": 8.334999999999923,
+          "p95Ms": 8.949999999999818,
+          "count": 240
+        },
+        "mountMs": 7.549999997019768,
+        "measuredStepsCpuMs": 54.26999989151955,
+        "measuredStepsFrames": 240,
+        "warmupStepsCpuMs": null,
+        "disposeMs": 0.3149999976158142,
+        "measuredLifecycleCpuMs": 62.13499988615513,
+        "lifecycleCpuFormula": "mountMs + sum(recorded 240 measured commitMs) + disposeMs; warmup-step CPU is not serialized; RAF intervals are separate"
+      }
+    },
+    {
+      "sequence": 8,
+      "filename": "sequence-08.json",
+      "sha256": "9bc576fffe396de984906953a3e7dc8c27a47e7a6f6408621e647182ecceb322",
+      "schedule": {
+        "size": 128,
+        "pair": 4,
+        "arm": "react",
+        "sequence": 8
+      },
+      "resultIdentity": {
+        "arm": "react",
+        "size": 128,
+        "pair": 4,
+        "sequence": 8
+      },
+      "resultStatus": "PASS",
+      "valid": true,
+      "validationErrors": [],
+      "collectorError": null,
+      "browserErrors": [],
+      "transport": null,
+      "clockMinPositiveDeltaMs": 0.004999995231628418,
+      "metrics": {
+        "commits": {
+          "all": {
+            "medianMs": 0.22499999403953552,
+            "p95Ms": 0.32499998807907104,
+            "count": 240
+          },
+          "ordinary": {
+            "medianMs": 0.2199999988079071,
+            "p95Ms": 0.2850000113248825,
+            "count": 232
+          },
+          "structural": {
+            "medianMs": 0.4449999928474426,
+            "p95Ms": 1.209999993443489,
+            "count": 8
+          }
+        },
+        "interval": {
+          "medianMs": 8.334999999999923,
+          "p95Ms": 8.370000000000118,
+          "count": 240
+        },
+        "mountMs": 5.570000007748604,
+        "measuredStepsCpuMs": 57.25999993085861,
+        "measuredStepsFrames": 240,
+        "warmupStepsCpuMs": null,
+        "disposeMs": 0.33000001311302185,
+        "measuredLifecycleCpuMs": 63.15999995172024,
+        "lifecycleCpuFormula": "mountMs + sum(recorded 240 measured commitMs) + disposeMs; warmup-step CPU is not serialized; RAF intervals are separate"
+      }
+    },
+    {
+      "sequence": 9,
+      "filename": "sequence-09.json",
+      "sha256": "fd9d397607c631be8b1beabb72c54a6d898df70dc5c1c38686ff304787cfb151",
+      "schedule": {
+        "size": 128,
+        "pair": 4,
+        "arm": "native",
+        "sequence": 9
+      },
+      "resultIdentity": {
+        "arm": "native",
+        "size": 128,
+        "pair": 4,
+        "sequence": 9
+      },
+      "resultStatus": "PASS",
+      "valid": true,
+      "validationErrors": [],
+      "collectorError": null,
+      "browserErrors": [],
+      "transport": null,
+      "clockMinPositiveDeltaMs": 0.004999995231628418,
+      "metrics": {
+        "commits": {
+          "all": {
+            "medianMs": 0.2849999964237213,
+            "p95Ms": 0.3700000047683716,
+            "count": 240
+          },
+          "ordinary": {
+            "medianMs": 0.2849999964237213,
+            "p95Ms": 0.3499999940395355,
+            "count": 232
+          },
+          "structural": {
+            "medianMs": 1.7549999952316284,
+            "p95Ms": 5.825000002980232,
+            "count": 8
+          }
+        },
+        "interval": {
+          "medianMs": 8.334999999999809,
+          "p95Ms": 9.105000000000018,
+          "count": 240
+        },
+        "mountMs": 15.320000007748604,
+        "measuredStepsCpuMs": 83.70999996364117,
+        "measuredStepsFrames": 240,
+        "warmupStepsCpuMs": null,
+        "disposeMs": 0.9150000065565109,
+        "measuredLifecycleCpuMs": 99.94499997794628,
+        "lifecycleCpuFormula": "mountMs + sum(recorded 240 measured commitMs) + disposeMs; warmup-step CPU is not serialized; RAF intervals are separate"
+      }
+    },
+    {
+      "sequence": 10,
+      "filename": "sequence-10.json",
+      "sha256": "2ac49c6bb4cc86bddc518eefdbe1d3eb8f06b4783b896bf429092ceb28a5ca81",
+      "schedule": {
+        "size": 512,
+        "pair": 0,
+        "arm": "react",
+        "sequence": 10
+      },
+      "resultIdentity": {
+        "arm": "react",
+        "size": 512,
+        "pair": 0,
+        "sequence": 10
+      },
+      "resultStatus": "PASS",
+      "valid": true,
+      "validationErrors": [],
+      "collectorError": null,
+      "browserErrors": [],
+      "transport": null,
+      "clockMinPositiveDeltaMs": 0.004999995231628418,
+      "metrics": {
+        "commits": {
+          "all": {
+            "medianMs": 0.6300000101327896,
+            "p95Ms": 0.7999999970197678,
+            "count": 240
+          },
+          "ordinary": {
+            "medianMs": 0.6299999952316284,
+            "p95Ms": 0.75,
+            "count": 232
+          },
+          "structural": {
+            "medianMs": 0.9699999988079071,
+            "p95Ms": 2.1000000089406967,
+            "count": 8
+          }
+        },
+        "interval": {
+          "medianMs": 8.335000000000036,
+          "p95Ms": 8.350000000000136,
+          "count": 240
+        },
+        "mountMs": 11.504999995231628,
+        "measuredStepsCpuMs": 155.5350000858307,
+        "measuredStepsFrames": 240,
+        "warmupStepsCpuMs": null,
+        "disposeMs": 0.6899999976158142,
+        "measuredLifecycleCpuMs": 167.73000007867813,
+        "lifecycleCpuFormula": "mountMs + sum(recorded 240 measured commitMs) + disposeMs; warmup-step CPU is not serialized; RAF intervals are separate"
+      }
+    },
+    {
+      "sequence": 11,
+      "filename": "sequence-11.json",
+      "sha256": "8e5ae8ad13bff0ab1124adecefe8f8c2e6f74a5675c6b28f59f5f183f7c5bf01",
+      "schedule": {
+        "size": 512,
+        "pair": 0,
+        "arm": "native",
+        "sequence": 11
+      },
+      "resultIdentity": {
+        "arm": "native",
+        "size": 512,
+        "pair": 0,
+        "sequence": 11
+      },
+      "resultStatus": "PASS",
+      "valid": true,
+      "validationErrors": [],
+      "collectorError": null,
+      "browserErrors": [],
+      "transport": null,
+      "clockMinPositiveDeltaMs": 0.004999995231628418,
+      "metrics": {
+        "commits": {
+          "all": {
+            "medianMs": 0.8399999886751175,
+            "p95Ms": 1.104999989271164,
+            "count": 240
+          },
+          "ordinary": {
+            "medianMs": 0.8349999934434891,
+            "p95Ms": 0.989999994635582,
+            "count": 232
+          },
+          "structural": {
+            "medianMs": 3.4249999970197678,
+            "p95Ms": 8.974999994039536,
+            "count": 8
+          }
+        },
+        "interval": {
+          "medianMs": 8.334999999999923,
+          "p95Ms": 8.694999999999936,
+          "count": 240
+        },
+        "mountMs": 30.83500000834465,
+        "measuredStepsCpuMs": 233.0199997127056,
+        "measuredStepsFrames": 240,
+        "warmupStepsCpuMs": null,
+        "disposeMs": 2.4400000125169754,
+        "measuredLifecycleCpuMs": 266.29499973356724,
+        "lifecycleCpuFormula": "mountMs + sum(recorded 240 measured commitMs) + disposeMs; warmup-step CPU is not serialized; RAF intervals are separate"
+      }
+    },
+    {
+      "sequence": 12,
+      "filename": "sequence-12.json",
+      "sha256": "d350f28c9e1c85841a16e0cff33a7f445b89eedcf3f9b3a03c143bb942425177",
+      "schedule": {
+        "size": 512,
+        "pair": 1,
+        "arm": "native",
+        "sequence": 12
+      },
+      "resultIdentity": {
+        "arm": "native",
+        "size": 512,
+        "pair": 1,
+        "sequence": 12
+      },
+      "resultStatus": "PASS",
+      "valid": true,
+      "validationErrors": [],
+      "collectorError": null,
+      "browserErrors": [],
+      "transport": null,
+      "clockMinPositiveDeltaMs": 0.004999995231628418,
+      "metrics": {
+        "commits": {
+          "all": {
+            "medianMs": 0.8700000047683716,
+            "p95Ms": 1.1649999916553497,
+            "count": 240
+          },
+          "ordinary": {
+            "medianMs": 0.864999994635582,
+            "p95Ms": 1.030000001192093,
+            "count": 232
+          },
+          "structural": {
+            "medianMs": 3.5250000059604645,
+            "p95Ms": 9.180000007152557,
+            "count": 8
+          }
+        },
+        "interval": {
+          "medianMs": 8.334999999999809,
+          "p95Ms": 9.13000000000011,
+          "count": 240
+        },
+        "mountMs": 30.54000000655651,
+        "measuredStepsCpuMs": 241.51999984681606,
+        "measuredStepsFrames": 240,
+        "warmupStepsCpuMs": null,
+        "disposeMs": 2.5250000059604645,
+        "measuredLifecycleCpuMs": 274.58499985933304,
+        "lifecycleCpuFormula": "mountMs + sum(recorded 240 measured commitMs) + disposeMs; warmup-step CPU is not serialized; RAF intervals are separate"
+      }
+    },
+    {
+      "sequence": 13,
+      "filename": "sequence-13.json",
+      "sha256": "8139e39a0a2bf3e648d4ab902af8a53eb80803116c49ebf1aa9160658b04c228",
+      "schedule": {
+        "size": 512,
+        "pair": 1,
+        "arm": "react",
+        "sequence": 13
+      },
+      "resultIdentity": {
+        "arm": "react",
+        "size": 512,
+        "pair": 1,
+        "sequence": 13
+      },
+      "resultStatus": "PASS",
+      "valid": true,
+      "validationErrors": [],
+      "collectorError": null,
+      "browserErrors": [],
+      "transport": null,
+      "clockMinPositiveDeltaMs": 0.004999995231628418,
+      "metrics": {
+        "commits": {
+          "all": {
+            "medianMs": 0.6499999910593033,
+            "p95Ms": 0.8299999982118607,
+            "count": 240
+          },
+          "ordinary": {
+            "medianMs": 0.6449999958276749,
+            "p95Ms": 0.7800000011920929,
+            "count": 232
+          },
+          "structural": {
+            "medianMs": 1,
+            "p95Ms": 2.030000001192093,
+            "count": 8
+          }
+        },
+        "interval": {
+          "medianMs": 8.335000000000036,
+          "p95Ms": 8.740000000000236,
+          "count": 240
+        },
+        "mountMs": 11.739999994635582,
+        "measuredStepsCpuMs": 160.23500002920628,
+        "measuredStepsFrames": 240,
+        "warmupStepsCpuMs": null,
+        "disposeMs": 0.7700000107288361,
+        "measuredLifecycleCpuMs": 172.7450000345707,
+        "lifecycleCpuFormula": "mountMs + sum(recorded 240 measured commitMs) + disposeMs; warmup-step CPU is not serialized; RAF intervals are separate"
+      }
+    },
+    {
+      "sequence": 14,
+      "filename": "sequence-14.json",
+      "sha256": "340a902ad355cee2a2106136af4402bb2f2bf6c9c92de5dde4b00b6612731630",
+      "schedule": {
+        "size": 512,
+        "pair": 2,
+        "arm": "react",
+        "sequence": 14
+      },
+      "resultIdentity": {
+        "arm": "react",
+        "size": 512,
+        "pair": 2,
+        "sequence": 14
+      },
+      "resultStatus": "PASS",
+      "valid": true,
+      "validationErrors": [],
+      "collectorError": null,
+      "browserErrors": [],
+      "transport": null,
+      "clockMinPositiveDeltaMs": 0.004999995231628418,
+      "metrics": {
+        "commits": {
+          "all": {
+            "medianMs": 0.6150000095367432,
+            "p95Ms": 0.75,
+            "count": 240
+          },
+          "ordinary": {
+            "medianMs": 0.614999994635582,
+            "p95Ms": 0.7250000089406967,
+            "count": 232
+          },
+          "structural": {
+            "medianMs": 0.9100000113248825,
+            "p95Ms": 2.219999998807907,
+            "count": 8
+          }
+        },
+        "interval": {
+          "medianMs": 8.335000000000036,
+          "p95Ms": 8.945000000000164,
+          "count": 240
+        },
+        "mountMs": 11.799999997019768,
+        "measuredStepsCpuMs": 153.0250000655651,
+        "measuredStepsFrames": 240,
+        "warmupStepsCpuMs": null,
+        "disposeMs": 0.7000000029802322,
+        "measuredLifecycleCpuMs": 165.5250000655651,
+        "lifecycleCpuFormula": "mountMs + sum(recorded 240 measured commitMs) + disposeMs; warmup-step CPU is not serialized; RAF intervals are separate"
+      }
+    },
+    {
+      "sequence": 15,
+      "filename": "sequence-15.json",
+      "sha256": "82a6b0f238e7423446694c84b80f2da4679945a9d69b687196c09f09c0f196cc",
+      "schedule": {
+        "size": 512,
+        "pair": 2,
+        "arm": "native",
+        "sequence": 15
+      },
+      "resultIdentity": {
+        "arm": "native",
+        "size": 512,
+        "pair": 2,
+        "sequence": 15
+      },
+      "resultStatus": "PASS",
+      "valid": true,
+      "validationErrors": [],
+      "collectorError": null,
+      "browserErrors": [],
+      "transport": null,
+      "clockMinPositiveDeltaMs": 0.004999995231628418,
+      "metrics": {
+        "commits": {
+          "all": {
+            "medianMs": 0.8999999910593033,
+            "p95Ms": 1.155000001192093,
+            "count": 240
+          },
+          "ordinary": {
+            "medianMs": 0.8949999958276749,
+            "p95Ms": 1.094999998807907,
+            "count": 232
+          },
+          "structural": {
+            "medianMs": 3.3999999910593033,
+            "p95Ms": 9.025000005960464,
+            "count": 8
+          }
+        },
+        "interval": {
+          "medianMs": 8.335000000000036,
+          "p95Ms": 8.795000000000073,
+          "count": 240
+        },
+        "mountMs": 30.484999999403954,
+        "measuredStepsCpuMs": 246.83999992907047,
+        "measuredStepsFrames": 240,
+        "warmupStepsCpuMs": null,
+        "disposeMs": 2.3400000035762787,
+        "measuredLifecycleCpuMs": 279.6649999320507,
+        "lifecycleCpuFormula": "mountMs + sum(recorded 240 measured commitMs) + disposeMs; warmup-step CPU is not serialized; RAF intervals are separate"
+      }
+    },
+    {
+      "sequence": 16,
+      "filename": "sequence-16.json",
+      "sha256": "6c79213f032c37f4ef036bb3ef06e6551c78c2f4da4dc99227451f97de69ab91",
+      "schedule": {
+        "size": 512,
+        "pair": 3,
+        "arm": "native",
+        "sequence": 16
+      },
+      "resultIdentity": {
+        "arm": "native",
+        "size": 512,
+        "pair": 3,
+        "sequence": 16
+      },
+      "resultStatus": "PASS",
+      "valid": true,
+      "validationErrors": [],
+      "collectorError": null,
+      "browserErrors": [],
+      "transport": null,
+      "clockMinPositiveDeltaMs": 0.004999995231628418,
+      "metrics": {
+        "commits": {
+          "all": {
+            "medianMs": 0.8950000107288361,
+            "p95Ms": 1.155000001192093,
+            "count": 240
+          },
+          "ordinary": {
+            "medianMs": 0.8900000005960464,
+            "p95Ms": 1.0699999928474426,
+            "count": 232
+          },
+          "structural": {
+            "medianMs": 3.5250000059604645,
+            "p95Ms": 8.870000004768372,
+            "count": 8
+          }
+        },
+        "interval": {
+          "medianMs": 8.334999999999923,
+          "p95Ms": 9.170000000000073,
+          "count": 240
+        },
+        "mountMs": 31.859999999403954,
+        "measuredStepsCpuMs": 245.71999998390675,
+        "measuredStepsFrames": 240,
+        "warmupStepsCpuMs": null,
+        "disposeMs": 2.625,
+        "measuredLifecycleCpuMs": 280.2049999833107,
+        "lifecycleCpuFormula": "mountMs + sum(recorded 240 measured commitMs) + disposeMs; warmup-step CPU is not serialized; RAF intervals are separate"
+      }
+    },
+    {
+      "sequence": 17,
+      "filename": "sequence-17.json",
+      "sha256": "68620f5dcc6ade756f849c9095a16c1c75b2efd8a1c8d178b8b6211ba9e9fdae",
+      "schedule": {
+        "size": 512,
+        "pair": 3,
+        "arm": "react",
+        "sequence": 17
+      },
+      "resultIdentity": {
+        "arm": "react",
+        "size": 512,
+        "pair": 3,
+        "sequence": 17
+      },
+      "resultStatus": "PASS",
+      "valid": true,
+      "validationErrors": [],
+      "collectorError": null,
+      "browserErrors": [],
+      "transport": null,
+      "clockMinPositiveDeltaMs": 0.004999995231628418,
+      "metrics": {
+        "commits": {
+          "all": {
+            "medianMs": 0.6299999952316284,
+            "p95Ms": 0.7849999964237213,
+            "count": 240
+          },
+          "ordinary": {
+            "medianMs": 0.6299999952316284,
+            "p95Ms": 0.7449999898672104,
+            "count": 232
+          },
+          "structural": {
+            "medianMs": 1.0450000017881393,
+            "p95Ms": 2.2349999994039536,
+            "count": 8
+          }
+        },
+        "interval": {
+          "medianMs": 8.334999999999923,
+          "p95Ms": 8.430000000000064,
+          "count": 240
+        },
+        "mountMs": 11.07999999821186,
+        "measuredStepsCpuMs": 157.77500008046627,
+        "measuredStepsFrames": 240,
+        "warmupStepsCpuMs": null,
+        "disposeMs": 0.6800000071525574,
+        "measuredLifecycleCpuMs": 169.5350000858307,
+        "lifecycleCpuFormula": "mountMs + sum(recorded 240 measured commitMs) + disposeMs; warmup-step CPU is not serialized; RAF intervals are separate"
+      }
+    },
+    {
+      "sequence": 18,
+      "filename": "sequence-18.json",
+      "sha256": "c0aaa0af80bfde929d0172bf0ffb2edb13b30289fc8ce7595e2b08076fcd2228",
+      "schedule": {
+        "size": 512,
+        "pair": 4,
+        "arm": "react",
+        "sequence": 18
+      },
+      "resultIdentity": {
+        "arm": "react",
+        "size": 512,
+        "pair": 4,
+        "sequence": 18
+      },
+      "resultStatus": "PASS",
+      "valid": true,
+      "validationErrors": [],
+      "collectorError": null,
+      "browserErrors": [],
+      "transport": null,
+      "clockMinPositiveDeltaMs": 0.004999995231628418,
+      "metrics": {
+        "commits": {
+          "all": {
+            "medianMs": 0.6550000011920929,
+            "p95Ms": 0.8599999994039536,
+            "count": 240
+          },
+          "ordinary": {
+            "medianMs": 0.6500000059604645,
+            "p95Ms": 0.7850000113248825,
+            "count": 232
+          },
+          "structural": {
+            "medianMs": 1.0349999964237213,
+            "p95Ms": 2.0049999952316284,
+            "count": 8
+          }
+        },
+        "interval": {
+          "medianMs": 8.334999999999923,
+          "p95Ms": 8.664999999999964,
+          "count": 240
+        },
+        "mountMs": 11.325000002980232,
+        "measuredStepsCpuMs": 163.86999993026257,
+        "measuredStepsFrames": 240,
+        "warmupStepsCpuMs": null,
+        "disposeMs": 0.7450000047683716,
+        "measuredLifecycleCpuMs": 175.93999993801117,
+        "lifecycleCpuFormula": "mountMs + sum(recorded 240 measured commitMs) + disposeMs; warmup-step CPU is not serialized; RAF intervals are separate"
+      }
+    },
+    {
+      "sequence": 19,
+      "filename": "sequence-19.json",
+      "sha256": "45ceb96dcbd24ff4eaeddd2707f6856c727a06713ff41cf6c65847e3dfe351a1",
+      "schedule": {
+        "size": 512,
+        "pair": 4,
+        "arm": "native",
+        "sequence": 19
+      },
+      "resultIdentity": {
+        "arm": "native",
+        "size": 512,
+        "pair": 4,
+        "sequence": 19
+      },
+      "resultStatus": "PASS",
+      "valid": true,
+      "validationErrors": [],
+      "collectorError": null,
+      "browserErrors": [],
+      "transport": null,
+      "clockMinPositiveDeltaMs": 0.004999995231628418,
+      "metrics": {
+        "commits": {
+          "all": {
+            "medianMs": 0.9149999916553497,
+            "p95Ms": 1.209999993443489,
+            "count": 240
+          },
+          "ordinary": {
+            "medianMs": 0.9099999964237213,
+            "p95Ms": 1.0999999940395355,
+            "count": 232
+          },
+          "structural": {
+            "medianMs": 3.4849999994039536,
+            "p95Ms": 9.439999997615814,
+            "count": 8
+          }
+        },
+        "interval": {
+          "medianMs": 8.335000000000036,
+          "p95Ms": 9.009999999999991,
+          "count": 240
+        },
+        "mountMs": 30.66499999165535,
+        "measuredStepsCpuMs": 249.39999993145466,
+        "measuredStepsFrames": 240,
+        "warmupStepsCpuMs": null,
+        "disposeMs": 2.5699999928474426,
+        "measuredLifecycleCpuMs": 282.63499991595745,
+        "lifecycleCpuFormula": "mountMs + sum(recorded 240 measured commitMs) + disposeMs; warmup-step CPU is not serialized; RAF intervals are separate"
+      }
+    },
+    {
+      "sequence": 20,
+      "filename": "sequence-20.json",
+      "sha256": "8db757a3e257ceb5f2fdfef0706b4cc2ca02276c8e77f8b50f6411478530281d",
+      "schedule": {
+        "size": 1024,
+        "pair": 0,
+        "arm": "react",
+        "sequence": 20
+      },
+      "resultIdentity": {
+        "arm": "react",
+        "size": 1024,
+        "pair": 0,
+        "sequence": 20
+      },
+      "resultStatus": "PASS",
+      "valid": true,
+      "validationErrors": [],
+      "collectorError": null,
+      "browserErrors": [],
+      "transport": null,
+      "clockMinPositiveDeltaMs": 0.004999995231628418,
+      "metrics": {
+        "commits": {
+          "all": {
+            "medianMs": 1.2100000083446503,
+            "p95Ms": 1.5049999952316284,
+            "count": 240
+          },
+          "ordinary": {
+            "medianMs": 1.2049999982118607,
+            "p95Ms": 1.405000001192093,
+            "count": 232
+          },
+          "structural": {
+            "medianMs": 1.675000011920929,
+            "p95Ms": 3.1499999910593033,
+            "count": 8
+          }
+        },
+        "interval": {
+          "medianMs": 8.335000000000036,
+          "p95Ms": 9.009999999999764,
+          "count": 240
+        },
+        "mountMs": 17.21500000357628,
+        "measuredStepsCpuMs": 301.01999993622303,
+        "measuredStepsFrames": 240,
+        "warmupStepsCpuMs": null,
+        "disposeMs": 1.0599999874830246,
+        "measuredLifecycleCpuMs": 319.29499992728233,
+        "lifecycleCpuFormula": "mountMs + sum(recorded 240 measured commitMs) + disposeMs; warmup-step CPU is not serialized; RAF intervals are separate"
+      }
+    },
+    {
+      "sequence": 21,
+      "filename": "sequence-21.json",
+      "sha256": "bb6b28c55e6bc63579f99193ebed6cf74b02841cc9f41a4b19aceab33ad0664d",
+      "schedule": {
+        "size": 1024,
+        "pair": 0,
+        "arm": "native",
+        "sequence": 21
+      },
+      "resultIdentity": {
+        "arm": "native",
+        "size": 1024,
+        "pair": 0,
+        "sequence": 21
+      },
+      "resultStatus": "PASS",
+      "valid": true,
+      "validationErrors": [],
+      "collectorError": null,
+      "browserErrors": [],
+      "transport": null,
+      "clockMinPositiveDeltaMs": 0.004999995231628418,
+      "metrics": {
+        "commits": {
+          "all": {
+            "medianMs": 1.6799999922513962,
+            "p95Ms": 2.2549999952316284,
+            "count": 240
+          },
+          "ordinary": {
+            "medianMs": 1.6749999970197678,
+            "p95Ms": 2.0899999886751175,
+            "count": 232
+          },
+          "structural": {
+            "medianMs": 5.790000006556511,
+            "p95Ms": 13.104999989271164,
+            "count": 8
+          }
+        },
+        "interval": {
+          "medianMs": 8.334999999999809,
+          "p95Ms": 9.034999999999854,
+          "count": 240
+        },
+        "mountMs": 46.36500000953674,
+        "measuredStepsCpuMs": 459.80000008642673,
+        "measuredStepsFrames": 240,
+        "warmupStepsCpuMs": null,
+        "disposeMs": 3.9249999970197678,
+        "measuredLifecycleCpuMs": 510.09000009298325,
+        "lifecycleCpuFormula": "mountMs + sum(recorded 240 measured commitMs) + disposeMs; warmup-step CPU is not serialized; RAF intervals are separate"
+      }
+    },
+    {
+      "sequence": 22,
+      "filename": "sequence-22.json",
+      "sha256": "e78a87b45e726152048e059dc48746d7cdf254ba44687f20d9d8f234a10d7b75",
+      "schedule": {
+        "size": 1024,
+        "pair": 1,
+        "arm": "native",
+        "sequence": 22
+      },
+      "resultIdentity": {
+        "arm": "native",
+        "size": 1024,
+        "pair": 1,
+        "sequence": 22
+      },
+      "resultStatus": "PASS",
+      "valid": true,
+      "validationErrors": [],
+      "collectorError": null,
+      "browserErrors": [],
+      "transport": null,
+      "clockMinPositiveDeltaMs": 0.004999995231628418,
+      "metrics": {
+        "commits": {
+          "all": {
+            "medianMs": 1.7150000035762787,
+            "p95Ms": 3.354999989271164,
+            "count": 240
+          },
+          "ordinary": {
+            "medianMs": 1.709999993443489,
+            "p95Ms": 2.3700000047683716,
+            "count": 232
+          },
+          "structural": {
+            "medianMs": 5.695000007748604,
+            "p95Ms": 12.979999989271164,
+            "count": 8
+          }
+        },
+        "interval": {
+          "medianMs": 8.334999999999809,
+          "p95Ms": 9.049999999999727,
+          "count": 240
+        },
+        "mountMs": 52.78000000119209,
+        "measuredStepsCpuMs": 472.1299999952316,
+        "measuredStepsFrames": 240,
+        "warmupStepsCpuMs": null,
+        "disposeMs": 4.075000002980232,
+        "measuredLifecycleCpuMs": 528.984999999404,
+        "lifecycleCpuFormula": "mountMs + sum(recorded 240 measured commitMs) + disposeMs; warmup-step CPU is not serialized; RAF intervals are separate"
+      }
+    },
+    {
+      "sequence": 23,
+      "filename": "sequence-23.json",
+      "sha256": "823b31ca3f12ea0271290e4ed9efa5e17c7de64fcf63dc57a01cf961bf5492f2",
+      "schedule": {
+        "size": 1024,
+        "pair": 1,
+        "arm": "react",
+        "sequence": 23
+      },
+      "resultIdentity": {
+        "arm": "react",
+        "size": 1024,
+        "pair": 1,
+        "sequence": 23
+      },
+      "resultStatus": "PASS",
+      "valid": true,
+      "validationErrors": [],
+      "collectorError": null,
+      "browserErrors": [],
+      "transport": null,
+      "clockMinPositiveDeltaMs": 0.004999995231628418,
+      "metrics": {
+        "commits": {
+          "all": {
+            "medianMs": 1.1949999928474426,
+            "p95Ms": 1.510000005364418,
+            "count": 240
+          },
+          "ordinary": {
+            "medianMs": 1.1900000125169754,
+            "p95Ms": 1.3999999910593033,
+            "count": 232
+          },
+          "structural": {
+            "medianMs": 1.844999998807907,
+            "p95Ms": 3.3350000083446503,
+            "count": 8
+          }
+        },
+        "interval": {
+          "medianMs": 8.334999999999809,
+          "p95Ms": 8.44500000000005,
+          "count": 240
+        },
+        "mountMs": 14.29500000178814,
+        "measuredStepsCpuMs": 298.56499993801117,
+        "measuredStepsFrames": 240,
+        "warmupStepsCpuMs": null,
+        "disposeMs": 1.0599999874830246,
+        "measuredLifecycleCpuMs": 313.91999992728233,
+        "lifecycleCpuFormula": "mountMs + sum(recorded 240 measured commitMs) + disposeMs; warmup-step CPU is not serialized; RAF intervals are separate"
+      }
+    },
+    {
+      "sequence": 24,
+      "filename": "sequence-24.json",
+      "sha256": "6aeb37d7e1134dd576579b173f3f042aad497e043f3c96986b5ce4b2d748bd0c",
+      "schedule": {
+        "size": 1024,
+        "pair": 2,
+        "arm": "react",
+        "sequence": 24
+      },
+      "resultIdentity": {
+        "arm": "react",
+        "size": 1024,
+        "pair": 2,
+        "sequence": 24
+      },
+      "resultStatus": "PASS",
+      "valid": true,
+      "validationErrors": [],
+      "collectorError": null,
+      "browserErrors": [],
+      "transport": null,
+      "clockMinPositiveDeltaMs": 0.004999995231628418,
+      "metrics": {
+        "commits": {
+          "all": {
+            "medianMs": 1.3049999922513962,
+            "p95Ms": 2.2150000035762787,
+            "count": 240
+          },
+          "ordinary": {
+            "medianMs": 1.300000011920929,
+            "p95Ms": 2.195000007748604,
+            "count": 232
+          },
+          "structural": {
+            "medianMs": 1.8550000041723251,
+            "p95Ms": 4.094999998807907,
+            "count": 8
+          }
+        },
+        "interval": {
+          "medianMs": 8.334999999999923,
+          "p95Ms": 8.795000000000073,
+          "count": 240
+        },
+        "mountMs": 15.640000000596046,
+        "measuredStepsCpuMs": 336.93499997258186,
+        "measuredStepsFrames": 240,
+        "warmupStepsCpuMs": null,
+        "disposeMs": 1.2599999904632568,
+        "measuredLifecycleCpuMs": 353.83499996364117,
+        "lifecycleCpuFormula": "mountMs + sum(recorded 240 measured commitMs) + disposeMs; warmup-step CPU is not serialized; RAF intervals are separate"
+      }
+    },
+    {
+      "sequence": 25,
+      "filename": "sequence-25.json",
+      "sha256": "00ed7beb2f41af22a0adbb1684bc0fb9248d6392db8f32bb7e6134ba4412b97d",
+      "schedule": {
+        "size": 1024,
+        "pair": 2,
+        "arm": "native",
+        "sequence": 25
+      },
+      "resultIdentity": {
+        "arm": "native",
+        "size": 1024,
+        "pair": 2,
+        "sequence": 25
+      },
+      "resultStatus": "PASS",
+      "valid": true,
+      "validationErrors": [],
+      "collectorError": null,
+      "browserErrors": [],
+      "transport": null,
+      "clockMinPositiveDeltaMs": 0.004999995231628418,
+      "metrics": {
+        "commits": {
+          "all": {
+            "medianMs": 1.7400000095367432,
+            "p95Ms": 3.1000000089406967,
+            "count": 240
+          },
+          "ordinary": {
+            "medianMs": 1.7349999994039536,
+            "p95Ms": 2.385000005364418,
+            "count": 232
+          },
+          "structural": {
+            "medianMs": 5.829999998211861,
+            "p95Ms": 13.069999992847443,
+            "count": 8
+          }
+        },
+        "interval": {
+          "medianMs": 8.334999999999923,
+          "p95Ms": 8.740000000000009,
+          "count": 240
+        },
+        "mountMs": 49.145000010728836,
+        "measuredStepsCpuMs": 480.4650000035763,
+        "measuredStepsFrames": 240,
+        "warmupStepsCpuMs": null,
+        "disposeMs": 4.1500000059604645,
+        "measuredLifecycleCpuMs": 533.7600000202656,
+        "lifecycleCpuFormula": "mountMs + sum(recorded 240 measured commitMs) + disposeMs; warmup-step CPU is not serialized; RAF intervals are separate"
+      }
+    },
+    {
+      "sequence": 26,
+      "filename": "sequence-26.json",
+      "sha256": "b4eccdb16e8e92c5fd1c95f407540c9c25acb5d75d8e54edb6378fb502bee387",
+      "schedule": {
+        "size": 1024,
+        "pair": 3,
+        "arm": "native",
+        "sequence": 26
+      },
+      "resultIdentity": {
+        "arm": "native",
+        "size": 1024,
+        "pair": 3,
+        "sequence": 26
+      },
+      "resultStatus": "PASS",
+      "valid": true,
+      "validationErrors": [],
+      "collectorError": null,
+      "browserErrors": [],
+      "transport": null,
+      "clockMinPositiveDeltaMs": 0.004999995231628418,
+      "metrics": {
+        "commits": {
+          "all": {
+            "medianMs": 1.7100000083446503,
+            "p95Ms": 2.375,
+            "count": 240
+          },
+          "ordinary": {
+            "medianMs": 1.709999993443489,
+            "p95Ms": 2.1000000089406967,
+            "count": 232
+          },
+          "structural": {
+            "medianMs": 5.9749999940395355,
+            "p95Ms": 13.17000000178814,
+            "count": 8
+          }
+        },
+        "interval": {
+          "medianMs": 8.334999999999923,
+          "p95Ms": 9.100000000000023,
+          "count": 240
+        },
+        "mountMs": 52.90500000119209,
+        "measuredStepsCpuMs": 463.77500005066395,
+        "measuredStepsFrames": 240,
+        "warmupStepsCpuMs": null,
+        "disposeMs": 3.9200000017881393,
+        "measuredLifecycleCpuMs": 520.6000000536442,
+        "lifecycleCpuFormula": "mountMs + sum(recorded 240 measured commitMs) + disposeMs; warmup-step CPU is not serialized; RAF intervals are separate"
+      }
+    },
+    {
+      "sequence": 27,
+      "filename": "sequence-27.json",
+      "sha256": "a9ce8b9ef30ccbf9cf7715f3666569934ca2dbc601c73b8f01de78de6b9f853e",
+      "schedule": {
+        "size": 1024,
+        "pair": 3,
+        "arm": "react",
+        "sequence": 27
+      },
+      "resultIdentity": {
+        "arm": "react",
+        "size": 1024,
+        "pair": 3,
+        "sequence": 27
+      },
+      "resultStatus": "PASS",
+      "valid": true,
+      "validationErrors": [],
+      "collectorError": null,
+      "browserErrors": [],
+      "transport": null,
+      "clockMinPositiveDeltaMs": 0.004999995231628418,
+      "metrics": {
+        "commits": {
+          "all": {
+            "medianMs": 1.260000005364418,
+            "p95Ms": 1.5900000035762787,
+            "count": 240
+          },
+          "ordinary": {
+            "medianMs": 1.260000005364418,
+            "p95Ms": 1.5150000005960464,
+            "count": 232
+          },
+          "structural": {
+            "medianMs": 2.0350000113248825,
+            "p95Ms": 3.259999990463257,
+            "count": 8
+          }
+        },
+        "interval": {
+          "medianMs": 8.335000000000036,
+          "p95Ms": 9.135000000000218,
+          "count": 240
+        },
+        "mountMs": 15.620000004768372,
+        "measuredStepsCpuMs": 315.1799999475479,
+        "measuredStepsFrames": 240,
+        "warmupStepsCpuMs": null,
+        "disposeMs": 1.0750000029802322,
+        "measuredLifecycleCpuMs": 331.8749999552965,
+        "lifecycleCpuFormula": "mountMs + sum(recorded 240 measured commitMs) + disposeMs; warmup-step CPU is not serialized; RAF intervals are separate"
+      }
+    },
+    {
+      "sequence": 28,
+      "filename": "sequence-28.json",
+      "sha256": "0ec22059b22b80cad632de05841342209bbff11982813916d0a4c1d29434953e",
+      "schedule": {
+        "size": 1024,
+        "pair": 4,
+        "arm": "react",
+        "sequence": 28
+      },
+      "resultIdentity": {
+        "arm": "react",
+        "size": 1024,
+        "pair": 4,
+        "sequence": 28
+      },
+      "resultStatus": "PASS",
+      "valid": true,
+      "validationErrors": [],
+      "collectorError": null,
+      "browserErrors": [],
+      "transport": null,
+      "clockMinPositiveDeltaMs": 0.004999995231628418,
+      "metrics": {
+        "commits": {
+          "all": {
+            "medianMs": 1.260000005364418,
+            "p95Ms": 1.5450000017881393,
+            "count": 240
+          },
+          "ordinary": {
+            "medianMs": 1.2599999904632568,
+            "p95Ms": 1.510000005364418,
+            "count": 232
+          },
+          "structural": {
+            "medianMs": 1.7999999970197678,
+            "p95Ms": 3.4200000017881393,
+            "count": 8
+          }
+        },
+        "interval": {
+          "medianMs": 8.330000000000155,
+          "p95Ms": 9.1400000000001,
+          "count": 240
+        },
+        "mountMs": 15.859999999403954,
+        "measuredStepsCpuMs": 311.94000005722046,
+        "measuredStepsFrames": 240,
+        "warmupStepsCpuMs": null,
+        "disposeMs": 1.3100000023841858,
+        "measuredLifecycleCpuMs": 329.1100000590086,
+        "lifecycleCpuFormula": "mountMs + sum(recorded 240 measured commitMs) + disposeMs; warmup-step CPU is not serialized; RAF intervals are separate"
+      }
+    },
+    {
+      "sequence": 29,
+      "filename": "sequence-29.json",
+      "sha256": "a1bd733c56ab6f0e0de47ac02716cd130b7af470e4d2f73dc3d72ccfbcdef252",
+      "schedule": {
+        "size": 1024,
+        "pair": 4,
+        "arm": "native",
+        "sequence": 29
+      },
+      "resultIdentity": {
+        "arm": "native",
+        "size": 1024,
+        "pair": 4,
+        "sequence": 29
+      },
+      "resultStatus": "PASS",
+      "valid": true,
+      "validationErrors": [],
+      "collectorError": null,
+      "browserErrors": [],
+      "transport": null,
+      "clockMinPositiveDeltaMs": 0.004999995231628418,
+      "metrics": {
+        "commits": {
+          "all": {
+            "medianMs": 1.770000010728836,
+            "p95Ms": 2.6099999994039536,
+            "count": 240
+          },
+          "ordinary": {
+            "medianMs": 1.7650000005960464,
+            "p95Ms": 2.175000011920929,
+            "count": 232
+          },
+          "structural": {
+            "medianMs": 5.7249999940395355,
+            "p95Ms": 13.105000004172325,
+            "count": 8
+          }
+        },
+        "interval": {
+          "medianMs": 8.334999999999582,
+          "p95Ms": 9.164999999999964,
+          "count": 240
+        },
+        "mountMs": 49.60999999940395,
+        "measuredStepsCpuMs": 480.7699999809265,
+        "measuredStepsFrames": 240,
+        "warmupStepsCpuMs": null,
+        "disposeMs": 4.240000009536743,
+        "measuredLifecycleCpuMs": 534.6199999898672,
+        "lifecycleCpuFormula": "mountMs + sum(recorded 240 measured commitMs) + disposeMs; warmup-step CPU is not serialized; RAF intervals are separate"
+      }
+    }
+  ],
+  "limitations": [
+    "The page load is the replication unit; frame samples are nested measurements.",
+    "Lifecycle CPU is mount plus the 240 recorded measured-frame commits plus disposal. The harness does not serialize warmup step CPU, so it is not included.",
+    "RAF intervals are summarized separately and are not assigned to the update whose structural flag follows them.",
+    "DOM correctness checks occur outside each commit timer and may affect subsequent frames.",
+    "Measured commit time includes synchronous component rendering and compiled owner-row update work; browser layout, paint, and GPU work are excluded.",
+    "Allocation diagnostics were not collected for this candidate.",
+    "This is a fresh product-mixed owner-row-fusion confirmation under the archived candidate; it does not establish a historical causal comparison or general framework performance.",
+    "A zero or clock-coarse React denominator is UNRESOLVED for threshold decisions. A positive raw ratio may be retained as descriptive only."
+  ]
+}

@@ -1,0 +1,227 @@
+{
+  "schemaVersion": "component-state-owner-reuse-v3-browser-manifest-v1",
+  "createdAt": "2026-10-11T08:29:38.708Z",
+  "status": "PASS",
+  "decision": "FAIL",
+  "preregistration": "results/component-state-owner-reuse-v3/browser-preregistration.json",
+  "preregistrationAmendment": "results/component-state-owner-reuse-v3/browser-preregistration-amendment-1.json",
+  "sourceLock": {
+    "path": "results/component-state-owner-reuse-v3/browser-source-lock.json",
+    "bytes": 4664,
+    "sha256": "4607949376199e54218fef57eefebdddb614ee6a3303051206308fd278c452b8",
+    "lockedInputCount": 19,
+    "builtAssetCount": 4,
+    "status": "FROZEN_BEFORE_PRODUCTION_PAGE_COLLECTION"
+  },
+  "analysisScript": {
+    "path": "scripts/create_component_state_owner_reuse_v3_browser_manifest.ts",
+    "bytes": 7025,
+    "sha256": "e02ca3237ae4c2684092d415a2fa1aa5d96a87cfa92192e05fc53e5de67c5dec"
+  },
+  "replicationUnit": "Fresh visible production browser page; five page replications",
+  "design": {
+    "count": 10000,
+    "warmupPairs": 8,
+    "measuredPairs": 24,
+    "compilerBaseline": "React 19.3 + build-verified React Compiler target 19"
+  },
+  "integrity": {
+    "allFivePagesPresent": true,
+    "allPagesPassOutputIdentityAndChildState": true,
+    "allPagesUseVerifiedReactCompilerBuild": true
+  },
+  "decisionRules": {
+    "edgeFallbackPasses": "4/5; require at least 4/5 at <=1.10x generic",
+    "rotationRuntimePasses": "5/5; require at least 4/5 at <=0.50x generic",
+    "rotationReactPasses": "0/5; require at least 4/5 at <=0.90x React Compiler",
+    "overall": "FAIL"
+  },
+  "summary": {
+    "edge": {
+      "pageLevelTimes": {
+        "react": {
+          "medianOfPageMedians": 3.5,
+          "rangeOfPageMedians": [
+            3.4000000059604645,
+            3.699999988079071
+          ],
+          "medianOfPageP95s": 3.800000011920929
+        },
+        "generic": {
+          "medianOfPageMedians": 11,
+          "rangeOfPageMedians": [
+            10.649999991059303,
+            11.5
+          ],
+          "medianOfPageP95s": 13.300000011920929
+        },
+        "token": {
+          "medianOfPageMedians": 12.5,
+          "rangeOfPageMedians": [
+            11.700000002980232,
+            12.700000002980232
+          ],
+          "medianOfPageP95s": 13.599999994039536
+        },
+        "token-delta": {
+          "medianOfPageMedians": 12.049999997019768,
+          "rangeOfPageMedians": [
+            11.299999982118607,
+            12.549999997019768
+          ],
+          "medianOfPageP95s": 14.200000017881393
+        }
+      },
+      "pageLevelRatios": {
+        "tokenOverGeneric": 1.1422088456281607,
+        "deltaOverGeneric": 1.077183021387171,
+        "deltaOverReact": 3.3292041965802914,
+        "deltaOverToken": 0.9618257544604345
+      },
+      "pagePasses": [
+        {
+          "replication": 1,
+          "deltaOverGeneric": 1.1118392313435845,
+          "edgeFallbackPass": false
+        },
+        {
+          "replication": 2,
+          "deltaOverGeneric": 1.0850019932826238,
+          "edgeFallbackPass": true
+        },
+        {
+          "replication": 3,
+          "deltaOverGeneric": 1.077183021387171,
+          "edgeFallbackPass": true
+        },
+        {
+          "replication": 4,
+          "deltaOverGeneric": 1.037433861596238,
+          "edgeFallbackPass": true
+        },
+        {
+          "replication": 5,
+          "deltaOverGeneric": 1.072442121031106,
+          "edgeFallbackPass": true
+        }
+      ]
+    },
+    "rotate": {
+      "pageLevelTimes": {
+        "react": {
+          "medianOfPageMedians": 3.5999999940395355,
+          "rangeOfPageMedians": [
+            3.5,
+            3.600000023841858
+          ],
+          "medianOfPageP95s": 4.199999988079071
+        },
+        "generic": {
+          "medianOfPageMedians": 10.799999997019768,
+          "rangeOfPageMedians": [
+            10.099999994039536,
+            10.950000002980232
+          ],
+          "medianOfPageP95s": 12.399999976158142
+        },
+        "token": {
+          "medianOfPageMedians": 4.75,
+          "rangeOfPageMedians": [
+            4.300000011920929,
+            4.899999991059303
+          ],
+          "medianOfPageP95s": 5.9000000059604645
+        },
+        "token-delta": {
+          "medianOfPageMedians": 4.700000002980232,
+          "rangeOfPageMedians": [
+            4.300000011920929,
+            4.999999985098839
+          ],
+          "medianOfPageP95s": 6.399999976158142
+        }
+      },
+      "pageLevelRatios": {
+        "tokenOverGeneric": 0.4409722236409698,
+        "deltaOverGeneric": 0.44187456748201,
+        "deltaOverReact": 1.3428571394511633,
+        "deltaOverToken": 1
+      },
+      "pagePasses": [
+        {
+          "replication": 1,
+          "deltaOverGeneric": 0.44187456748201,
+          "deltaOverReact": 1.367647059725849,
+          "rotationRuntimePass": true,
+          "rotationReactPass": false
+        },
+        {
+          "replication": 2,
+          "deltaOverGeneric": 0.4676173497012538,
+          "deltaOverReact": 1.3714285748345512,
+          "rotationRuntimePass": true,
+          "rotationReactPass": false
+        },
+        {
+          "replication": 3,
+          "deltaOverGeneric": 0.4491421585074704,
+          "deltaOverReact": 1.3428571394511633,
+          "rotationRuntimePass": true,
+          "rotationReactPass": false
+        },
+        {
+          "replication": 4,
+          "deltaOverGeneric": 0.4326889591330826,
+          "deltaOverReact": 1.2426470562311513,
+          "rotationRuntimePass": true,
+          "rotationReactPass": false
+        },
+        {
+          "replication": 5,
+          "deltaOverGeneric": 0.43720953652469363,
+          "deltaOverReact": 1.2469512243587169,
+          "rotationRuntimePass": true,
+          "rotationReactPass": false
+        }
+      ]
+    }
+  },
+  "replications": [
+    {
+      "replication": 1,
+      "path": "results/component-state-owner-reuse-v3/browser-production/component-state-owner-reuse-v3-browser-83005301.json",
+      "bytes": 35156,
+      "sha256": "53251ed53510ab767e64e59d21a443c0dd783e7de41d0fafe1a69ce3208130b0"
+    },
+    {
+      "replication": 2,
+      "path": "results/component-state-owner-reuse-v3/browser-production/component-state-owner-reuse-v3-browser-83005302.json",
+      "bytes": 35040,
+      "sha256": "94d30cf49b259877e8024b30eff1f9947c6086796fc0f6551e566147ef761260"
+    },
+    {
+      "replication": 3,
+      "path": "results/component-state-owner-reuse-v3/browser-production/component-state-owner-reuse-v3-browser-83005303.json",
+      "bytes": 35178,
+      "sha256": "a65e36932734a5c4a66dde6e5187c3f66e217305d5261af8679bca0f854a3a2b"
+    },
+    {
+      "replication": 4,
+      "path": "results/component-state-owner-reuse-v3/browser-production/component-state-owner-reuse-v3-browser-83005304.json",
+      "bytes": 35164,
+      "sha256": "5324c5380f8a51cfbb1d4ba1c7ea8de9bc8c03715ef7caf5df9efbd8ffba6aad"
+    },
+    {
+      "replication": 5,
+      "path": "results/component-state-owner-reuse-v3/browser-production/component-state-owner-reuse-v3-browser-83005305.json",
+      "bytes": 35145,
+      "sha256": "654fea5cdedd4b8c99696e9a1972e33864ba3254e9153f89df594c50d35060b4"
+    }
+  ],
+  "limitations": [
+    "One device and browser profile; the five fresh pages are not independent device replications.",
+    "The focused workload measures update dispatch through host commit, not layout, paint, or presentation.",
+    "The sequence tests one keyed edge replacement followed by a same-membership rotation; it does not generalize to arbitrary JSX or structural churn.",
+    "No manually memoized React arm is included; the React Compiler output is build-verified."
+  ]
+}

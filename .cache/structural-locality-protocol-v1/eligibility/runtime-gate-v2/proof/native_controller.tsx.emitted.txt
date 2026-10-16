@@ -1,0 +1,130 @@
+import { createDOMRoot } from "../../../../src/native_runtime_api.ts";
+import { defineComponent as __nativeDefineComponent } from "../../../../src/native_runtime_api.ts";
+__nativeDefineComponent(".cache/structural-locality-protocol-v1/eligibility/runtime-gate-v2/native_controller.tsx#component:NativeCollectionMount", NativeCollectionMount, { propOnlySites: [] });
+__nativeDefineComponent(".cache/structural-locality-protocol-v1/eligibility/runtime-gate-v2/native_controller.tsx#component:NativeGenericMount", NativeGenericMount, { propOnlySites: [] });
+import { NativeCollectionBoard, makeRows } from "../native_collection.tsx";
+import { NativeGenericBoard } from "../native_generic.tsx";
+function NativeCollectionMount({ rows, life }) {
+	return /* @__PURE__ */ __nativeJsx.jsx(NativeCollectionBoard, {
+		rows,
+		life
+	});
+}
+function NativeGenericMount({ initialIds, life, registerIdsSetter }) {
+	return /* @__PURE__ */ __nativeJsx.jsx(NativeGenericBoard, {
+		initialIds,
+		life,
+		registerIdsSetter
+	});
+}
+export function mountNative(arm, container, initialIds, life, record) {
+	const root = createDOMRoot(container, {
+		scheduleCommit: () => {},
+		profileCounter: record
+	});
+	const rows = arm === "collection" ? makeRows(initialIds) : null;
+	let setIds = null;
+	const registerIdsSetter = (setter) => {
+		if (setIds !== null) throw new Error("duplicate generic setter");
+		setIds = setter;
+		return () => {
+			if (setIds === setter) setIds = null;
+		};
+	};
+	try {
+		if (rows) root.mount(/* @__PURE__ */ __nativeJsx.jsx(NativeCollectionMount, {
+			rows,
+			life
+		}));
+		else root.mount(/* @__PURE__ */ __nativeJsx.jsx(NativeGenericMount, {
+			initialIds,
+			life,
+			registerIdsSetter
+		}));
+		root.flush();
+	} catch (error) {
+		try {
+			root.dispose();
+		} catch (disposeError) {
+			throw new Error(`native mount failed: ${String(error)}; disposal failed: ${String(disposeError)}`);
+		}
+		throw error;
+	}
+	return {
+		click(id) {
+			const node = [...container.querySelectorAll("li[data-id]")].find((item) => item.dataset.id === id);
+			if (!node) throw new Error(`missing click target ${id}`);
+			node.click();
+			root.flush();
+		},
+		edit(edit, next) {
+			if (rows) {
+				const operations = edit.kind === "move" ? [{
+					type: "move",
+					key: "row-0",
+					beforeKey: null
+				}] : edit.kind === "insert" ? [{
+					type: "insert",
+					key: "fresh-head",
+					value: { id: "fresh-head" },
+					beforeKey: "row-1"
+				}] : edit.kind === "remove" ? [{
+					type: "remove",
+					key: "fresh-head"
+				}] : [{
+					type: "remove",
+					key: "row-127"
+				}, {
+					type: "insert",
+					key: "edge-new",
+					value: { id: "edge-new" },
+					beforeKey: "row-1"
+				}];
+				const applied = rows.apply(rows.version, operations);
+				if (!applied.ok) throw new Error(`collection ${edit.kind} rejected: ${applied.reason}`);
+			} else {
+				if (!setIds) throw new Error("generic setter unregistered");
+				setIds(next);
+			}
+			if (!root.flush()) throw new Error(`${arm} ${edit.kind}: no native commit`);
+			return rows ? { ...rows.stats() } : {};
+		},
+		dispose() {
+			root.dispose();
+			const diagnostics = root.diagnostics();
+			return {
+				readerCount: rows?.stats().readerCount ?? null,
+				ownerCount: diagnostics.ownerCount,
+				setterRegistered: setIds !== null
+			};
+		}
+	};
+}
+export const compiledNativeComponentPlan = {
+	"schema_version": 2,
+	"source_file": ".cache/structural-locality-protocol-v1/eligibility/runtime-gate-v2/native_controller.tsx",
+	"helper_module": "",
+	"tasks": [],
+	"task_order": [],
+	"component_module": "import { createDOMRoot, type KeyedCollection } from \"../../../../src/native_runtime_api.ts\";\nimport { defineComponent as __nativeDefineComponent, useStateAt as __nativeUseStateAt, useEffectAt as __nativeUseEffectAt, useStoreAt as __nativeUseStoreAt, bindStatePropsAt as __nativeBindStatePropsAt, renderCollectionAt as __nativeRenderCollectionAt, useAt as __nativeUseAt, bindStatePropAt as __nativeBindStatePropAt } from \"../../../../src/native_runtime_api.ts\";\n__nativeDefineComponent(\".cache/structural-locality-protocol-v1/eligibility/runtime-gate-v2/native_controller.tsx#component:NativeCollectionMount\", NativeCollectionMount, { propOnlySites: [] });\n__nativeDefineComponent(\".cache/structural-locality-protocol-v1/eligibility/runtime-gate-v2/native_controller.tsx#component:NativeGenericMount\", NativeGenericMount, { propOnlySites: [] });\nimport { NativeCollectionBoard, makeRows, type Life, type Row } from \"../native_collection.tsx\";\nimport { NativeGenericBoard } from \"../native_generic.tsx\";\n\ntype Edit = { kind: \"move\" | \"insert\" | \"remove\" | \"edge\"; key?: string };\ntype Session = { click(id: string): void; edit(edit: Edit, next: string[]): Record<string, number>;\n  dispose(): { readerCount: number | null; ownerCount: number; setterRegistered: boolean } };\n\nfunction NativeCollectionMount({ rows, life }: { rows: KeyedCollection<Row>; life: Life }) {\n  return <NativeCollectionBoard rows={rows} life={life} />;\n}\n\nfunction NativeGenericMount({ initialIds, life, registerIdsSetter }: {\n  initialIds: string[]; life: Life;\n  registerIdsSetter: (setter: (ids: string[]) => void) => () => void;\n}) {\n  return <NativeGenericBoard initialIds={initialIds} life={life}\n    registerIdsSetter={registerIdsSetter} />;\n}\n\nexport function mountNative(\n  arm: \"collection\" | \"generic\", container: HTMLElement, initialIds: string[], life: Life,\n  record: (values: Readonly<Record<string, number>>) => void,\n): Session {\n  const root = createDOMRoot(container, { scheduleCommit: () => {}, profileCounter: record });\n  const rows: KeyedCollection<Row> | null = arm === \"collection\" ? makeRows(initialIds) : null;\n  let setIds: ((ids: string[]) => void) | null = null;\n  const registerIdsSetter = (setter: (ids: string[]) => void) => {\n    if (setIds !== null) throw new Error(\"duplicate generic setter\");\n    setIds = setter;\n    return () => { if (setIds === setter) setIds = null; };\n  };\n  try {\n    if (rows) root.mount(<NativeCollectionMount rows={rows} life={life} />);\n    else root.mount(<NativeGenericMount initialIds={initialIds} life={life}\n      registerIdsSetter={registerIdsSetter} />);\n    root.flush();\n  } catch (error) {\n    try { root.dispose(); } catch (disposeError) {\n      throw new Error(`native mount failed: ${String(error)}; disposal failed: ${String(disposeError)}`);\n    }\n    throw error;\n  }\n  return {\n    click(id) {\n      const node = [...container.querySelectorAll<HTMLLIElement>(\"li[data-id]\")]\n        .find((item) => item.dataset.id === id);\n      if (!node) throw new Error(`missing click target ${id}`);\n      node.click();\n      root.flush();\n    },\n    edit(edit, next) {\n      if (rows) {\n        const operations = edit.kind === \"move\"\n          ? [{ type: \"move\" as const, key: \"row-0\", beforeKey: null }]\n          : edit.kind === \"insert\"\n          ? [{ type: \"insert\" as const, key: \"fresh-head\", value: { id: \"fresh-head\" }, beforeKey: \"row-1\" }]\n          : edit.kind === \"remove\"\n          ? [{ type: \"remove\" as const, key: \"fresh-head\" }]\n          : [{ type: \"remove\" as const, key: \"row-127\" },\n            { type: \"insert\" as const, key: \"edge-new\", value: { id: \"edge-new\" }, beforeKey: \"row-1\" }];\n        const applied = rows.apply(rows.version, operations);\n        if (!applied.ok) throw new Error(`collection ${edit.kind} rejected: ${applied.reason}`);\n      } else {\n        if (!setIds) throw new Error(\"generic setter unregistered\");\n        setIds(next);\n      }\n      if (!root.flush()) throw new Error(`${arm} ${edit.kind}: no native commit`);\n      return rows ? { ...rows.stats() } : {};\n    },\n    dispose() {\n      root.dispose();\n      const diagnostics = root.diagnostics();\n      return { readerCount: rows?.stats().readerCount ?? null,\n        ownerCount: diagnostics.ownerCount, setterRegistered: setIds !== null };\n    },\n  };\n}\n",
+	"components": [{
+		"name": "NativeCollectionMount",
+		"component_site_id": ".cache/structural-locality-protocol-v1/eligibility/runtime-gate-v2/native_controller.tsx#component:NativeCollectionMount",
+		"prop_only_sites": [],
+		"host_leaf_output": false,
+		"state_sites": [],
+		"effect_sites": [],
+		"store_sites": [],
+		"collection_sites": []
+	}, {
+		"name": "NativeGenericMount",
+		"component_site_id": ".cache/structural-locality-protocol-v1/eligibility/runtime-gate-v2/native_controller.tsx#component:NativeGenericMount",
+		"prop_only_sites": [],
+		"host_leaf_output": false,
+		"state_sites": [],
+		"effect_sites": [],
+		"store_sites": [],
+		"collection_sites": []
+	}]
+};
+import * as __nativeJsx from "../../../../src/native_runtime_api.ts";

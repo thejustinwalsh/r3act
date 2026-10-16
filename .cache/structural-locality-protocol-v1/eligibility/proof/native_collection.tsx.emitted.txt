@@ -1,0 +1,60 @@
+import { createKeyedCollection } from "../../../src/native_runtime_api.ts";
+import { defineComponent as __nativeDefineComponent, useStateAt as __nativeUseStateAt, useEffectAt as __nativeUseEffectAt, renderCollectionAt as __nativeRenderCollectionAt } from "../../../src/native_runtime_api.ts";
+__nativeDefineComponent(".cache/structural-locality-protocol-v1/eligibility/native_collection.tsx#component:NativeCollectionBoard", NativeCollectionBoard, { propOnlySites: [] });
+__nativeDefineComponent(".cache/structural-locality-protocol-v1/eligibility/native_collection.tsx#component:NativeRow", NativeRow, { propOnlySites: [] });
+export const makeRows = (ids) => createKeyedCollection(ids.map((id) => ({ id })), (row) => row.id);
+function NativeRow({ id, life }) {
+	const [selected, setSelected] = __nativeUseStateAt(".cache/structural-locality-protocol-v1/eligibility/native_collection.tsx#component:NativeRow#state:0", false);
+	__nativeUseEffectAt(".cache/structural-locality-protocol-v1/eligibility/native_collection.tsx#component:NativeRow#effect:0", () => {
+		life.mounted(id);
+		return () => life.cleaned(id);
+	});
+	return /* @__PURE__ */ __nativeJsx.jsx("li", {
+		"data-id": id,
+		"data-selected": String(selected),
+		onClick: () => setSelected((prior) => !prior)
+	}, id);
+}
+export function NativeCollectionBoard({ rows, life }) {
+	return /* @__PURE__ */ __nativeJsx.jsx("ul", { "data-list": "rows" }, __nativeRenderCollectionAt(".cache/structural-locality-protocol-v1/eligibility/native_collection.tsx#component:NativeCollectionBoard#collection:0", rows, ((row) => /* @__PURE__ */ __nativeJsx.jsx(NativeRow, {
+		key: row.id,
+		id: row.id,
+		life
+	}))));
+}
+export const compiledNativeComponentPlan = {
+	"schema_version": 2,
+	"source_file": ".cache/structural-locality-protocol-v1/eligibility/native_collection.tsx",
+	"helper_module": "",
+	"tasks": [],
+	"task_order": [],
+	"component_module": "import {\n  createKeyedCollection,\n  type KeyedCollection,\n  useEffect,\n  useState,\n} from \"../../../src/native_runtime_api.ts\";\nimport { defineComponent as __nativeDefineComponent, useStateAt as __nativeUseStateAt, useEffectAt as __nativeUseEffectAt, useStoreAt as __nativeUseStoreAt, bindStatePropsAt as __nativeBindStatePropsAt, renderCollectionAt as __nativeRenderCollectionAt, useAt as __nativeUseAt, bindStatePropAt as __nativeBindStatePropAt } from \"../../../src/native_runtime_api.ts\";\n__nativeDefineComponent(\".cache/structural-locality-protocol-v1/eligibility/native_collection.tsx#component:NativeCollectionBoard\", NativeCollectionBoard, { propOnlySites: [] });\n__nativeDefineComponent(\".cache/structural-locality-protocol-v1/eligibility/native_collection.tsx#component:NativeRow\", NativeRow, { propOnlySites: [] });\n\nexport type Row = { id: string };\nexport type Life = {\n  mounted(id: string): void;\n  cleaned(id: string): void;\n};\n\nexport const makeRows = (ids: readonly string[]) =>\n  createKeyedCollection(ids.map((id) => ({ id })), (row) => row.id);\n\nfunction NativeRow({ id, life }: { id: string; life: Life; key?: string }) {\n  const [selected, setSelected] = __nativeUseStateAt(\".cache/structural-locality-protocol-v1/eligibility/native_collection.tsx#component:NativeRow#state:0\", false);\n  __nativeUseEffectAt(\".cache/structural-locality-protocol-v1/eligibility/native_collection.tsx#component:NativeRow#effect:0\", () => {\n    life.mounted(id);\n    return () => life.cleaned(id);\n  });\n  return (\n    <li\n      data-id={id}\n      data-selected={String(selected)}\n      onClick={() => setSelected((prior) => !prior)}\n    >\n      {id}\n    </li>\n  );\n}\n\nexport function NativeCollectionBoard({\n  rows,\n  life,\n}: {\n  rows: KeyedCollection<Row>;\n  life: Life;\n}) {\n  return <ul data-list=\"rows\">{__nativeRenderCollectionAt(\".cache/structural-locality-protocol-v1/eligibility/native_collection.tsx#component:NativeCollectionBoard#collection:0\", rows, ((row) => <NativeRow key={row.id} id={row.id} life={life} />))}</ul>;\n}\n",
+	"components": [{
+		"name": "NativeCollectionBoard",
+		"component_site_id": ".cache/structural-locality-protocol-v1/eligibility/native_collection.tsx#component:NativeCollectionBoard",
+		"prop_only_sites": [],
+		"host_leaf_output": false,
+		"state_sites": [],
+		"effect_sites": [],
+		"store_sites": [],
+		"collection_sites": [{
+			"site_id": ".cache/structural-locality-protocol-v1/eligibility/native_collection.tsx#component:NativeCollectionBoard#collection:0",
+			"source_expression": "rows",
+			"row_parameter": "row",
+			"requires_owner_render": false
+		}]
+	}, {
+		"name": "NativeRow",
+		"component_site_id": ".cache/structural-locality-protocol-v1/eligibility/native_collection.tsx#component:NativeRow",
+		"prop_only_sites": [],
+		"host_leaf_output": false,
+		"state_sites": [{
+			"site_id": ".cache/structural-locality-protocol-v1/eligibility/native_collection.tsx#component:NativeRow#state:0",
+			"initial_value": "false"
+		}],
+		"effect_sites": [{ "site_id": ".cache/structural-locality-protocol-v1/eligibility/native_collection.tsx#component:NativeRow#effect:0" }],
+		"store_sites": [],
+		"collection_sites": []
+	}]
+};
+import * as __nativeJsx from "../../../src/native_runtime_api.ts";

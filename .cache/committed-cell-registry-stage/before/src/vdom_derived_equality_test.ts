@@ -1,0 +1,1 @@
+../../../../src/vdom_derived_equality_test.ts

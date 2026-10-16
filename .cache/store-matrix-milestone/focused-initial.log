@@ -1,0 +1,67 @@
+Check src/native_task_store_matrix_test.ts
+Check src/store_scope_contract_test.ts
+running 2 tests from ./src/native_task_store_matrix_test.ts
+three independent transitions, fork work, and grouped publication compose on pinned reads ... FAILED (19ms)
+input recapture, cancellation, rejection, detach, and optimistic compensation stay operation local ... FAILED (3ms)
+running 7 tests from ./src/store_scope_contract_test.ts
+scope IDs reject empty and duplicate active identities without mutation ... ok (0ms)
+unknown and closed scopes reject dispatch without mutation or notification ... ok (0ms)
+duplicate and foreign root commits fail before changing projections ... ok (0ms)
+finishing known or unknown scopes is idempotent and unknown finish is a no-op ... ok (0ms)
+release is idempotent and released roots no longer hold pending actions ... FAILED (0ms)
+reattaching a detached ID does not restore its old scope membership ... ok (0ms)
+late roots fold original actions according to open, finished, and released scope state ... ok (7ms)
+
+ ERRORS 
+
+three independent transitions, fork work, and grouped publication compose on pinned reads => ./src/native_task_store_matrix_test.ts:62:6
+error: AssertionError: Values are not equal.
+
+
+    [Diff] Actual / Expected
+
+
+    [
+-     "right-state:right-result",
+-     "right-state:right-result",
++     "left-state:left-result",
++     "right-state:left-result",
+    ]
+
+  throw new AssertionError(message);
+        ^
+    at assertEquals (https://jsr.io/@std/assert/1.0.19/equals.ts:67:9)
+    at file:///Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/src/native_task_store_matrix_test.ts:233:3
+
+input recapture, cancellation, rejection, detach, and optimistic compensation stay operation local => ./src/native_task_store_matrix_test.ts:257:6
+error: AssertionError: Values are not equal.
+
+
+    [Diff] Actual / Expected
+
+
+-   failed
++   cancelled
+
+
+  throw new AssertionError(message);
+        ^
+    at assertEquals (https://jsr.io/@std/assert/1.0.19/equals.ts:67:9)
+    at file:///Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/src/native_task_store_matrix_test.ts:358:3
+
+release is idempotent and released roots no longer hold pending actions => ./src/store_scope_contract_test.ts:159:6
+error: Error: repeated release changed state, versions, or diagnostics: expected {"state":"A","version":1,"roots":[["root","A"],["other-held-root",""]],"rootVersions":[["root",2],["other-held-root",1]],"diagnostics":{"roots":2,"listeners":2,"readers":0,"retainedActions":1,"transitions":1}}, got {"state":"A","version":1,"roots":[["root","A"],["other-held-root",""]],"rootVersions":[["root",3],["other-held-root",1]],"diagnostics":{"roots":2,"listeners":2,"readers":0,"retainedActions":1,"transitions":1}}
+    throw new Error(
+          ^
+    at equal (file:///Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/src/store_scope_contract_test.ts:9:11)
+    at file:///Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/src/store_scope_contract_test.ts:173:3
+
+ FAILURES 
+
+three independent transitions, fork work, and grouped publication compose on pinned reads => ./src/native_task_store_matrix_test.ts:62:6
+input recapture, cancellation, rejection, detach, and optimistic compensation stay operation local => ./src/native_task_store_matrix_test.ts:257:6
+release is idempotent and released roots no longer hold pending actions => ./src/store_scope_contract_test.ts:159:6
+
+FAILED | 6 passed | 3 failed (60ms)
+
+error: Test failed

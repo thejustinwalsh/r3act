@@ -1,0 +1,47 @@
+[
+  {
+    "command": "deno test --config deno.browser.json src",
+    "log": "runtime-tests.log",
+    "exitCode": 0
+  },
+  {
+    "command": "node --expose-gc scripts/verify_native_cell_cut_retention.mjs",
+    "log": "retention.log",
+    "exitCode": 0
+  },
+  {
+    "command": "tsgo -p tsconfig.native-tooling.json",
+    "log": "types.log",
+    "exitCode": 0
+  },
+  {
+    "command": "node --experimental-transform-types compiler/native_numeric_cell_cut_execution_test.mjs",
+    "log": "compiled-native-cut.log",
+    "exitCode": 0
+  },
+  {
+    "command": "node scripts/build_native_package.mjs",
+    "log": "package-build.log",
+    "exitCode": 0
+  },
+  {
+    "command": "vite build --config vite.product-mixed-world-journal.config.ts",
+    "log": "production-build.log",
+    "exitCode": 0
+  },
+  {
+    "command": "node scripts/verify_native_package.mjs",
+    "log": "package-consumer.log",
+    "exitCode": 0
+  },
+  {
+    "command": "PRODUCT_MIXED_ORIGIN=https://compiled-world-journal.localhost:1355 PRODUCT_MIXED_PILOT_DIR=.cache/world-dirty-journal-milestone/product-mixed-pilot node scripts/verify_product_mixed_v2_pilot.mjs",
+    "log": "production-pilot.log",
+    "exitCode": 0
+  },
+  {
+    "command": "cargo test --locked --manifest-path compiler/oxc-spike/Cargo.toml",
+    "log": "rust-tests.log",
+    "exitCode": 0
+  }
+]

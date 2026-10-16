@@ -1,0 +1,66 @@
+--- src/component_state_runtime.ts	2026-10-13 16:05:19
++++ .cache/mixed-structure-simplification-review/numeric-changes-staged/src/component_state_runtime.ts	2026-10-13 16:06:29
+@@ -131,6 +131,9 @@
+   readonly previous: number;
+   readonly current: number;
+ };
++type MixedCandidateNumericWrite = CandidateNumericWrite & {
++  readonly change: import("./owner_state_world.ts").StateChange;
++};
+ type CandidateLifecycleSpec<H, Parent> = {
+   baseVersion: number;
+   baseVDOMVersion: number;
+@@ -3269,12 +3272,8 @@
+     const leafCaches = new Map<OwnerId, ComponentCache>();
+     const leafPreviousCaches = new Map<OwnerId, ComponentCache>();
+     const leafRegions: Array<{ key: string; tree: RuntimeNode }> = [];
+-    const numericWrites: CandidateNumericWrite[] = [];
++    const numericWrites: MixedCandidateNumericWrite[] = [];
+     const numericSources = new Set<ScalarSource>();
+-    const numericChanges = new Map<
+-      ScalarSource,
+-      import("./owner_state_world.ts").StateChange
+-    >();
+     const discardArtifacts = () => {
+       try {
+         preparation.discard();
+@@ -3791,7 +3790,6 @@
+           numericSources.has(source)
+         ) throw new SparseCandidateIneligible();
+         numericSources.add(source);
+-        numericChanges.set(source, change);
+         numericWrites.push({
+           owner: change.owner,
+           site: change.site,
+@@ -3799,13 +3797,12 @@
+           version: change.version,
+           previous,
+           current: source.value,
++          change,
+         });
+       }
+       const validateNumericWrites = () =>
+         numericWrites.every((write) =>
+-          this.world.versionForChange(
+-              numericChanges.get(write.source)!,
+-            ) === write.version &&
++          this.world.versionForChange(write.change) === write.version &&
+           this.world.scalarSource(write.owner, write.site) === write.source &&
+           Object.is(write.source.value, write.current)
+         );
+@@ -3852,7 +3849,6 @@
+         leafRegions.length = 0;
+         numericWrites.length = 0;
+         numericSources.clear();
+-        numericChanges.clear();
+         privateOwners.clear();
+         retiredOwners.clear();
+         renderedOwners.clear();
+@@ -4061,7 +4057,6 @@
+       leafRegions.length = 0;
+       numericWrites.length = 0;
+       numericSources.clear();
+-      numericChanges.clear();
+       privateOwners.clear();
+       retiredOwners.clear();
+       renderedOwners.clear();

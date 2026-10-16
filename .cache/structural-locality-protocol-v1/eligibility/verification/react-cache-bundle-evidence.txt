@@ -1,0 +1,94 @@
+function ReactRow(t0) {
+	const $ = (0, import_compiler_runtime.c)(8);
+	const { id, life } = t0;
+	const [selected, setSelected] = (0, import_react.useState)(false);
+	let t1;
+	let t2;
+	if ($[0] !== id || $[1] !== life) {
+		t1 = () => {
+			life.mounted(id);
+			return () => life.cleaned(id);
+		};
+		t2 = [id, life];
+		$[0] = id;
+		$[1] = life;
+		$[2] = t1;
+		$[3] = t2;
+	} else {
+		t1 = $[2];
+		t2 = $[3];
+	}
+	(0, import_react.useLayoutEffect)(t1, t2);
+	const t3 = String(selected);
+	let t4;
+	if ($[4] === Symbol.for("react.memo_cache_sentinel")) {
+		t4 = () => setSelected(_temp);
+		$[4] = t4;
+	} else t4 = $[4];
+	let t5;
+	if ($[5] !== id || $[6] !== t3) {
+		t5 = /* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", {
+			"data-id": id,
+			"data-selected": t3,
+			onClick: t4,
+			children: id
+		});
+		$[5] = id;
+		$[6] = t3;
+		$[7] = t5;
+	} else t5 = $[7];
+	return t5;
+}
+
+---
+
+function ReactArrayBoard(t0) {
+	const $ = (0, import_compiler_runtime.c)(12);
+	const { initialIds, life, registerIdsSetter } = t0;
+	let t1;
+	if ($[0] !== initialIds) {
+		t1 = () => [...initialIds];
+		$[0] = initialIds;
+		$[1] = t1;
+	} else t1 = $[1];
+	const [ids, setIds] = (0, import_react.useState)(t1);
+	let t2;
+	let t3;
+	if ($[2] !== registerIdsSetter) {
+		t2 = () => registerIdsSetter(setIds);
+		t3 = [registerIdsSetter];
+		$[2] = registerIdsSetter;
+		$[3] = t2;
+		$[4] = t3;
+	} else {
+		t2 = $[3];
+		t3 = $[4];
+	}
+	(0, import_react.useLayoutEffect)(t2, t3);
+	let t4;
+	if ($[5] !== ids || $[6] !== life) {
+		let t5;
+		if ($[8] !== life) {
+			t5 = (id) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ReactRow, {
+				id,
+				life
+			}, id);
+			$[8] = life;
+			$[9] = t5;
+		} else t5 = $[9];
+		t4 = ids.map(t5);
+		$[5] = ids;
+		$[6] = life;
+		$[7] = t4;
+	} else t4 = $[7];
+	let t5;
+	if ($[10] !== t4) {
+		t5 = /* @__PURE__ */ (0, import_jsx_runtime.jsx)("ul", {
+			"data-list": "rows",
+			children: t4
+		});
+		$[10] = t4;
+		$[11] = t5;
+	} else t5 = $[11];
+	return t5;
+}

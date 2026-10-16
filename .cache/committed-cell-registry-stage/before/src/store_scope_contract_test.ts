@@ -1,0 +1,1 @@
+../../../../src/store_scope_contract_test.ts

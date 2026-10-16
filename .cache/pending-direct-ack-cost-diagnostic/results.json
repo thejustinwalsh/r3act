@@ -1,0 +1,462 @@
+{
+  "status": "COMPLETE",
+  "scope": "PendingStateChanges queue cost only; no Root, React, VDOM, or browser claim",
+  "source": {
+    "path": ".cache/pending-direct-ack-stage-v3/src/pending_state_changes.ts",
+    "sha256": "11afdb7111a2f1d399c5d32e7b429456b8004fc106b20277295eb011cb403e1e",
+    "expectedSha256": "11afdb7111a2f1d399c5d32e7b429456b8004fc106b20277295eb011cb403e1e"
+  },
+  "tools": {
+    "script": "queue_cost_diagnostic.mjs",
+    "scriptSha256": "e18cd62fc7e8ceff8769107c32a3b76721ca78c2ed9989426bbfc5a638f1ef33",
+    "protocolSha256": "6354761a0e23d8697a5a3c16761e1a46ad9ff0cd885d672c36bc92a337ea6ffd",
+    "node": "v24.18.0",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "configuration": {
+    "sizes": [
+      128,
+      1024,
+      10000
+    ],
+    "densities": [
+      "sparse-1pct",
+      "dense-100pct"
+    ],
+    "pairsPerOrder": 5,
+    "totalPairsPerWorkload": 10,
+    "pairOrders": [
+      "AB",
+      "AB",
+      "AB",
+      "AB",
+      "AB",
+      "BA",
+      "BA",
+      "BA",
+      "BA",
+      "BA"
+    ],
+    "timedAssertions": "capture-count/null assertions and queue mutation operations are inside the timer for both arms; queue-size, buffer-scrub, generic-cleanup, and final state.clear validation are outside",
+    "warmupBatches": 64,
+    "measuredBatches": 96,
+    "timingMethod": "process.hrtime.bigint; write+capture+ack+scrub included",
+    "genericDecline": "separate case; declined capture+full buffer scrub timed; generic snapshot/clear cleanup untimed and identical"
+  },
+  "completedPairCount": 120,
+  "rawNdjsonSha256": "5e6cf9090a7be6fd9d91a988aee922aa6d1cca6c5ba8ddb6069e8ec872e10cba",
+  "rawNdjsonBytes": 423521,
+  "acceptedSummary": [
+    {
+      "size": 128,
+      "density": "sparse-1pct",
+      "activeCount": 1,
+      "baseline": {
+        "samples": {
+          "count": 960,
+          "medianNs": 250,
+          "p95Ns": 1042
+        },
+        "firstCold": {
+          "count": 10,
+          "medianNs": 1500,
+          "p95Ns": 232250
+        }
+      },
+      "keyed": {
+        "samples": {
+          "count": 960,
+          "medianNs": 292,
+          "p95Ns": 1042
+        },
+        "firstCold": {
+          "count": 10,
+          "medianNs": 3750,
+          "p95Ns": 80166
+        }
+      },
+      "keyedMinusBaseline": {
+        "count": 960,
+        "medianNs": 1,
+        "p95Ns": 167
+      }
+    },
+    {
+      "size": 128,
+      "density": "dense-100pct",
+      "activeCount": 128,
+      "baseline": {
+        "samples": {
+          "count": 960,
+          "medianNs": 5708,
+          "p95Ns": 9959
+        },
+        "firstCold": {
+          "count": 10,
+          "medianNs": 21625,
+          "p95Ns": 133459
+        }
+      },
+      "keyed": {
+        "samples": {
+          "count": 960,
+          "medianNs": 5791,
+          "p95Ns": 10125
+        },
+        "firstCold": {
+          "count": 10,
+          "medianNs": 40000,
+          "p95Ns": 93625
+        }
+      },
+      "keyedMinusBaseline": {
+        "count": 960,
+        "medianNs": 1,
+        "p95Ns": 1000
+      }
+    },
+    {
+      "size": 1024,
+      "density": "sparse-1pct",
+      "activeCount": 10,
+      "baseline": {
+        "samples": {
+          "count": 960,
+          "medianNs": 458,
+          "p95Ns": 500
+        },
+        "firstCold": {
+          "count": 10,
+          "medianNs": 1666,
+          "p95Ns": 7500
+        }
+      },
+      "keyed": {
+        "samples": {
+          "count": 960,
+          "medianNs": 500,
+          "p95Ns": 541
+        },
+        "firstCold": {
+          "count": 10,
+          "medianNs": 3000,
+          "p95Ns": 7541
+        }
+      },
+      "keyedMinusBaseline": {
+        "count": 960,
+        "medianNs": 41,
+        "p95Ns": 83
+      }
+    },
+    {
+      "size": 1024,
+      "density": "dense-100pct",
+      "activeCount": 1024,
+      "baseline": {
+        "samples": {
+          "count": 960,
+          "medianNs": 56500,
+          "p95Ns": 63666
+        },
+        "firstCold": {
+          "count": 10,
+          "medianNs": 189167,
+          "p95Ns": 452583
+        }
+      },
+      "keyed": {
+        "samples": {
+          "count": 960,
+          "medianNs": 52292,
+          "p95Ns": 59083
+        },
+        "firstCold": {
+          "count": 10,
+          "medianNs": 304583,
+          "p95Ns": 509959
+        }
+      },
+      "keyedMinusBaseline": {
+        "count": 960,
+        "medianNs": -3251,
+        "p95Ns": 3125
+      }
+    },
+    {
+      "size": 10000,
+      "density": "sparse-1pct",
+      "activeCount": 100,
+      "baseline": {
+        "samples": {
+          "count": 960,
+          "medianNs": 4042,
+          "p95Ns": 4458
+        },
+        "firstCold": {
+          "count": 10,
+          "medianNs": 16292,
+          "p95Ns": 23875
+        }
+      },
+      "keyed": {
+        "samples": {
+          "count": 960,
+          "medianNs": 4250,
+          "p95Ns": 4583
+        },
+        "firstCold": {
+          "count": 10,
+          "medianNs": 28417,
+          "p95Ns": 38084
+        }
+      },
+      "keyedMinusBaseline": {
+        "count": 960,
+        "medianNs": 167,
+        "p95Ns": 500
+      }
+    },
+    {
+      "size": 10000,
+      "density": "dense-100pct",
+      "activeCount": 10000,
+      "baseline": {
+        "samples": {
+          "count": 960,
+          "medianNs": 692166,
+          "p95Ns": 925667
+        },
+        "firstCold": {
+          "count": 10,
+          "medianNs": 2141166,
+          "p95Ns": 4738375
+        }
+      },
+      "keyed": {
+        "samples": {
+          "count": 960,
+          "medianNs": 571500,
+          "p95Ns": 846125
+        },
+        "firstCold": {
+          "count": 10,
+          "medianNs": 2961959,
+          "p95Ns": 9562458
+        }
+      },
+      "keyedMinusBaseline": {
+        "count": 960,
+        "medianNs": -114334,
+        "p95Ns": 159750
+      }
+    }
+  ],
+  "legacyDeclineSummary": [
+    {
+      "size": 128,
+      "density": "sparse-1pct",
+      "activeCount": 1,
+      "baseline": {
+        "samples": {
+          "count": 960,
+          "medianNs": 167,
+          "p95Ns": 792
+        },
+        "firstCold": {
+          "count": 10,
+          "medianNs": 834,
+          "p95Ns": 139667
+        }
+      },
+      "keyed": {
+        "samples": {
+          "count": 960,
+          "medianNs": 167,
+          "p95Ns": 792
+        },
+        "firstCold": {
+          "count": 10,
+          "medianNs": 1542,
+          "p95Ns": 8166
+        }
+      },
+      "keyedMinusBaseline": {
+        "count": 960,
+        "medianNs": 0,
+        "p95Ns": 83
+      }
+    },
+    {
+      "size": 128,
+      "density": "dense-100pct",
+      "activeCount": 128,
+      "baseline": {
+        "samples": {
+          "count": 960,
+          "medianNs": 4708,
+          "p95Ns": 5583
+        },
+        "firstCold": {
+          "count": 10,
+          "medianNs": 19417,
+          "p95Ns": 38375
+        }
+      },
+      "keyed": {
+        "samples": {
+          "count": 960,
+          "medianNs": 5334,
+          "p95Ns": 6250
+        },
+        "firstCold": {
+          "count": 10,
+          "medianNs": 34250,
+          "p95Ns": 41041
+        }
+      },
+      "keyedMinusBaseline": {
+        "count": 960,
+        "medianNs": 667,
+        "p95Ns": 918
+      }
+    },
+    {
+      "size": 1024,
+      "density": "sparse-1pct",
+      "activeCount": 10,
+      "baseline": {
+        "samples": {
+          "count": 960,
+          "medianNs": 417,
+          "p95Ns": 500
+        },
+        "firstCold": {
+          "count": 10,
+          "medianNs": 1459,
+          "p95Ns": 5458
+        }
+      },
+      "keyed": {
+        "samples": {
+          "count": 960,
+          "medianNs": 500,
+          "p95Ns": 583
+        },
+        "firstCold": {
+          "count": 10,
+          "medianNs": 3041,
+          "p95Ns": 7041
+        }
+      },
+      "keyedMinusBaseline": {
+        "count": 960,
+        "medianNs": 42,
+        "p95Ns": 126
+      }
+    },
+    {
+      "size": 1024,
+      "density": "dense-100pct",
+      "activeCount": 1024,
+      "baseline": {
+        "samples": {
+          "count": 960,
+          "medianNs": 45958,
+          "p95Ns": 51000
+        },
+        "firstCold": {
+          "count": 10,
+          "medianNs": 149083,
+          "p95Ns": 273709
+        }
+      },
+      "keyed": {
+        "samples": {
+          "count": 960,
+          "medianNs": 50667,
+          "p95Ns": 59500
+        },
+        "firstCold": {
+          "count": 10,
+          "medianNs": 279709,
+          "p95Ns": 436792
+        }
+      },
+      "keyedMinusBaseline": {
+        "count": 960,
+        "medianNs": 4916,
+        "p95Ns": 13084
+      }
+    },
+    {
+      "size": 10000,
+      "density": "sparse-1pct",
+      "activeCount": 100,
+      "baseline": {
+        "samples": {
+          "count": 960,
+          "medianNs": 3708,
+          "p95Ns": 3917
+        },
+        "firstCold": {
+          "count": 10,
+          "medianNs": 17542,
+          "p95Ns": 22959
+        }
+      },
+      "keyed": {
+        "samples": {
+          "count": 960,
+          "medianNs": 4250,
+          "p95Ns": 4458
+        },
+        "firstCold": {
+          "count": 10,
+          "medianNs": 31542,
+          "p95Ns": 52542
+        }
+      },
+      "keyedMinusBaseline": {
+        "count": 960,
+        "medianNs": 500,
+        "p95Ns": 791
+      }
+    },
+    {
+      "size": 10000,
+      "density": "dense-100pct",
+      "activeCount": 10000,
+      "baseline": {
+        "samples": {
+          "count": 960,
+          "medianNs": 519292,
+          "p95Ns": 673166
+        },
+        "firstCold": {
+          "count": 10,
+          "medianNs": 1621000,
+          "p95Ns": 2194500
+        }
+      },
+      "keyed": {
+        "samples": {
+          "count": 960,
+          "medianNs": 563750,
+          "p95Ns": 766750
+        },
+        "firstCold": {
+          "count": 10,
+          "medianNs": 2704750,
+          "p95Ns": 2969000
+        }
+      },
+      "keyedMinusBaseline": {
+        "count": 960,
+        "medianNs": 52166,
+        "p95Ns": 252292
+      }
+    }
+  ]
+}

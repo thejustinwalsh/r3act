@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+import {openBrowser} from 'vitexec/cli';
+import {readFile,writeFile} from 'node:fs/promises';
+const source='src/browser/native_state_props.tsx';
+const original=await readFile(source,'utf8');
+const browser=await openBrowser({gpu:false});
+const errors=[];
+try{
+ const context=await browser.newContext({ignoreHTTPSErrors:true});
+ const page=await context.newPage();
+ page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('https://async-transition-stress.localhost:1355/native-state-props.html',{waitUntil:'networkidle'});
+ await page.getByRole('button',{name:'Pause effect',exact:true}).waitFor();
+ await page.getByRole('button',{name:'Hold +100 for 3 seconds',exact:true}).click();
+ await page.evaluate(()=>{window.__oldDiagnostics=window.__nativeStateDemoDiagnostics;});
+ await writeFile(source,original+'\n// Native milestone HMR verification\n');
+ await page.waitForFunction(()=>window.__nativeStateDemoDiagnostics && window.__nativeStateDemoDiagnostics!==window.__oldDiagnostics);
+ assert.equal(await page.evaluate(()=>window.__oldDiagnostics.snapshot().disposed),true);
+ const old = await page.evaluate(()=>window.__oldDiagnostics.snapshot());
+ assert.equal(old.forkRoot.disposed,true);
+ assert.equal(old.store.roots,0);
+ assert.equal(old.store.listeners,0);
+ assert.equal(old.store.readers,0);
+ assert.equal(old.store.transitions,0);
+ assert.equal(old.pendingTransitionCount,0);
+ assert.equal(await page.locator('.demo-root').count(),1);
+ assert.equal(await page.locator('#fork-app > *').count(),1);
+ assert.equal(await page.locator('.orb').count(),1);
+ assert.equal(await page.getByRole('textbox',{name:'Edit alpha',exact:true}).count(),1);
+ assert.equal(errors.length,0,errors.join('\n'));
+ await writeFile('.cache/native-store-milestone/hmr-result.json',JSON.stringify({status:'PASS',oldDisposed:true,hostTrees:1,errors},null,2));
+ console.log('Native TSX HMR PASS');
+}finally{await writeFile(source,original);await browser.close();}

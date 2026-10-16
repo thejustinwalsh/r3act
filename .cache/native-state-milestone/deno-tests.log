@@ -1,0 +1,171 @@
+Check src/async_root_publication_test.ts
+Check src/async_store_runtime_test.ts
+Check src/async_task_plan_test.ts
+Check src/async_task_scheduler_test.ts
+Check src/async_transition_runtime_test.ts
+Check src/async_vdom_transition_runtime_test.ts
+Check src/component_state_keyed_delta.test.mjs
+Check src/component_state_runtime_test.ts
+Check src/derived_region_runtime_test.ts
+Check src/developer_study/task_a_runtime_test.ts
+Check src/developer_study/task_b_plan_test.ts
+Check src/keyed_filter_protocol_test.ts
+Check src/native_numeric_state_test.ts
+Check src/owner_state_world_test.ts
+Check src/root_work_queue_test.ts
+Check src/task_graph_runtime_test.ts
+Check src/vdom_keyed_region_delta.test.mjs
+Check src/vdom_scalar_keyed_delta_test.ts
+Check src/vdom_snapshot_runtime_test.ts
+running 1 test from ./src/async_root_publication_test.ts
+store and queue publish reverse-ready groups without tearing observers ... ok (7ms)
+running 13 tests from ./src/async_store_runtime_test.ts
+head-equal urgent action is retained when it changes a hidden root ... ok (0ms)
+ordinary head no-op does not append or invalidate snapshots ... ok (0ms)
+independent same-root transitions commit in reverse and replay in dispatch order ... ok (0ms)
+head-equal transition action is retained for a candidate that omits prior work ... ok (0ms)
+group transition commit publishes every root before notifying observers ... ok (0ms)
+finish and partial commit publish outsider and participant pointers together ... ok (0ms)
+render snapshot pins state and invalidates after a relevant update ... ok (0ms)
+selector previous values publish only after render commit and remain reader-local ... ok (0ms)
+detach invalidates snapshots, removes readers and releases transition holds ... ok (6ms)
+head-equal urgent updates remain visible to roots attached afterward ... ok (0ms)
+head-equal transition action is preserved for a root attached later ... ok (0ms)
+dispatch during notification drains after the current listener batch ... ok (0ms)
+throwing notification listener does not leave the drain stuck ... ok (0ms)
+running 4 tests from ./src/async_task_plan_test.ts
+OXC task DAG binds authored functions and commits through async VDOM ... ok (9ms)
+compiled task binder rejects implementation drift ... ok (0ms)
+OXC infers component state-site task reads ... ok (0ms)
+notebook compiled async-plan fixture preserves compiler/runtime parity ... ok (0ms)
+running 7 tests from ./src/async_task_scheduler_test.ts
+async task plan overlaps independent work and releases ready branches early ... ok (0ms)
+async task plan respects its concurrency cap ... ok (0ms)
+async task plan reuses completed work outside changed-input closure ... ok (0ms)
+cancelled async task plans return promptly and ignore late task results ... ok (0ms)
+async task plan rejects cycles before starting task code ... ok (0ms)
+async task failure aborts in-flight work and skips its dependents ... ok (0ms)
+notebook async scheduling fixture preserves its event-order contract ... ok (0ms)
+running 5 tests from ./src/async_transition_runtime_test.ts
+async transition prepares a DAG and atomically publishes its roots ... ok (1ms)
+a newer async transition cancels superseded task work ... ok (0ms)
+async task failure leaves committed roots unchanged ... ok (0ms)
+invalid new transition does not cancel a valid pending candidate ... ok (0ms)
+notebook async transition fixture preserves its integration contracts ... ok (7ms)
+running 8 tests from ./src/async_vdom_transition_runtime_test.ts
+async task results prepare and commit retained VDOM roots together ... ok (8ms)
+invalid candidate VDOM is rejected before any root is patched ... ok (0ms)
+external root commit invalidates the whole pending async batch ... ok (0ms)
+urgent same-root commit is visible immediately and rebases async candidate ... ok (1ms)
+urgent dependency write cancels a candidate built from stale task inputs ... ok (0ms)
+invalidated task plans restart from the newest state-site inputs ... ok (0ms)
+a newer root transition supersedes a queued input restart ... ok (0ms)
+notebook async VDOM fixture preserves host integration contracts ... ok (0ms)
+running 1 test from ./src/component_state_keyed_delta.test.mjs
+token-delta owner updates use bucketed keyed moves and structural edits ... ok (9ms)
+running 14 tests from ./src/component_state_runtime_test.ts
+OXC-lowered state sites execute through VDOM and survive conditional activation ... ok (2ms)
+OXC-lowered keyed components preserve state and host nodes through reorder and removal ... ok (0ms)
+failed component candidate removes new owner state and preserves committed output ... ok (0ms)
+compiled component event writes automatically coalesce into one scheduled VDOM commit ... ok (0ms)
+state updates rerun only the owning component and match a forced full render ... ok (0ms)
+component partial commit falls back without rendering a structural update twice ... ok (0ms)
+structural owner updates reconcile one keyed region and preserve child state ... ok (0ms)
+compiled invalidation edges select the state-owning component region ... ok (0ms)
+nested dirty descendants reuse clean component subtrees without dropping effects ... ok (0ms)
+indexed leaf updates remain local beneath Fragment-only component groups ... ok (1ms)
+batched state writes update multiple owner regions in one indexed commit ... ok (0ms)
+effect sites run after successful activation and clean up on site or owner removal ... ok (0ms)
+compiled keyed-owner reuse skips generic expansion for same-key reorder and falls back safely ... ok (0ms)
+token keyed-owner reuse skips eligibility rows and mismatches before fallback ... ok (0ms)
+running 5 tests from ./src/derived_region_runtime_test.ts
+shared-source fan-out deduplicates overlapping regions within a batch ... ok (0ms)
+generated query edges are local and rows fans out to both regions ... ok (0ms)
+multiple graph regions retain first invalidation order ... ok (0ms)
+malformed region graphs and invalid source slots fail at the boundary ... ok (0ms)
+compiled query and shared-row updates match a full VDOM derivation ... ok (11ms)
+running 1 test from ./src/developer_study/task_a_runtime_test.ts
+developer study Task A preserves keyed state while conditional effects deactivate ... ok (9ms)
+running 1 test from ./src/developer_study/task_b_plan_test.ts
+Task B dependency graph keeps query regions independent and rows shared ... ok (0ms)
+running 4 tests from ./src/keyed_filter_protocol_test.ts
+Gate A autorun stays disabled for ordinary interactive URLs ... ok (0ms)
+Gate A autorun accepts one deterministic size, seed, and session ... ok (0ms)
+Gate A autorun rejects incomplete or invalid study URLs ... ok (0ms)
+Gate A schedule has six one-size page loads per size across two balanced sessions ... ok (0ms)
+running 14 tests from ./src/native_numeric_state_test.ts
+compiler-approved numeric prop state updates without component execution ... ok (2ms)
+one keyed numeric update does not rescan the source cache ... ok (1ms)
+public hook spellings explain that native compilation is required ... ok (0ms)
+classic and automatic JSX factories keep separate child and key ABIs ... ok (0ms)
+derived numeric prop reads multiple live state cells as one batch ... ok (0ms)
+generic owner commits refresh numeric bound props from the prior host value ... ok (0ms)
+numeric batch validates every source before rewinding any source value ... ok (0ms)
+numeric source identity survives an invalid value and recovers cached bindings ... ok (0ms)
+numeric host writer errors propagate without generic rerender fallback ... ok (0ms)
+mixed numeric and generic work keeps direct owners cached and defers writes until commit ... ok (0ms)
+key removal destroys numeric state lifetime before the same key is mounted again ... ok (0ms)
+reentrant effect writes survive captured-version clearing and schedule another flush ... ok (0ms)
+unmount cleanup writes for a retiring owner are purged ... ok (0ms)
+shared world changes and cleanup are isolated by root namespace ... ok (0ms)
+running 4 tests from ./src/owner_state_world_test.ts
+owner/site state survives skipped conditional sites without shifting neighboring state ... ok (0ms)
+keyed owner identity is stable through reorder and fresh after destruction ... ok (0ms)
+state writes use Object.is, functional updates, and coalesced owner/site change records ... ok (0ms)
+destroying an owner recursively removes child traits and queued updates ... ok (0ms)
+running 16 tests from ./src/root_work_queue_test.ts
+independent root transitions publish in reverse task completion order ... ok (0ms)
+three transitions sharing a root coexist; urgent commit rebases each ... ok (6ms)
+explicit replacement key cancels only the matching transition ... ok (0ms)
+multi-root candidate validates and commits as one ordered boundary ... ok (0ms)
+stale prepared candidate is rebuilt from current root version ... ok (0ms)
+false read-set validation rejects stale work with a clear hook ... ok (0ms)
+cancel, detach, and disposed handles do not publish candidates ... ok (0ms)
+a throwing grouped host commit terminally poisons its roots ... ok (0ms)
+throwing freshness validation fails work without poisoning the root ... ok (0ms)
+cancellation or detach during preparation cannot reach host commit ... ok (0ms)
+cancellation or detach during validation prevents publication ... ok (0ms)
+cancellation or detach in the stale hook stops retries ... ok (0ms)
+root and pending routing arrays are copied when work is enqueued ... ok (0ms)
+validator urgent commit is detected and causes a fresh preparation ... ok (0ms)
+later root validation cannot stale an earlier root unnoticed ... ok (0ms)
+cancel and keyed replacement during commit preserve committed outcome ... ok (0ms)
+running 6 tests from ./src/task_graph_runtime_test.ts
+task graph dispatches only reachable value-dependent work ... ok (1ms)
+shared fan-in is coalesced and tasks run after every changed prerequisite ... ok (0ms)
+no-op source writes enqueue no work and repeated updates use the latest value ... ok (0ms)
+unchanged intermediate output prunes downstream task execution ... ok (0ms)
+incremental graph values match a full topological recomputation across an update trace ... ok (0ms)
+compiler plan rejects cycles and unknown dependency names ... ok (0ms)
+running 3 tests from ./src/vdom_keyed_region_delta.test.mjs
+keyed-region deltas retain identities, update order and serialize lazily ... ok (10ms)
+invalid keyed-region delta is rejected before host mutation ... ok (0ms)
+keyed-region delta can split and merge buckets while preserving parity ... ok (3ms)
+running 7 tests from ./src/vdom_scalar_keyed_delta_test.ts
+keyed deltas attach scalar and multisource writers for inserted rows ... ok (1ms)
+full commit diffs against last committed bound value after source mutation ... ok (7ms)
+remove and replace detach old writers; moves leave sibling indexes untouched ... ok (1ms)
+shared-source detach deletes only the removed subtree registrations ... ok (20ms)
+invalid bound delta validates fully before any host mutation ... ok (0ms)
+seeded scalar keyed deltas match full recompute after every edit ... ok (10ms)
+compiled graph and direct binding modes remain on the safe fallback ... ok (0ms)
+running 16 tests from ./src/vdom_snapshot_runtime_test.ts
+JSX runtime elements and child arrays are immutable for safe retained reuse ... ok (0ms)
+vector bindings coalesce frame sources into one stable host prop write ... ok (0ms)
+compiled numeric columns update stable VDOM writers as one batch ... ok (7ms)
+compiled column rows and buckets target dirty rows and rebuild after growth ... ok (0ms)
+keyed VDOM reorder preserves host identity and only changes child order ... ok (0ms)
+linear keyed move planning preserves order and host identity ... ok (0ms)
+stable child order updates avoid redundant host placements ... ok (0ms)
+keyed region commit updates one subtree without placing siblings ... ok (0ms)
+keyed region commits maintain the global key index by delta ... ok (0ms)
+keyed region subtree-rescan baseline matches the prior index algorithm ... ok (0ms)
+keyed region commit declines incompatible or ambiguous roots without host writes ... ok (0ms)
+multi-region keyed commit validates every region before mutating any host ... ok (0ms)
+removal detaches keyed nodes and a later insertion creates fresh host identity ... ok (0ms)
+duplicate next-sibling keys fail before changing the committed host tree ... ok (0ms)
+changing a key's host type replaces the incompatible node ... ok (0ms)
+removing and disposing keyed subtrees releases native event props ... ok (0ms)
+
+ok | 130 passed | 0 failed (677ms)
+

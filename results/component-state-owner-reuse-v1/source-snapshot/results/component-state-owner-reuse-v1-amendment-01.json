@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "component-state-owner-reuse-preregistration-amendment-v1",
+  "status": "FROZEN_BEFORE_LATENCY_COLLECTION",
+  "frozenAt": "2026-10-11T06:53:20Z",
+  "supersedes": "component-state-owner-reuse-v1-preregistration.json",
+  "reason": "The first implemented treatment reuses cached leaf-owner outputs only when a compiler-marked homogeneous list preserves the complete unique key set and all row props. Changed membership or props takes the generic recursive path. Therefore the original 20% edge-replacement hypothesis is not a valid treatment contrast for this implementation.",
+  "unchangedProtocol": [
+    "Same ComponentStateRoot and VDOM for generic and treatment arms.",
+    "10,000 keyed stateful rows; fresh visible browser page is the replication unit.",
+    "Five preregistered page seeds, eight warmups, and 24 measured paired updates per operation.",
+    "Balanced six-arm permutations and explicit 12-shrink/12-restore filter direction schedule.",
+    "Production latency build; profiling and work counters run separately.",
+    "React + Compiler remains contextual; the causal contrast is between runtime arms."
+  ],
+  "amendedHypotheses": {
+    "primary": "For same-key-set rotation, compiler-marked keyed-owner reuse will reduce per-page median update-to-host-commit time by at least 20% on at least four of five pages.",
+    "mechanism": "On rotation, the treatment bypasses generic component expansion for unchanged leaf rows and reuses their prior expanded output in the new order. The measured diagnostic pass must show at least 75% fewer generic component visits and cache hits for every retained row.",
+    "fallbackGuardrail": "For edge replacement, filter shrink, and filter restore, the treatment must preserve generic-path output/state/effect behavior, report the expected keyed-region fallback, and have a median page-level paired latency ratio no greater than 1.10. If this guardrail fails, restrict the compiler hint to same-key-set updates or add a cheaper eligibility check before another collection."
+  },
+  "treatmentEligibility": "One compiler-marked direct child array of homogeneous function components; every child has a unique explicit key; all keys already resolve to live owners under the same parent; every child has exactly one cached owner in its subtree; and every non-key/ref prop shallow-equals the cached props. A violation takes the generic path without mutating caches or host output.",
+  "primaryMetric": "For each page and rotation, report the median paired difference (generic minus treatment) and median paired ratio (treatment divided by generic) across the 24 measured updates. Aggregate only the five page-level summaries; do not pool updates.",
+  "correctnessGates": [
+    "Exact output parity after every update.",
+    "Host identity is retained for every keyed row through rotation.",
+    "Selected row state follows its key through rotation.",
+    "Row effects do not remount during rotation and clean up exactly once on removal.",
+    "Edge replacement and both filter directions fall back before mutation and preserve existing removal/reinsertion semantics.",
+    "Duplicate keys, changed props, unknown owners, non-leaf rows, or unsupported shapes never use the fast path.",
+    "Teardown leaves no host children or active owner effects."
+  ],
+  "limitations": [
+    "Five page loads share one Chrome profile and device; they do not establish cross-device or cross-browser performance.",
+    "Update-to-host-commit excludes layout, paint, and display presentation.",
+    "A successful result applies only to same-key-set reorders with the declared eligibility shape."
+  ],
+  "collectionStatus": "The implementation and deterministic MemoryVDOMHost correctness test exist. No latency page has been collected under this protocol or amendment."
+}

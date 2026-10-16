@@ -1,0 +1,81 @@
+import assert from 'node:assert/strict';
+import {openBrowser} from 'vitexec/cli';
+import {writeFile} from 'node:fs/promises';
+const browser=await openBrowser({gpu:false});const errors=[];
+try{
+ const context=await browser.newContext({ignoreHTTPSErrors:true,viewport:{width:1440,height:1050}});
+ const page=await context.newPage();
+ page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
+ await page.goto('https://async-transition-stress.localhost:1355/native-resource-boundaries.html',{waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>window.__nativeResourceBoundaryDiagnostics?.snapshot().activeProviderTimers===0);
+ const snapshot=()=>page.evaluate(()=>window.__nativeResourceBoundaryDiagnostics.snapshot());
+ const initial=await snapshot();
+ assert.equal(await page.locator('.resource-line').count(),4);
+ const main=page.getByRole('textbox',{name:'Main working note',exact:true});
+ const side=page.getByRole('textbox',{name:'Sidecar working note',exact:true});
+ await main.fill('Keep the main draft');await side.fill('Keep the sidecar draft');
+ await page.evaluate(()=>{
+  window.__mainResourceInput=document.querySelector('[aria-label="Main working note"]');
+  window.__sideResourceInput=document.querySelector('[aria-label="Sidecar working note"]');
+  window.__fallbackAfterStartup=0;window.__incoherentRootFrames=[];
+  window.__resourceObserver=new MutationObserver(()=>{
+   window.__fallbackAfterStartup+=document.querySelectorAll('.resource-fallback').length;
+   const texts=[...document.querySelectorAll('.resource-stack')].map(n=>n.textContent);
+   if(texts.length===2&&texts[0]!==texts[1])window.__incoherentRootFrames.push(texts);
+  });
+  window.__resourceObserver.observe(document.querySelector('.root-grid'),{subtree:true,childList:true,characterData:true});
+ });
+ await page.getByRole('button',{name:/Start replacement/}).click();
+ await page.getByRole('button',{name:'Urgent +1',exact:true}).first().click();
+ await main.fill('Still editing during suspension');await main.focus();
+ await page.waitForFunction(()=>document.querySelector('[aria-label="Main urgent review score"]')?.textContent==='19');
+ const pending=await snapshot();assert.equal(pending.queue.activeWork.length,1);
+ assert.equal(await page.locator('.resource-line strong').first().textContent(),'Mira Chen · Field notes');
+ await page.waitForFunction(()=>{
+  const s=window.__nativeResourceBoundaryDiagnostics.snapshot();
+  return s.providers.some(p=>p.label.startsWith('Brief revision')&&p.status==='fulfilled')&&s.providers.some(p=>p.label.startsWith('Profile revision')&&p.status==='pending');
+ });
+ const briefReady=await snapshot();assert.equal(briefReady.queue.activeWork.length,1);
+ assert.equal(await page.locator('.resource-line strong').first().textContent(),'Mira Chen · Field notes');
+ await page.waitForFunction(()=>window.__nativeResourceBoundaryDiagnostics.snapshot().queue.activeWork.length===0);
+ const revealed=await snapshot();assert.equal(revealed.operations.at(-1).status,'committed');
+ assert.equal(await main.inputValue(),'Still editing during suspension');assert.equal(await side.inputValue(),'Keep the sidecar draft');
+ assert.equal(await page.evaluate(()=>document.activeElement===window.__mainResourceInput),true,'Resource reveal stole focus');
+ assert.equal(await page.evaluate(()=>window.__mainResourceInput===document.querySelector('[aria-label="Main working note"]')&&window.__sideResourceInput===document.querySelector('[aria-label="Sidecar working note"]')),true,'Resource reveal replaced input hosts');
+ await page.getByRole('button',{name:'Load a rejected profile',exact:true}).click();
+ await page.waitForFunction(()=>document.querySelectorAll('.resource-error').length===2);
+ const rejected=await snapshot();assert.equal(rejected.queue.activeWork.length,0);
+ await page.getByRole('button',{name:'Retry with a new resource',exact:true}).first().click();
+ await page.waitForFunction(()=>window.__nativeResourceBoundaryDiagnostics.snapshot().queue.activeWork.length===0&&document.querySelectorAll('.resource-line').length===4);
+ const recovered=await snapshot();assert.equal(await main.inputValue(),'Still editing during suspension');
+ await page.getByRole('button',{name:/Start replacement/}).click();
+ await page.getByRole('button',{name:/Start replacement/}).click();
+ await page.getByRole('button',{name:/Start replacement/}).click();
+ const overlapping=await snapshot();assert.equal(overlapping.queue.activeWork.length,3);assert.equal(overlapping.activeProviderTimers,6);
+ await page.getByRole('button',{name:'Cancel latest wait',exact:true}).click();
+ const cancelled=await snapshot();const canceledOp=cancelled.operations.find(o=>o.status==='cancelled');assert.ok(canceledOp);
+ await page.waitForTimeout(160);
+ assert.equal((await snapshot()).operations.find(o=>o.id===canceledOp.id).elapsedMs,canceledOp.elapsedMs,'Canceled progress continued');
+ await page.waitForFunction(()=>window.__nativeResourceBoundaryDiagnostics.snapshot().activeProviderTimers===0&&window.__nativeResourceBoundaryDiagnostics.snapshot().queue.activeWork.length===0);
+ assert.equal(await page.evaluate(()=>window.__fallbackAfterStartup),0,'Ancestor fallback inserted after initial reveal');
+ assert.deepEqual(await page.evaluate(()=>window.__incoherentRootFrames),[],'Grouped resource hosts published separately across observer turns');
+ await page.screenshot({path:'.cache/namespace-three-milestone/resource-regression/desktop.png',fullPage:true});
+ await page.getByRole('button',{name:/Start replacement/}).click();
+ await page.evaluate(()=>{window.__oldResourceFacade=window.__nativeResourceBoundaryDiagnostics;window.__resourceObserver.disconnect();window.dispatchEvent(new Event('pagehide'));});
+ const disposed=await page.evaluate(()=>window.__oldResourceFacade.snapshot());
+ assert.equal(disposed.disposed,true);assert.equal(disposed.activeProviderTimers,0);assert.equal(disposed.pulseTimerActive,false);
+ assert.equal(disposed.effects.active,0);assert.equal(disposed.queue.activeWork.length,0);assert.equal(disposed.queueScopes.length,0);
+ assert.equal(disposed.roots.length,3);for(const r of disposed.roots){assert.equal(r.ownerCount,0);assert.equal(r.disposed,true);}
+ await writeFile('.cache/namespace-three-milestone/resource-regression/disposed-probe.json',JSON.stringify(disposed,null,2));
+ for(const [name,s] of Object.entries(disposed.stores)){for(const key of ['roots','listeners','readers','transitions','retainedActions'])assert.equal(s[key],0,`${name}.${key} leaked`);}
+ const mobile=await context.newPage();await mobile.setViewportSize({width:390,height:844});
+ mobile.on('pageerror',e=>errors.push(e.message));
+ await mobile.goto('https://async-transition-stress.localhost:1355/native-resource-boundaries.html',{waitUntil:'networkidle'});
+ await mobile.waitForFunction(()=>window.__nativeResourceBoundaryDiagnostics?.snapshot().activeProviderTimers===0);
+ assert.equal(await mobile.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'Mobile horizontal overflow');
+ await mobile.screenshot({path:'.cache/namespace-three-milestone/resource-regression/mobile.png',fullPage:true});
+ await mobile.evaluate(()=>window.dispatchEvent(new Event('pagehide')));
+ assert.deepEqual(errors,[]);
+ await writeFile('.cache/namespace-three-milestone/resource-regression/browser-result.json',JSON.stringify({status:'PASS',initial,pending,briefReady,revealed,rejected,recovered,overlapping,cancelled,disposed,errors},null,2));
+ console.log('PASS browser resources: actual TSX, sibling warmup, automatic grouped reveal, pending draft/urgent edits, local rejection/retry, three resource works, targeted cancellation, no ancestor fallback, coherent observer turns, pagehide cleanup, mobile layout.');
+}finally{await browser.close();}

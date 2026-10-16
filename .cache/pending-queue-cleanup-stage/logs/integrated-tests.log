@@ -1,0 +1,49 @@
+Check src/pending_state_changes_test.ts
+Check src/pending_state_cells_test.ts
+Check src/native_cell_cut_test.ts
+Check src/native_root_cell_queue_test.ts
+Check src/native_numeric_cell_cut_test.ts
+running 8 tests from ./src/pending_state_changes_test.ts
+pending changes expose current values in insertion order ... ok (0ms)
+repeated writes coalesce without changing insertion order ... ok (0ms)
+different owners and unusual site strings remain distinct ... ok (0ms)
+clearThrough only removes entries at or below captured versions ... ok (0ms)
+a write after a captured clear is preserved ... ok (0ms)
+cleared identities are reused without moving pending entries ... ok (0ms)
+dropOwner removes that owner's entries and permits clean reuse ... ok (0ms)
+clear removes pending changes and cached identities ... ok (0ms)
+running 8 tests from ./src/pending_state_cells_test.ts
+native cell writes coalesce to the maximum version and keep queue order ... ok (0ms)
+native values captures are independent fresh records ... ok (0ms)
+a new cell identity at an address starts a new version sequence ... ok (0ms)
+acknowledging an older native capture preserves newer pending version ... ok (0ms)
+cleared cells re-enter at the tail and preserve other pending order ... ok (0ms)
+foreign reused identities and misaddressed handles stay address-safe ... ok (0ms)
+owner drop and clear release queued data and allow identity reuse ... ok (7ms)
+legacy set keeps caller records and arrival semantics beside cell entries ... ok (0ms)
+running 8 tests from ./src/native_cell_cut_test.ts
+captureNative coalesces in first-arrival order into reused buffers ... ok (0ms)
+legacy fallback scrubs the partially written native prefix ... ok (0ms)
+capacity fallback scrubs partial output without changing the queue ... ok (0ms)
+native to legacy to native preserves reference and queue order ... ok (0ms)
+native queue clear requires exact handle address and incarnation ... ok (0ms)
+world validates exact cell handles and preserves writes newer than a cut ... ok (0ms)
+dead cell handles resolve to null and stale native cuts cannot clear state ... ok (0ms)
+two roots can capture and independently acknowledge one shared-world cut ... ok (6ms)
+running 3 tests from ./src/native_root_cell_queue_test.ts
+native roots queue only their own cells without public change records ... ok (6ms)
+a reentrant newer cell version survives acknowledgement of the captured cut ... ok (1ms)
+disposing a root drops queued cell work and makes retained setters inert ... ok (0ms)
+running 9 tests from ./src/native_numeric_cell_cut_test.ts
+native numeric cut bypasses StateChange capture and defers reentrant flush ... ok (5ms)
+native numeric cuts stay scoped to roots sharing one World ... ok (0ms)
+native numeric cut leaves state pending after a host writer throws ... ok (0ms)
+disposing during a native cell writer clears its queued cut ... ok (0ms)
+mixed store work keeps the independent captured-change path ... ok (1ms)
+unsupported numeric fallback does not add a redundant scheduled flush ... ok (1ms)
+version mismatch declines native cut and preserves the newer write ... ok (0ms)
+native host writers cannot update or prepare the root reentrantly ... ok (0ms)
+propagated structural reentry remains a terminal host failure ... ok (0ms)
+
+ok | 36 passed | 0 failed (192ms)
+

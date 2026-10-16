@@ -1,0 +1,1 @@
+../../../../src/react_native_adapter.ts

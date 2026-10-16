@@ -1,0 +1,72 @@
+--- a/src/compiled_state_layout.ts
++++ b/src/compiled_state_layout.ts
+@@ -28,16 +28,15 @@
+ 
+ /** Static primitive-only update kernel attached to one normalized layout. */
+ export type CompiledOwnerUpdateProgram = Readonly<{
+-  schemaVersion: 1;
++  schemaVersion: 2;
+   programId: string;
+   slotCount: number;
+   sinkIds: readonly string[];
+   executeCut: (
+-    changedRows: Uint32Array,
+     changedSlots: Uint32Array,
+     changeCount: number,
+     rowStates: readonly (CompiledOwnerUpdateRowState | undefined)[],
+-    stagedRows: Uint32Array,
++    stagedInputIndices: Uint32Array,
+     stagedSinkIds: Uint16Array,
+     stagedValues: CompiledOwnerUpdatePrimitive[],
+   ) => number;
+@@ -153,7 +152,7 @@
+   const inputSinkIds = input.sinkIds;
+   const executeCut = input.executeCut;
+   if (
+-    schemaVersion !== 1 || typeof programId !== "string" || !programId ||
++    schemaVersion !== 2 || typeof programId !== "string" || !programId ||
+     record.layout.programId !== programId ||
+     !Number.isSafeInteger(slotCount) || slotCount !== record.layout.slots.length ||
+     slotCount < 1 || slotCount > 30 || !Array.isArray(inputSinkIds) ||
+@@ -186,7 +185,7 @@
+     return current;
+   }
+   const snapshot: CompiledOwnerUpdateProgram = Object.freeze({
+-    schemaVersion: 1,
++    schemaVersion: 2,
+     programId,
+     slotCount,
+     sinkIds: Object.freeze(sinkIds),
+--- a/src/compiled_owner_update_program_metadata_test.ts
++++ b/src/compiled_owner_update_program_metadata_test.ts
+@@ -42,7 +42,7 @@
+   programId = "Row",
+   sinkIds: readonly string[] = ["style:left"],
+ ): CompiledOwnerUpdateProgram => ({
+-  schemaVersion: 1,
++  schemaVersion: 2,
+   programId,
+   slotCount: 1,
+   sinkIds,
+@@ -112,13 +112,20 @@
+   assertThrows(
+     () => associateCompiledOwnerUpdateProgram(makeLayout(), {
+       ...makeProgram(),
+-      schemaVersion: 2,
++      schemaVersion: 3,
+     } as unknown as CompiledOwnerUpdateProgram),
+     "unsupported program versions are rejected",
+   );
+   assertThrows(
+     () => associateCompiledOwnerUpdateProgram(makeLayout(), {
+       ...makeProgram(),
++      schemaVersion: 1,
++    } as unknown as CompiledOwnerUpdateProgram),
++    "the earlier seven-argument owner program version is rejected",
++  );
++  assertThrows(
++    () => associateCompiledOwnerUpdateProgram(makeLayout(), {
++      ...makeProgram(),
+       sinkIds: ["same", "same"],
+     }),
+     "duplicate sink IDs are rejected",

@@ -1,0 +1,1 @@
+../../../../src/vdom_disposal_failure_test.ts

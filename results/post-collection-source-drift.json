@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "post-collection-source-drift-v1",
+  "sourceLockStatus": "FROZEN_BEFORE_COLLECTION",
+  "entries": [
+    {
+      "path": "vite.config.ts",
+      "frozenBytes": 65579,
+      "frozenSha256": "cda2021daa8aa6cc7de1690a7118c4b10d4262c8644cf9bbcac81bb24ff78e4f",
+      "currentBytes": 68929,
+      "currentSha256": "5e5d07050cfb70192f77cc4e4abf5990151947cdd4bec3e77edaf7d544707ea8",
+      "reason": "The later phase-attribution harness added the /__benchmark/save-snake-phase-v1 endpoint after cadence collection. The original source-lock record is retained.",
+      "appliesTo": [
+        "snake-frame-cadence-v1"
+      ]
+    },
+    {
+      "path": "vite.config.ts",
+      "frozenBytes": 62231,
+      "frozenSha256": "4e831827a03e42e9e193220d5f7a4bb2869b9e254a846455fa8f459842d33547",
+      "currentBytes": 68929,
+      "currentSha256": "5e5d07050cfb70192f77cc4e4abf5990151947cdd4bec3e77edaf7d544707ea8",
+      "reason": "Cadence V1 and the later phase-attribution harness added collection endpoints after lifecycle V1 finished. The cadence source lock is the intermediate checkpoint; the lifecycle lock is preserved as collected.",
+      "appliesTo": [
+        "snake-frame-lifecycle-v1"
+      ]
+    },
+    {
+      "path": "deno.json",
+      "frozenBytes": 18488,
+      "frozenSha256": "7fdda42ccf6cd8a3315540ad0e2885bf10f2f743dee982197728512f14d4a789",
+      "currentBytes": 18646,
+      "currentSha256": "bc8d266a76ae129e40af0674dc92ecd84df97e40e5c7fa7b67b6814bf558b2d0",
+      "reason": "After cadence collection, developer-study task metadata was updated to write an explicit empty-data summary artifact and to run the notebook status cell. These are research workflow commands; cadence workload, benchmark implementation, collection, and archived records are unchanged.",
+      "appliesTo": [
+        "snake-frame-lifecycle-v1",
+        "snake-frame-cadence-v1",
+        "snake-frame-phase-v1"
+      ]
+    },
+    {
+      "path": "dist/assets/snakeGame-BlrhBNxw.js",
+      "currentPath": "dist/assets/snakeGame-CKQ62_rD.js",
+      "frozenBytes": 6556,
+      "frozenSha256": "654fe8f88b0fff0778ea7c10e0ded942c5e8161ac917d938bbbd05f4ebca8aa8",
+      "currentBytes": 6573,
+      "currentSha256": "c47a9866463ec091f772aa9e6fde16b64dec56cbe473ac2244709682594c5130",
+      "reason": "After per-frame collection, the interactive Snake restart path was fixed and the production build emitted a new content-hashed game asset, replacing the old filename. The benchmark harness modules and archived page records are unchanged; the locked old bundle digest remains recorded.",
+      "appliesTo": [
+        "snake-frame-cadence-v1",
+        "snake-frame-phase-v1"
+      ]
+    }
+  ],
+  "scope": "snake-frame-v1"
+}

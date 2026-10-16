@@ -1,0 +1,101 @@
+--- a/src/vdom_snapshot_runtime.ts
++++ b/src/vdom_snapshot_runtime.ts
+@@ -850,6 +850,7 @@
+   #preparedNumericRowByIdentity = new WeakMap<object, PreparedNumericRowProgramRecord<H>>();
+   #ownerRowCutEpoch = 0;
+   #ownerRowRecordScratch: Array<PreparedNumericRowProgramRecord<H> | undefined> = [];
++  #ownerRowInputRecordScratch: Array<PreparedNumericRowProgramRecord<H> | undefined> = [];
+   #ownerRowRecordCount = 0;
+   #ownerRowGroupScratch: Array<BoundPropGroup<H> | undefined> = [];
+   #ownerRowGroupRecordScratch: Array<PreparedNumericRowProgramRecord<H> | undefined> = [];
+@@ -3204,6 +3205,7 @@
+     this.#ownerRowGroupCount = 0;
+     this.#ownerRowExecutionActive = true;
+     this.#ownerRowExecutionCancelled = false;
++    let inputRecordCount = 0;
+     try {
+       if (this.#ownerRowCutEpoch >= Number.MAX_SAFE_INTEGER) {
+         this.#ownerRowCutEpoch = 1;
+@@ -3251,34 +3253,26 @@
+           record.changedEpochs[slotIndex] = epoch;
+           record.changedValues[slotIndex] = value;
+         }
++        this.#ownerRowInputRecordScratch[index] = record;
++        inputRecordCount++;
+       }
+       if (count === 0) return false;
+ 
+-      // Validate every dependency used by a reached sink. Shared lease arrays
+-      // can be cleared on promotion or retired with a World row, even when that
+-      // dependency was not itself in this cut.
+-      for (let rowIndex = 0; rowIndex < this.#ownerRowRecordCount; rowIndex++) {
+-        const record = this.#ownerRowRecordScratch[rowIndex]!;
+-        for (let slotIndex = 0; slotIndex < record.sources.length; slotIndex++) {
+-          if (countVisits) this.#ownerRowWorkVisits++;
+-          if (!record.usedSlots[slotIndex]) continue;
+-          const source = record.sources[slotIndex];
+-          const column = record.columns[slotIndex];
+-          if (
+-            !source || record.sourceLease[slotIndex] !== source ||
+-            record.columnLease[slotIndex] !== column ||
+-            !column || column.values.length <= record.row
+-          ) return null;
+-        }
+-      }
+-
+-      // Capture all used dependency values for participating rows, then overlay
+-      // the explicit dirty values. No projector can observe a partial cut.
++      // Validate and capture every dependency used by a reached sink in one
++      // scratch-only pass. Shared lease arrays can be cleared on promotion or
++      // retired with a World row, even when that dependency was not itself in the cut.
+       for (let rowIndex = 0; rowIndex < this.#ownerRowRecordCount; rowIndex++) {
+         const record = this.#ownerRowRecordScratch[rowIndex]!;
+         for (let slotIndex = 0; slotIndex < record.sources.length; slotIndex++) {
+           if (countVisits) this.#ownerRowWorkVisits++;
+           if (record.usedSlots[slotIndex]) {
++            const source = record.sources[slotIndex];
++            const column = record.columns[slotIndex];
++            if (
++              !source || record.sourceLease[slotIndex] !== source ||
++              record.columnLease[slotIndex] !== column ||
++              !column || column.values.length <= record.row
++            ) return null;
+             record.inputValues[slotIndex] = record.columns[slotIndex].values[record.row];
+           }
+           if (record.changedEpochs[slotIndex] === epoch) {
+@@ -3302,8 +3296,7 @@
+       // Explicit changed-slot fanouts define the cut. This also handles lazy
+       // preparation after World has already written the new column value.
+       for (let index = 0; index < count; index++) {
+-        const token = tokens[changedRowIndices[index]]!;
+-        const record = this.#preparedNumericRowPrograms.get(token)!;
++        const record = this.#ownerRowInputRecordScratch[index]!;
+         const slotIndex = changedSlots[index];
+         if (countVisits) this.#ownerRowWorkVisits++;
+         for (const group of record.groupsBySlot[slotIndex]) {
+@@ -3356,6 +3349,9 @@
+       for (let index = 0; index < this.#ownerRowRecordCount; index++) {
+         this.#ownerRowRecordScratch[index] = undefined;
+       }
++      for (let index = 0; index < inputRecordCount; index++) {
++        this.#ownerRowInputRecordScratch[index] = undefined;
++      }
+       for (let index = 0; index < this.#ownerRowGroupCount; index++) {
+         this.#ownerRowGroupScratch[index] = undefined;
+         this.#ownerRowGroupRecordScratch[index] = undefined;
+@@ -3366,6 +3362,7 @@
+       this.#ownerRowExecutionActive = false;
+       if (this.#ownerRowExecutionCancelled) {
+         this.#ownerRowRecordScratch.length = 0;
++        this.#ownerRowInputRecordScratch.length = 0;
+         this.#ownerRowGroupScratch.length = 0;
+         this.#ownerRowGroupRecordScratch.length = 0;
+         this.#ownerRowValueScratch.length = 0;
+@@ -3625,6 +3622,7 @@
+       }
+       if (!this.#ownerRowExecutionActive) {
+         this.#ownerRowRecordScratch.length = 0;
++        this.#ownerRowInputRecordScratch.length = 0;
+         this.#ownerRowGroupScratch.length = 0;
+         this.#ownerRowGroupRecordScratch.length = 0;
+         this.#ownerRowValueScratch.length = 0;

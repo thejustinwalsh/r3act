@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "component-state-owner-reuse-v2-amendment-05",
+  "createdAt": "2026-10-11T00:00:00Z",
+  "status": "FROZEN_BEFORE_LATENCY_COLLECTION",
+  "preregistration": "results/component-state-owner-reuse-v2-preregistration.json",
+  "amendment": "results/component-state-owner-reuse-v2-amendment-04.json",
+  "reason": "A passing visible diagnostic completed all three scenarios and passed correctness and mechanism checks, but the preview archive validator rejected it. The validator sorted each four-arm order before counting unique permutations, making all 24 distinct orders appear identical.",
+  "change": "Count distinct arm-order permutations using their original sequence while retaining the existing sorted membership check for each sample. No scenario, sample, timing, threshold, or exclusion rule changes.",
+  "unchanged": [
+    "Four arms and their definitions",
+    "10,000-row workload and operations",
+    "Five page seeds and page replication unit",
+    "Warmups, measured pairs, order balance, and filter direction balance",
+    "Timing boundary and diagnostic separation",
+    "Primary, fallback, and mechanism thresholds"
+  ],
+  "interpretation": "This is an archive-validation repair only. The successful diagnostic remains diagnostic evidence and is excluded from latency claims."
+}

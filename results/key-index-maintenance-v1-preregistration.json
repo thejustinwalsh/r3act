@@ -1,0 +1,59 @@
+{
+  "schemaVersion": "key-index-maintenance-preregistration-v1",
+  "status": "FROZEN_BEFORE_COLLECTION",
+  "frozenAt": "2026-10-11T00:00:00-04:00",
+  "question": "Does maintaining the keyed VDOM global index from reconciliation attach/detach events reduce structural update time compared with rescanning the prior and updated keyed subtree after each keyed-region commit, under the same reconciler?",
+  "hypotheses": {
+    "primary": "Delta maintenance will lower per-page median update time than keyed-subtree rescanning for rotation, edge replacement, and each filter direction.",
+    "mechanism": "Delta maintenance visits only inserted or removed mounted nodes for filter and edge replacement, and zero key-index nodes for a pure reorder; keyed-subtree rescanning revisits the whole target subtree before and after every update.",
+    "context": "React is included as a contextual reference, not as the causal control for the index-maintenance hypothesis."
+  },
+  "design": {
+    "runtimeArms": ["rebuild", "delta"],
+    "contextualArm": "react",
+    "sameReconciler": true,
+    "count": 10000,
+    "warmupPairsPerOperation": 8,
+    "measuredPairsPerOperation": 24,
+    "operations": ["rotate", "replace-edge", "filter"],
+    "filterDirections": ["shrink", "restore"],
+    "filterDirectionSamplesPerPage": {
+      "shrink": 12,
+      "restore": 12
+    },
+    "armOrder": "Seeded shuffle of six arm permutations; permutation frequencies are balanced across 32 updates.",
+    "replicationUnit": "Fresh visible browser page; update samples within a page are repeated measures, not independent replications.",
+    "pageReplications": 5,
+    "seeds": [83002001, 83002002, 83002003, 83002004, 83002005],
+    "browserProfile": "One Chrome 154 MacIntel profile, one device, visible tab, 10 hardware threads, DPR 2; report actual environment from every page record."
+  },
+  "measurements": {
+    "primary": "Per-page median paired difference (rebuild minus delta) and paired ratio (rebuild divided by delta) for measured updates, grouped by operation and explicit filter direction.",
+    "secondary": [
+      "Per-page update p95 by arm and operation/direction.",
+      "One mount and one teardown duration per arm, per operation, per page; summarize across pages only.",
+      "Output parity, retained host identity, removal/reinsertion identity, and empty-container teardown contracts."
+    ],
+    "excluded": ["Layout", "paint", "display presentation", "component-local state", "cross-device generalization"]
+  },
+  "acceptance": {
+    "all_page_records_must_pass": true,
+    "required_visibility_state": "visible",
+    "required_measured_pairs": 24,
+    "retain_invalid_attempts": true,
+    "no_performance_based_exclusion": true
+  },
+  "limitations": [
+    "This is a mechanism-level host-reconciliation study, not a full application or component-state comparison.",
+    "Five page replications on one device cannot establish performance across browsers or hardware.",
+    "Mount and teardown have one timing observation per arm and scenario per page; they are descriptive.",
+    "The benchmark compares update-to-host-commit time and does not claim smoother frame presentation."
+  ],
+  "urls": [
+    "https://react-runtime-snake.localhost:1355/key-index-maintenance-benchmark.html?autorun=1&seed=83002001",
+    "https://react-runtime-snake.localhost:1355/key-index-maintenance-benchmark.html?autorun=1&seed=83002002",
+    "https://react-runtime-snake.localhost:1355/key-index-maintenance-benchmark.html?autorun=1&seed=83002003",
+    "https://react-runtime-snake.localhost:1355/key-index-maintenance-benchmark.html?autorun=1&seed=83002004",
+    "https://react-runtime-snake.localhost:1355/key-index-maintenance-benchmark.html?autorun=1&seed=83002005"
+  ]
+}

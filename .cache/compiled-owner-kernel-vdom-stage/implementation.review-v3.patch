@@ -1,0 +1,848 @@
+--- a/src/vdom_snapshot_runtime.ts
++++ b/src/vdom_snapshot_runtime.ts
+@@ -11,9 +11,13 @@
+ import { KeyedRegionBuckets } from "./keyed_region_buckets.ts";
+ import { createDOMStylePropWriter } from "./dom_style_writer.ts";
+ import {
++  compiledOwnerUpdateProgramFor,
+   compiledStateLayoutSignature,
+   compiledStateLayoutSlot,
+   normalizeCompiledStateLayout,
++  type CompiledOwnerUpdatePrimitive,
++  type CompiledOwnerUpdateProgram,
++  type CompiledOwnerUpdateRowState,
+   type CompiledStateLayout,
+ } from "./compiled_state_layout.ts";
+ 
+@@ -27,6 +31,12 @@
+   keyedRegionId: string | null;
+ };
+ type VNode = VText | VElement;
++
++const isCompiledOwnerUpdatePrimitive = (
++  value: unknown,
++): value is CompiledOwnerUpdatePrimitive =>
++  value === null || value === undefined || typeof value === "string" ||
++  typeof value === "boolean" || typeof value === "number";
+ 
+ type MountedNode<H> = {
+   vnode: VNode;
+@@ -106,10 +116,14 @@
+   readonly columns: readonly NumericColumn[];
+   readonly usedSlots: Uint8Array;
+   readonly groupsBySlot: readonly (readonly BoundPropGroup<H>[])[];
++  readonly ownerUpdateProgram?: CompiledOwnerUpdateProgram;
++  readonly sinks?: readonly BoundPropGroup<H>[];
+   readonly inputValues: number[];
+   readonly changedEpochs: number[];
+   readonly changedValues: number[];
+   cutEpoch: number;
++  cutTokenIndex: number;
++  seenMask: number;
+   active: boolean;
+ };
+ 
+@@ -854,10 +868,20 @@
+   #ownerRowGroupScratch: Array<BoundPropGroup<H> | undefined> = [];
+   #ownerRowGroupRecordScratch: Array<PreparedNumericRowProgramRecord<H> | undefined> = [];
+   #ownerRowValueScratch: unknown[] = [];
++  #ownerRowStagedRows = new Uint32Array(0);
++  #ownerRowStagedSinkIds = new Uint16Array(0);
++  #ownerRowStagedValues: CompiledOwnerUpdatePrimitive[] = [];
+   #ownerRowGroupCount = 0;
+   #ownerRowExecutionActive = false;
+   #ownerRowExecutionCancelled = false;
+   #ownerRowWorkVisits = 0;
++  #ownerUpdateKernelBatches = 0;
++  #ownerUpdateKernelRows = 0;
++  #ownerUpdateKernelInputs = 0;
++  #ownerUpdateKernelSelectedSinks = 0;
++  #ownerUpdateKernelStagedSinks = 0;
++  #ownerUpdateGenericFallbackCuts = 0;
++  #ownerUpdateGenericProjectors = 0;
+   #preparedCellProgramRecords = new WeakMap<
+     PreparedNumericCellProgram,
+     PreparedNumericCellProgramRecord<H>
+@@ -2487,7 +2511,72 @@
+       if (!usedSlots[slotIndex]) continue;
+       if (!sources[slotIndex]) return null;
+       for (const group of groupsBySlot[slotIndex]) {
+-        if (group.ownerRowInputs !== undefined) return null;
++        if (group.ownerRowInputSlots !== undefined) return null;
++      }
++    }
++    let ownerUpdateProgram: CompiledOwnerUpdateProgram | undefined;
++    let ownerUpdateSinks: BoundPropGroup<H>[] | undefined;
++    const candidateProgram = compiledOwnerUpdateProgramFor(layout);
++    if (
++      candidateProgram?.schemaVersion === 1 &&
++      candidateProgram.programId === layout.programId &&
++      candidateProgram.slotCount === slotCount &&
++      candidateProgram.sinkIds.length > 0 &&
++      candidateProgram.sinkIds.length <= 30
++    ) {
++      const groupsBySinkId = new Map<string, BoundPropGroup<H>>();
++      const visitedGroups = new Set<BoundPropGroup<H>>();
++      let complete = true;
++      for (let slotIndex = 0; slotIndex < slotCount; slotIndex++) {
++        for (const group of groupsBySlot[slotIndex]) {
++          if (visitedGroups.has(group)) continue;
++          visitedGroups.add(group);
++          const binding = getBoundValue(group.rawValue)!;
++          const sinkId = binding.numericProgram?.schemaVersion === 2
++            ? binding.numericProgram.sinkId
++            : undefined;
++          if (!sinkId || groupsBySinkId.has(sinkId)) {
++            complete = false;
++            break;
++          }
++          groupsBySinkId.set(sinkId, group);
++        }
++        if (!complete) break;
++      }
++      const sinks: BoundPropGroup<H>[] = [];
++      if (complete && groupsBySinkId.size === candidateProgram.sinkIds.length) {
++        for (const sinkId of candidateProgram.sinkIds) {
++          const group = groupsBySinkId.get(sinkId);
++          if (!group) {
++            complete = false;
++            break;
++          }
++          sinks.push(group);
++        }
++      } else complete = false;
++      if (complete) {
++        for (let slotIndex = 0; slotIndex < slotCount; slotIndex++) {
++          const actual = groupsBySlot[slotIndex];
++          let actualIndex = 0;
++          for (let sinkIndex = 0; sinkIndex < candidateProgram.sinkIds.length; sinkIndex++) {
++            const group = sinks[sinkIndex];
++            const binding = getBoundValue(group.rawValue)!;
++            if (binding.numericOwner!.sourceSlots.includes(slotIndex)) {
++              if (actual[actualIndex++] !== group) {
++                complete = false;
++                break;
++              }
++            }
++          }
++          if (!complete || actualIndex !== actual.length) {
++            complete = false;
++            break;
++          }
++        }
++      }
++      if (complete) {
++        ownerUpdateProgram = candidateProgram;
++        ownerUpdateSinks = sinks;
+       }
+     }
+     const token = Object.freeze({}) as PreparedNumericRowProgram;
+@@ -2509,18 +2598,24 @@
+       columns,
+       usedSlots,
+       groupsBySlot,
++      ownerUpdateProgram,
++      sinks: ownerUpdateSinks,
+       inputValues,
+       changedEpochs,
+       changedValues,
+       cutEpoch: 0,
++      cutTokenIndex: -1,
++      seenMask: 0,
+       active: true,
+     };
+     for (const groups of groupsBySlot) {
+       for (const group of groups) {
+-        group.ownerRowInputs ??= new Array<number>(group.sources.length);
+         const binding = getBoundValue(group.rawValue)!;
+         group.ownerRowInputSlots = binding.numericOwner!.sourceSlots;
+         group.ownerRowProjectInputs = binding.projectInputs;
++        if (!ownerUpdateProgram) {
++          group.ownerRowInputs ??= new Array<number>(group.sources.length);
++        }
+       }
+     }
+     this.#preparedNumericRowPrograms.set(token, record);
+@@ -2939,6 +3034,13 @@
+         this.#groupsByCompiledColumnBinding,
+       ),
+       preparedNumericRowWorkVisits: this.#ownerRowWorkVisits,
++      preparedOwnerUpdateKernelBatches: this.#ownerUpdateKernelBatches,
++      preparedOwnerUpdateKernelRows: this.#ownerUpdateKernelRows,
++      preparedOwnerUpdateKernelInputs: this.#ownerUpdateKernelInputs,
++      preparedOwnerUpdateKernelSelectedSinks: this.#ownerUpdateKernelSelectedSinks,
++      preparedOwnerUpdateKernelStagedSinks: this.#ownerUpdateKernelStagedSinks,
++      preparedOwnerUpdateGenericFallbackCuts: this.#ownerUpdateGenericFallbackCuts,
++      preparedOwnerUpdateGenericProjectors: this.#ownerUpdateGenericProjectors,
+       bindingIndexAttachOperations: this.#bindingIndexAttachOperations,
+       bindingIndexDetachOperations: this.#bindingIndexDetachOperations,
+       bindingIndexIndexOperations: this.#bindingIndexIndexOperations,
+@@ -3203,11 +3305,17 @@
+     this.#ownerRowExecutionActive = true;
+     this.#ownerRowExecutionCancelled = false;
+     let inputRecordCount = 0;
++    let stagedCount = 0;
++    let stagedCleanupBound = 0;
++    let kernelRowCount = 0;
++    let ownerUpdateProgram: CompiledOwnerUpdateProgram | undefined;
+     try {
+       if (this.#ownerRowCutEpoch >= Number.MAX_SAFE_INTEGER) {
+         this.#ownerRowCutEpoch = 1;
+         for (const record of this.#activePreparedNumericRowRecords) {
+           record.cutEpoch = 0;
++          record.cutTokenIndex = -1;
++          record.seenMask = 0;
+           record.changedEpochs.fill(0);
+           for (const groups of record.groupsBySlot) {
+             for (const group of groups) group.ownerRowCutEpoch = 0;
+@@ -3242,7 +3350,11 @@
+         ) return null;
+         if (record.cutEpoch !== epoch) {
+           record.cutEpoch = epoch;
+-          this.#ownerRowRecordScratch[this.#ownerRowRecordCount++] = record;
++          record.cutTokenIndex = tokenIndex;
++          this.#ownerRowRecordScratch[tokenIndex] = record;
++          this.#ownerRowRecordCount = Math.max(this.#ownerRowRecordCount, tokenIndex + 1);
++        } else if (record.cutTokenIndex !== tokenIndex) {
++          record.cutTokenIndex = -2;
+         }
+         if (record.changedEpochs[slotIndex] === epoch) {
+           if (!Object.is(record.changedValues[slotIndex], value)) return null;
+@@ -3259,7 +3371,8 @@
+       // scratch-only pass. Shared lease arrays can be cleared on promotion or
+       // retired with a World row, even when that dependency was not itself in the cut.
+       for (let rowIndex = 0; rowIndex < this.#ownerRowRecordCount; rowIndex++) {
+-        const record = this.#ownerRowRecordScratch[rowIndex]!;
++        const record = this.#ownerRowRecordScratch[rowIndex];
++        if (!record) continue;
+         for (let slotIndex = 0; slotIndex < record.sources.length; slotIndex++) {
+           if (countVisits) this.#ownerRowWorkVisits++;
+           if (record.usedSlots[slotIndex]) {
+@@ -3278,9 +3391,70 @@
+         }
+       }
+ 
++      if (count > 0) {
++        for (let index = 0; index < this.#ownerRowRecordCount; index++) {
++          const record = this.#ownerRowRecordScratch[index];
++          if (record) {
++            ownerUpdateProgram = record.ownerUpdateProgram;
++            break;
++          }
++        }
++        for (let index = 0; ownerUpdateProgram && index < this.#ownerRowRecordCount; index++) {
++          const record = this.#ownerRowRecordScratch[index];
++          if (!record) continue;
++          kernelRowCount++;
++          if (
++            record.ownerUpdateProgram !== ownerUpdateProgram || !record.sinks ||
++            record.cutTokenIndex < 0 || record.sinks.length !== ownerUpdateProgram.sinkIds.length
++          ) ownerUpdateProgram = undefined;
++        }
++      }
++      if (ownerUpdateProgram) {
++        const outputCapacity = kernelRowCount * ownerUpdateProgram.sinkIds.length;
++        if (!Number.isSafeInteger(outputCapacity) || outputCapacity > 0xffff_ffff) {
++          ownerUpdateProgram = undefined;
++        } else {
++          stagedCleanupBound = outputCapacity;
++          if (this.#ownerRowStagedRows.length < outputCapacity) {
++            this.#ownerRowStagedRows = new Uint32Array(outputCapacity);
++            this.#ownerRowStagedSinkIds = new Uint16Array(outputCapacity);
++            this.#ownerRowStagedValues.length = outputCapacity;
++          } else if (this.#ownerRowStagedValues.length < outputCapacity) {
++            this.#ownerRowStagedValues.length = outputCapacity;
++          }
++          for (let rowIndex = 0; rowIndex < this.#ownerRowRecordCount; rowIndex++) {
++            const record = this.#ownerRowRecordScratch[rowIndex];
++            if (record) record.seenMask = 0;
++          }
++          if (countVisits) {
++            this.#ownerUpdateKernelBatches++;
++            this.#ownerUpdateKernelRows += kernelRowCount;
++            this.#ownerUpdateKernelInputs += count;
++          }
++        }
++      }
++      if (!ownerUpdateProgram) {
++        for (let rowIndex = 0; rowIndex < this.#ownerRowRecordCount; rowIndex++) {
++          const record = this.#ownerRowRecordScratch[rowIndex];
++          if (!record) continue;
++          if (record.ownerUpdateProgram && record.sinks?.[0].ownerRowInputs === undefined) {
++            for (const groups of record.groupsBySlot) {
++              for (const group of groups) {
++                if (group !== record.sinks[0]) {
++                  group.ownerRowInputs ??= new Array<number>(group.sources.length);
++                }
++              }
++            }
++            record.sinks[0].ownerRowInputs ??= new Array<number>(record.sinks[0].sources.length);
++          }
++        }
++        if (countVisits) this.#ownerUpdateGenericFallbackCuts++;
++      }
++
+       // Mirror the complete captured dependency vectors before any sink runs.
+       for (let rowIndex = 0; rowIndex < this.#ownerRowRecordCount; rowIndex++) {
+-        const record = this.#ownerRowRecordScratch[rowIndex]!;
++        const record = this.#ownerRowRecordScratch[rowIndex];
++        if (!record) continue;
+         for (let slotIndex = 0; slotIndex < record.sources.length; slotIndex++) {
+           if (countVisits) this.#ownerRowWorkVisits++;
+           const source = record.sources[slotIndex];
+@@ -3290,56 +3464,125 @@
+         }
+       }
+ 
+-      // Explicit changed-slot fanouts define the cut. This also handles lazy
+-      // preparation after World has already written the new column value.
+-      for (let index = 0; index < count; index++) {
+-        const record = this.#ownerRowInputRecordScratch[index]!;
+-        const slotIndex = changedSlots[index];
+-        if (countVisits) this.#ownerRowWorkVisits++;
+-        for (const group of record.groupsBySlot[slotIndex]) {
++      let wrote = false;
++      if (ownerUpdateProgram) {
++        if (this.#ownerRowExecutionCancelled) return false;
++        stagedCount = ownerUpdateProgram.executeCut(
++          changedRowIndices,
++          changedSlots,
++          count,
++          this.#ownerRowRecordScratch as unknown as readonly (
++            CompiledOwnerUpdateRowState | undefined
++          )[],
++          this.#ownerRowStagedRows,
++          this.#ownerRowStagedSinkIds,
++          this.#ownerRowStagedValues,
++        );
++        if (this.#ownerRowExecutionCancelled) return false;
++        if (
++          !Number.isSafeInteger(stagedCount) || stagedCount < 0 ||
++          stagedCount > stagedCleanupBound
++        ) {
++          throw new Error("Compiled owner update kernel returned an invalid output count");
++        }
++        for (let index = 0; index < this.#ownerRowRecordCount; index++) {
++          const record = this.#ownerRowRecordScratch[index];
++          if (!record) continue;
++          const validMask = (1 << record.sinks!.length) - 1;
++          if ((record.seenMask & ~validMask) !== 0) {
++            throw new Error("Compiled owner update kernel selected an unknown sink");
++          }
++        }
++        for (let index = 0; index < stagedCount; index++) {
++          const rowIndex = this.#ownerRowStagedRows[index];
++          const sinkIndex = this.#ownerRowStagedSinkIds[index];
++          const record = this.#ownerRowRecordScratch[rowIndex];
++          const next = this.#ownerRowStagedValues[index];
++          if (
++            !record || !record.sinks || sinkIndex >= record.sinks.length ||
++            (record.seenMask & (1 << sinkIndex)) === 0 ||
++            !isCompiledOwnerUpdatePrimitive(next)
++          ) throw new Error("Compiled owner update kernel returned an invalid sink output");
++        }
++        if (this.#ownerRowExecutionCancelled) return false;
++        stagedCleanupBound = stagedCount;
++        let selectedSinkCount = 0;
++        for (let index = 0; index < this.#ownerRowRecordCount; index++) {
++          const record = this.#ownerRowRecordScratch[index];
++          if (!record) continue;
++          for (let sinkIndex = 0; sinkIndex < record.sinks!.length; sinkIndex++) {
++            if ((record.seenMask & (1 << sinkIndex)) !== 0) {
++              const group = record.sinks![sinkIndex];
++              selectedSinkCount++;
++              group.lastSourceValue = record.inputValues[group.ownerRowInputSlots![0]];
++            }
++          }
++        }
++        if (countVisits) {
++          this.#ownerUpdateKernelSelectedSinks += selectedSinkCount;
++          this.#ownerUpdateKernelStagedSinks += stagedCount;
++        }
++        if (this.#ownerRowExecutionCancelled) return false;
++        for (let index = 0; index < stagedCount; index++) {
++          if (this.#ownerRowExecutionCancelled) break;
++          const rowIndex = this.#ownerRowStagedRows[index];
++          const sinkIndex = this.#ownerRowStagedSinkIds[index];
++          const record = this.#ownerRowRecordScratch[rowIndex]!;
++          const next = this.#ownerRowStagedValues[index];
++          const group = record.sinks[sinkIndex];
++          this.#writeBoundGroup(group, next);
++          wrote = true;
++          if (this.#ownerRowExecutionCancelled) break;
++          group.lastValue = next;
++        }
++      } else {
++        // Explicit changed-slot fanouts preserve the generic first-touch order.
++        for (let index = 0; index < count; index++) {
++          const record = this.#ownerRowInputRecordScratch[index]!;
++          const slotIndex = changedSlots[index];
+           if (countVisits) this.#ownerRowWorkVisits++;
+-          if (group.ownerRowCutEpoch === epoch) continue;
+-          group.ownerRowCutEpoch = epoch;
+-          const scratchIndex = this.#ownerRowGroupCount++;
+-          this.#ownerRowGroupScratch[scratchIndex] = group;
+-          this.#ownerRowGroupRecordScratch[scratchIndex] = record;
+-        }
+-      }
+-
+-      // Run every cached projector before the first host write.
+-      for (let index = 0; index < this.#ownerRowGroupCount; index++) {
++          for (const group of record.groupsBySlot[slotIndex]) {
++            if (countVisits) this.#ownerRowWorkVisits++;
++            if (group.ownerRowCutEpoch === epoch) continue;
++            group.ownerRowCutEpoch = epoch;
++            const scratchIndex = this.#ownerRowGroupCount++;
++            this.#ownerRowGroupScratch[scratchIndex] = group;
++            this.#ownerRowGroupRecordScratch[scratchIndex] = record;
++          }
++        }
++        for (let index = 0; index < this.#ownerRowGroupCount; index++) {
++          if (this.#ownerRowExecutionCancelled) return false;
++          if (countVisits) this.#ownerRowWorkVisits++;
++          const group = this.#ownerRowGroupScratch[index]!;
++          const record = this.#ownerRowGroupRecordScratch[index]!;
++          const slots = group.ownerRowInputSlots!;
++          const inputs = group.ownerRowInputs!;
++          for (let inputIndex = 0; inputIndex < slots.length; inputIndex++) {
++            inputs[inputIndex] = record.inputValues[slots[inputIndex]];
++          }
++          this.#ownerRowValueScratch[index] = group.ownerRowProjectInputs
++            ? group.ownerRowProjectInputs(inputs)
++            : group.project!(inputs[0]);
++          if (this.#ownerRowExecutionCancelled) return false;
++        }
++        if (countVisits) this.#ownerUpdateGenericProjectors += this.#ownerRowGroupCount;
+         if (this.#ownerRowExecutionCancelled) return false;
+-        if (countVisits) this.#ownerRowWorkVisits++;
+-        const group = this.#ownerRowGroupScratch[index]!;
+-        const record = this.#ownerRowGroupRecordScratch[index]!;
+-        const slots = group.ownerRowInputSlots!;
+-        const inputs = group.ownerRowInputs!;
+-        for (let inputIndex = 0; inputIndex < slots.length; inputIndex++) {
+-          inputs[inputIndex] = record.inputValues[slots[inputIndex]];
+-        }
+-        this.#ownerRowValueScratch[index] = group.ownerRowProjectInputs
+-          ? group.ownerRowProjectInputs(inputs)
+-          : group.project!(inputs[0]);
+-        if (this.#ownerRowExecutionCancelled) return false;
+-      }
+-      if (this.#ownerRowExecutionCancelled) return false;
+-
+-      for (let index = 0; index < this.#ownerRowGroupCount; index++) {
+-        const group = this.#ownerRowGroupScratch[index]!;
+-        const record = this.#ownerRowGroupRecordScratch[index]!;
+-        group.lastSourceValue = record.inputValues[group.ownerRowInputSlots![0]];
+-      }
+-
+-      let wrote = false;
+-      for (let index = 0; index < this.#ownerRowGroupCount; index++) {
+-        if (this.#ownerRowExecutionCancelled) break;
+-        const group = this.#ownerRowGroupScratch[index]!;
+-        const next = this.#ownerRowValueScratch[index];
+-        if (sameBoundValueCanSkipWrite(group.lastValue, next, group.forceWrite)) continue;
+-        this.#writeBoundGroup(group, next);
+-        wrote = true;
+-        if (this.#ownerRowExecutionCancelled) break;
+-        group.lastValue = next;
++
++        for (let index = 0; index < this.#ownerRowGroupCount; index++) {
++          const group = this.#ownerRowGroupScratch[index]!;
++          const record = this.#ownerRowGroupRecordScratch[index]!;
++          group.lastSourceValue = record.inputValues[group.ownerRowInputSlots![0]];
++        }
++        for (let index = 0; index < this.#ownerRowGroupCount; index++) {
++          if (this.#ownerRowExecutionCancelled) break;
++          const group = this.#ownerRowGroupScratch[index]!;
++          const next = this.#ownerRowValueScratch[index];
++          if (sameBoundValueCanSkipWrite(group.lastValue, next, group.forceWrite)) continue;
++          this.#writeBoundGroup(group, next);
++          wrote = true;
++          if (this.#ownerRowExecutionCancelled) break;
++          group.lastValue = next;
++        }
+       }
+       return wrote;
+     } finally {
+@@ -3353,6 +3596,12 @@
+         this.#ownerRowGroupScratch[index] = undefined;
+         this.#ownerRowGroupRecordScratch[index] = undefined;
+         this.#ownerRowValueScratch[index] = undefined;
++      }
++      const stagedCleanupCount = Math.min(stagedCleanupBound, this.#ownerRowStagedValues.length);
++      for (let index = 0; index < stagedCleanupCount; index++) {
++        this.#ownerRowStagedRows[index] = 0;
++        this.#ownerRowStagedSinkIds[index] = 0;
++        this.#ownerRowStagedValues[index] = 0;
+       }
+       this.#ownerRowRecordCount = 0;
+       this.#ownerRowGroupCount = 0;
+@@ -3363,6 +3612,9 @@
+         this.#ownerRowGroupScratch.length = 0;
+         this.#ownerRowGroupRecordScratch.length = 0;
+         this.#ownerRowValueScratch.length = 0;
++        this.#ownerRowStagedRows = new Uint32Array(0);
++        this.#ownerRowStagedSinkIds = new Uint16Array(0);
++        this.#ownerRowStagedValues.length = 0;
+       }
+       this.#ownerRowExecutionCancelled = false;
+     }
+@@ -3623,6 +3875,9 @@
+         this.#ownerRowGroupScratch.length = 0;
+         this.#ownerRowGroupRecordScratch.length = 0;
+         this.#ownerRowValueScratch.length = 0;
++        this.#ownerRowStagedRows = new Uint32Array(0);
++        this.#ownerRowStagedSinkIds = new Uint16Array(0);
++        this.#ownerRowStagedValues.length = 0;
+         this.#ownerRowRecordCount = 0;
+         this.#ownerRowGroupCount = 0;
+       }
+--- a/src/vdom_owner_update_kernel_test.ts
++++ b/src/vdom_owner_update_kernel_test.ts
+@@ -1,5 +1,6 @@
+ import {
+   associateCompiledOwnerUpdateProgram,
++  type CompiledOwnerUpdatePrimitive,
+   type CompiledOwnerUpdateProgram,
+   type CompiledStateLayout,
+ } from "./compiled_state_layout.ts";
+@@ -62,6 +63,7 @@
+   layout: CompiledStateLayout,
+   sourceSlots: readonly number[],
+   sinkId: string,
++  owner = 73,
+ ) => Object.assign(value, {
+   numericProgram: Object.freeze({
+     schemaVersion: 2 as const,
+@@ -70,17 +72,51 @@
+     sourceSites: Object.freeze(sourceSlots.map((slot) => layout.slots[slot].siteId)),
+   }),
+   numericOwner: Object.freeze({
+-    owner: 73,
++    owner,
+     programId: layout.programId!,
+     layout,
+     sourceSlots: Object.freeze([...sourceSlots]),
+   }),
+ });
+ 
++const makeSingleSlotLayout = (programId: string): CompiledStateLayout => Object.freeze({
++  schemaVersion: 1,
++  programId,
++  slots: Object.freeze([Object.freeze({ siteId: "value", slot: 0 })]),
++});
++
++const makeSingleSinkKernel = (
++  programId: string,
++  evaluate: (value: number) => number,
++): CompiledOwnerUpdateProgram => ({
++  schemaVersion: 1,
++  programId,
++  slotCount: 1,
++  sinkIds: Object.freeze(["value"]),
++  executeCut(changedRows, changedSlots, changeCount, rowStates, stagedRows, stagedSinkIds, stagedValues) {
++    let stagedCount = 0;
++    for (let index = 0; index < changeCount; index++) {
++      if (changedSlots[index] !== 0) continue;
++      const rowIndex = changedRows[index];
++      const row = rowStates[rowIndex]!;
++      if ((row.seenMask & 1) !== 0) continue;
++      row.seenMask |= 1;
++      const next = evaluate(row.inputValues[0]);
++      if (!Object.is(row.sinks[0].lastValue, next)) {
++        stagedRows[stagedCount] = rowIndex;
++        stagedSinkIds[stagedCount] = 0;
++        stagedValues[stagedCount] = next;
++        stagedCount++;
++      }
++    }
++    return stagedCount;
++  },
++});
++
+ Deno.test("compiled owner update kernel stages sparse and dense row cuts", () => {
+   const host = new MemoryVDOMHost();
+   const container = host.createContainer();
+-  const root = new VDOMSnapshotRoot(host, container);
++  const root = new VDOMSnapshotRoot(host, container, undefined, () => {});
+   const layout = makeLayout();
+   associateCompiledOwnerUpdateProgram(layout, makeKernel("KernelRows"));
+   const x = new ScalarSource(801, 1);
+@@ -111,6 +147,18 @@
+   });
+   assert(token, "row preparation selects the associated complete kernel");
+ 
++  columns[1].values = new Float64Array(0);
++  same(root.executePreparedNumericRows(
++    [token], new Uint32Array([0]), new Uint32Array([0]), [4], 1,
++  ), null, "stale peer-column capacity declines before the kernel");
++  same(x.value, 1, "stale peer-column decline leaves source mirrors untouched");
++  columns[1].values = new Float64Array([2]);
++  same(root.executePreparedNumericRows(
++    [token], new Uint32Array([0, 0]), new Uint32Array([0, 0]), [4, 5], 2,
++  ), null, "conflicting duplicate values reject before mirroring");
++  same(x.value, 1, "conflicting values leave the source mirror unchanged");
++  same(genericProjectorCalls, 0, "conflicting values do not call projectors");
++
+   columns[0].values[0] = 4;
+   same(root.executePreparedNumericRows(
+     [token], new Uint32Array([0]), new Uint32Array([0]), [4], 1,
+@@ -140,7 +188,7 @@
+ Deno.test("incomplete compiled sink coverage chooses generic owner-row fallback", () => {
+   const host = new MemoryVDOMHost();
+   const container = host.createContainer();
+-  const root = new VDOMSnapshotRoot(host, container);
++  const root = new VDOMSnapshotRoot(host, container, undefined, () => {});
+   const layout = makeLayout();
+   associateCompiledOwnerUpdateProgram(layout, makeKernel("KernelRows"));
+   const x = new ScalarSource(821, 1);
+@@ -180,3 +228,249 @@
+     "fallback is visible in diagnostics");
+   root.dispose();
+ });
++
++Deno.test("heterogeneous owner rows use ordered generic fanout with retained vectors", () => {
++  const host = new MemoryVDOMHost();
++  const container = host.createContainer();
++  const root = new VDOMSnapshotRoot(host, container, undefined, () => {});
++  const layoutA = makeLayout();
++  const layoutB: CompiledStateLayout = Object.freeze({
++    schemaVersion: 1,
++    programId: "OtherRows",
++    slots: layoutA.slots,
++  });
++  associateCompiledOwnerUpdateProgram(layoutA, makeKernel("KernelRows"));
++  const aX = new ScalarSource(841, 1);
++  const aY = new ScalarSource(842, 2);
++  const bX = new ScalarSource(843, 3);
++  const bY = new ScalarSource(844, 4);
++  const aColumns = [
++    new NumericColumn(851, 0, new Float64Array([1])),
++    new NumericColumn(852, 1, new Float64Array([2])),
++  ];
++  const bColumns = [
++    new NumericColumn(853, 0, new Float64Array([3])),
++    new NumericColumn(854, 1, new Float64Array([4])),
++  ];
++  let genericCalls = 0;
++  let aInputs: readonly number[] | undefined;
++  const aSum = owned(bindSources([aX, aY], (values) => {
++    genericCalls++;
++    aInputs ??= values;
++    return values[0] + values[1];
++  }), layoutA, [0, 1], "sum-a", 73);
++  const aUnary = owned(bind(aX, (value) => {
++    genericCalls++;
++    return value;
++  }), layoutA, [0], "x-a", 73);
++  const bSum = owned(bindSources([bX, bY], (values) => {
++    genericCalls++;
++    return values[0] + values[1];
++  }), layoutB, [0, 1], "sum-b", 74);
++  const bUnary = owned(bind(bX, (value) => {
++    genericCalls++;
++    return value;
++  }), layoutB, [0], "x-b", 74);
++  root.commit(jsx("output", { aSum, aX: aUnary, bSum, bX: bUnary }), undefined, true);
++  genericCalls = 0;
++  const aToken = root.prepareNumericRowProgram({
++    owner: 73, layout: layoutA, rowIdentity: {}, row: 0, generation: 1,
++    sources: [aX, aY], columns: aColumns,
++  });
++  const bToken = root.prepareNumericRowProgram({
++    owner: 74, layout: layoutB, rowIdentity: {}, row: 0, generation: 1,
++    sources: [bX, bY], columns: bColumns,
++  });
++  assert(aToken && bToken, "both rows prepare through their own layouts");
++  const writes: string[] = [];
++  const setProp = host.setProp.bind(host);
++  host.setProp = (node, name, value, previous) => {
++    writes.push(name);
++    setProp(node, name, value, previous);
++  };
++  const cut = (aXValue: number, bXValue: number, aYValue: number, bYValue: number) => root.executePreparedNumericRows(
++    [aToken, bToken], new Uint32Array([0, 1, 0, 1]), new Uint32Array([0, 0, 1, 1]),
++    [aXValue, bXValue, aYValue, bYValue], 4,
++  );
++  same(cut(5, 9, 6, 10), true, "mixed kernel/generic rows take one generic cut");
++  same(writes.join(","), "aSum,aX,bSum,bX", "generic fallback keeps first-touch sink order");
++  same(container.children[0].props.aSum, 11, "kernel row uses generic projection after mixing");
++  same(container.children[0].props.bSum, 19, "generic row uses captured peer state");
++  same(genericCalls, 4, "all eligible sinks use generic projection in a mixed cut");
++  const stableInputs = aInputs;
++  writes.length = 0;
++  same(cut(7, 11, 8, 12), true, "a later heterogeneous cut remains generic");
++  same(aInputs, stableInputs, "fallback retains the per-sink argument vector");
++  same(root.diagnostics().preparedOwnerUpdateKernelBatches, 0,
++    "a heterogeneous cut does not partially execute a compiled kernel");
++  same(root.diagnostics().preparedOwnerUpdateGenericFallbackCuts, 2,
++    "both heterogeneous cuts are counted");
++  root.dispose();
++});
++
++Deno.test("kernel failure and invalid staged tails scrub before host writes", () => {
++  const host = new MemoryVDOMHost();
++  const container = host.createContainer();
++  const root = new VDOMSnapshotRoot(host, container);
++  const layout = makeSingleSlotLayout("ThrowRows");
++  let capturedValues: CompiledOwnerUpdatePrimitive[] | undefined;
++  associateCompiledOwnerUpdateProgram(layout, {
++    schemaVersion: 1,
++    programId: "ThrowRows",
++    slotCount: 1,
++    sinkIds: Object.freeze(["value"]),
++    executeCut(_rows, _slots, _count, rowStates, rows, sinkIds, values) {
++      const row = rowStates[0]!;
++      row.seenMask |= 1;
++      rows[0] = 0;
++      sinkIds[0] = 0;
++      values[0] = row.inputValues[0];
++      capturedValues = values;
++      throw new Error("kernel failure after a staged write");
++    },
++  });
++  const source = new ScalarSource(861, 1);
++  const column = new NumericColumn(862, 0, new Float64Array([1]));
++  root.commit(jsx("output", {
++    value: owned(bind(source, (value) => value), layout, [0], "value"),
++  }), undefined, true);
++  const token = root.prepareNumericRowProgram({
++    owner: 73, layout, rowIdentity: {}, row: 0, generation: 1,
++    sources: [source], columns: [column],
++  });
++  assert(token, "throwing kernel row prepares");
++  column.values[0] = 2;
++  let threw = false;
++  try {
++    root.executePreparedNumericRows([token], new Uint32Array([0]), new Uint32Array([0]), [2], 1);
++  } catch {
++    threw = true;
++  }
++  assert(threw, "kernel exception remains terminal");
++  same(container.children[0].props.value, 1, "kernel exception occurs before host writes");
++  same(capturedValues?.[0], 0, "partial staged values are scrubbed after kernel throws");
++  root.dispose();
++});
++
++Deno.test("kernel validates every staged result before its first host write", () => {
++  const host = new MemoryVDOMHost();
++  const container = host.createContainer();
++  const root = new VDOMSnapshotRoot(host, container);
++  const layout = makeSingleSlotLayout("InvalidRows");
++  associateCompiledOwnerUpdateProgram(layout, {
++    schemaVersion: 1,
++    programId: "InvalidRows",
++    slotCount: 1,
++    sinkIds: Object.freeze(["first", "later"]),
++    executeCut(_rows, _slots, _count, rowStates, rows, sinkIds, values) {
++      const row = rowStates[0]!;
++      row.seenMask |= 3;
++      rows[0] = 0;
++      rows[1] = 0;
++      sinkIds[0] = 0;
++      sinkIds[1] = 1;
++      values[0] = 2;
++      values[1] = { invalid: true } as never;
++      return 2;
++    },
++  });
++  const source = new ScalarSource(871, 1);
++  const column = new NumericColumn(872, 0, new Float64Array([1]));
++  root.commit(jsx("output", {
++    first: owned(bind(source, (value) => value), layout, [0], "first"),
++    later: owned(bind(source, (value) => value), layout, [0], "later"),
++  }), undefined, true);
++  const token = root.prepareNumericRowProgram({
++    owner: 73, layout, rowIdentity: {}, row: 0, generation: 1,
++    sources: [source], columns: [column],
++  });
++  assert(token, "multi-sink row prepares");
++  column.values[0] = 2;
++  let threw = false;
++  try {
++    root.executePreparedNumericRows([token], new Uint32Array([0]), new Uint32Array([0]), [2], 1);
++  } catch {
++    threw = true;
++  }
++  assert(threw, "malformed later staged output is rejected");
++  same(container.children[0].props.first, 1, "valid first staged output was not written early");
++  same(container.children[0].props.later, 1, "invalid later output leaves sibling untouched");
++  root.dispose();
++});
++
++Deno.test("kernel disposal cancels before selected-source bookkeeping or writers", () => {
++  const host = new MemoryVDOMHost();
++  const container = host.createContainer();
++  const root = new VDOMSnapshotRoot(host, container);
++  const layout = makeSingleSlotLayout("DisposeRows");
++  associateCompiledOwnerUpdateProgram(layout, {
++    schemaVersion: 1,
++    programId: "DisposeRows",
++    slotCount: 1,
++    sinkIds: Object.freeze(["value"]),
++    executeCut(_rows, _slots, _count, rowStates, rows, sinkIds, values) {
++      const row = rowStates[0]!;
++      row.seenMask |= 1;
++      rows[0] = 0;
++      sinkIds[0] = 0;
++      values[0] = row.inputValues[0];
++      root.dispose();
++      return 1;
++    },
++  });
++  const source = new ScalarSource(881, 1);
++  const column = new NumericColumn(882, 0, new Float64Array([1]));
++  root.commit(jsx("output", {
++    value: owned(bind(source, (value) => value), layout, [0], "value"),
++  }), undefined, true);
++  const token = root.prepareNumericRowProgram({
++    owner: 73, layout, rowIdentity: {}, row: 0, generation: 1,
++    sources: [source], columns: [column],
++  });
++  assert(token, "disposal row prepares");
++  column.values[0] = 2;
++  same(root.executePreparedNumericRows([token], new Uint32Array([0]), new Uint32Array([0]), [2], 1),
++    false, "disposal from a kernel cancels its cut");
++  same(container.children.length, 0, "disposed host tree remains removed");
++});
++
++Deno.test("kernel host reentry failure leaves state retryable and cleans scratch", () => {
++  const host = new MemoryVDOMHost();
++  const container = host.createContainer();
++  const root = new VDOMSnapshotRoot(host, container);
++  const layout = makeSingleSlotLayout("HostRows");
++  associateCompiledOwnerUpdateProgram(layout, makeSingleSinkKernel("HostRows", (value) => value));
++  const source = new ScalarSource(891, 1);
++  const column = new NumericColumn(892, 0, new Float64Array([1]));
++  root.commit(jsx("output", {
++    value: owned(bind(source, (value) => value), layout, [0], "value"),
++  }), undefined, true);
++  const token = root.prepareNumericRowProgram({
++    owner: 73, layout, rowIdentity: {}, row: 0, generation: 1,
++    sources: [source], columns: [column],
++  });
++  assert(token, "host row prepares");
++  column.values[0] = 2;
++  const originalSetProp = host.setProp.bind(host);
++  let reenter = true;
++  host.setProp = (node, name, value, previous) => {
++    if (reenter && name === "value") {
++      reenter = false;
++      root.executePreparedNumericRows([token], new Uint32Array([0]), new Uint32Array([0]), [2], 1);
++    }
++    originalSetProp(node, name, value, previous);
++  };
++  let threw = false;
++  try {
++    root.executePreparedNumericRows([token], new Uint32Array([0]), new Uint32Array([0]), [2], 1);
++  } catch {
++    threw = true;
++  }
++  assert(threw, "nested host write is rejected by the numeric write guard");
++  same(container.children[0].props.value, 1, "failed reentry does not complete the host write");
++  same(root.executePreparedNumericRows(
++    [token], new Uint32Array([0]), new Uint32Array([0]), [2], 1,
++  ), true, "a later cut succeeds after host failure cleanup");
++  same(container.children[0].props.value, 2, "retry publishes the captured value");
++  root.dispose();
++});

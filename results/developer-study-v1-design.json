@@ -1,0 +1,167 @@
+{
+  "schemaVersion": "developer-extension-study-v1-design",
+  "status": "DESIGN_ONLY_NOT_PREREGISTERED",
+  "protocol": "developer-study-protocol.md",
+  "protocolVersion": "0.3",
+  "rubric": "developer-study-rubric.md",
+  "rubricVersion": "0.2-draft",
+  "participantPacket": "developer-study/participant-packet-v0.3.md",
+  "targetParticipants": 8,
+  "minimumForExploratoryComparison": 6,
+  "participants": "React/TypeScript developers with at least one year of experience and no prior work on this runtime/compiler",
+  "arms": [
+    {
+      "id": "react",
+      "description": "React 19.3.0 + React Compiler with public React APIs"
+    },
+    {
+      "id": "runtime",
+      "description": "Frozen pure-JavaScript runtime, OXC compiler, and DOM host APIs"
+    }
+  ],
+  "tasks": ["conditional-stateful-region", "shared-source-two-regions"],
+  "assignmentRule": "Assign the next participant to the first unused slot in scheduleSlots; do not allow self-selection.",
+  "taskContracts": {
+    "conditional-stateful-region": {
+      "owners": ["A", "B"],
+      "initialDraft": 0,
+      "actions": [
+        "show A",
+        "increment A twice",
+        "hide A",
+        "show A",
+        "increment A once",
+        "reorder owners to B,A",
+        "remove A while active"
+      ],
+      "assertions": [
+        "A retains draft 2 across hide and show",
+        "A has two setups and two cleanups after removal",
+        "after reordering, A has draft 3 and B has draft 0",
+        "B state and subscription are unchanged when A is removed"
+      ]
+    },
+    "shared-source-two-regions": {
+      "initialRows": [
+        { "id": 1, "group": 1, "score": 60 },
+        { "id": 2, "group": 2, "score": 80 },
+        { "id": 3, "group": 1, "score": 95 }
+      ],
+      "initialQueries": { "queryA": "1", "queryB": "75" },
+      "actions": [
+        "set queryA to 2",
+        "append row {id:4, group:2, score:90}",
+        "set queryB to 90"
+      ],
+      "expectedIdsAfterEachAction": [
+        { "group": [2], "score": [2, 3], "untouchedRegionIdentityPreserved": "score" },
+        { "group": [2, 4], "score": [2, 3, 4] },
+        { "group": [2, 4], "score": [3, 4], "untouchedRegionIdentityPreserved": "group" }
+      ],
+      "hostInvariant": "Each region root data-query attribute equals its current query string after every action."
+    }
+  },
+  "taskLimitMinutes": 40,
+  "warmupMinutesPerArm": 10,
+  "scheduleSlots": [
+    {
+      "slot": "S01",
+      "systemOrder": ["react", "runtime"],
+      "taskOrder": {
+        "react": ["conditional-stateful-region", "shared-source-two-regions"],
+        "runtime": ["shared-source-two-regions", "conditional-stateful-region"]
+      }
+    },
+    {
+      "slot": "S02",
+      "systemOrder": ["react", "runtime"],
+      "taskOrder": {
+        "react": ["shared-source-two-regions", "conditional-stateful-region"],
+        "runtime": ["conditional-stateful-region", "shared-source-two-regions"]
+      }
+    },
+    {
+      "slot": "S03",
+      "systemOrder": ["runtime", "react"],
+      "taskOrder": {
+        "runtime": ["conditional-stateful-region", "shared-source-two-regions"],
+        "react": ["shared-source-two-regions", "conditional-stateful-region"]
+      }
+    },
+    {
+      "slot": "S04",
+      "systemOrder": ["runtime", "react"],
+      "taskOrder": {
+        "runtime": ["shared-source-two-regions", "conditional-stateful-region"],
+        "react": ["conditional-stateful-region", "shared-source-two-regions"]
+      }
+    },
+    {
+      "slot": "S05",
+      "systemOrder": ["react", "runtime"],
+      "taskOrder": {
+        "react": ["conditional-stateful-region", "shared-source-two-regions"],
+        "runtime": ["shared-source-two-regions", "conditional-stateful-region"]
+      }
+    },
+    {
+      "slot": "S06",
+      "systemOrder": ["react", "runtime"],
+      "taskOrder": {
+        "react": ["shared-source-two-regions", "conditional-stateful-region"],
+        "runtime": ["conditional-stateful-region", "shared-source-two-regions"]
+      }
+    },
+    {
+      "slot": "S07",
+      "systemOrder": ["runtime", "react"],
+      "taskOrder": {
+        "runtime": ["conditional-stateful-region", "shared-source-two-regions"],
+        "react": ["shared-source-two-regions", "conditional-stateful-region"]
+      }
+    },
+    {
+      "slot": "S08",
+      "systemOrder": ["runtime", "react"],
+      "taskOrder": {
+        "runtime": ["shared-source-two-regions", "conditional-stateful-region"],
+        "react": ["conditional-stateful-region", "shared-source-two-regions"]
+      }
+    }
+  ],
+  "primaryMeasures": [
+    "task correctness and completion status",
+    "time to first correct completion with timeout censored at 40 minutes",
+    "five rubric-scored comprehension questions per task and arm, 0-2 points each"
+  ],
+  "secondaryMeasures": [
+    "failed test runs",
+    "documentation lookups",
+    "files and concepts changed",
+    "participant ease/predictability rating on a 7-point scale",
+    "blinded patch review for contract coverage, cross-module changes, and traceability"
+  ],
+  "freezeStatus": {
+    "starterFixtures": false,
+    "participantStarterProjects": false,
+    "participantPacket": false,
+    "warmupStarter": true,
+    "warmupPreflight": true,
+    "sourceHashes": false,
+    "preflightSourceLock": true,
+    "rawDataSchema": true,
+    "analysisScript": true,
+    "scoringRubric": false,
+    "pilotComplete": false,
+    "participantDataCollected": false
+  },
+  "fixturePreflight": {
+    "status": "PASS",
+    "taskA": "Matched React/runtime browser interaction sequence passed on production build.",
+    "taskB": "Matched React/runtime browser action script passed on production build; outputs, query attributes, and untouched-region identities matched.",
+    "warmup": "The ten-minute counter contract passed in React and compiled-runtime production browser builds; incomplete starter files were restored afterward.",
+    "sourceLock": "results/developer-study-v1-preflight-source-lock.json",
+    "evidenceScope": "Feasibility only; not participant data and not evidence of simplicity."
+  },
+  "decisionRule": "See developer-study-protocol.md; this draft is not evidence and cannot support a maintainability claim."
+}

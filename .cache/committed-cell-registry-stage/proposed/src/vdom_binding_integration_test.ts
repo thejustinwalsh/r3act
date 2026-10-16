@@ -1,0 +1,1 @@
+../../../../src/vdom_binding_integration_test.ts

@@ -1,0 +1,219 @@
+import { createHotContext as __vite__createHotContext } from "/@vite/client";import.meta.hot = __vite__createHotContext("/src/browser/native_state_props.tsx");import { defineComponent as __nativeDefineComponent, useStateAt as __nativeUseStateAt, useEffectAt as __nativeUseEffectAt, bindStatePropsAt as __nativeBindStatePropsAt } from "/src/native_runtime_api.ts";
+__nativeDefineComponent("src/browser/native_state_props.tsx#component:EditableRow", EditableRow, { propOnlySites: [] });
+__nativeDefineComponent("src/browser/native_state_props.tsx#component:GeneralBranch", GeneralBranch, { propOnlySites: [] });
+__nativeDefineComponent("src/browser/native_state_props.tsx#component:KeyedRows", KeyedRows, { propOnlySites: [] });
+__nativeDefineComponent("src/browser/native_state_props.tsx#component:MovingDot", MovingDot, { propOnlySites: [
+	"src/browser/native_state_props.tsx#component:MovingDot#state:0",
+	"src/browser/native_state_props.tsx#component:MovingDot#state:1",
+	"src/browser/native_state_props.tsx#component:MovingDot#state:2"
+] });
+__nativeDefineComponent("src/browser/native_state_props.tsx#component:NativeStateDemo", NativeStateDemo, { propOnlySites: [] });
+import { createDOMRoot, jsx } from "/src/native_runtime_api.ts";
+function EditableRow({ id }) {
+	const [draft, setDraft] = __nativeUseStateAt("src/browser/native_state_props.tsx#component:EditableRow#state:0", id === "alpha" ? "Alpha draft" : "Beta draft");
+	return /* @__PURE__ */ jsx("label", { className: "row" }, /* @__PURE__ */ jsx("span", null, id), /* @__PURE__ */ jsx("input", {
+		"aria-label": `Edit ${id}`,
+		value: draft,
+		onInput: (event) => setDraft(event.currentTarget.value)
+	}), /* @__PURE__ */ jsx("span", { className: "badge" }, "keyed"));
+}
+_c = EditableRow;
+function MovingDot() {
+	const [x, setX] = __nativeUseStateAt("src/browser/native_state_props.tsx#component:MovingDot#state:0", 18);
+	const [y, setY] = __nativeUseStateAt("src/browser/native_state_props.tsx#component:MovingDot#state:1", 28);
+	const [tint, setTint] = __nativeUseStateAt("src/browser/native_state_props.tsx#component:MovingDot#state:2", 158);
+	const [moving, setMoving] = __nativeUseStateAt("src/browser/native_state_props.tsx#component:MovingDot#state:3", true);
+	if (moving) {
+		__nativeUseEffectAt("src/browser/native_state_props.tsx#component:MovingDot#effect:0", () => {
+			let frame = 0;
+			let phase = 0;
+			const animate = () => {
+				phase += 1;
+				setX((value) => (value + 1) % 250);
+				setY((value) => 88 + Math.round(Math.sin(phase / 32) * 48));
+				frame = requestAnimationFrame(animate);
+			};
+			frame = requestAnimationFrame(animate);
+			return () => cancelAnimationFrame(frame);
+		});
+	}
+	return /* @__PURE__ */ jsx("section", { className: "panel" }, /* @__PURE__ */ jsx("h2", null, "State drives ordinary DOM props"), /* @__PURE__ */ jsx("div", { className: "stage" }, /* @__PURE__ */ jsx("div", {
+		className: "orb",
+		"aria-label": "Moving state dot",
+		"data-x": __nativeBindStatePropsAt(["src/browser/native_state_props.tsx#component:MovingDot#state:0"], ([x]) => x),
+		"data-y": __nativeBindStatePropsAt(["src/browser/native_state_props.tsx#component:MovingDot#state:1"], ([y]) => y),
+		style: {
+			"--dot-x": __nativeBindStatePropsAt(["src/browser/native_state_props.tsx#component:MovingDot#state:0"], ([x]) => x),
+			"--dot-y": __nativeBindStatePropsAt(["src/browser/native_state_props.tsx#component:MovingDot#state:1"], ([y]) => y),
+			"--dot-tint": __nativeBindStatePropsAt(["src/browser/native_state_props.tsx#component:MovingDot#state:2"], ([tint]) => tint)
+		}
+	})), /* @__PURE__ */ jsx("div", { className: "controls" }, /* @__PURE__ */ jsx("button", { onClick: () => setX((value) => (value + 18) % 250) }, "Nudge right"), /* @__PURE__ */ jsx("button", { onClick: () => setY((value) => (value + 16) % 250) }, "Nudge down"), /* @__PURE__ */ jsx("button", { onClick: () => setMoving((value) => !value) }, moving ? "Pause effect" : "Resume effect")), /* @__PURE__ */ jsx("p", { className: "muted" }, "Numeric cells are read only by compiled style and attribute expressions; the effect moves the dot each frame."), /* @__PURE__ */ jsx("label", null, "Tint", /* @__PURE__ */ jsx("input", {
+		type: "range",
+		min: "0",
+		max: "359",
+		value: __nativeBindStatePropsAt(["src/browser/native_state_props.tsx#component:MovingDot#state:2"], ([tint]) => tint),
+		onInput: (event) => setTint(Number(event.currentTarget.value))
+	})));
+}
+_c2 = MovingDot;
+function KeyedRows() {
+	const [showRows, setShowRows] = __nativeUseStateAt("src/browser/native_state_props.tsx#component:KeyedRows#state:0", true);
+	const [order, setOrder] = __nativeUseStateAt("src/browser/native_state_props.tsx#component:KeyedRows#state:1", ["alpha", "beta"]);
+	const moveFirstToEnd = () => setOrder((previous) => [...previous.slice(1), previous[0]]);
+	const rows = order.map((id) => /* @__PURE__ */ jsx(EditableRow, {
+		key: id,
+		id
+	}));
+	return /* @__PURE__ */ jsx("section", { className: "panel" }, /* @__PURE__ */ jsx("h2", null, "Keyed editable rows"), /* @__PURE__ */ jsx("p", { className: "muted" }, "Reorder to see each draft follow its key. Hide and show to remove owners and start fresh."), /* @__PURE__ */ jsx("div", { className: "controls" }, /* @__PURE__ */ jsx("button", { onClick: () => setShowRows((value) => !value) }, showRows ? "Remove rows" : "Mount rows"), /* @__PURE__ */ jsx("button", { onClick: moveFirstToEnd }, "Reorder keys")), showRows ? /* @__PURE__ */ jsx("div", { className: "rows" }, rows) : /* @__PURE__ */ jsx("p", { className: "muted" }, "Rows are unmounted."));
+}
+_c3 = KeyedRows;
+function GeneralBranch() {
+	const [showFallback, setShowFallback] = __nativeUseStateAt("src/browser/native_state_props.tsx#component:GeneralBranch#state:0", false);
+	const [message, setMessage] = __nativeUseStateAt("src/browser/native_state_props.tsx#component:GeneralBranch#state:1", "Ready");
+	return /* @__PURE__ */ jsx("section", {
+		className: "panel",
+		style: { marginTop: "18px" }
+	}, /* @__PURE__ */ jsx("h2", null, "General render fallback"), /* @__PURE__ */ jsx("p", { className: "muted" }, "This branch reads current state as ordinary JSX, exercising the general render path."), /* @__PURE__ */ jsx("button", { onClick: () => setShowFallback((value) => !value) }, "Toggle branch"), /* @__PURE__ */ jsx("button", { onClick: () => setMessage((value) => value === "Ready" ? "Updated" : "Ready") }, "Change message"), showFallback ? /* @__PURE__ */ jsx("p", { className: "badge" }, "State branch is visible: ", message, ".") : /* @__PURE__ */ jsx("p", { className: "muted" }, "The default branch is active: ", message, "."), /* @__PURE__ */ jsx("pre", { id: "diagnostics" }, "Reading runtime counters…"));
+}
+_c4 = GeneralBranch;
+function NativeStateDemo() {
+	return /* @__PURE__ */ jsx("div", { className: "demo-root" }, /* @__PURE__ */ jsx("h1", null, "Native state playground"), /* @__PURE__ */ jsx("p", { className: "lede" }, "Authored TSX with native state, effects, props, keyed lifetimes, and a general render fallback."), /* @__PURE__ */ jsx("div", { className: "grid" }, /* @__PURE__ */ jsx(MovingDot, null), /* @__PURE__ */ jsx(KeyedRows, null)), /* @__PURE__ */ jsx(GeneralBranch, null));
+}
+_c5 = NativeStateDemo;
+const root = createDOMRoot(document.querySelector("#app"), { profileCounter(counters) {
+	const diagnostics = document.querySelector("#diagnostics");
+	if (diagnostics) diagnostics.textContent = JSON.stringify(counters, null, 2);
+} });
+root.mount(/* @__PURE__ */ jsx(NativeStateDemo, null));
+const diagnosticsFacade = Object.freeze({ snapshot: () => Object.freeze({ ...root.diagnostics() }) });
+Object.defineProperty(window, "__nativeStateDemoDiagnostics", {
+	configurable: true,
+	value: diagnosticsFacade
+});
+const demoWindow = window;
+let disposed = false;
+const teardown = () => {
+	if (disposed) return;
+	disposed = true;
+	window.removeEventListener("pagehide", teardown);
+	root.dispose();
+	if (demoWindow.__nativeStateDemoDiagnostics === diagnosticsFacade) {
+		delete demoWindow.__nativeStateDemoDiagnostics;
+	}
+};
+window.addEventListener("pagehide", teardown, { once: true });
+if (import.meta.hot) {
+	import.meta.hot.accept();
+	import.meta.hot.dispose(teardown);
+}
+export const compiledNativeComponentPlan = {
+	"schema_version": 2,
+	"source_file": "src/browser/native_state_props.tsx",
+	"helper_module": "",
+	"tasks": [],
+	"task_order": [],
+	"component_module": "// @native-ui\n/** @jsxRuntime classic @jsx jsx */\nimport { useEffect, useState } from \"../native_runtime_api.ts\";\nimport { defineComponent as __nativeDefineComponent, useStateAt as __nativeUseStateAt, useEffectAt as __nativeUseEffectAt, bindStatePropsAt as __nativeBindStatePropsAt } from \"../native_runtime_api.ts\";\n__nativeDefineComponent(\"src/browser/native_state_props.tsx#component:EditableRow\", EditableRow, { propOnlySites: [] });\n__nativeDefineComponent(\"src/browser/native_state_props.tsx#component:GeneralBranch\", GeneralBranch, { propOnlySites: [] });\n__nativeDefineComponent(\"src/browser/native_state_props.tsx#component:KeyedRows\", KeyedRows, { propOnlySites: [] });\n__nativeDefineComponent(\"src/browser/native_state_props.tsx#component:MovingDot\", MovingDot, { propOnlySites: [\"src/browser/native_state_props.tsx#component:MovingDot#state:0\", \"src/browser/native_state_props.tsx#component:MovingDot#state:1\", \"src/browser/native_state_props.tsx#component:MovingDot#state:2\"] });\n__nativeDefineComponent(\"src/browser/native_state_props.tsx#component:NativeStateDemo\", NativeStateDemo, { propOnlySites: [] });\nimport { createDOMRoot, jsx } from \"../native_runtime_api.ts\";\n\ntype RowProps = { id: string; key?: string | number };\n\ndeclare global {\n  interface ImportMeta {\n    hot?: {\n      accept(): void;\n      dispose(callback: () => void): void;\n    };\n  }\n}\n\nfunction EditableRow({ id }: RowProps) {\n  const [draft, setDraft] = __nativeUseStateAt(\"src/browser/native_state_props.tsx#component:EditableRow#state:0\", id === \"alpha\" ? \"Alpha draft\" : \"Beta draft\");\n  return (\n    <label className=\"row\">\n      <span>{id}</span>\n      <input\n        aria-label={`Edit ${id}`}\n        value={draft}\n        onInput={(event: Event) => setDraft((event.currentTarget as HTMLInputElement).value)}\n      />\n      <span className=\"badge\">keyed</span>\n    </label>\n  );\n}\n\nfunction MovingDot() {\n  const [x, setX] = __nativeUseStateAt(\"src/browser/native_state_props.tsx#component:MovingDot#state:0\", 18);\n  const [y, setY] = __nativeUseStateAt(\"src/browser/native_state_props.tsx#component:MovingDot#state:1\", 28);\n  const [tint, setTint] = __nativeUseStateAt(\"src/browser/native_state_props.tsx#component:MovingDot#state:2\", 158);\n  const [moving, setMoving] = __nativeUseStateAt(\"src/browser/native_state_props.tsx#component:MovingDot#state:3\", true);\n\n  if (moving) {\n    __nativeUseEffectAt(\"src/browser/native_state_props.tsx#component:MovingDot#effect:0\", () => {\n      let frame = 0;\n      let phase = 0;\n      const animate = () => {\n        phase += 1;\n        setX((value) => (value + 1) % 250);\n        setY((value) => 88 + Math.round(Math.sin(phase / 32) * 48));\n        frame = requestAnimationFrame(animate);\n      };\n      frame = requestAnimationFrame(animate);\n      return () => cancelAnimationFrame(frame);\n    });\n  }\n\n  return (\n    <section className=\"panel\">\n      <h2>State drives ordinary DOM props</h2>\n      <div className=\"stage\">\n        <div\n          className=\"orb\"\n          aria-label=\"Moving state dot\"\n          data-x={__nativeBindStatePropsAt([\"src/browser/native_state_props.tsx#component:MovingDot#state:0\"], ([x]) => (x))}\n          data-y={__nativeBindStatePropsAt([\"src/browser/native_state_props.tsx#component:MovingDot#state:1\"], ([y]) => (y))}\n          style={{ \"--dot-x\": __nativeBindStatePropsAt([\"src/browser/native_state_props.tsx#component:MovingDot#state:0\"], ([x]) => (x)), \"--dot-y\": __nativeBindStatePropsAt([\"src/browser/native_state_props.tsx#component:MovingDot#state:1\"], ([y]) => (y)), \"--dot-tint\": __nativeBindStatePropsAt([\"src/browser/native_state_props.tsx#component:MovingDot#state:2\"], ([tint]) => (tint)) }}\n        />\n      </div>\n      <div className=\"controls\">\n        <button onClick={() => setX((value) => (value + 18) % 250)}>Nudge right</button>\n        <button onClick={() => setY((value) => (value + 16) % 250)}>Nudge down</button>\n        <button onClick={() => setMoving((value) => !value)}>{moving ? \"Pause effect\" : \"Resume effect\"}</button>\n      </div>\n      <p className=\"muted\">Numeric cells are read only by compiled style and attribute expressions; the effect moves the dot each frame.</p>\n      <label>\n        Tint\n        <input type=\"range\" min=\"0\" max=\"359\" value={__nativeBindStatePropsAt([\"src/browser/native_state_props.tsx#component:MovingDot#state:2\"], ([tint]) => (tint))} onInput={(event: Event) => setTint(Number((event.currentTarget as HTMLInputElement).value))} />\n      </label>\n    </section>\n  );\n}\n\nfunction KeyedRows() {\n  const [showRows, setShowRows] = __nativeUseStateAt(\"src/browser/native_state_props.tsx#component:KeyedRows#state:0\", true);\n  const [order, setOrder] = __nativeUseStateAt(\"src/browser/native_state_props.tsx#component:KeyedRows#state:1\", [\"alpha\", \"beta\"]);\n  const moveFirstToEnd = () => setOrder((previous) => [...previous.slice(1), previous[0]]);\n  const rows = order.map((id) => <EditableRow key={id} id={id} />);\n  return (\n    <section className=\"panel\">\n      <h2>Keyed editable rows</h2>\n      <p className=\"muted\">Reorder to see each draft follow its key. Hide and show to remove owners and start fresh.</p>\n      <div className=\"controls\">\n        <button onClick={() => setShowRows((value) => !value)}>{showRows ? \"Remove rows\" : \"Mount rows\"}</button>\n        <button onClick={moveFirstToEnd}>Reorder keys</button>\n      </div>\n      {showRows ? <div className=\"rows\">{rows}</div> : <p className=\"muted\">Rows are unmounted.</p>}\n    </section>\n  );\n}\n\nfunction GeneralBranch() {\n  const [showFallback, setShowFallback] = __nativeUseStateAt(\"src/browser/native_state_props.tsx#component:GeneralBranch#state:0\", false);\n  const [message, setMessage] = __nativeUseStateAt(\"src/browser/native_state_props.tsx#component:GeneralBranch#state:1\", \"Ready\");\n  return (\n    <section className=\"panel\" style={{ marginTop: \"18px\" }}>\n      <h2>General render fallback</h2>\n      <p className=\"muted\">This branch reads current state as ordinary JSX, exercising the general render path.</p>\n      <button onClick={() => setShowFallback((value) => !value)}>Toggle branch</button>\n      <button onClick={() => setMessage((value) => value === \"Ready\" ? \"Updated\" : \"Ready\")}>Change message</button>\n      {showFallback\n        ? <p className=\"badge\">State branch is visible: {message}.</p>\n        : <p className=\"muted\">The default branch is active: {message}.</p>}\n      <pre id=\"diagnostics\">Reading runtime counters…</pre>\n    </section>\n  );\n}\n\nfunction NativeStateDemo() {\n  return (\n    <div className=\"demo-root\">\n      <h1>Native state playground</h1>\n      <p className=\"lede\">Authored TSX with native state, effects, props, keyed lifetimes, and a general render fallback.</p>\n      <div className=\"grid\"><MovingDot /><KeyedRows /></div>\n      <GeneralBranch />\n    </div>\n  );\n}\n\nconst root = createDOMRoot(document.querySelector(\"#app\")!, {\n  profileCounter(counters) {\n    const diagnostics = document.querySelector<HTMLElement>(\"#diagnostics\");\n    if (diagnostics) diagnostics.textContent = JSON.stringify(counters, null, 2);\n  },\n});\nroot.mount(<NativeStateDemo />);\n\nconst diagnosticsFacade = Object.freeze({\n  snapshot: () => Object.freeze({ ...root.diagnostics() }),\n});\nObject.defineProperty(window, \"__nativeStateDemoDiagnostics\", {\n  configurable: true,\n  value: diagnosticsFacade,\n});\n\nconst demoWindow = window as Window & {\n  __nativeStateDemoDiagnostics?: typeof diagnosticsFacade;\n};\nlet disposed = false;\nconst teardown = () => {\n  if (disposed) return;\n  disposed = true;\n  window.removeEventListener(\"pagehide\", teardown);\n  root.dispose();\n  if (demoWindow.__nativeStateDemoDiagnostics === diagnosticsFacade) {\n    delete demoWindow.__nativeStateDemoDiagnostics;\n  }\n};\nwindow.addEventListener(\"pagehide\", teardown, { once: true });\n\nif (import.meta.hot) {\n  import.meta.hot.accept();\n  import.meta.hot.dispose(teardown);\n}\n",
+	"components": [
+		{
+			"name": "EditableRow",
+			"component_site_id": "src/browser/native_state_props.tsx#component:EditableRow",
+			"prop_only_sites": [],
+			"state_sites": [{
+				"site_id": "src/browser/native_state_props.tsx#component:EditableRow#state:0",
+				"initial_value": "id === \"alpha\" ? \"Alpha draft\" : \"Beta draft\""
+			}],
+			"effect_sites": []
+		},
+		{
+			"name": "GeneralBranch",
+			"component_site_id": "src/browser/native_state_props.tsx#component:GeneralBranch",
+			"prop_only_sites": [],
+			"state_sites": [{
+				"site_id": "src/browser/native_state_props.tsx#component:GeneralBranch#state:0",
+				"initial_value": "false"
+			}, {
+				"site_id": "src/browser/native_state_props.tsx#component:GeneralBranch#state:1",
+				"initial_value": "\"Ready\""
+			}],
+			"effect_sites": []
+		},
+		{
+			"name": "KeyedRows",
+			"component_site_id": "src/browser/native_state_props.tsx#component:KeyedRows",
+			"prop_only_sites": [],
+			"state_sites": [{
+				"site_id": "src/browser/native_state_props.tsx#component:KeyedRows#state:0",
+				"initial_value": "true"
+			}, {
+				"site_id": "src/browser/native_state_props.tsx#component:KeyedRows#state:1",
+				"initial_value": "[\"alpha\", \"beta\"]"
+			}],
+			"effect_sites": []
+		},
+		{
+			"name": "MovingDot",
+			"component_site_id": "src/browser/native_state_props.tsx#component:MovingDot",
+			"prop_only_sites": [
+				"src/browser/native_state_props.tsx#component:MovingDot#state:0",
+				"src/browser/native_state_props.tsx#component:MovingDot#state:1",
+				"src/browser/native_state_props.tsx#component:MovingDot#state:2"
+			],
+			"state_sites": [
+				{
+					"site_id": "src/browser/native_state_props.tsx#component:MovingDot#state:0",
+					"initial_value": "18"
+				},
+				{
+					"site_id": "src/browser/native_state_props.tsx#component:MovingDot#state:1",
+					"initial_value": "28"
+				},
+				{
+					"site_id": "src/browser/native_state_props.tsx#component:MovingDot#state:2",
+					"initial_value": "158"
+				},
+				{
+					"site_id": "src/browser/native_state_props.tsx#component:MovingDot#state:3",
+					"initial_value": "true"
+				}
+			],
+			"effect_sites": [{ "site_id": "src/browser/native_state_props.tsx#component:MovingDot#effect:0" }]
+		},
+		{
+			"name": "NativeStateDemo",
+			"component_site_id": "src/browser/native_state_props.tsx#component:NativeStateDemo",
+			"prop_only_sites": [],
+			"state_sites": [],
+			"effect_sites": []
+		}
+	]
+};
+var _c, _c2, _c3, _c4, _c5;
+$RefreshReg$(_c, "EditableRow");
+$RefreshReg$(_c2, "MovingDot");
+$RefreshReg$(_c3, "KeyedRows");
+$RefreshReg$(_c4, "GeneralBranch");
+$RefreshReg$(_c5, "NativeStateDemo");
+import * as RefreshRuntime from "/@react-refresh";
+const inWebWorker = typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope;
+import * as __vite_react_currentExports from "/src/browser/native_state_props.tsx?t=1791811680963";
+if (import.meta.hot && !inWebWorker) {
+  if (!window.$RefreshReg$) {
+    throw new Error(
+      "@vitejs/plugin-react can't detect preamble. Something is wrong."
+    );
+  }
+
+  const currentExports = __vite_react_currentExports;
+  queueMicrotask(() => {
+    RefreshRuntime.registerExportsForReactRefresh("/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/src/browser/native_state_props.tsx", currentExports);
+    import.meta.hot.accept((nextExports) => {
+      if (!nextExports) return;
+      const invalidateMessage = RefreshRuntime.validateRefreshBoundaryAndEnqueueUpdate("/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/src/browser/native_state_props.tsx", currentExports, nextExports);
+      if (invalidateMessage) import.meta.hot.invalidate(invalidateMessage);
+    });
+  });
+}
+function $RefreshReg$(type, id) { return RefreshRuntime.register(type, "/Users/tjw/Documents/Codex/2026-10-09/le/outputs/react-runtime-research/src/browser/native_state_props.tsx" + ' ' + id); }
+function $RefreshSig$() { return RefreshRuntime.createSignatureFunctionForTransform(); }
+
+//# sourceMappingURL=data:application/json;base64,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Y2VzQ29udGVudCI6WyIvLyBAbmF0aXZlLXVpXG4vKiogQGpzeFJ1bnRpbWUgY2xhc3NpYyBAanN4IGpzeCAqL1xuaW1wb3J0IHsgdXNlRWZmZWN0LCB1c2VTdGF0ZSB9IGZyb20gXCIuLi9uYXRpdmVfcnVudGltZV9hcGkudHNcIjtcbmltcG9ydCB7IGNyZWF0ZURPTVJvb3QsIGpzeCB9IGZyb20gXCIuLi9uYXRpdmVfcnVudGltZV9hcGkudHNcIjtcblxudHlwZSBSb3dQcm9wcyA9IHsgaWQ6IHN0cmluZzsga2V5Pzogc3RyaW5nIHwgbnVtYmVyIH07XG5cbmRlY2xhcmUgZ2xvYmFsIHtcbiAgaW50ZXJmYWNlIEltcG9ydE1ldGEge1xuICAgIGhvdD86IHtcbiAgICAgIGFjY2VwdCgpOiB2b2lkO1xuICAgICAgZGlzcG9zZShjYWxsYmFjazogKCkgPT4gdm9pZCk6IHZvaWQ7XG4gICAgfTtcbiAgfVxufVxuXG5mdW5jdGlvbiBFZGl0YWJsZVJvdyh7IGlkIH06IFJvd1Byb3BzKSB7XG4gIGNvbnN0IFtkcmFmdCwgc2V0RHJhZnRdID0gdXNlU3RhdGUoaWQgPT09IFwiYWxwaGFcIiA/IFwiQWxwaGEgZHJhZnRcIiA6IFwiQmV0YSBkcmFmdFwiKTtcbiAgcmV0dXJuIChcbiAgICA8bGFiZWwgY2xhc3NOYW1lPVwicm93XCI+XG4gICAgICA8c3Bhbj57aWR9PC9zcGFuPlxuICAgICAgPGlucHV0XG4gICAgICAgIGFyaWEtbGFiZWw9e2BFZGl0ICR7aWR9YH1cbiAgICAgICAgdmFsdWU9e2RyYWZ0fVxuICAgICAgICBvbklucHV0PXsoZXZlbnQ6IEV2ZW50KSA9PiBzZXREcmFmdCgoZXZlbnQuY3VycmVudFRhcmdldCBhcyBIVE1MSW5wdXRFbGVtZW50KS52YWx1ZSl9XG4gICAgICAvPlxuICAgICAgPHNwYW4gY2xhc3NOYW1lPVwiYmFkZ2VcIj5rZXllZDwvc3Bhbj5cbiAgICA8L2xhYmVsPlxuICApO1xufVxuXG5mdW5jdGlvbiBNb3ZpbmdEb3QoKSB7XG4gIGNvbnN0IFt4LCBzZXRYXSA9IHVzZVN0YXRlKDE4KTtcbiAgY29uc3QgW3ksIHNldFldID0gdXNlU3RhdGUoMjgpO1xuICBjb25zdCBbdGludCwgc2V0VGludF0gPSB1c2VTdGF0ZSgxNTgpO1xuICBjb25zdCBbbW92aW5nLCBzZXRNb3ZpbmddID0gdXNlU3RhdGUodHJ1ZSk7XG5cbiAgaWYgKG1vdmluZykge1xuICAgIHVzZUVmZmVjdCgoKSA9PiB7XG4gICAgICBsZXQgZnJhbWUgPSAwO1xuICAgICAgbGV0IHBoYXNlID0gMDtcbiAgICAgIGNvbnN0IGFuaW1hdGUgPSAoKSA9PiB7XG4gICAgICAgIHBoYXNlICs9IDE7XG4gICAgICAgIHNldFgoKHZhbHVlKSA9PiAodmFsdWUgKyAxKSAlIDI1MCk7XG4gICAgICAgIHNldFkoKHZhbHVlKSA9PiA4OCArIE1hdGgucm91bmQoTWF0aC5zaW4ocGhhc2UgLyAzMikgKiA0OCkpO1xuICAgICAgICBmcmFtZSA9IHJlcXVlc3RBbmltYXRpb25GcmFtZShhbmltYXRlKTtcbiAgICAgIH07XG4gICAgICBmcmFtZSA9IHJlcXVlc3RBbmltYXRpb25GcmFtZShhbmltYXRlKTtcbiAgICAgIHJldHVybiAoKSA9PiBjYW5jZWxBbmltYXRpb25GcmFtZShmcmFtZSk7XG4gICAgfSk7XG4gIH1cblxuICByZXR1cm4gKFxuICAgIDxzZWN0aW9uIGNsYXNzTmFtZT1cInBhbmVsXCI+XG4gICAgICA8aDI+U3RhdGUgZHJpdmVzIG9yZGluYXJ5IERPTSBwcm9wczwvaDI+XG4gICAgICA8ZGl2IGNsYXNzTmFtZT1cInN0YWdlXCI+XG4gICAgICAgIDxkaXZcbiAgICAgICAgICBjbGFzc05hbWU9XCJvcmJcIlxuICAgICAgICAgIGFyaWEtbGFiZWw9XCJNb3Zpbmcgc3RhdGUgZG90XCJcbiAgICAgICAgICBkYXRhLXg9e3h9XG4gICAgICAgICAgZGF0YS15PXt5fVxuICAgICAgICAgIHN0eWxlPXt7IFwiLS1kb3QteFwiOiB4LCBcIi0tZG90LXlcIjogeSwgXCItLWRvdC10aW50XCI6IHRpbnQgfX1cbiAgICAgICAgLz5cbiAgICAgIDwvZGl2PlxuICAgICAgPGRpdiBjbGFzc05hbWU9XCJjb250cm9sc1wiPlxuICAgICAgICA8YnV0dG9uIG9uQ2xpY2s9eygpID0+IHNldFgoKHZhbHVlKSA9PiAodmFsdWUgKyAxOCkgJSAyNTApfT5OdWRnZSByaWdodDwvYnV0dG9uPlxuICAgICAgICA8YnV0dG9uIG9uQ2xpY2s9eygpID0+IHNldFkoKHZhbHVlKSA9PiAodmFsdWUgKyAxNikgJSAyNTApfT5OdWRnZSBkb3duPC9idXR0b24+XG4gICAgICAgIDxidXR0b24gb25DbGljaz17KCkgPT4gc2V0TW92aW5nKCh2YWx1ZSkgPT4gIXZhbHVlKX0+e21vdmluZyA/IFwiUGF1c2UgZWZmZWN0XCIgOiBcIlJlc3VtZSBlZmZlY3RcIn08L2J1dHRvbj5cbiAgICAgIDwvZGl2PlxuICAgICAgPHAgY2xhc3NOYW1lPVwibXV0ZWRcIj5OdW1lcmljIGNlbGxzIGFyZSByZWFkIG9ubHkgYnkgY29tcGlsZWQgc3R5bGUgYW5kIGF0dHJpYnV0ZSBleHByZXNzaW9uczsgdGhlIGVmZmVjdCBtb3ZlcyB0aGUgZG90IGVhY2ggZnJhbWUuPC9wPlxuICAgICAgPGxhYmVsPlxuICAgICAgICBUaW50XG4gICAgICAgIDxpbnB1dCB0eXBlPVwicmFuZ2VcIiBtaW49XCIwXCIgbWF4PVwiMzU5XCIgdmFsdWU9e3RpbnR9IG9uSW5wdXQ9eyhldmVudDogRXZlbnQpID0+IHNldFRpbnQoTnVtYmVyKChldmVudC5jdXJyZW50VGFyZ2V0IGFzIEhUTUxJbnB1dEVsZW1lbnQpLnZhbHVlKSl9IC8+XG4gICAgICA8L2xhYmVsPlxuICAgIDwvc2VjdGlvbj5cbiAgKTtcbn1cblxuZnVuY3Rpb24gS2V5ZWRSb3dzKCkge1xuICBjb25zdCBbc2hvd1Jvd3MsIHNldFNob3dSb3dzXSA9IHVzZVN0YXRlKHRydWUpO1xuICBjb25zdCBbb3JkZXIsIHNldE9yZGVyXSA9IHVzZVN0YXRlKFtcImFscGhhXCIsIFwiYmV0YVwiXSk7XG4gIGNvbnN0IG1vdmVGaXJzdFRvRW5kID0gKCkgPT4gc2V0T3JkZXIoKHByZXZpb3VzKSA9PiBbLi4ucHJldmlvdXMuc2xpY2UoMSksIHByZXZpb3VzWzBdXSk7XG4gIGNvbnN0IHJvd3MgPSBvcmRlci5tYXAoKGlkKSA9PiA8RWRpdGFibGVSb3cga2V5PXtpZH0gaWQ9e2lkfSAvPik7XG4gIHJldHVybiAoXG4gICAgPHNlY3Rpb24gY2xhc3NOYW1lPVwicGFuZWxcIj5cbiAgICAgIDxoMj5LZXllZCBlZGl0YWJsZSByb3dzPC9oMj5cbiAgICAgIDxwIGNsYXNzTmFtZT1cIm11dGVkXCI+UmVvcmRlciB0byBzZWUgZWFjaCBkcmFmdCBmb2xsb3cgaXRzIGtleS4gSGlkZSBhbmQgc2hvdyB0byByZW1vdmUgb3duZXJzIGFuZCBzdGFydCBmcmVzaC48L3A+XG4gICAgICA8ZGl2IGNsYXNzTmFtZT1cImNvbnRyb2xzXCI+XG4gICAgICAgIDxidXR0b24gb25DbGljaz17KCkgPT4gc2V0U2hvd1Jvd3MoKHZhbHVlKSA9PiAhdmFsdWUpfT57c2hvd1Jvd3MgPyBcIlJlbW92ZSByb3dzXCIgOiBcIk1vdW50IHJvd3NcIn08L2J1dHRvbj5cbiAgICAgICAgPGJ1dHRvbiBvbkNsaWNrPXttb3ZlRmlyc3RUb0VuZH0+UmVvcmRlciBrZXlzPC9idXR0b24+XG4gICAgICA8L2Rpdj5cbiAgICAgIHtzaG93Um93cyA/IDxkaXYgY2xhc3NOYW1lPVwicm93c1wiPntyb3dzfTwvZGl2PiA6IDxwIGNsYXNzTmFtZT1cIm11dGVkXCI+Um93cyBhcmUgdW5tb3VudGVkLjwvcD59XG4gICAgPC9zZWN0aW9uPlxuICApO1xufVxuXG5mdW5jdGlvbiBHZW5lcmFsQnJhbmNoKCkge1xuICBjb25zdCBbc2hvd0ZhbGxiYWNrLCBzZXRTaG93RmFsbGJhY2tdID0gdXNlU3RhdGUoZmFsc2UpO1xuICBjb25zdCBbbWVzc2FnZSwgc2V0TWVzc2FnZV0gPSB1c2VTdGF0ZShcIlJlYWR5XCIpO1xuICByZXR1cm4gKFxuICAgIDxzZWN0aW9uIGNsYXNzTmFtZT1cInBhbmVsXCIgc3R5bGU9e3sgbWFyZ2luVG9wOiBcIjE4cHhcIiB9fT5cbiAgICAgIDxoMj5HZW5lcmFsIHJlbmRlciBmYWxsYmFjazwvaDI+XG4gICAgICA8cCBjbGFzc05hbWU9XCJtdXRlZFwiPlRoaXMgYnJhbmNoIHJlYWRzIGN1cnJlbnQgc3RhdGUgYXMgb3JkaW5hcnkgSlNYLCBleGVyY2lzaW5nIHRoZSBnZW5lcmFsIHJlbmRlciBwYXRoLjwvcD5cbiAgICAgIDxidXR0b24gb25DbGljaz17KCkgPT4gc2V0U2hvd0ZhbGxiYWNrKCh2YWx1ZSkgPT4gIXZhbHVlKX0+VG9nZ2xlIGJyYW5jaDwvYnV0dG9uPlxuICAgICAgPGJ1dHRvbiBvbkNsaWNrPXsoKSA9PiBzZXRNZXNzYWdlKCh2YWx1ZSkgPT4gdmFsdWUgPT09IFwiUmVhZHlcIiA/IFwiVXBkYXRlZFwiIDogXCJSZWFkeVwiKX0+Q2hhbmdlIG1lc3NhZ2U8L2J1dHRvbj5cbiAgICAgIHtzaG93RmFsbGJhY2tcbiAgICAgICAgPyA8cCBjbGFzc05hbWU9XCJiYWRnZVwiPlN0YXRlIGJyYW5jaCBpcyB2aXNpYmxlOiB7bWVzc2FnZX0uPC9wPlxuICAgICAgICA6IDxwIGNsYXNzTmFtZT1cIm11dGVkXCI+VGhlIGRlZmF1bHQgYnJhbmNoIGlzIGFjdGl2ZToge21lc3NhZ2V9LjwvcD59XG4gICAgICA8cHJlIGlkPVwiZGlhZ25vc3RpY3NcIj5SZWFkaW5nIHJ1bnRpbWUgY291bnRlcnPigKY8L3ByZT5cbiAgICA8L3NlY3Rpb24+XG4gICk7XG59XG5cbmZ1bmN0aW9uIE5hdGl2ZVN0YXRlRGVtbygpIHtcbiAgcmV0dXJuIChcbiAgICA8ZGl2IGNsYXNzTmFtZT1cImRlbW8tcm9vdFwiPlxuICAgICAgPGgxPk5hdGl2ZSBzdGF0ZSBwbGF5Z3JvdW5kPC9oMT5cbiAgICAgIDxwIGNsYXNzTmFtZT1cImxlZGVcIj5BdXRob3JlZCBUU1ggd2l0aCBuYXRpdmUgc3RhdGUsIGVmZmVjdHMsIHByb3BzLCBrZXllZCBsaWZldGltZXMsIGFuZCBhIGdlbmVyYWwgcmVuZGVyIGZhbGxiYWNrLjwvcD5cbiAgICAgIDxkaXYgY2xhc3NOYW1lPVwiZ3JpZFwiPjxNb3ZpbmdEb3QgLz48S2V5ZWRSb3dzIC8+PC9kaXY+XG4gICAgICA8R2VuZXJhbEJyYW5jaCAvPlxuICAgIDwvZGl2PlxuICApO1xufVxuXG5jb25zdCByb290ID0gY3JlYXRlRE9NUm9vdChkb2N1bWVudC5xdWVyeVNlbGVjdG9yKFwiI2FwcFwiKSEsIHtcbiAgcHJvZmlsZUNvdW50ZXIoY291bnRlcnMpIHtcbiAgICBjb25zdCBkaWFnbm9zdGljcyA9IGRvY3VtZW50LnF1ZXJ5U2VsZWN0b3I8SFRNTEVsZW1lbnQ+KFwiI2RpYWdub3N0aWNzXCIpO1xuICAgIGlmIChkaWFnbm9zdGljcykgZGlhZ25vc3RpY3MudGV4dENvbnRlbnQgPSBKU09OLnN0cmluZ2lmeShjb3VudGVycywgbnVsbCwgMik7XG4gIH0sXG59KTtcbnJvb3QubW91bnQoPE5hdGl2ZVN0YXRlRGVtbyAvPik7XG5cbmNvbnN0IGRpYWdub3N0aWNzRmFjYWRlID0gT2JqZWN0LmZyZWV6ZSh7XG4gIHNuYXBzaG90OiAoKSA9PiBPYmplY3QuZnJlZXplKHsgLi4ucm9vdC5kaWFnbm9zdGljcygpIH0pLFxufSk7XG5PYmplY3QuZGVmaW5lUHJvcGVydHkod2luZG93LCBcIl9fbmF0aXZlU3RhdGVEZW1vRGlhZ25vc3RpY3NcIiwge1xuICBjb25maWd1cmFibGU6IHRydWUsXG4gIHZhbHVlOiBkaWFnbm9zdGljc0ZhY2FkZSxcbn0pO1xuXG5jb25zdCBkZW1vV2luZG93ID0gd2luZG93IGFzIFdpbmRvdyAmIHtcbiAgX19uYXRpdmVTdGF0ZURlbW9EaWFnbm9zdGljcz86IHR5cGVvZiBkaWFnbm9zdGljc0ZhY2FkZTtcbn07XG5sZXQgZGlzcG9zZWQgPSBmYWxzZTtcbmNvbnN0IHRlYXJkb3duID0gKCkgPT4ge1xuICBpZiAoZGlzcG9zZWQpIHJldHVybjtcbiAgZGlzcG9zZWQgPSB0cnVlO1xuICB3aW5kb3cucmVtb3ZlRXZlbnRMaXN0ZW5lcihcInBhZ2VoaWRlXCIsIHRlYXJkb3duKTtcbiAgcm9vdC5kaXNwb3NlKCk7XG4gIGlmIChkZW1vV2luZG93Ll9fbmF0aXZlU3RhdGVEZW1vRGlhZ25vc3RpY3MgPT09IGRpYWdub3N0aWNzRmFjYWRlKSB7XG4gICAgZGVsZXRlIGRlbW9XaW5kb3cuX19uYXRpdmVTdGF0ZURlbW9EaWFnbm9zdGljcztcbiAgfVxufTtcbndpbmRvdy5hZGRFdmVudExpc3RlbmVyKFwicGFnZWhpZGVcIiwgdGVhcmRvd24sIHsgb25jZTogdHJ1ZSB9KTtcblxuaWYgKGltcG9ydC5tZXRhLmhvdCkge1xuICBpbXBvcnQubWV0YS5ob3QuYWNjZXB0KCk7XG4gIGltcG9ydC5tZXRhLmhvdC5kaXNwb3NlKHRlYXJkb3duKTtcbn1cbiJdLCJmaWxlIjoiL1VzZXJzL3Rqdy9Eb2N1bWVudHMvQ29kZXgvMjAyNi0xMC0wOS9sZS9vdXRwdXRzL3JlYWN0LXJ1bnRpbWUtcmVzZWFyY2gvc3JjL2Jyb3dzZXIvbmF0aXZlX3N0YXRlX3Byb3BzLnRzeCJ9

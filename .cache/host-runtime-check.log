@@ -1,0 +1,465 @@
+Check src/async_resource_runtime_test.ts
+Check src/async_root_publication_test.ts
+Check src/async_store_runtime_test.ts
+Check src/async_task_plan_test.ts
+Check src/async_task_scheduler_test.ts
+Check src/async_transition_runtime_test.ts
+Check src/async_vdom_transition_runtime_test.ts
+Check src/component_state_keyed_delta.test.mjs
+Check src/component_state_runtime_test.ts
+Check src/derived_region_runtime_test.ts
+Check src/developer_study/task_a_runtime_test.ts
+Check src/developer_study/task_b_plan_test.ts
+Check src/dom_namespace_contract_test.ts
+Check src/keyed_collection_test.ts
+Check src/keyed_filter_protocol_test.ts
+Check src/native_collection_runtime_test.ts
+Check src/native_disposal_failure_test.ts
+Check src/native_late_reader_matrix_test.ts
+Check src/native_numeric_state_test.ts
+Check src/native_resource_boundary_test.ts
+Check src/native_root_candidate_test.ts
+Check src/native_root_work_queue_test.ts
+Check src/native_store_runtime_test.ts
+Check src/native_task_execution_test.ts
+Check src/native_task_generation_lease_test.ts
+Check src/native_task_store_matrix_test.ts
+Check src/native_task_transition_test.ts
+Check src/native_use_api_test.ts
+Check src/optimistic_feed_test.ts
+Check src/owner_preparation_savepoint_test.ts
+Check src/owner_preparation_test.ts
+Check src/owner_queue_integration_test.ts
+Check src/owner_state_staging_test.ts
+Check src/owner_state_world_test.ts
+Check src/resource_read_set_test.ts
+Check src/root_store_dependency_test.ts
+Check src/root_work_queue_test.ts
+Check src/store_projection_matrix_test.ts
+Check src/store_projection_oracle_test.ts
+Check src/store_publication_batch_test.ts
+Check src/store_render_savepoint_test.ts
+Check src/store_render_transaction_test.ts
+Check src/store_scope_contract_test.ts
+Check src/task_graph_runtime_test.ts
+Check src/vdom_disposal_failure_test.ts
+Check src/vdom_keyed_region_delta.test.mjs
+Check src/vdom_scalar_keyed_delta_test.ts
+Check src/vdom_snapshot_runtime_test.ts
+running 14 tests from ./src/async_resource_runtime_test.ts
+resource read exposes stable pending token then fulfilled value ... ok (0ms)
+resource rejection is structured, stable, and preserves its reason ... ok (0ms)
+subscriptions notify on settlement and unsubscription is idempotent ... ok (0ms)
+table deduplicates thenable identity only within that table ... ok (0ms)
+synchronous thenable settlement is immediate and first-call wins ... ok (0ms)
+thenable throws before settlement and throwing then getter reject ... ok (0ms)
+a thenable that resolves then throws preserves the resolution ... ok (0ms)
+subscriber and reporter failures do not block later subscribers ... ok (0ms)
+nested thenables are adopted and resolution cycles reject ... ok (0ms)
+table installs identity before a synchronous reentrant then call ... ok (0ms)
+deep synchronous thenable chains do not overflow the stack ... ok (10ms)
+non-thenable constructor input rejects while nested plain values fulfill ... ok (0ms)
+direct resource typing reflects recursively resolved values ... ok (0ms)
+primitive constructor misuse rejects with a structured TypeError ... ok (0ms)
+running 1 test from ./src/async_root_publication_test.ts
+store and queue publish reverse-ready groups without tearing observers ... ok (8ms)
+running 13 tests from ./src/async_store_runtime_test.ts
+head-equal urgent action is retained when it changes a hidden root ... ok (0ms)
+ordinary head no-op does not append or invalidate snapshots ... ok (0ms)
+independent same-root transitions commit in reverse and replay in dispatch order ... ok (0ms)
+head-equal transition action is retained for a candidate that omits prior work ... ok (0ms)
+group transition commit publishes every root before notifying observers ... ok (0ms)
+finish and partial commit publish outsider and participant pointers together ... ok (0ms)
+render snapshot pins state and invalidates after a relevant update ... ok (0ms)
+selector previous values publish only after render commit and remain reader-local ... ok (6ms)
+detach invalidates snapshots, removes readers and releases transition holds ... ok (0ms)
+head-equal urgent updates remain visible to roots attached afterward ... ok (0ms)
+head-equal transition action is preserved for a root attached later ... ok (0ms)
+dispatch during notification drains after the current listener batch ... ok (0ms)
+throwing notification listener does not leave the drain stuck ... ok (0ms)
+running 5 tests from ./src/async_task_plan_test.ts
+OXC task DAG binds authored functions and commits through async VDOM ... ok (9ms)
+compiled task binder rejects implementation drift ... ok (0ms)
+compiled task binder restores authored external aliases in scope ... ok (0ms)
+OXC infers component state-site task reads ... ok (0ms)
+notebook compiled async-plan fixture preserves compiler/runtime parity ... ok (0ms)
+running 12 tests from ./src/async_task_scheduler_test.ts
+async task plan overlaps independent work and releases ready branches early ... ok (0ms)
+async task plan respects its concurrency cap ... ok (0ms)
+async task plan reuses completed work outside changed-input closure ... ok (0ms)
+cancelled async task plans return promptly and ignore late task results ... ok (0ms)
+task completion observers run before dependent tasks start ... ok (0ms)
+completion observer abort prevents its task dependents from starting ... ok (0ms)
+observer and error reporter failures do not fail scheduler results ... ok (0ms)
+reused output observer fires once while changed-input closures rerun ... ok (7ms)
+async task plan rejects cycles before starting task code ... ok (0ms)
+async task failure aborts in-flight work and skips its dependents ... ok (0ms)
+notebook async scheduling fixture preserves its event-order contract ... ok (0ms)
+async observer reporter rejection cannot escape scheduler completion ... ok (1ms)
+running 5 tests from ./src/async_transition_runtime_test.ts
+async transition prepares a DAG and atomically publishes its roots ... ok (1ms)
+a newer async transition cancels superseded task work ... ok (0ms)
+async task failure leaves committed roots unchanged ... ok (0ms)
+invalid new transition does not cancel a valid pending candidate ... ok (0ms)
+notebook async transition fixture preserves its integration contracts ... ok (7ms)
+running 8 tests from ./src/async_vdom_transition_runtime_test.ts
+async task results prepare and commit retained VDOM roots together ... ok (2ms)
+invalid candidate VDOM is rejected before any root is patched ... ok (0ms)
+external root commit invalidates the whole pending async batch ... ok (0ms)
+urgent same-root commit is visible immediately and rebases async candidate ... ok (2ms)
+urgent dependency write cancels a candidate built from stale task inputs ... ok (0ms)
+invalidated task plans restart from the newest state-site inputs ... ok (0ms)
+a newer root transition supersedes a queued input restart ... ok (0ms)
+notebook async VDOM fixture preserves host integration contracts ... ok (0ms)
+running 1 test from ./src/component_state_keyed_delta.test.mjs
+token-delta owner updates use bucketed keyed moves and structural edits ... ok (11ms)
+running 14 tests from ./src/component_state_runtime_test.ts
+OXC-lowered state sites execute through VDOM and survive conditional activation ... ok (5ms)
+OXC-lowered keyed components preserve state and host nodes through reorder and removal ... ok (1ms)
+failed component candidate removes new owner state and preserves committed output ... ok (1ms)
+compiled component event writes automatically coalesce into one scheduled VDOM commit ... ok (0ms)
+state updates rerun only the owning component and match a forced full render ... ok (0ms)
+component partial commit falls back without rendering a structural update twice ... ok (0ms)
+structural owner updates reconcile one keyed region and preserve child state ... ok (1ms)
+compiled invalidation edges select the state-owning component region ... ok (0ms)
+nested dirty descendants reuse clean component subtrees without dropping effects ... ok (0ms)
+indexed leaf updates remain local beneath Fragment-only component groups ... ok (2ms)
+batched state writes update multiple owner regions in one indexed commit ... ok (0ms)
+effect sites run after successful activation and clean up on site or owner removal ... ok (0ms)
+compiled keyed-owner reuse skips generic expansion for same-key reorder and falls back safely ... ok (1ms)
+token keyed-owner reuse skips eligibility rows and mismatches before fallback ... ok (0ms)
+running 5 tests from ./src/derived_region_runtime_test.ts
+shared-source fan-out deduplicates overlapping regions within a batch ... ok (0ms)
+generated query edges are local and rows fans out to both regions ... ok (0ms)
+multiple graph regions retain first invalidation order ... ok (0ms)
+malformed region graphs and invalid source slots fail at the boundary ... ok (0ms)
+compiled query and shared-row updates match a full VDOM derivation ... ok (13ms)
+running 1 test from ./src/developer_study/task_a_runtime_test.ts
+developer study Task A preserves keyed state while conditional effects deactivate ... ok (5ms)
+running 1 test from ./src/developer_study/task_b_plan_test.ts
+Task B dependency graph keeps query regions independent and rows shared ... ok (0ms)
+running 3 tests from ./src/dom_namespace_contract_test.ts
+DOM VDOM inherits SVG context and resets descendants at foreignObject ... ok (1ms)
+SVG props use attributes and styles without assigning animated properties ... ok (0ms)
+HTML form values, booleans and native event replacement keep DOM semantics ... ok (0ms)
+running 14 tests from ./src/keyed_collection_test.ts
+keyed collection sparse operations replay against array oracle ... ok (11ms)
+keyed collection supports independent cursors and releases acknowledged history ... ok (0ms)
+keyed collection retention overflow requests generic fallback ... ok (0ms)
+keyed collection rejects stale and invalid batches transactionally ... ok (0ms)
+keyed collection validates anchor sequences before publishing changes ... ok (0ms)
+keyed collection notifies subscribers after commit and cleans subscriptions ... ok (0ms)
+keyed collection aggregates listener failures after notifying all listeners ... ok (0ms)
+keyed collection freezes copied operation descriptors in retained history ... ok (0ms)
+keyed collection reader can reset after a version-checked fallback snapshot ... ok (0ms)
+keyed collection queues reentrant notifications in version order ... ok (0ms)
+keyed collection releases history when its last reader detaches ... ok (0ms)
+keyed collection map is a value-only full snapshot in order ... ok (0ms)
+keyed collection exposes current boundary and adjacency keys ... ok (0ms)
+keyed collection adjacency lookup work stays constant at 10k rows ... ok (3ms)
+running 4 tests from ./src/keyed_filter_protocol_test.ts
+Gate A autorun stays disabled for ordinary interactive URLs ... ok (0ms)
+Gate A autorun accepts one deterministic size, seed, and session ... ok (0ms)
+Gate A autorun rejects incomplete or invalid study URLs ... ok (0ms)
+Gate A schedule has six one-size page loads per size across two balanced sessions ... ok (0ms)
+running 12 tests from ./src/native_collection_runtime_test.ts
+native collection delta renders only changed rows and preserves surviving owner and host identity ... ok (6ms)
+collection delta work stays bounded at 1k, 10k, and 50k rows ... ok (1s)
+mixed collection and numeric writes commit together without starving collection work ... ok (1ms)
+collection readers are root-local and detach on source switch, conditional removal, and disposal ... ok (0ms)
+failed historical row preparation falls back to a fresh snapshot and rolls back candidate owners ... ok (2ms)
+same-batch remove and reinsert creates a fresh owner; transient rows run no effects ... ok (0ms)
+seeded collection operations match an array oracle and full-render baseline ... ok (5ms)
+multiple collection regions use the explicit generic full-render fallback ... ok (0ms)
+compiler-declared parent collection reads refresh through a full render ... ok (0ms)
+intrinsic keyed collection rows stay live through generic full-render fallback ... ok (0ms)
+collection effect setup can enqueue a later collection batch without losing it ... ok (0ms)
+host failure during sparse delta rolls back candidate owners and makes the root terminal ... ok (0ms)
+running 1 test from ./src/native_disposal_failure_test.ts
+host disposal failure still releases native effects, stores and root namespace ... ok (4ms)
+running 3 tests from ./src/native_late_reader_matrix_test.ts
+late readers join pending scopes according to their explicit projection ... ok (9ms)
+lagging owner-state and a brand-new root attach while resource work waits ... ok (2ms)
+selector source replacement during pending resource work commits fresh history and retires old readers ... ok (0ms)
+running 14 tests from ./src/native_numeric_state_test.ts
+compiler-approved numeric prop state updates without component execution ... ok (3ms)
+one keyed numeric update does not rescan the source cache ... ok (2ms)
+public hook spellings explain that native compilation is required ... ok (0ms)
+classic and automatic JSX factories keep separate child and key ABIs ... ok (0ms)
+derived numeric prop reads multiple live state cells as one batch ... ok (0ms)
+generic owner commits refresh numeric bound props from the prior host value ... ok (0ms)
+numeric batch validates every source before rewinding any source value ... ok (0ms)
+numeric source identity survives an invalid value and recovers cached bindings ... ok (0ms)
+numeric host writer errors propagate without generic rerender fallback ... ok (0ms)
+mixed numeric and generic work keeps direct owners cached and defers writes until commit ... ok (1ms)
+key removal destroys numeric state lifetime before the same key is mounted again ... ok (0ms)
+reentrant effect writes survive captured-version clearing and schedule another flush ... ok (0ms)
+unmount cleanup writes for a retiring owner are purged ... ok (0ms)
+shared world changes and cleanup are isolated by root namespace ... ok (0ms)
+running 17 tests from ./src/native_resource_boundary_test.ts
+native boundary discovers later pending siblings and commits only local fallback ... ok (3ms)
+discarded primary store observations and effects do not publish ... ok (0ms)
+native resource reads reveal the primary after all observed siblings settle ... ok (1ms)
+rejected resources reach the local error renderer and replacement identity retries ... ok (0ms)
+nested native boundaries keep pending work local ... ok (0ms)
+same-site sibling boundaries scope owners, effects, readers, and keyed moves ... ok (2ms)
+cached ancestor reuse keeps nested boundary owners and primary snapshots ... ok (5ms)
+revealed primary re-expands current owner state while a replacement resource is pending ... ok (4ms)
+retained primary accepts one fresh store projection across the root ... ok (4ms)
+retained primary blocks when its current store-held resource still suspends ... ok (0ms)
+suspended store reader survives local rejection and watches replacement identity ... ok (4ms)
+retained primary keeps pending-primary source dependencies subscribed ... ok (3ms)
+resource-free arrays do not acquire per-child render savepoints ... ok (0ms)
+discarded candidate store dependency leases outlive candidate release ... ok (0ms)
+hostile then getter is assimilated once and reaches local error renderer ... ok (0ms)
+store read protocol takes precedence over an incidental then field ... ok (0ms)
+disposing a root detaches resource settlement retries ... ok (0ms)
+running 12 tests from ./src/native_root_candidate_test.ts
+prepare keeps host, effects, and committed owners private until phases run ... ok (3ms)
+independent candidates isolate new owners and stale after a sibling publishes ... ok (1ms)
+urgent numeric publication stales a candidate and direct binding flush remains live ... ok (0ms)
+candidate store reads use the requested transition projection ... ok (0ms)
+discarding one of several store candidates retains the other candidate root hold ... ok (0ms)
+failed store preparation releases only its own root hold ... ok (1ms)
+manual group phases expose both roots before either effect setup ... ok (0ms)
+host failure is terminal for all candidates in a manual group ... ok (0ms)
+root disposal listeners fire once and can be removed ... ok (0ms)
+effect setup that disposes its root immediately cleans its returned resource ... ok (0ms)
+candidate publication barrier defers store-listener flush until effects finish ... ok (0ms)
+host callbacks cannot reenter root commits during candidate host mutation ... ok (0ms)
+running 19 tests from ./src/native_root_work_queue_test.ts
+native queue coexists on one root and rebases reverse-ready store work ... ok (7ms)
+native group publishes two roots and two stores before observers or effects ... ok (1ms)
+native disposal cancels pending included work and leaves unrelated root usable ... ok (0ms)
+native queue group host failure poisons every native root ... ok (0ms)
+effect disposal detaches native queue after publication without leaking later work ... ok (0ms)
+native resource candidates wait across every root and publish as one group ... ok (2ms)
+pending frontier store leases survive replacement until grouped publication ... ok (1ms)
+store invalidation replaces a pending resource frontier ... ok (0ms)
+resource settlement refreshes a blocked retained-primary candidate ... ok (2ms)
+cancelling resource work releases its retained store dependency lease ... ok (0ms)
+detaching a root and disposing the queue release resource observers ... ok (0ms)
+independent resource works overlap one root and a fork with reverse readiness ... ok (3ms)
+transition scopes finish for stores read only by an earlier pending wave ... ok (0ms)
+task-only store freshness rejects a stale resource candidate before host writes ... ok (0ms)
+external cut going stale at final pre-host validation does not poison roots ... ok (0ms)
+task-only freshness change during grouped host writes fails terminally ... ok (0ms)
+task-only publication dependencies finish scopes before subscribers ... ok (0ms)
+task-only publication dependencies reject roots outside the work ... ok (0ms)
+a dependency lease transfers pending-only scope ownership between works ... ok (0ms)
+running 7 tests from ./src/native_store_runtime_test.ts
+native useStoreAt renders stores and selector history commits per root ... ok (4ms)
+native store candidate failures do not publish selector history or host output ... ok (1ms)
+native store transaction rebuilds a stale read cut before host publication ... ok (0ms)
+native store values keep promises ordinary and retired owners release readers ... ok (0ms)
+mixed store roots keep numeric prop updates on the no-render path ... ok (1ms)
+failed store publication remains pending for a later flush retry ... ok (0ms)
+switching or retiring a native store read releases old root readers ... ok (0ms)
+running 8 tests from ./src/native_task_execution_test.ts
+native task execution exposes typed stable resources with early DAG outputs ... ok (1ms)
+native task execution publishes reused outputs once and reruns invalidated closure ... ok (0ms)
+native task execution cancellation rejects resources and ignores late providers ... ok (0ms)
+native task execution relays an external abort signal ... ok (0ms)
+native task failure rejects every outstanding resource with one cause ... ok (7ms)
+native task execution snapshots inputs and task edges before startup ... ok (0ms)
+native task execution validates inputs and cycles before any task starts ... ok (0ms)
+native task execution disposal preserves held fulfilled resources and is idempotent ... ok (0ms)
+running 5 tests from ./src/native_task_generation_lease_test.ts
+task generation replacement retains pending-only publication store scopes ... ok (10ms)
+same-generation refresh finishes scopes read only before the error branch ... ok (1ms)
+cancel after generation replacement releases transferred store holds ... ok (1ms)
+repeated task generations keep one aggregate dependency lease ... ok (4ms)
+a new task generation finishes an earlier store scope after its read disappears ... ok (1ms)
+running 2 tests from ./src/native_task_store_matrix_test.ts
+three independent transitions, fork work, and grouped publication compose on pinned reads ... ok (12ms)
+input recapture, cancellation, rejection, detach, and optimistic compensation stay operation local ... ok (3ms)
+running 16 tests from ./src/native_task_transition_test.ts
+task transition shares one execution across equal cuts and commits after true fan-in ... ok (9ms)
+live task input restart ignores late non-cooperative results and reuses unaffected output ... ok (3ms)
+same selected live value refreshes its cut without restarting tasks ... ok (1ms)
+roots with different live projections receive distinct task executions ... ok (1ms)
+one grouped generation publishes neither root until both are ready; observers see both ... ok (2ms)
+live restart reuses only outputs from the changed root's prior input group ... ok (3ms)
+overlapping operations coexist; root disposal cancels only its own operation ... ok (0ms)
+captures authored tasks and immutable input values at enqueue ... ok (0ms)
+captures reserved immutable and live input keys as ordinary bindings ... ok (0ms)
+initial multi-root capture retries the entire cohort before starting tasks ... ok (0ms)
+explicit operation keys replace prior work; unkeyed overlap remains independent ... ok (1ms)
+cancellation aborts providers and releases task-only store subscriptions ... ok (0ms)
+hidden task prewarm continues after its visible root commits ... ok (1ms)
+committed prewarm is cancelled only after its last interested root detaches ... ok (0ms)
+unrelated store notifications do not restart declared task inputs ... ok (0ms)
+input notifications arriving during a recapture are drained instead of dropped ... ok (0ms)
+running 4 tests from ./src/native_use_api_test.ts
+public use types distinguish store values from async resource reads ... ok (0ms)
+authored use requires compiler lowering ... ok (0ms)
+native inferred task declarations require compilation ... ok (0ms)
+explicit native tasks expose typed output resources ... ok (0ms)
+running 6 tests from ./src/optimistic_feed_test.ts
+optimistic posts confirm and compensate by operation ID despite out-of-order receipts ... ok (0ms)
+two optimistic likes on one item contribute and roll back independently ... ok (0ms)
+repeating a dispatch after a notification throws does not duplicate its operation ... ok (0ms)
+optimistic IDs reject conflicting reuse and missing-item likes ... ok (0ms)
+prototype-named operation IDs are ordinary operation keys ... ok (0ms)
+post compensation leaves like outcomes independently settleable ... ok (0ms)
+running 10 tests from ./src/owner_preparation_savepoint_test.ts
+nested savepoints roll back subtree allocations and keep siblings usable ... ok (1ms)
+branch rollback restores cell values, versions, sources, and write flags ... ok (0ms)
+rollback restores a candidate cell allocated in an earlier branch ... ok (0ms)
+conditional state and captured setters on a live owner roll back ... ok (0ms)
+outer rollback removes partial inner work and preserves no committed effects ... ok (0ms)
+rollback removes slot and cell validation captures ... ok (6ms)
+checkpoint tokens reject foreign, future, rolled-back, and closed use ... ok (0ms)
+released child markers preserve the outer rollback boundary ... ok (0ms)
+state written before a checkpoint remains the rollback base ... ok (0ms)
+many sibling savepoints can roll back and release under one outer marker ... ok (2ms)
+running 9 tests from ./src/owner_preparation_test.ts
+overlapping preparations keep new owner slots and state private ... ok (0ms)
+existing numeric reads are snapshots and stale on a write ... ok (0ms)
+slot generation catches create-remove ABA before candidate publication ... ok (0ms)
+candidate state on an existing owner publishes privately and setters then forward ... ok (0ms)
+sibling slot edits conservatively stale a candidate without key tombstones ... ok (0ms)
+findOwner resolves nested candidate slots without exposing committed slots under private parents ... ok (0ms)
+hasStateWrites excludes initialization, no-op, and post-publish writes ... ok (0ms)
+discarded preparations reject setters and never attach children to a parent ... ok (6ms)
+removing a candidate parent invalidates its private descendants ... ok (0ms)
+running 3 tests from ./src/owner_queue_integration_test.ts
+queue detects numeric read staleness without a host version change ... ok (9ms)
+group effects observe both owner publications and advanced queue versions ... ok (0ms)
+reentrant root detachment discards private owner cells before notification ... ok (0ms)
+running 4 tests from ./src/owner_state_staging_test.ts
+discarding fresh staged incarnation retains old keyed owner state ... ok (0ms)
+publishing fresh incarnation and retiring old preserves the new slot ... ok (0ms)
+staged activation rejects a changed slot without overwriting it ... ok (0ms)
+destroying ancestor releases staged and committed descendants ... ok (0ms)
+running 4 tests from ./src/owner_state_world_test.ts
+owner/site state survives skipped conditional sites without shifting neighboring state ... ok (0ms)
+keyed owner identity is stable through reorder and fresh after destruction ... ok (0ms)
+state writes use Object.is, functional updates, and coalesced owner/site change records ... ok (0ms)
+destroying an owner recursively removes child traits and queued updates ... ok (0ms)
+running 5 tests from ./src/resource_read_set_test.ts
+resource read set captures every pending sibling and rejects stale readiness ... ok (0ms)
+unrelated resource settlement does not invalidate candidate reads ... ok (0ms)
+discarding resource consumer preserves other consumer and provider ... ok (0ms)
+resource readiness publishes overlapping root work in completion order ... ok (7ms)
+rejected resource cannot publish root work ... ok (0ms)
+running 2 tests from ./src/root_store_dependency_test.ts
+declared task store holds copy membership and release independently ... ok (3ms)
+root disposal releases unread task dependencies before late lease release ... ok (0ms)
+running 31 tests from ./src/root_work_queue_test.ts
+independent root transitions publish in reverse task completion order ... ok (0ms)
+three transitions sharing a root coexist; urgent commit rebases each ... ok (0ms)
+explicit replacement key cancels only the matching transition ... ok (0ms)
+multi-root candidate validates and commits as one ordered boundary ... ok (0ms)
+stale prepared candidate is rebuilt from current root version ... ok (0ms)
+false read-set validation rejects stale work with a clear hook ... ok (0ms)
+cancel, detach, and disposed handles do not publish candidates ... ok (0ms)
+a throwing grouped host commit terminally poisons its roots ... ok (0ms)
+throwing freshness validation fails work without poisoning the root ... ok (0ms)
+cancellation or detach during preparation cannot reach host commit ... ok (0ms)
+cancellation or detach during validation prevents publication ... ok (0ms)
+cancellation or detach in the stale hook stops retries ... ok (0ms)
+root and pending routing arrays are copied when work is enqueued ... ok (0ms)
+validator urgent commit is detected and causes a fresh preparation ... ok (0ms)
+later root validation cannot stale an earlier root unnoticed ... ok (0ms)
+cancel and keyed replacement during commit preserve committed outcome ... ok (0ms)
+discard releases stale retry candidates but not committed candidates ... ok (0ms)
+discard runs on rejection and validation errors without changing settlement ... ok (0ms)
+discard runs after reentrant cancellation during prepare and validation ... ok (0ms)
+failed host publication discards all candidates and reports cleanup errors ... ok (0ms)
+afterCommit sees all published versions before onSettled ... ok (0ms)
+afterCommit errors preserve publication and still notify settlement ... ok (0ms)
+afterCommit can enqueue follow-up work but cannot cancel or republish its group ... ok (0ms)
+dynamic pending resumes preparation across independent resource waves ... ok (0ms)
+synchronous dynamic resolution queues another prepare without recursion ... ok (0ms)
+refresh reopens only dynamic waits and preserves static task gates ... ok (0ms)
+pending context refresh invalidates its token generation ... ok (0ms)
+cancellation and detach invalidate outstanding dynamic resource callbacks ... ok (0ms)
+pending subscription failure settles failed and source errors stay ordinary failures ... ok (0ms)
+dynamic waits coexist with same-root work and keyed replacement ... ok (0ms)
+RootWorkPending snapshots unique nonempty token IDs ... ok (0ms)
+running 3 tests from ./src/store_projection_matrix_test.ts
+operation-tagged optimistic action log matches independent projections ... ok (9ms)
+transaction pins exact Promise identities across multiple stores ... ok (0ms)
+changing a selector source replaces that read site's previous history ... ok (0ms)
+running 1 test from ./src/store_projection_oracle_test.ts
+seeded root projections match a chronological log oracle ... ok (22ms)
+running 5 tests from ./src/store_publication_batch_test.ts
+cross-store batch publishes every transition projection before listeners ... ok (0ms)
+nested publication batches drain once after the outer callback ... ok (0ms)
+callback failure drains queued notifications and preserves the callback error ... ok (0ms)
+throwing listener does not block another store and errors report after drain ... ok (0ms)
+cross-store reentrant dispatch waits until current store listeners finish ... ok (0ms)
+running 9 tests from ./src/store_render_savepoint_test.ts
+savepoint rollback discards reader footprints, observations, and history staging ... ok (0ms)
+reread of same reader after rollback can use a different source ... ok (0ms)
+nested checkpoints preserve outer branch and invalidate inner tokens ... ok (0ms)
+released sibling savepoints do not invalidate or retain their ancestor ... ok (12ms)
+since-checkpoint footprint queries follow nested rollback and release ... ok (0ms)
+rollback retains root projections and freshness discovery state ... ok (0ms)
+preserveReaders pins stores and keeps committed selector history untouched ... ok (0ms)
+checkpoint tokens reject foreign, invalidated, and closed transaction use ... ok (0ms)
+failed source read does not leave a partial reader session ... ok (0ms)
+running 10 tests from ./src/store_render_transaction_test.ts
+transaction pins complete multi-store selection dependency set ... ok (0ms)
+discarded transaction leaves no committed selector history ... ok (0ms)
+store changed during traversal before first discovery invalidates candidate ... ok (0ms)
+selector side effect cannot publish invalidated pinned read set ... ok (0ms)
+transaction root projections include only requested pending transitions ... ok (7ms)
+unknown store sources reject before executing custom reads ... ok (0ms)
+source graph captures immutable dependencies and deduplicates participants ... ok (0ms)
+inline selector replacement releases the previous read-site graph ... ok (0ms)
+declared adapter sources read pinned dependencies through the public protocol ... ok (0ms)
+adapter sources cannot read undeclared stores or cyclic graphs ... ok (0ms)
+running 7 tests from ./src/store_scope_contract_test.ts
+scope IDs reject empty and duplicate active identities without mutation ... ok (0ms)
+unknown and closed scopes reject dispatch without mutation or notification ... ok (0ms)
+duplicate and foreign root commits fail before changing projections ... ok (0ms)
+finishing known or unknown scopes is idempotent and unknown finish is a no-op ... ok (0ms)
+release is idempotent for a known scope and foreign releases are no-ops ... ok (0ms)
+reattaching a detached ID does not restore its old scope membership ... ok (7ms)
+late roots fold original actions according to open, finished, and released scope state ... ok (0ms)
+running 6 tests from ./src/task_graph_runtime_test.ts
+task graph dispatches only reachable value-dependent work ... ok (1ms)
+shared fan-in is coalesced and tasks run after every changed prerequisite ... ok (0ms)
+no-op source writes enqueue no work and repeated updates use the latest value ... ok (0ms)
+unchanged intermediate output prunes downstream task execution ... ok (0ms)
+incremental graph values match a full topological recomputation across an update trace ... ok (0ms)
+compiler plan rejects cycles and unknown dependency names ... ok (0ms)
+running 1 test from ./src/vdom_disposal_failure_test.ts
+VDOM disposal releases ownership despite listener and removal failures ... ok (1ms)
+running 3 tests from ./src/vdom_keyed_region_delta.test.mjs
+keyed-region deltas retain identities, update order and serialize lazily ... ok (9ms)
+invalid keyed-region delta is rejected before host mutation ... ok (0ms)
+keyed-region delta can split and merge buckets while preserving parity ... ok (3ms)
+running 10 tests from ./src/vdom_scalar_keyed_delta_test.ts
+keyed deltas attach scalar and multisource writers for inserted rows ... ok (9ms)
+full commit diffs against last committed bound value after source mutation ... ok (0ms)
+remove and replace detach old writers; moves leave sibling indexes untouched ... ok (0ms)
+shared-source detach deletes only the removed subtree registrations ... ok (23ms)
+invalid bound delta validates fully before any host mutation ... ok (0ms)
+keyed delta locates component roots nested in the app tree ... ok (0ms)
+ordered keyed operations allow remove and reinsert with fresh writers ... ok (0ms)
+delta releases cached keyed VNode children and rebuilds snapshots ... ok (0ms)
+seeded scalar keyed deltas match full recompute after every edit ... ok (12ms)
+compiled graph and direct binding modes remain on the safe fallback ... ok (0ms)
+running 16 tests from ./src/vdom_snapshot_runtime_test.ts
+JSX runtime elements and child arrays are immutable for safe retained reuse ... ok (0ms)
+vector bindings coalesce frame sources into one stable host prop write ... ok (0ms)
+compiled numeric columns update stable VDOM writers as one batch ... ok (7ms)
+compiled column rows and buckets target dirty rows and rebuild after growth ... ok (0ms)
+keyed VDOM reorder preserves host identity and only changes child order ... ok (0ms)
+linear keyed move planning preserves order and host identity ... ok (0ms)
+stable child order updates avoid redundant host placements ... ok (0ms)
+keyed region commit updates one subtree without placing siblings ... ok (0ms)
+keyed region commits maintain the global key index by delta ... ok (0ms)
+keyed region subtree-rescan baseline matches the prior index algorithm ... ok (0ms)
+keyed region commit declines incompatible or ambiguous roots without host writes ... ok (0ms)
+multi-region keyed commit validates every region before mutating any host ... ok (0ms)
+removal detaches keyed nodes and a later insertion creates fresh host identity ... ok (0ms)
+duplicate next-sibling keys fail before changing the committed host tree ... ok (0ms)
+changing a key's host type replaces the incompatible node ... ok (0ms)
+removing and disposing keyed subtrees releases native event props ... ok (0ms)
+
+ok | 366 passed | 0 failed (3s)
+

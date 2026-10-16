@@ -1,0 +1,18 @@
+Module-only extraction verification
+
+Rust command:
+CARGO_HOME="$PWD/.cache/cargo" CARGO_TARGET_DIR="$PWD/.cache/owner-update-module-stage/candidate/target" cargo test --locked --manifest-path "$PWD/.cache/owner-update-module-stage/candidate/compiler/oxc-spike/Cargo.toml"
+
+Rust result: 34 passed, 0 failed. Full output: rust-tests-run3.log. `rust-tests-run2.log` preserves an earlier setup failure because two `include_str!` product fixtures had not yet been mirrored; the source candidate did not change, and run 3 used the required fixtures.
+
+Node 24 proof command:
+PATH="/Users/tjw/.nvm/versions/node/v24.18.0/bin:$PATH" CARGO_HOME="$PWD/.cache/cargo" node .cache/owner-update-module-stage/candidate/node-proof/execute_owner_cut_kernel.mjs
+
+Node result: PASS staged primitive whole-cut owner-kernel proof. Output: node-proof.log.
+
+Byte-parity command:
+PATH="/Users/tjw/.nvm/versions/node/v24.18.0/bin:$PATH" node .cache/owner-update-module-stage/review/compare-v4-emission.mjs
+
+Byte-parity result: PASS. The emitted `plan.component_module` is identical to the preserved v4 compiler output for `native-owner-cut-kernel.tsx`, SHA-256 `fa4d7e2c8d4352ba5a7cf284dfe25dfa288d29cd5f25a9ca346eb7c515100530`. Both module outputs and comparison record are in `emission-comparison/`.
+
+All v4 source/Cargo/fixture/proof hashes, candidate source/module/Cargo/binary/proof hashes, and output hashes are recorded in module-only-hashes.sha256. The v4 tree remains untouched. This module-only revision has no `slotCount`; that ABI addition is a separate revision and is not covered by the byte-identity claim.

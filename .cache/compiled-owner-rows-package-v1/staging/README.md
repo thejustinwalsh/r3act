@@ -1,0 +1,3 @@
+# Compiled UI private integration artifact
+
+This is a platform-specific private alpha build, not a published package. Native authored TSX requires `nativeModulePlugin()` from `@compiled-ui/runtime/vite`. Use `jsxImportSource: "@compiled-ui/runtime"` for types. Uncompiled hooks fail explicitly. The package includes a Rust/OXC compiler executable for darwin-arm64; consuming this artifact needs no Cargo build. Native HMR remounts roots; applications own teardown. State-preserving HMR, React library parity, other platform binaries, and performance/maintenance claims are not established.

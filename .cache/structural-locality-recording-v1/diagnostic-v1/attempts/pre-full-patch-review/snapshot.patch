@@ -1,0 +1,1165 @@
+--- outputs/react-runtime-research/src/component_state_runtime.ts	2026-10-13 17:21:43
++++ outputs/react-runtime-research/.cache/structural-locality-recording-v1/diagnostic-v1/snapshot/src/component_state_runtime.ts	2026-10-14 01:34:18
+@@ -12,6 +12,16 @@
+ } from "./async_resource_runtime.ts";
+ import { ResourceReadSet } from "./resource_read_set.ts";
+ import { PendingStateChanges } from "./pending_state_changes.ts";
++import {
++  enterStructuralFlush,
++  leaveStructuralFlush,
++  registerStructuralRoot,
++  unregisterStructuralRoot,
++  structuralBail,
++  structuralCount,
++  structuralError,
++  structuralRoute,
++} from "./structural_count_probe.ts";
+ import type {
+   CompiledOwnerUpdateProgram,
+   CompiledStateLayout,
+@@ -990,6 +1000,7 @@
+       this.#pendingChanges.setCell(handle, version);
+       this.#schedule();
+     });
++    registerStructuralRoot(this, rootId);
+   }
+ 
+   get version() {
+@@ -1899,6 +1910,8 @@
+   /** Commit one batched owner/site update; return false when there is no work. */
+   flush(): boolean {
+     this.#assertActive();
++    enterStructuralFlush(this);
++    try {
+     // Keep capture buffers owned by the outer frame across reentrant flushes; its
+     // acknowledgement schedules any newer setter version.
+     if (this.#nativeCellCutActive) {
+@@ -1931,12 +1944,14 @@
+       this.#pendingChanges.size === 0 && !storeChangePending &&
+       this.#pendingCollectionRegionKeys.size === 0 && !resourceRetry
+     ) {
++      structuralRoute("no-commit");
+       return false;
+     }
+     if (
+       resourceRetry && this.#pendingChanges.size === 0 && !storeChangePending &&
+       this.#pendingCollectionRegionKeys.size === 0
+     ) {
++      structuralRoute("full-reconcile");
+       this.#renderAndCommit(this.#tree, true);
+       reportFlush();
+       return true;
+@@ -1948,11 +1963,13 @@
+       this.#pendingChanges.size > 0 &&
+       this.#tryFlushNativeCellCut()
+     ) {
++      structuralRoute("numeric");
+       reportFlush();
+       return true;
+     }
+     const capturedChanges = this.#pendingChanges.capture();
+     if (resourceRetry) {
++      structuralRoute("full-reconcile");
+       this.#renderAndCommit(this.#tree, true);
+       this.#finishChanges(capturedChanges);
+       reportFlush();
+@@ -1968,6 +1985,7 @@
+       });
+       if (mixed) {
+         if (mixed.validate()) {
++          structuralRoute("mixed");
+           mixed.commitHost();
+           mixed.publish();
+           mixed.runEffects();
+@@ -1975,6 +1993,7 @@
+           return true;
+         }
+         mixed.discard();
++        structuralBail("mixed-candidate-stale");
+         this.#count("collection.mixed.stale-fallbacks");
+       }
+     }
+@@ -1984,10 +2003,12 @@
+     ) {
+       const delta = this.#flushCollectionDelta();
+       if (delta) {
++        structuralRoute("collection-delta");
+         reportFlush();
+         return true;
+       }
+       this.#profile?.("collection.delta.fallback-candidate", 0);
++      structuralBail("collection-delta-declined");
+     }
+     if (
+       capturedChanges.length === 0 && !storeChangePending &&
+@@ -2066,6 +2087,7 @@
+       succeeded = this.#flushNumericSources(capturedChanges);
+     }
+     if (succeeded) {
++      structuralRoute("numeric");
+       this.#finishChanges(capturedChanges);
+       reportFlush();
+       return true;
+@@ -2117,6 +2139,7 @@
+       hasSuspendedStoreReader ||
+       missingCollectionParent || missingStoreReaderOwner
+     ) {
++      structuralRoute("full-reconcile");
+       this.#renderAndCommit(this.#tree, true);
+       this.#finishChanges(capturedChanges);
+       reportFlush();
+@@ -2140,6 +2163,7 @@
+       );
+       if (sparseCandidate) {
+         if (sparseCandidate.validate()) {
++          structuralRoute("sparse-store");
+           sparseCandidate.commitHost();
+           sparseCandidate.publish();
+           sparseCandidate.runEffects();
+@@ -2152,6 +2176,7 @@
+       }
+       this.#count("store.sparse.generic-fallbacks");
+       if (this.#everReadResource || this.#everHadNativeBoundary) {
++        structuralRoute("full-reconcile");
+         this.#renderAndCommit(this.#tree, true);
+         this.#finishChanges(capturedChanges);
+         reportFlush();
+@@ -2190,6 +2215,7 @@
+       ? this.#tryPartialOwnerCommits(dirtyOwnerIds)
+       : false;
+     if (partialCommit) {
++      structuralRoute("partial-owner");
+       this.#profile?.("dispatch.path.partial-owner", 0);
+       this.#finishChanges(capturedChanges);
+       reportFlush();
+@@ -2201,12 +2227,14 @@
+       ? this.#tryStructuralOwnerCommit(dirtyOwnerIds[0])
+       : false;
+     if (structuralCommit) {
++      structuralRoute("structural-owner");
+       this.#profile?.("dispatch.path.structural-owner", 0);
+       this.#finishChanges(capturedChanges);
+       reportFlush();
+       return true;
+     }
+     this.#profile?.("dispatch.path.full-reconcile", 0);
++    structuralRoute("full-reconcile");
+     try {
+       this.#renderAndCommit(
+         this.#tree,
+@@ -2228,6 +2256,12 @@
+     else this.#schedule();
+     reportFlush();
+     return true;
++    } catch (error) {
++      structuralError("root.flush threw");
++      throw error;
++    } finally {
++      leaveStructuralFlush(this);
++    }
+   }
+ 
+   /** Replace the declarative tree while preserving component owners by site/key. */
+@@ -2252,6 +2286,7 @@
+       );
+     }
+     this.#disposed = true;
++    try {
+     this.#disposing = false;
+     this.#deferredFlush = false;
+     const disposeErrors: unknown[] = [];
+@@ -2329,6 +2364,9 @@
+         effectErrors,
+         "Component effect cleanup failed during dispose",
+       );
++    }
++    } finally {
++      unregisterStructuralRoot(this);
+     }
+   }
+ 
+@@ -2796,6 +2834,7 @@
+             }
+             const output: RuntimeNode[] = [];
+             for (const child of value) {
++              structuralCount("owner.token-output-loop-visits", "iteration", "component_state_runtime.ts:expandStableKeyedOwnerResult");
+               const key = String((child as RuntimeElement).props.key);
+               const cachedOutput = keyedRegion.outputsByKey.get(key);
+               if (cachedOutput === undefined) return null;
+@@ -2819,6 +2858,7 @@
+           const seenKeys = new Set<string>();
+           let componentSiteId: string | null = null;
+           for (const child of value) {
++            structuralCount("owner.checked-output-loop-visits", "iteration", "component_state_runtime.ts:expandStableKeyedOwnerResult");
+             if (
+               child == null || child === false || Array.isArray(child) ||
+               typeof child !== "object" || typeof child.type !== "function"
+@@ -3061,6 +3101,7 @@
+     if (currentKeys) {
+       const removedEffects: LiveEffect[] = [];
+       for (const key of [...currentKeys]) {
++        structuralCount("effect.current-key-visits", "iteration", "component_state_runtime.ts:reconcileOwnerEffects");
+         if (nextEffects.has(key)) continue;
+         const previous = this.#liveEffects.get(key);
+         if (previous) removedEffects.push(previous);
+@@ -3070,6 +3111,7 @@
+       for (const effect of removedEffects) {
+         if (effect.cleanup) {
+           try {
++            structuralCount("effect.cleanup-calls", "event", "component_state_runtime.ts:reconcileOwnerEffects");
+             effect.cleanup();
+           } catch (error) {
+             errors.push(error);
+@@ -3079,10 +3121,12 @@
+       }
+     }
+     for (const [key, registration] of nextEffects) {
++      structuralCount("effect.next-registration-visits", "iteration", "component_state_runtime.ts:reconcileOwnerEffects");
+       if (this.#disposed) break;
+       if (this.#liveEffects.has(key)) continue;
+       let cleanup: void | EffectCleanup;
+       try {
++        structuralCount("effect.setup-calls", "event", "component_state_runtime.ts:reconcileOwnerEffects");
+         cleanup = registration.setup();
+       } catch (error) {
+         errors.push(error);
+@@ -4073,12 +4117,21 @@
+   }
+ 
+   #flushCollectionDelta(): boolean {
+-    if (this.#pendingCollectionRegionKeys.size !== 1) return false;
++    if (this.#pendingCollectionRegionKeys.size !== 1) {
++      structuralBail("delta-region-count-not-one");
++      return false;
++    }
+     const regionKey = this.#pendingCollectionRegionKeys.values().next().value as
+       | string
+       | undefined;
+-    if (!regionKey) return false;
+-    if (this.#collectionSnapshotFallbackKeys.has(regionKey)) return false;
++    if (!regionKey) {
++      structuralBail("delta-region-key-missing");
++      return false;
++    }
++    if (this.#collectionSnapshotFallbackKeys.has(regionKey)) {
++      structuralBail("delta-snapshot-fallback-required");
++      return false;
++    }
+     const region = this.#liveCollectionRegions.get(regionKey);
+     const parentCache = region && this.#componentCache.get(region.parentOwner);
+     const ownerRegion = parentCache?.keyedRegion;
+@@ -4087,15 +4140,22 @@
+       !region || !region.reader || !parentCache || !ownerRegion ||
+       ownerRegion.collection !== region || parentHostKey === null ||
+       region.requiresOwnerRender
+-    ) return false;
++    ) {
++      structuralBail("delta-region-or-owner-guard");
++      return false;
++    }
+ 
+     const read = region.reader.read();
+     if (read.status !== "available") {
++      structuralBail("delta-reader-expired");
+       this.#count("collection.delta.reader-expired");
+       return false;
+     }
+     if (read.batches.length === 0) {
+-      if (!region.reader.acknowledge(read.toVersion)) return false;
++      if (!region.reader.acknowledge(read.toVersion)) {
++        structuralBail("delta-empty-reader-ack-declined");
++        return false;
++      }
+       this.#pendingCollectionRegionKeys.delete(regionKey);
+       return true;
+     }
+@@ -4119,6 +4179,7 @@
+       import("./vdom_snapshot_runtime.ts").KeyedRegionDeltaOperation
+     > = [];
+     const rowFor = (key: string): CandidateRow | null => {
++      structuralCount("collection.delta.row-for-calls", "event", "component_state_runtime.ts:rowFor");
+       if (overlay.has(key)) return overlay.get(key) ?? null;
+       const node = region.rows.get(key);
+       const componentSiteId = region.componentSiteId ??
+@@ -4163,6 +4224,7 @@
+       stagedInsert = false,
+       stagedPreviousOwner?: OwnerId,
+     ): CandidateRow | null => {
++      structuralCount("collection.delta.prepare-row-calls", "event", "component_state_runtime.ts:prepareRow");
+       const rendered = region.renderRow(value);
+       if (
+         !rendered || Array.isArray(rendered) || typeof rendered !== "object" ||
+@@ -4220,6 +4282,7 @@
+           this.#count("owner.component-visits");
+           this.#count("owner.component-renders");
+         }
++        structuralCount("owner.delta-row-executions", "iteration", "component_state_runtime.ts:row-execute");
+         result =
+           (rendered.type as (props: Record<string, unknown>) => RuntimeNode)(
+             props,
+@@ -4269,18 +4332,22 @@
+       for (
+         const batch of read.batches as readonly KeyedCollectionBatch<unknown>[]
+       ) {
++        structuralCount("collection.delta.batch-visits", "iteration", "component_state_runtime.ts:flushCollectionDelta");
+         if (batch.fromVersion + 1 !== batch.version) {
+           discardCandidate();
++          structuralBail("delta-batch-version-gap");
+           return false;
+         }
+         for (
+           const operation of batch
+             .operations as readonly KeyedCollectionOperation<unknown>[]
+         ) {
++          structuralCount("collection.delta.operation-visits", "iteration", "component_state_runtime.ts:flushCollectionDelta");
+           if (operation.type === "remove") {
+             const row = rowFor(operation.key);
+             if (!row) {
+               discardCandidate();
++              structuralBail("delta-remove-row-missing");
+               return false;
+             }
+             overlay.set(operation.key, null);
+@@ -4292,6 +4359,7 @@
+               : rowFor(operation.beforeKey);
+             if (!row || (operation.beforeKey !== null && !anchor)) {
+               discardCandidate();
++              structuralBail("delta-move-row-or-anchor-missing");
+               return false;
+             }
+             operations.push({
+@@ -4304,10 +4372,12 @@
+             const isInsert = operation.type === "insert";
+             if (isInsert && previous) {
+               discardCandidate();
++              structuralBail("delta-insert-key-already-present");
+               return false;
+             }
+             if (!isInsert && !previous) {
+               discardCandidate();
++              structuralBail("delta-replace-row-missing");
+               return false;
+             }
+             const anchor = isInsert && operation.beforeKey !== null
+@@ -4315,6 +4385,7 @@
+               : null;
+             if (isInsert && operation.beforeKey !== null && !anchor) {
+               discardCandidate();
++              structuralBail("delta-insert-anchor-missing");
+               return false;
+             }
+             const previousOwner = isInsert
+@@ -4333,6 +4404,7 @@
+               !candidate || (previous && candidate.hostKey !== previous.hostKey)
+             ) {
+               discardCandidate();
++              structuralBail("delta-row-render-or-host-key-declined");
+               return false;
+             }
+             overlay.set(operation.key, candidate);
+@@ -4355,6 +4427,7 @@
+       }
+     } catch {
+       discardCandidate();
++      structuralBail("delta-row-render-threw");
+       this.#collectionSnapshotFallbackKeys.add(regionKey);
+       this.#count("collection.delta.render-fallback");
+       return false;
+@@ -4365,6 +4438,7 @@
+       this.#pendingChanges.size > 0
+     ) {
+       discardCandidate();
++      structuralBail("delta-candidate-stale");
+       this.#count("collection.delta.stale-candidate");
+       return false;
+     }
+@@ -4383,6 +4457,7 @@
+     }
+     if (!deltaCommitted) {
+       discardCandidate();
++      structuralBail("delta-vdom-declined");
+       return false;
+     }
+     if (!region.reader.acknowledge(read.toVersion)) {
+@@ -4393,6 +4468,7 @@
+ 
+     const effectErrors: unknown[] = [];
+     for (const [key, candidate] of overlay) {
++      structuralCount("collection.delta.publication-overlay-visits", "iteration", "component_state_runtime.ts:flushCollectionDelta");
+       const previous = originalRows.get(key);
+       if (candidate === null) {
+         if (previous) this.#retireCollectionRow(previous.owner, effectErrors);
+@@ -4423,6 +4499,7 @@
+       for (
+         const ancestor of this.world.ownerLineage(candidate.owner).slice(1)
+       ) {
++        structuralCount("collection.delta.membership-ancestor-visits", "iteration", "component_state_runtime.ts:flushCollectionDelta");
+         const ancestorCache = this.#componentCache.get(ancestor);
+         if (
+           ancestorCache?.subtreeOwners instanceof Set &&
+@@ -4511,6 +4588,7 @@
+   #retireCollectionRow(owner: OwnerId, errors: unknown[]) {
+     const cache = this.#componentCache.get(owner);
+     if (!cache) return;
++    structuralCount("owner.retire-row-events", "event", "component_state_runtime.ts:retireCollectionRow");
+     const lineage = this.world.ownerLineage(owner).slice(1);
+     this.#count("owner.retired");
+     errors.push(...this.#reconcileOwnerEffects(owner, new Map()));
+@@ -4520,6 +4598,7 @@
+     this.#dropPendingForOwner(owner);
+     this.world.destroyOwner(owner);
+     for (const ancestor of lineage) {
++      structuralCount("collection.delta.retire-ancestor-visits", "iteration", "component_state_runtime.ts:retireCollectionRow");
+       const ancestorCache = this.#componentCache.get(ancestor);
+       if (
+         ancestorCache?.subtreeOwners instanceof Set &&
+@@ -5689,6 +5768,7 @@
+       }
+     }
+     if (typeof node.type === "function") {
++      structuralCount("owner.component-node-visits", "iteration", "component_state_runtime.ts:expand");
+       if (this.#activeCounters) this.#count("owner.component-visits");
+       const siteId = getComponentSiteId(node.type);
+       const lastSegment = path.slice(path.lastIndexOf("/") + 1);
+@@ -5863,6 +5943,7 @@
+             });
+             try {
+               if (this.#activeCounters) this.#count("owner.component-renders");
++              structuralCount("owner.generic-component-executions", "iteration", "component_state_runtime.ts:expand-render");
+               result = node.type(componentProps);
+             } finally {
+               activeOwners.pop();
+--- outputs/react-runtime-research/src/owner_state_world.ts	2026-10-13 17:56:31
++++ outputs/react-runtime-research/.cache/structural-locality-recording-v1/diagnostic-v1/snapshot/src/owner_state_world.ts	2026-10-14 01:32:08
+@@ -1,5 +1,6 @@
+ import { ScalarSource } from "./jsx_binding_runtime.ts";
+ import { NumericColumn } from "./jsx_binding_runtime.ts";
++import { structuralCount } from "./structural_count_probe.ts";
+ import {
+   compiledStateLayoutSlot,
+   compiledStateLayoutSignature,
+@@ -1575,6 +1576,7 @@
+     if (!bySite) this.#childrenBySlot.set(parent, bySite = new Map());
+     let byKey = bySite.get(componentSiteId);
+     if (!byKey) bySite.set(componentSiteId, byKey = new Map());
++    structuralCount("owner.slot.resolve-probes", "lookup", "owner_state_world.ts:resolveOwner");
+     const existing = byKey.get(key);
+     if (existing !== undefined) return existing;
+ 
+@@ -1641,6 +1643,7 @@
+     key: OwnerKey = null,
+   ): OwnerId | undefined {
+     if (parent !== null) this.#assertOwner(parent);
++    structuralCount("owner.slot.find-probes", "lookup", "owner_state_world.ts:findOwner");
+     return this.#childrenBySlot.get(parent)?.get(componentSiteId)?.get(key);
+   }
+ 
+@@ -1931,6 +1934,7 @@
+     const lineage: OwnerId[] = [];
+     let current: OwnerId | null = owner;
+     while (current !== null) {
++      structuralCount("owner.lineage.parent-steps", "iteration", "owner_state_world.ts:ownerLineage");
+       lineage.push(current);
+       current = this.#owners.get(current)!.parent;
+     }
+@@ -1982,7 +1986,11 @@
+   destroyOwner(owner: OwnerId): boolean {
+     const record = this.#owners.get(owner);
+     if (!record) return false;
+-    for (const child of [...record.children]) this.destroyOwner(child);
++    structuralCount("owner.destroy.visits", "iteration", "owner_state_world.ts:destroyOwner");
++    for (const child of [...record.children]) {
++      structuralCount("owner.destroy.child-edges", "iteration", "owner_state_world.ts:destroyOwner");
++      this.destroyOwner(child);
++    }
+ 
+     const bySite = this.#childrenBySlot.get(record.parent);
+     const byKey = bySite?.get(record.componentSiteId);
+--- outputs/react-runtime-research/src/keyed_collection.ts	2026-10-12 10:07:38
++++ outputs/react-runtime-research/.cache/structural-locality-recording-v1/diagnostic-v1/snapshot/src/keyed_collection.ts	2026-10-14 01:34:43
+@@ -1,3 +1,5 @@
++import { structuralBail, structuralCount } from "./structural_count_probe.ts";
++
+ /**
+  * A keyed, insertion-ordered collection for compiler-proven sparse edits.
+  *
+@@ -133,6 +135,7 @@
+ 
+   const find = (key: string): Entry<T> | undefined => {
+     entryInspections++;
++    structuralCount("collection.key-lookups", "lookup", "keyed_collection.ts:key-lookup");
+     return byKey.get(key);
+   };
+   const getVirtual = (
+@@ -159,11 +162,20 @@
+       return;
+     }
+     let minimum = Infinity;
+-    for (const reader of readers) minimum = Math.min(minimum, reader.version);
+-    while (history.length > 0 && history[0].version <= minimum) history.shift();
++    for (const reader of readers) {
++      structuralCount("collection.history.reader-visits", "iteration", "keyed_collection.ts:pruneAcknowledged");
++      minimum = Math.min(minimum, reader.version);
++    }
++    while (history.length > 0 && history[0].version <= minimum) {
++      structuralCount("collection.history.pruned-batches", "event", "keyed_collection.ts:pruneAcknowledged");
++      history.shift();
++    }
+   };
+   const capHistory = () => {
+-    while (history.length > maxRetainedBatches) history.shift();
++    while (history.length > maxRetainedBatches) {
++      structuralCount("collection.history.capped-batches", "event", "keyed_collection.ts:capHistory");
++      history.shift();
++    }
+   };
+ 
+   const collection = {
+@@ -197,9 +209,12 @@
+     },
+     /** O(N), intended for initial materialization or generic fallback. */
+     snapshot(): readonly KeyedCollectionEntry<T>[] {
++      structuralBail("collection-snapshot-inside-edit-window");
++      structuralCount("collection.snapshot.invocations", "event", "keyed_collection.ts:snapshot");
+       const result: KeyedCollectionEntry<T>[] = [];
+       for (let entry = head; entry; entry = entry.next) {
+         entryInspections++;
++        structuralCount("collection.snapshot.entry-visits", "iteration", "keyed_collection.ts:snapshot");
+         result.push(Object.freeze({ key: entry.key, value: entry.value }));
+       }
+       return Object.freeze(result);
+@@ -217,9 +232,10 @@
+       }
+       let batchOperations: readonly KeyedCollectionOperation<T>[];
+       try {
+-        batchOperations = Object.freeze(Array.from(operations, (operation) =>
+-          Object.freeze({ ...operation }) as KeyedCollectionOperation<T>
+-        ));
++        batchOperations = Object.freeze(Array.from(operations, (operation) => {
++          structuralCount("collection.copy-operation-callbacks", "iteration", "keyed_collection.ts:apply-copy");
++          return Object.freeze({ ...operation }) as KeyedCollectionOperation<T>;
++        }));
+       } catch {
+         return { ok: false, reason: "invalid-operation", version };
+       }
+@@ -233,6 +249,7 @@
+       let virtualTail = tail;
+       const lookup = (key: string): Entry<T> | undefined => {
+         entryInspections++;
++        structuralCount("collection.key-lookups", "lookup", "keyed_collection.ts:key-lookup");
+         if (keyOverlay.has(key)) return keyOverlay.get(key) ?? undefined;
+         return byKey.get(key);
+       };
+@@ -266,6 +283,7 @@
+       };
+ 
+       for (const operation of batchOperations) {
++        structuralCount("collection.preflight.operation-visits", "iteration", "keyed_collection.ts:apply-preflight");
+         if (!operation || typeof operation.key !== "string" || !operation.key) {
+           return { ok: false, reason: "invalid-operation", version };
+         }
+@@ -336,6 +354,7 @@
+       // Neighbors whose links changed are included in `virtual`, so this does
+       // not walk or copy the full sibling list.
+       for (const state of virtual.values()) {
++        structuralCount("collection.publish.virtual-entry-visits", "iteration", "keyed_collection.ts:apply-publish");
+         state.entry.value = state.value;
+         state.entry.previous = state.alive ? state.previous : null;
+         state.entry.next = state.alive ? state.next : null;
+@@ -343,6 +362,7 @@
+       head = virtualHead;
+       tail = virtualTail;
+       for (const [key, entry] of keyOverlay) {
++        structuralCount("collection.publish.key-overlay-visits", "iteration", "keyed_collection.ts:apply-publish");
+         if (entry === null) byKey.delete(key);
+         else byKey.set(key, entry);
+       }
+@@ -365,6 +385,7 @@
+           while (notificationQueue.length > 0) {
+             const pending = notificationQueue.shift()!;
+             for (const listener of pending.listeners) {
++              structuralCount("collection.listener-callbacks", "event", "keyed_collection.ts:apply-notify");
+               listenerNotifications++;
+               try {
+                 listener(pending.batch);
+@@ -420,7 +441,10 @@
+               currentVersion: version,
+             });
+           }
+-          const batches = history.filter((batch) => batch.version > reader.version);
++          const batches = history.filter((batch) => {
++            structuralCount("collection.reader.history-visits", "iteration", "keyed_collection.ts:reader-read");
++            return batch.version > reader.version;
++          });
+           reader.readThrough = version;
+           return Object.freeze({
+             status: "available",
+--- outputs/react-runtime-research/src/keyed_region_buckets.ts	2026-10-11 09:08:55
++++ outputs/react-runtime-research/.cache/structural-locality-recording-v1/diagnostic-v1/snapshot/src/keyed_region_buckets.ts	2026-10-14 01:32:08
+@@ -1,3 +1,5 @@
++import { structuralCount } from "./structural_count_probe.ts";
++
+ export type KeyedRegionEntry<T> = { key: string; value: T };
+ 
+ type Bucket<T> = {
+@@ -62,10 +64,12 @@
+   }
+ 
+   has(key: string) {
++    structuralCount("bucket.key-probes", "lookup", "keyed_region_buckets.ts:key-probe");
+     return this.#byKey.has(key);
+   }
+ 
+   get(key: string): T | undefined {
++    structuralCount("bucket.key-probes", "lookup", "keyed_region_buckets.ts:key-probe");
+     return this.#byKey.get(key)?.value;
+   }
+ 
+@@ -142,6 +146,7 @@
+     const [removed] = bucket.entries.splice(offset, 1);
+     this.#bucketSlotReads++;
+     this.#bucketSlotWrites += bucket.entries.length - offset;
++    structuralCount("bucket.splice-shift-estimate", "estimate", "keyed_region_buckets.ts:splice", bucket.entries.length - offset);
+     this.#byKey.delete(key);
+     this.#size--;
+     this.#reindex(bucket, offset);
+@@ -161,7 +166,9 @@
+ 
+   *entries(): IterableIterator<KeyedRegionEntry<T>> {
+     for (let bucket = this.#head; bucket; bucket = bucket.next) {
++      structuralCount("bucket.iterated-buckets", "iteration", "keyed_region_buckets.ts:entries");
+       for (const entry of bucket.entries) {
++        structuralCount("bucket.iterated-entries", "iteration", "keyed_region_buckets.ts:entries");
+         yield { key: entry.key, value: entry.value };
+       }
+     }
+@@ -170,7 +177,11 @@
+   /** Allocation-free full scan for snapshots and dense region work. */
+   forEach(visitor: (key: string, value: T) => void): void {
+     for (let bucket = this.#head; bucket; bucket = bucket.next) {
+-      for (const entry of bucket.entries) visitor(entry.key, entry.value);
++      structuralCount("bucket.forEach-buckets", "iteration", "keyed_region_buckets.ts:forEach");
++      for (const entry of bucket.entries) {
++        structuralCount("bucket.forEach-entries", "iteration", "keyed_region_buckets.ts:forEach");
++        visitor(entry.key, entry.value);
++      }
+     }
+   }
+ 
+@@ -233,12 +244,14 @@
+     bucket.entries.splice(offset, 0, entry);
+     this.#size++;
+     this.#bucketSlotWrites += bucket.entries.length - offset;
++    structuralCount("bucket.splice-shift-estimate", "estimate", "keyed_region_buckets.ts:splice", bucket.entries.length - offset);
+     this.#reindex(bucket, offset);
+     this.#byKey.set(key, entry);
+   }
+ 
+   #reindex(bucket: Bucket<T>, start: number) {
+     for (let offset = start; offset < bucket.entries.length; offset++) {
++      structuralCount("bucket.reindex-loop-visits", "iteration", "keyed_region_buckets.ts:reindex");
+       bucket.entries[offset].bucket = bucket;
+       bucket.entries[offset].offset = offset;
+       this.#bucketSlotWrites++;
+@@ -253,6 +266,7 @@
+     this.#reindex(right, 0);
+     this.#reindex(bucket, splitAt);
+     this.#splits++;
++    structuralCount("bucket.split-events", "event", "keyed_region_buckets.ts:split");
+     return [bucket, right];
+   }
+ 
+@@ -267,6 +281,7 @@
+       this.#reindex(left, 0);
+       this.#unlink(right);
+       this.#merges++;
++      structuralCount("bucket.merge-events", "event", "keyed_region_buckets.ts:rebalance");
+       return;
+     }
+     const combined = [...left.entries, ...right.entries];
+@@ -296,6 +311,7 @@
+   }
+ 
+   #require(key: string): Entry<T> {
++    structuralCount("bucket.key-probes", "lookup", "keyed_region_buckets.ts:key-probe");
+     const entry = this.#byKey.get(key);
+     if (!entry) throw new Error(`Unknown keyed-region key: ${key}`);
+     return entry;
+--- outputs/react-runtime-research/src/vdom_snapshot_runtime.ts	2026-10-13 19:08:29
++++ outputs/react-runtime-research/.cache/structural-locality-recording-v1/diagnostic-v1/snapshot/src/vdom_snapshot_runtime.ts	2026-10-14 01:34:32
+@@ -10,6 +10,7 @@
+ } from "./jsx_binding_runtime.ts";
+ import { KeyedRegionBuckets } from "./keyed_region_buckets.ts";
+ import { createDOMStylePropWriter } from "./dom_style_writer.ts";
++import { structuralBail, structuralCount } from "./structural_count_probe.ts";
+ import {
+   compiledOwnerUpdateProgramFor,
+   compiledStateLayoutSignature,
+@@ -276,6 +277,7 @@
+ const normalizedElementCache = new WeakMap<RuntimeElement, VElement>();
+ 
+ const normalizeMany = (input: RuntimeNode): VNode[] => {
++  structuralCount("vdom.normalize.input-visits", "iteration", "vdom_snapshot_runtime.ts:normalizeMany");
+   if (input == null || input === false) return [];
+   if (Array.isArray(input)) {
+     return input.flatMap((child) => normalizeMany(child));
+@@ -318,9 +320,15 @@
+   visitor: (child: MountedNode<H>) => void,
+ ) => {
+   if (node.keyedChildren) {
+-    node.keyedChildren.forEach((_key, child) => visitor(child));
++    node.keyedChildren.forEach((_key, child) => {
++      structuralCount("vdom.child-callback.visits", "iteration", "vdom_snapshot_runtime.ts:forEachMountedChild");
++      visitor(child);
++    });
+   } else {
+-    for (const child of node.children) visitor(child);
++    for (const child of node.children) {
++      structuralCount("vdom.child-callback.visits", "iteration", "vdom_snapshot_runtime.ts:forEachMountedChild");
++      visitor(child);
++    }
+   }
+ };
+ 
+@@ -357,6 +365,7 @@
+ };
+ 
+ const serializeMounted = <H>(node: MountedNode<H>): VNode => {
++  structuralCount("vdom.snapshot.serialize-node-visits", "iteration", "vdom_snapshot_runtime.ts:serializeMounted");
+   if (node.vnode.kind === "text") return node.vnode;
+   return {
+     ...node.vnode,
+@@ -372,6 +381,7 @@
+ const validateUniqueKeys = (siblings: readonly VNode[]) => {
+   const keys = new Set<string>();
+   for (const node of siblings) {
++    structuralCount("vdom.unique-key.node-visits", "iteration", "vdom_snapshot_runtime.ts:validateUniqueKeys");
+     if (node.kind === "element") {
+       const ref = node.props.ref;
+       if (
+@@ -401,6 +411,7 @@
+   previousWriters?: ReadonlyMap<string, readonly BoundPropGroup<H>[]>,
+   afterProp?: (name: string, next: unknown) => void,
+ ) => {
++  structuralCount("vdom.release.subtree-visits", "iteration", "vdom_snapshot_runtime.ts:releaseMountedSubtree");
+   const names = new Set([...Object.keys(previous), ...Object.keys(next)]);
+   for (const name of names) {
+     // Diff against the writer's last committed value: BoundValue may already expose
+@@ -482,6 +493,7 @@
+   if (!node.hostDisposed) {
+     node.hostDisposed = true;
+     try {
++      if (host.dispose) structuralCount("host.dispose.attempts", "event", "vdom_snapshot_runtime.ts:releaseMountedSubtree");
+       host.dispose?.(node.handle);
+     } catch (error) {
+       errors.push(error);
+@@ -498,6 +510,7 @@
+   const errors = collectedErrors ?? [];
+   releaseMountedSubtree(host, node, errors);
+   try {
++    structuralCount("host.remove.attempts", "event", "vdom_snapshot_runtime.ts:removeMountedSubtree");
+     host.remove(parent, node.handle);
+   } catch (error) {
+     errors.push(error);
+@@ -746,19 +759,22 @@
+   // Skip key maps when only props/text change and sibling identity/order are fixed.
+   if (
+     next.length === previous.length &&
+-    next.every((vnode, index) =>
+-      previous[index].vnode.key === vnode.key &&
+-      compatible(previous[index].vnode, vnode)
+-    )
++    next.every((vnode, index) => {
++      structuralCount("vdom.reconcile.fast-check-visits", "iteration", "vdom_snapshot_runtime.ts:reconcileChildren");
++      return previous[index].vnode.key === vnode.key &&
++        compatible(previous[index].vnode, vnode);
++    })
+   ) {
+-    return next.map((vnode, index) =>
+-      updateMounted(host, parent, previous[index], vnode, keyIndex)
+-    );
++    return next.map((vnode, index) => {
++      structuralCount("vdom.reconcile.fast-update-visits", "iteration", "vdom_snapshot_runtime.ts:reconcileChildren");
++      return updateMounted(host, parent, previous[index], vnode, keyIndex);
++    });
+   }
+ 
+   const keyed = new Map<string, MountedNode<H>>();
+   const unkeyed: MountedNode<H>[] = [];
+   for (let index = 0; index < previous.length; index++) {
++    structuralCount("vdom.reconcile.previous-child-visits", "iteration", "vdom_snapshot_runtime.ts:reconcileChildren");
+     const child = previous[index];
+     const key = child.vnode.key;
+     if (key == null) unkeyed.push(child);
+@@ -771,6 +787,7 @@
+   }
+   const nextKeys = new Set<string>();
+   for (const child of next) {
++    structuralCount("vdom.reconcile.next-key-visits", "iteration", "vdom_snapshot_runtime.ts:reconcileChildren");
+     if (child.key != null) {
+       if (nextKeys.has(child.key)) {
+         throw new Error(`Duplicate key in next VDOM children: ${child.key}`);
+@@ -784,6 +801,7 @@
+   let unkeyedIndex = 0;
+   let lastPlacedIndex = -1;
+   const selected = next.map((vnode, index) => {
++    structuralCount("vdom.reconcile.selection-visits", "iteration", "vdom_snapshot_runtime.ts:reconcileChildren");
+     let candidate: MountedNode<H> | undefined;
+     if (vnode.key != null) candidate = keyed.get(vnode.key);
+     else candidate = unkeyed[unkeyedIndex++];
+@@ -802,6 +820,7 @@
+   const mounted = new Array<MountedNode<H>>(next.length);
+   let anchor: H | null = null;
+   for (let index = next.length - 1; index >= 0; index--) {
++    structuralCount("vdom.reconcile.mount-visits", "iteration", "vdom_snapshot_runtime.ts:reconcileChildren");
+     const old = selected[index];
+     // New children are mounted detached and placed once at their final slot.
+     // New children and prior indexes behind the forward cursor are placed.
+@@ -995,6 +1014,8 @@
+ 
+   /** A read-only, host-neutral description of the latest committed tree. */
+   get snapshot(): readonly unknown[] {
++    structuralCount("vdom.snapshot.accesses", "event", "vdom_snapshot_runtime.ts:snapshot");
++    structuralBail("vdom-snapshot-inside-edit-window");
+     if (this.#snapshotDirty) {
+       this.#snapshot = this.#mounted.map(serializeMounted);
+       this.#snapshotDirty = false;
+@@ -1015,18 +1036,23 @@
+   flushRefs() {
+     const publicationEpoch = this.#refPublicationEpoch;
+     const pending = [...this.#pendingRefs];
++    structuralCount("ref.pending-array-length", "length", "vdom_snapshot_runtime.ts:flushRefs", pending.length);
+     this.#pendingRefs.clear();
+     const errors: unknown[] = [];
+ 
+     for (const [node, nextRef] of pending) {
++      structuralCount("ref.detach-pending-visits", "iteration", "vdom_snapshot_runtime.ts:flushRefs");
+       if (publicationEpoch !== this.#refPublicationEpoch) break;
+       const previous = this.#committedRefs.get(node);
+       if (previous?.ref === nextRef) continue;
+       if (!previous) continue;
+       this.#committedRefs.delete(node);
+       try {
+-        if (previous.cleanup) previous.cleanup();
+-        else if (typeof previous.ref === "function") {
++        if (previous.cleanup) {
++          structuralCount("ref.detach-callbacks", "event", "vdom_snapshot_runtime.ts:flushRefs");
++          previous.cleanup();
++        } else if (typeof previous.ref === "function") {
++          structuralCount("ref.detach-callbacks", "event", "vdom_snapshot_runtime.ts:flushRefs");
+           previous.ref(null);
+         } else {
+           previous.ref.current = null;
+@@ -1037,6 +1063,7 @@
+     }
+ 
+     for (const [node, nextRef] of pending) {
++      structuralCount("ref.attach-pending-visits", "iteration", "vdom_snapshot_runtime.ts:flushRefs");
+       if (publicationEpoch !== this.#refPublicationEpoch) break;
+       if (nextRef == null) continue;
+       const previous = this.#committedRefs.get(node);
+@@ -1056,6 +1083,7 @@
+       this.#committedRefs.set(node, committed);
+       try {
+         if (typeof nextRef === "function") {
++          structuralCount("ref.attach-callbacks", "event", "vdom_snapshot_runtime.ts:flushRefs");
+           const cleanup = nextRef(instance);
+           if (typeof cleanup === "function") {
+             const release = cleanup as () => void;
+@@ -1393,10 +1421,14 @@
+     let parent: MountedNode<H> | undefined;
+     let matches = 0;
+     for (const candidate of candidates ?? []) {
++      structuralCount("vdom.delta.region-candidate-visits", "iteration", "vdom_snapshot_runtime.ts:commitKeyedRegionDelta");
+       let ancestor: MountedNode<H> = candidate;
+       // Use the keyed host root: a mounted component root may be nested in the app
+       // tree, so the outermost mounted node is not the delta root.
+-      while (ancestor !== root && ancestor.parent) ancestor = ancestor.parent;
++      while (ancestor !== root && ancestor.parent) {
++        structuralCount("vdom.delta.ancestor-steps", "iteration", "vdom_snapshot_runtime.ts:commitKeyedRegionDelta");
++        ancestor = ancestor.parent;
++      }
+       if (ancestor !== root) continue;
+       if (
+         candidate.vnode.kind === "element" && candidate.keyedChildren
+@@ -1447,6 +1479,7 @@
+     };
+ 
+     for (let index = 0; index < operations.length; index++) {
++      structuralCount("vdom.delta.validate-operation-visits", "iteration", "vdom_snapshot_runtime.ts:commitKeyedRegionDelta");
+       const operation = operations[index];
+       if (!operation.key) return false;
+       if (operation.type === "insert" || operation.type === "replace") {
+@@ -1503,6 +1536,7 @@
+     const bindingIndexStart = this.#bindingIndexIndexOperations;
+     const hostParent = parent.handle as unknown as Parent;
+     for (let index = 0; index < operations.length; index++) {
++      structuralCount("vdom.delta.commit-operation-visits", "iteration", "vdom_snapshot_runtime.ts:commitKeyedRegionDelta");
+       const operation = operations[index];
+       if (operation.type === "remove") {
+         const child = region.get(operation.key)!;
+@@ -1550,6 +1584,7 @@
+     // The mounted bucket owns row order; drop the initial child array and snapshot
+     // so removed rows are released immediately.
+     const releasedChildVNodeCount = parent.vnode.children.length;
++    structuralCount("vdom.delta.released-child-array-length", "length", "vdom_snapshot_runtime.ts:commitKeyedRegionDelta", releasedChildVNodeCount);
+     parent.vnode.children = [];
+     this.#snapshot = [];
+     this.#snapshotDirty = true;
+@@ -1611,11 +1646,13 @@
+         current;
+         current = current.parent
+       ) {
++        structuralCount("vdom.prepare.ancestor-steps", "iteration", "vdom_snapshot_runtime.ts:prepareKeyedRegionDeltas");
+         if (current === ancestor) return true;
+       }
+       return false;
+     };
+     const collectMounted = (node: MountedNode<H>) => {
++      structuralCount("vdom.prepare.replaced-subtree-visits", "iteration", "vdom_snapshot_runtime.ts:prepareKeyedRegionDeltas");
+       if (replacedNodes.has(node)) return false;
+       replacedNodes.add(node);
+       forEachMountedChild(node, collectMounted);
+@@ -1633,6 +1670,7 @@
+     };
+     const candidateKeyOwners = new Map<string, string>();
+     const collectCandidateKeys = (node: VNode, owner: string): boolean => {
++      structuralCount("vdom.prepare.candidate-key-node-visits", "iteration", "vdom_snapshot_runtime.ts:prepareKeyedRegionDeltas");
+       if (node.kind === "text") return true;
+       if (node.key !== null) {
+         const previousOwner = candidateKeyOwners.get(node.key);
+@@ -1647,6 +1685,7 @@
+ 
+     try {
+       for (const delta of deltas) {
++        structuralCount("vdom.prepare.delta-visits", "iteration", "vdom_snapshot_runtime.ts:prepareKeyedRegionDeltas");
+         if (
+           !delta.parentKey || !delta.regionId || regionIds.has(delta.regionId)
+         ) return null;
+@@ -1662,6 +1701,7 @@
+         for (
+           const candidate of this.#nodesByKeyedRegion.get(delta.regionId) ?? []
+         ) {
++          structuralCount("vdom.prepare.region-candidate-visits", "iteration", "vdom_snapshot_runtime.ts:prepareKeyedRegionDeltas");
+           if (!isAncestor(root, candidate)) continue;
+           if (candidate.vnode.kind === "element" && candidate.keyedChildren) {
+             parent = candidate;
+@@ -1690,6 +1730,7 @@
+         };
+         const nodes = new Map<KeyedRegionDeltaOperation, VNode>();
+         for (const op of operations) {
++          structuralCount("vdom.prepare.operation-visits", "iteration", "vdom_snapshot_runtime.ts:prepareKeyedRegionDeltas");
+           if (!op.key) return null;
+           const previousRegion = touchedKeys.get(op.key);
+           if (
+@@ -4307,6 +4348,7 @@
+   /** Attach ordinary scalar prop writers for only the newly mounted subtree. */
+   #attachScalarBindingSubtree(node: MountedNode<H>) {
+     const visit = (mounted: MountedNode<H>) => {
++      structuralCount("vdom.binding.attach-subtree-visits", "iteration", "vdom_snapshot_runtime.ts:attachScalarBindingSubtree");
+       this.#attachScalarBindingNode(mounted);
+       forEachMountedChild(mounted, visit);
+     };
+@@ -4316,6 +4358,7 @@
+   /** Detach writer groups before their hosts leave or change their props. */
+   #detachScalarBindingSubtree(node: MountedNode<H>) {
+     const visit = (mounted: MountedNode<H>) => {
++      structuralCount("vdom.binding.detach-subtree-visits", "iteration", "vdom_snapshot_runtime.ts:detachScalarBindingSubtree");
+       this.#detachScalarBindingNode(mounted);
+       forEachMountedChild(mounted, visit);
+     };
+@@ -4323,6 +4366,7 @@
+   }
+ 
+   #rebuildBindingIndex() {
++    structuralCount("vdom.binding.full-rebuild-events", "event", "vdom_snapshot_runtime.ts:rebuildBindingIndex");
+     let visits = 0;
+     const countVisits = this.#profileCounter !== undefined;
+     this.#invalidateAllPreparedNumericCellPrograms();
+@@ -4350,6 +4394,7 @@
+         node.scalarIncompatibleBindingProps = undefined;
+         return;
+       }
++      structuralCount("vdom.binding.full-rebuild-visits", "iteration", "vdom_snapshot_runtime.ts:rebuildBindingIndex");
+       if (countVisits) visits++;
+       if (node.scalarBindingGroups) {
+         for (const groups of node.scalarBindingGroups.values()) {
+@@ -4643,12 +4688,14 @@
+   }
+ 
+   #rebuildKeyIndex() {
++    structuralCount("vdom.key-index.full-rebuild-events", "event", "vdom_snapshot_runtime.ts:rebuildKeyIndex");
+     this.#nodesByKey.clear();
+     this.#nodesByKeyedRegion.clear();
+     let visits = 0;
+     const countVisits = this.#profileCounter !== undefined;
+     const visit = (node: MountedNode<H>) => {
+       if (node.hostDisposed) return;
++      structuralCount("vdom.key-index.full-rebuild-visits", "iteration", "vdom_snapshot_runtime.ts:rebuildKeyIndex");
+       if (countVisits) visits++;
+       this.#addToKeyIndex(node);
+       forEachMountedChild(node, visit);
+@@ -5022,14 +5069,25 @@
+   }
+ 
+   place(parent: Node, node: Node, before: Node | null) {
+-    if (node.parentNode === parent && node.nextSibling === before) return;
++    structuralCount("host.place.attempts", "event", "vdom_snapshot_runtime.ts:DOMVDOMHost.place");
++    if (node.parentNode === parent && node.nextSibling === before) {
++      structuralCount("host.place.noops", "event", "vdom_snapshot_runtime.ts:DOMVDOMHost.place");
++      return;
++    }
+     if (
+       before === null && node.parentNode === parent && parent.lastChild === node
+-    ) return;
++    ) {
++      structuralCount("host.place.noops", "event", "vdom_snapshot_runtime.ts:DOMVDOMHost.place");
++      return;
++    }
+     parent.insertBefore(node, before);
++    structuralCount("host.place.effective-insertBefore", "event", "vdom_snapshot_runtime.ts:DOMVDOMHost.place");
+   }
+ 
+   remove(parent: Node, node: Node) {
+-    if (node.parentNode === parent) parent.removeChild(node);
++    if (node.parentNode === parent) {
++      parent.removeChild(node);
++      structuralCount("host.remove.effective", "event", "vdom_snapshot_runtime.ts:DOMVDOMHost.remove");
++    }
+   }
+ }
+--- /dev/null	2026-10-14 01:35:04
++++ outputs/react-runtime-research/.cache/structural-locality-recording-v1/diagnostic-v1/snapshot/src/structural_count_probe.ts	2026-10-14 01:32:34
+@@ -0,0 +1,132 @@
++/** Disposable Recording B count gate. Never imported by production source. */
++export type CountUnit = "iteration" | "lookup" | "event" | "length" | "estimate" | "gauge";
++export type CountValue = Readonly<{ value: number; unit: CountUnit; site: string }>;
++export type CountReceipt = Readonly<{
++  label: string;
++  rootId: string;
++  phase: "edit";
++  completed: boolean;
++  route: string | null;
++  bails: readonly string[];
++  errors: readonly string[];
++  counts: Readonly<Record<string, CountValue>>;
++  missing: Readonly<Record<string, Readonly<{ value: null; reason: string }>>>;
++}>;
++
++type MutableCount = { value: number; unit: CountUnit; site: string };
++type Window = {
++  root: object;
++  rootId: string;
++  label: string;
++  counts: Map<string, MutableCount>;
++  bails: string[];
++  errors: string[];
++  route: string | null;
++  flushDepth: number;
++  flushes: number;
++};
++const roots = new Map<object, string>();
++let enabled = false;
++let active: Window | null = null;
++
++export const configureStructuralCountProbe = (value: boolean): void => {
++  if (active) throw new Error("Cannot change structural probe mode in a count window");
++  enabled = value;
++};
++
++export const registerStructuralRoot = (root: object, rootId: string): void => {
++  if (active && root !== active.root) active.errors.push("another root created inside edit window");
++  roots.set(root, rootId);
++};
++export const unregisterStructuralRoot = (root: object): void => {
++  if (active?.root === root) active.errors.push("root disposed inside edit window");
++  roots.delete(root);
++};
++
++export const beginStructuralCountWindow = (
++  root: object,
++  label: string,
++): void => {
++  if (!enabled) throw new Error("Structural count mode is disabled");
++  if (active) throw new Error("A structural count window is already active");
++  const rootId = roots.get(root);
++  if (roots.size !== 1 || !rootId) {
++    throw new Error("Structural count window requires exactly one registered root");
++  }
++  if (!label) throw new Error("Structural count window needs a label");
++  active = { root, rootId, label, counts: new Map(), bails: [], errors: [], route: null,
++    flushDepth: 0, flushes: 0 };
++};
++
++export const structuralCount = (
++  name: string,
++  unit: CountUnit,
++  site: string,
++  amount = 1,
++): void => {
++  const window = active;
++  if (!window || !Number.isSafeInteger(amount) || amount < 0) return;
++  const prior = window.counts.get(name);
++  if (prior && (prior.unit !== unit || prior.site !== site)) {
++    window.errors.push(`mixed authority: ${name}`);
++    return;
++  }
++  if (prior) prior.value += amount;
++  else window.counts.set(name, { value: amount, unit, site });
++};
++
++export const structuralRoute = (route: string): void => {
++  if (!active) return;
++  if (active.route !== null && active.route !== route) {
++    active.errors.push(`multiple root routes: ${active.route}, ${route}`);
++  }
++  active.route = route;
++};
++export const structuralBail = (reason: string): void => { active?.bails.push(reason); };
++export const structuralError = (reason: string): void => { active?.errors.push(reason); };
++
++export const enterStructuralFlush = (root: object): void => {
++  if (!active) return;
++  if (root !== active.root) active.errors.push("another root flushed inside edit window");
++  active.flushDepth++;
++  active.flushes++;
++  if (active.flushDepth !== 1) active.errors.push("reentrant root flush");
++  structuralCount("root.flush.entries", "event", "component_state_runtime.ts:flush");
++};
++export const leaveStructuralFlush = (root: object): void => {
++  if (!active) return;
++  if (root !== active.root) active.errors.push("another root left edit window");
++  active.flushDepth--;
++  if (active.flushDepth < 0) active.errors.push("root flush depth underflow");
++};
++
++export const endStructuralCountWindow = (root: object): CountReceipt => {
++  const window = active;
++  if (!window || root !== window.root) throw new Error("Structural count window root mismatch");
++  active = null;
++  if (window.flushes !== 1) window.errors.push(`expected one flush, got ${window.flushes}`);
++  if (window.flushDepth !== 0) window.errors.push("root flush remained active");
++  if (roots.size !== 1 || roots.get(root) !== window.rootId) {
++    window.errors.push("single bound root not retained through edit window");
++  }
++  if (!window.route) window.errors.push("missing exclusive root route");
++  const counts: Record<string, CountValue> = {};
++  for (const [name, value] of window.counts) counts[name] = Object.freeze({ ...value });
++  return Object.freeze({
++    label: window.label,
++    rootId: window.rootId,
++    phase: "edit",
++    completed: window.errors.length === 0 && window.bails.length === 0,
++    route: window.route,
++    bails: Object.freeze([...window.bails]),
++    errors: Object.freeze([...window.errors]),
++    counts: Object.freeze(counts),
++    missing: Object.freeze({
++      "host.dispose.success": { value: null, reason: "DOM host has no dispose implementation" },
++      "gc.deferred.work": { value: null, reason: "No synchronous iteration authority; requires separate GC evidence" },
++      "user.effect.body.work": { value: null, reason: "User callback internals are outside runtime counter authority" },
++      "bucket.native-splice.actual-shifts": { value: null, reason: "JS engine internal moves are not observable; estimate separately" },
++      "host.layout-paint": { value: null, reason: "Synchronous count window does not measure presentation" },
++    }),
++  });
++};

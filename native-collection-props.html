@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#101820" />
+    <title>Native keyed collection playground</title>
+    <link rel="icon" href="data:," />
+    <style>
+      :root { color-scheme: dark; font: 16px/1.5 ui-sans-serif, system-ui; background: #101820; color: #e9f1f4; }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; }
+      main { width: min(1120px, calc(100% - 36px)); margin: 0 auto; padding: 48px 0 72px; }
+      .demo-root { display: contents; }
+      h1, h2, p { margin-top: 0; }
+      h1 { font-size: clamp(2rem, 5vw, 3.2rem); letter-spacing: -.04em; margin-bottom: 8px; }
+      h2 { font-size: 1.05rem; margin-bottom: 8px; }
+      .lede, .muted { color: #9eb1bb; }
+      .collection-layout { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(280px, .8fr); gap: 18px; margin-top: 28px; align-items: start; }
+      .panel { border: 1px solid #2a3b45; border-radius: 16px; padding: 20px; background: #17232c; }
+      .collection-panel { min-width: 0; }
+      .panel-heading { display: flex; justify-content: space-between; align-items: start; gap: 16px; }
+      .panel-heading .badge { white-space: nowrap; }
+      .collection-list { display: grid; gap: 8px; max-height: 68vh; overflow: auto; padding: 2px; }
+      .collection-row { display: grid; grid-template-columns: 104px minmax(100px, 1fr) auto 3ch; align-items: center; gap: 10px; padding: 8px 10px; background: #111b23; border-radius: 8px; border-left: 3px solid hsl(calc(158deg + var(--row-shift) * 8deg) 62% 58%); transform: translateX(calc(var(--row-shift) * .15px)); }
+      .row-id { color: #9eb1bb; font-size: .82rem; font-variant-numeric: tabular-nums; }
+      .tick-output { min-width: 3ch; text-align: right; }
+      .collection-row input { min-width: 0; }
+      .controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+      button, input { font: inherit; }
+      button { color: #e9f1f4; background: #263b46; border: 1px solid #3a5663; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+      button:hover { background: #304b58; }
+      input { width: 100%; accent-color: #77d5bd; }
+      .badge { color: #77d5bd; font-variant-numeric: tabular-nums; }
+      pre { overflow: auto; max-height: 260px; padding: 12px; background: #101820; border-radius: 8px; color: #bfd4dc; }
+      @media (max-width: 760px) { .collection-layout { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <main id="app"></main>
+    <script type="module" src="/src/browser/native_collection_props.tsx"></script>
+  </body>
+</html>

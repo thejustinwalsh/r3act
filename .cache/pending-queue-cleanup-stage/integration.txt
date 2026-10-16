@@ -1,0 +1,19 @@
+Primary integration: 13 October 2026
+
+Reviewed proposal.patch against the preserved baseline. clear() saves the next
+link before removing the current key; cached identity is cleared at retirement.
+dropOwner() uses the same unlink/payload-scrub helper without duplicate clears.
+No new queue state, strategy, public API, version or lifetime protocol is added.
+
+Live source SHA-256:
+c174f96c74b120446e3175e6501bf3a5d3e7d2af9beb93d4fc63ef437eb8da37
+
+Integrated command:
+/opt/homebrew/bin/deno test --config deno.browser.json --lock=deno.lock --frozen src/pending_state_changes_test.ts src/pending_state_cells_test.ts src/native_cell_cut_test.ts src/native_root_cell_queue_test.ts src/native_numeric_cell_cut_test.ts
+
+Result: 36 passed, 0 failed. Log: logs/integrated-tests.log.
+The live source matches the staged candidate byte for byte. Deno lock unchanged:
+af0d0ce8499a55414d916fe5d3f81abffe907c2f904438aa8d5e62257502cf6f
+
+This establishes focused semantic parity only. Performance was not measured.
+Existing frozen studies/packages remain evidence for their own source revisions.

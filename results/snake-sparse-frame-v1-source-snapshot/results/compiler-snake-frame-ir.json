@@ -1,0 +1,159 @@
+{
+  "schema_version": 5,
+  "frontend": "OXC TSX parser + semantic resolver; binding extraction prototype",
+  "source_file": "compiler/fixtures/snake_frame_scene.tsx",
+  "host_nodes": [
+    {
+      "id": 0,
+      "tag": "i",
+      "span": {
+        "start": 250,
+        "end": 458
+      },
+      "attributes": [
+        {
+          "name": "key",
+          "span": {
+            "start": 261,
+            "end": 272
+          },
+          "source": "key={index}",
+          "dynamic": true,
+          "static_value": null
+        },
+        {
+          "name": "className",
+          "span": {
+            "start": 281,
+            "end": 306
+          },
+          "source": "className=\"snake-segment\"",
+          "dynamic": false,
+          "static_value": "snake-segment"
+        },
+        {
+          "name": "style",
+          "span": {
+            "start": 315,
+            "end": 449
+          },
+          "source": "style={{\n          left: bind(segment.x, (value) => `${value}px`),\n          top: bind(segment.y, (value) => `${value}px`),\n        }}",
+          "dynamic": true,
+          "static_value": null
+        }
+      ],
+      "bindings": [
+        {
+          "attribute": "style",
+          "source_expression": "segment.x",
+          "projection_expression": "(value) => `${value}px`",
+          "host_property": "style.left",
+          "projection_parameter": "value",
+          "projection_body_expression": "`${value}px`",
+          "callee_resolves_to_import": true,
+          "source_root_resolves_to_parameter": true,
+          "span": {
+            "start": 340,
+            "end": 380
+          }
+        },
+        {
+          "attribute": "style",
+          "source_expression": "segment.y",
+          "projection_expression": "(value) => `${value}px`",
+          "host_property": "style.top",
+          "projection_parameter": "value",
+          "projection_body_expression": "`${value}px`",
+          "callee_resolves_to_import": true,
+          "source_root_resolves_to_parameter": true,
+          "span": {
+            "start": 397,
+            "end": 437
+          }
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "tag": "div",
+      "span": {
+        "start": 170,
+        "end": 474
+      },
+      "attributes": [
+        {
+          "name": "className",
+          "span": {
+            "start": 175,
+            "end": 198
+          },
+          "source": "className=\"snake-board\"",
+          "dynamic": false,
+          "static_value": "snake-board"
+        }
+      ],
+      "bindings": []
+    }
+  ],
+  "unsupported_bind_calls": [],
+  "repeated_host_plan": {
+    "collection_expression": "props.segments",
+    "item_parameter": "segment",
+    "index_parameter": "index",
+    "root_tag": "div",
+    "root_static_attributes": [
+      [
+        "className",
+        "snake-board"
+      ]
+    ],
+    "item_tag": "i",
+    "item_static_attributes": [
+      [
+        "className",
+        "snake-segment"
+      ]
+    ],
+    "binding_source_parameter": "segment",
+    "bindings": [
+      {
+        "property": "left",
+        "source_scope": "item",
+        "source_path": "segment.x",
+        "source_slot": 0,
+        "projection_parameter": "value",
+        "projection_body_expression": "`${value}px`"
+      },
+      {
+        "property": "top",
+        "source_scope": "item",
+        "source_path": "segment.y",
+        "source_slot": 1,
+        "projection_parameter": "value",
+        "projection_body_expression": "`${value}px`"
+      }
+    ],
+    "dependency_graph": {
+      "source_count": 2,
+      "source_paths": [
+        "segment.x",
+        "segment.y"
+      ],
+      "source_binding_offsets": [
+        0,
+        1,
+        2
+      ],
+      "binding_ids": [
+        0,
+        1
+      ],
+      "shared_source_count": 0,
+      "shared_source_paths": [],
+      "shared_source_binding_offsets": [
+        0
+      ],
+      "shared_binding_ids": []
+    }
+  }
+}

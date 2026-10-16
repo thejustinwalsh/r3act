@@ -1,0 +1,36 @@
+# Recording B probe-free paired latency and generic oracle stage
+
+**Prepared, unexecuted; full matrix unapproved.** This is a new authored TSX frontend against the original live runtime: `src/component_state_runtime.ts` SHA-256 `dc6ceceba93b59c6c688e250cb0cce2be3ed836296994d4101de218fada602a9`, `src/owner_state_world.ts` `e9aadf02db1e8f29f18b2999b60b93681c1458e0f18dd2891f2b36e8f43c2d34`, `src/vdom_snapshot_runtime.ts` `cdc774b77a5938ce684537dc5f026bef7622a1fbba073bf2f95a01566275a58d`; Rust compiler binary `74396ae694aa6203cc4d4b4900c3458ca31e25e9638c73160b51bcb4aede79c8`. The accepted diagnostic snapshot/count pages are separate receipts, never imported into this latency bundle. The current proposal and master plan are byte-copied under `context/`; no mutable checkpoint is locked. No physical implementation change is made.
+
+The fixture reuses unchanged authored `native_collection.tsx`, `native_generic.tsx`, and `react_array.tsx`; the native module is compiled through public Rust/OXC `nativeModulePlugin` and module-local JSX lowering. React Compiler is explicitly enabled for only the authored eligible React fixture and its memo slots are AST checked. The build checks one canonical live runtime source-map instance, native collection/state/effect sites, identical fixture transforms to the prior eligibility proof, the pre-existing unsupported-index compiler diagnostic receipt, and absence of diagnostic snapshot/probe/profile callback imports. HTML, JavaScript and map bytes are locked before any page. The collection arm authors a public versioned operation log; React authors an array replacement setter. Identical ordered output does not imply identical internal work.
+
+Strict coordinates are sizes `128,1024,10000`, pair indexes `0..4`, and arms `native,react`; `generic` is an untimed oracle at pair 0 only. The frozen model supplies 12 kinds, 2 warmups plus 8 measured edits each, canonical same-root reset, unique inserted IDs, explicit row-2/moving-key selection and new-incarnation semantics. Native timing reads `performance.now()` immediately around `rows.apply(expectedVersion, operations); root.flush()`; React timing encloses only `flushSync(() => registeredSetter(nextIds))`. Each arm's public API, scheduling and host commit lie inside its interval. Immutable operation descriptors and the React replacement array are prepared outside. Model calculation, version/stat checks, reset, DOM order/selected output, retained node identity, effect/lifecycle checks, and record construction occur outside. The generic native state-array oracle has no edit interval. No per-cell timers, React render counters, profile callbacks, count probes, overhead subtraction or synthetic cost reconstruction enter the latency build. JIT, GC and ordinary workload allocation occurring inside the public interval remain included; GC trace authority is unavailable and does not by itself censor a cell. Cold schedule/input construction, mount, reset, and teardown are separate fields.
+
+`analyzer.mjs` validates ordered unique 120 trial/trace IDs, output digest parity, identity/lifecycle and final disposal before reporting any interval. A browser timer quantum is sampled before the app run; any operation/page median at or below two positive quanta is left censored. Each page has eight measured samples per kind, so its p95 is effectively its maximum and is descriptive only. Five fresh paired page blocks form the independent units per size. For each of 12 kinds × 3 sizes, the parity screen requires the geometric mean of five native/React page-median ratios **and** five page-p95 ratios to be at most 1, all pages complete, and no censored cell. Optional strong-win labeling additionally requires an equal-kind, five-block geometric mean of both ratio types at **each** of 1024 and 10000 to be at most 0.8, with every parity cell passing. Near-floor evidence is unresolved, never a pass. The three generic oracle pages are correctness-only and excluded from ratios. There is no frame-level tail qualification or broad product performance claim.
+
+The fixed arm order is from the existing model: even pairs native-first at 128 and 10000, reversed at 1024; trial kinds rotate by `(sizeIndex + pairIndex + trialIndex) % 12` and reverse on odd trial indexes. This stage proposes 30 latency pages and three generic oracle pages, each with one headless GPU-off 90-second cap and no adaptive retry. **Only one paired N=128, pair-0 protocol gate is considered after source/build review**; remaining pages require a separate decision. Timeout, source/asset drift, compiler fallback, correctness/lifecycle failure or incomplete sampling stops the affected unit without dropping the broad filter.
+
+After primary source review, Luna alone runs this finite source sequence followed by one build if all source checks pass:
+
+```sh
+/Users/tjw/.nvm/versions/node/v24.18.0/bin/node --check .cache/structural-locality-recording-v1/latency-v1/frontend/build-gate.mjs
+/Users/tjw/.nvm/versions/node/v24.18.0/bin/node --check .cache/structural-locality-recording-v1/latency-v1/frontend/collect-once.mjs
+/Users/tjw/.nvm/versions/node/v24.18.0/bin/node --check .cache/structural-locality-recording-v1/latency-v1/frontend/analyzer.mjs
+/Users/tjw/.nvm/versions/node/v24.18.0/bin/node --check .cache/structural-locality-recording-v1/latency-v1/frontend/check-analyzer.mjs
+/Users/tjw/.nvm/versions/node/v24.18.0/bin/node .cache/structural-locality-recording-v1/latency-v1/frontend/check-analyzer.mjs
+/Users/tjw/.nvm/versions/node/v24.18.0/bin/node .cache/structural-locality-recording-v1/latency-v1/frontend/build-gate.mjs
+```
+
+A runner lock is created only after the build and local asset hashes pass primary review. Before any preview, Luna loads `$portless-dev-servers` and uses the actual Vite CLI through Portless, no fixed port:
+
+```sh
+PATH="/Users/tjw/.nvm/versions/node/v24.18.0/bin:$PATH" portless run --name structural-latency-v1 node_modules/.bin/vite preview --config .cache/structural-locality-recording-v1/latency-v1/frontend/vite.config.ts
+```
+
+Each separately approved page uses the exact returned HTTPS origin and exclusive file `page-report-<arm>-n<size>-p<pair>.json`. The first possible pair has coordinates `(128,0,native)` then `(128,0,react)`; command shape:
+
+```sh
+STRUCTURAL_LATENCY_ARM=native STRUCTURAL_LATENCY_SIZE=128 STRUCTURAL_LATENCY_PAIR=0 STRUCTURAL_LATENCY_ORIGIN="<exact Portless origin>" /Users/tjw/.nvm/versions/node/v24.18.0/bin/node .cache/structural-locality-recording-v1/latency-v1/frontend/collect-once.mjs
+```
+
+Collector output is a page-level protocol receipt. Paired analysis occurs only after both pages are independently audited. The full 30-page matrix and three oracle pages are not authorized by this stage.

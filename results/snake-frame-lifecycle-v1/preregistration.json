@@ -1,0 +1,355 @@
+{
+  "schemaVersion": "snake-frame-lifecycle-preregistration-v1",
+  "createdAt": "2026-10-11",
+  "status": "AMENDED_BEFORE_COLLECTION",
+  "amendments": [
+    {
+      "date": "2026-10-11",
+      "reason": "Production Chrome serializes inline fractional CSS positions to three decimal places; an exact floating-point equality check rejected correct output by under 0.001 CSS pixels during the excluded smoke run.",
+      "change": "Final x/y output parity is accepted within 0.01 CSS pixels. No latency threshold, page count, arm, or workload changed.",
+      "smokeDataExcluded": true
+    }
+  ],
+  "question": "Do retained-VDOM per-frame paths keep their measured update advantage after including mount and teardown JavaScript cost for one fixed-topology animated scene?",
+  "relationship": {
+    "priorStudy": "Snake V6 production study",
+    "followUpReason": "V6 measured mount and update cost, but excluded teardown, page load, and compilation from its post-hoc mount-amortization estimate.",
+    "scope": "This study adds teardown and an observed 300-frame lifecycle workload. It does not estimate network/parse/compile cost or dynamic topology."
+  },
+  "design": {
+    "arms": {
+      "react": "React 19.3 + build-verified React Compiler; ReactBoard with per-segment useSyncExternalStore snapshots over the same x/y columns.",
+      "runtime-vdom": "Retained VDOM with a shared frame source, reading the precomputed Float64Array x/y columns through mount-resolved bindings.",
+      "columnar-vdom": "Retained VDOM with OXC-generated binding IDs resolved to contiguous Float64Array x/y columns at mount; one column batch per frame."
+    },
+    "sizes": [
+      512,
+      1024
+    ],
+    "replicationUnit": "One fresh visible production browser page; five paired page blocks per size.",
+    "pages": 30,
+    "scheduleSeed": 83006001,
+    "warmupFrames": 90,
+    "measuredFrames": 300,
+    "lifecycle": [
+      "allocate model, sources/store, bindings, and host tree",
+      "mount the scene",
+      "run 90 warmup RAF frames",
+      "run and record 300 measured RAF updates",
+      "verify final output and stable host identity",
+      "dispose/unmount, clear harness references, and assert empty host container and zero subscriber registrations"
+    ],
+    "primaryMetric": "measured JavaScript cycle cost = mountMs + sum(updateCpuMs for the 300 measured frames) + teardownMs; RAF wait time is excluded.",
+    "secondaryMetrics": [
+      "mountMs",
+      "teardownMs",
+      "per-frame updateCpuMs median and p95",
+      "update-to-commit median and p95",
+      "full RAF elapsed time including warmup and display waits",
+      "heap usage before mount, after mount, after updates, and after teardown when browser memory API is available"
+    ],
+    "pairing": "Within each replication block, compare React and each VDOM arm at matching segment counts. Pages are randomized from the saved schedule; frames are nested samples.",
+    "exclusions": [
+      "navigation, network, JavaScript parse/evaluation, and OXC compilation cost from the primary cycle metric",
+      "layout, paint, GPU work, and physical presentation",
+      "dynamic segment growth/removal during the measured run",
+      "cross-device generalization"
+    ]
+  },
+  "correctness": [
+    "all 300 measured RAF updates complete",
+    "final segment and food positions match the deterministic model within 0.01 CSS pixels",
+    "host count and node identities remain stable during the update window",
+    "React external-store listener registrations are zero after root unmount",
+    "VDOM binding registrations and retained host nodes are zero after dispose",
+    "all three arms have an empty host container after teardown",
+    "page is visible and uses the verified production build"
+  ],
+  "hypotheses": {
+    "lifecycleAdvantage": "Columnar VDOM primary cycle cost is <=0.90x React on at least four of five paired page blocks at both 512 and 1,024 segments.",
+    "updateCostPreserved": "Columnar VDOM updateCpuMs median is no greater than React on at least four of five pages at both sizes.",
+    "correctness": "Every accepted page passes all lifecycle and output contracts."
+  },
+  "decisionRules": {
+    "pass": "All correctness pages pass, lifecycleAdvantage passes at both sizes, and updateCostPreserved passes at both sizes.",
+    "fail": "Any correctness failure or any missed latency threshold is reported; do not exclude pages or revise thresholds after collection.",
+    "interpretation": "A pass establishes only a same-device, fixed-topology JavaScript-cycle-cost advantage for these arms and sizes. It does not establish a full cold-start win, smoothness, dynamic-topology performance, or a general React speedup."
+  },
+  "environment": {
+    "targetBrowser": "Chrome production build; record exact UA, browser version, platform, hardware concurrency, DPR, viewport, and visibility on every page.",
+    "device": "Reuse the V6 device/profile for this lifecycle follow-up; an independent physical device remains a separate confirmatory gate.",
+    "sourceLock": "Freeze the dedicated harness, Vite config, OXC-generated plan, package/Deno lockfiles, and built assets before collecting the first page."
+  },
+  "schedule": [
+    {
+      "replication": 1,
+      "slot": 1,
+      "arm": "react",
+      "segmentCount": 512,
+      "warmupFrames": 90,
+      "measuredFrames": 300,
+      "seed": 83006001
+    },
+    {
+      "replication": 1,
+      "slot": 2,
+      "arm": "runtime-vdom",
+      "segmentCount": 1024,
+      "warmupFrames": 90,
+      "measuredFrames": 300,
+      "seed": 83006001
+    },
+    {
+      "replication": 1,
+      "slot": 3,
+      "arm": "runtime-vdom",
+      "segmentCount": 512,
+      "warmupFrames": 90,
+      "measuredFrames": 300,
+      "seed": 83006001
+    },
+    {
+      "replication": 1,
+      "slot": 4,
+      "arm": "columnar-vdom",
+      "segmentCount": 512,
+      "warmupFrames": 90,
+      "measuredFrames": 300,
+      "seed": 83006001
+    },
+    {
+      "replication": 1,
+      "slot": 5,
+      "arm": "columnar-vdom",
+      "segmentCount": 1024,
+      "warmupFrames": 90,
+      "measuredFrames": 300,
+      "seed": 83006001
+    },
+    {
+      "replication": 1,
+      "slot": 6,
+      "arm": "react",
+      "segmentCount": 1024,
+      "warmupFrames": 90,
+      "measuredFrames": 300,
+      "seed": 83006001
+    },
+    {
+      "replication": 2,
+      "slot": 1,
+      "arm": "columnar-vdom",
+      "segmentCount": 512,
+      "warmupFrames": 90,
+      "measuredFrames": 300,
+      "seed": 83006002
+    },
+    {
+      "replication": 2,
+      "slot": 2,
+      "arm": "runtime-vdom",
+      "segmentCount": 512,
+      "warmupFrames": 90,
+      "measuredFrames": 300,
+      "seed": 83006002
+    },
+    {
+      "replication": 2,
+      "slot": 3,
+      "arm": "runtime-vdom",
+      "segmentCount": 1024,
+      "warmupFrames": 90,
+      "measuredFrames": 300,
+      "seed": 83006002
+    },
+    {
+      "replication": 2,
+      "slot": 4,
+      "arm": "columnar-vdom",
+      "segmentCount": 1024,
+      "warmupFrames": 90,
+      "measuredFrames": 300,
+      "seed": 83006002
+    },
+    {
+      "replication": 2,
+      "slot": 5,
+      "arm": "react",
+      "segmentCount": 1024,
+      "warmupFrames": 90,
+      "measuredFrames": 300,
+      "seed": 83006002
+    },
+    {
+      "replication": 2,
+      "slot": 6,
+      "arm": "react",
+      "segmentCount": 512,
+      "warmupFrames": 90,
+      "measuredFrames": 300,
+      "seed": 83006002
+    },
+    {
+      "replication": 3,
+      "slot": 1,
+      "arm": "runtime-vdom",
+      "segmentCount": 1024,
+      "warmupFrames": 90,
+      "measuredFrames": 300,
+      "seed": 83006003
+    },
+    {
+      "replication": 3,
+      "slot": 2,
+      "arm": "react",
+      "segmentCount": 512,
+      "warmupFrames": 90,
+      "measuredFrames": 300,
+      "seed": 83006003
+    },
+    {
+      "replication": 3,
+      "slot": 3,
+      "arm": "columnar-vdom",
+      "segmentCount": 512,
+      "warmupFrames": 90,
+      "measuredFrames": 300,
+      "seed": 83006003
+    },
+    {
+      "replication": 3,
+      "slot": 4,
+      "arm": "react",
+      "segmentCount": 1024,
+      "warmupFrames": 90,
+      "measuredFrames": 300,
+      "seed": 83006003
+    },
+    {
+      "replication": 3,
+      "slot": 5,
+      "arm": "runtime-vdom",
+      "segmentCount": 512,
+      "warmupFrames": 90,
+      "measuredFrames": 300,
+      "seed": 83006003
+    },
+    {
+      "replication": 3,
+      "slot": 6,
+      "arm": "columnar-vdom",
+      "segmentCount": 1024,
+      "warmupFrames": 90,
+      "measuredFrames": 300,
+      "seed": 83006003
+    },
+    {
+      "replication": 4,
+      "slot": 1,
+      "arm": "react",
+      "segmentCount": 1024,
+      "warmupFrames": 90,
+      "measuredFrames": 300,
+      "seed": 83006004
+    },
+    {
+      "replication": 4,
+      "slot": 2,
+      "arm": "columnar-vdom",
+      "segmentCount": 1024,
+      "warmupFrames": 90,
+      "measuredFrames": 300,
+      "seed": 83006004
+    },
+    {
+      "replication": 4,
+      "slot": 3,
+      "arm": "react",
+      "segmentCount": 512,
+      "warmupFrames": 90,
+      "measuredFrames": 300,
+      "seed": 83006004
+    },
+    {
+      "replication": 4,
+      "slot": 4,
+      "arm": "runtime-vdom",
+      "segmentCount": 1024,
+      "warmupFrames": 90,
+      "measuredFrames": 300,
+      "seed": 83006004
+    },
+    {
+      "replication": 4,
+      "slot": 5,
+      "arm": "runtime-vdom",
+      "segmentCount": 512,
+      "warmupFrames": 90,
+      "measuredFrames": 300,
+      "seed": 83006004
+    },
+    {
+      "replication": 4,
+      "slot": 6,
+      "arm": "columnar-vdom",
+      "segmentCount": 512,
+      "warmupFrames": 90,
+      "measuredFrames": 300,
+      "seed": 83006004
+    },
+    {
+      "replication": 5,
+      "slot": 1,
+      "arm": "runtime-vdom",
+      "segmentCount": 512,
+      "warmupFrames": 90,
+      "measuredFrames": 300,
+      "seed": 83006005
+    },
+    {
+      "replication": 5,
+      "slot": 2,
+      "arm": "columnar-vdom",
+      "segmentCount": 512,
+      "warmupFrames": 90,
+      "measuredFrames": 300,
+      "seed": 83006005
+    },
+    {
+      "replication": 5,
+      "slot": 3,
+      "arm": "react",
+      "segmentCount": 512,
+      "warmupFrames": 90,
+      "measuredFrames": 300,
+      "seed": 83006005
+    },
+    {
+      "replication": 5,
+      "slot": 4,
+      "arm": "react",
+      "segmentCount": 1024,
+      "warmupFrames": 90,
+      "measuredFrames": 300,
+      "seed": 83006005
+    },
+    {
+      "replication": 5,
+      "slot": 5,
+      "arm": "columnar-vdom",
+      "segmentCount": 1024,
+      "warmupFrames": 90,
+      "measuredFrames": 300,
+      "seed": 83006005
+    },
+    {
+      "replication": 5,
+      "slot": 6,
+      "arm": "runtime-vdom",
+      "segmentCount": 1024,
+      "warmupFrames": 90,
+      "measuredFrames": 300,
+      "seed": 83006005
+    }
+  ]
+}

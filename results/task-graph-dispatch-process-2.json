@@ -1,0 +1,1477 @@
+{
+  "schemaVersion": 1,
+  "experiment": "Paired task-graph dispatch versus full recomputation",
+  "environment": {
+    "deno": "2.6.3",
+    "v8": "14.2.231.17-rusty",
+    "os": "darwin",
+    "arch": "aarch64",
+    "hardwareConcurrency": 10,
+    "sampleDate": "2026-10-10T00:54:34.807Z"
+  },
+  "protocol": {
+    "entityCounts": [
+      1000,
+      10000
+    ],
+    "changedFractions": [
+      0.01,
+      0.1,
+      1
+    ],
+    "pairCount": 24,
+    "repeatsPerSample": 8,
+    "warmupPairs": 4,
+    "randomizationSeed": 1610091102,
+    "design": "Each source feeds one independent task. Every changed source changes its output. Each pair measures eight repeated batches per arm; arm order is balanced and seeded. Plan build and runtime setup are reported separately from updates.",
+    "measurement": "Source writes, task dispatch, and derived output updates are included; DOM, VDOM reconciliation, and paint are excluded."
+  },
+  "results": [
+    {
+      "entityCount": 1000,
+      "changedFraction": 0.01,
+      "changedCount": 10,
+      "planBuildMs": 4.586375000000004,
+      "runtimeSetupMs": 3.530875000000009,
+      "repeatsPerSample": 8,
+      "pairCount": 24,
+      "medianMs": {
+        "taskGraph": 0.0058749999999996305,
+        "fullScan": 0.0016926250000004472
+      },
+      "p95Ms": {
+        "taskGraph": 0.012338500000002028,
+        "fullScan": 0.0018698749999970232
+      },
+      "pairedWins": {
+        "taskGraph": 1,
+        "fullScan": 23,
+        "ties": 0
+      },
+      "parityFailures": 0,
+      "pairs": [
+        {
+          "pair": 0,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.013218750000000057,
+          "fullScanMs": 0.0018698749999970232
+        },
+        {
+          "pair": 1,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.012218750000002387,
+          "fullScanMs": 0.0017343749999980673
+        },
+        {
+          "pair": 2,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.012338500000002028,
+          "fullScanMs": 0.0017864999999979148
+        },
+        {
+          "pair": 3,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.009729124999999783,
+          "fullScanMs": 0.0017031249999988063
+        },
+        {
+          "pair": 4,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.007666624999998817,
+          "fullScanMs": 0.0016874999999991758
+        },
+        {
+          "pair": 5,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.007890624999998153,
+          "fullScanMs": 0.0016926250000004472
+        },
+        {
+          "pair": 6,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.005838499999999414,
+          "fullScanMs": 0.0016822499999982199
+        },
+        {
+          "pair": 7,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.0058749999999996305,
+          "fullScanMs": 0.0016874999999991758
+        },
+        {
+          "pair": 8,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.005916750000000803,
+          "fullScanMs": 0.0016927500000001316
+        },
+        {
+          "pair": 9,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.005890624999999261,
+          "fullScanMs": 0.0016978750000014031
+        },
+        {
+          "pair": 10,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.005953125000001336,
+          "fullScanMs": 0.0016927500000001316
+        },
+        {
+          "pair": 11,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.005937499999998153,
+          "fullScanMs": 0.014109375000000313
+        },
+        {
+          "pair": 12,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.00577087499999962,
+          "fullScanMs": 0.0017968750000001421
+        },
+        {
+          "pair": 13,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.005817749999998512,
+          "fullScanMs": 0.0016874999999991758
+        },
+        {
+          "pair": 14,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.006609375000000028,
+          "fullScanMs": 0.001703125000002359
+        },
+        {
+          "pair": 15,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.005796875000001478,
+          "fullScanMs": 0.0016926250000004472
+        },
+        {
+          "pair": 16,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.005859375,
+          "fullScanMs": 0.0016927500000001316
+        },
+        {
+          "pair": 17,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.005817750000002064,
+          "fullScanMs": 0.0016926250000004472
+        },
+        {
+          "pair": 18,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.007411499999999904,
+          "fullScanMs": 0.001682375000001457
+        },
+        {
+          "pair": 19,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.005401124999998785,
+          "fullScanMs": 0.0016926249999968945
+        },
+        {
+          "pair": 20,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.005453124999998948,
+          "fullScanMs": 0.0016874999999991758
+        },
+        {
+          "pair": 21,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.005411500000001013,
+          "fullScanMs": 0.0016874999999991758
+        },
+        {
+          "pair": 22,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.005359375000001165,
+          "fullScanMs": 0.001682375000001457
+        },
+        {
+          "pair": 23,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.005400999999999101,
+          "fullScanMs": 0.0017083749999997622
+        }
+      ]
+    },
+    {
+      "entityCount": 1000,
+      "changedFraction": 0.1,
+      "changedCount": 100,
+      "planBuildMs": 1.549416999999977,
+      "runtimeSetupMs": 2.190832999999998,
+      "repeatsPerSample": 8,
+      "pairCount": 24,
+      "medianMs": {
+        "taskGraph": 0.009463499999998959,
+        "fullScan": 0.002906249999998778
+      },
+      "p95Ms": {
+        "taskGraph": 0.011489499999999708,
+        "fullScan": 0.002984375000000483
+      },
+      "pairedWins": {
+        "taskGraph": 0,
+        "fullScan": 24,
+        "ties": 0
+      },
+      "parityFailures": 0,
+      "pairs": [
+        {
+          "pair": 0,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.06030212499999976,
+          "fullScanMs": 0.0029166250000010052
+        },
+        {
+          "pair": 1,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.009749999999996817,
+          "fullScanMs": 0.002833375000001581
+        },
+        {
+          "pair": 2,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.009447874999999328,
+          "fullScanMs": 0.0028488750000015273
+        },
+        {
+          "pair": 3,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.009296875000000426,
+          "fullScanMs": 0.0029115000000032865
+        },
+        {
+          "pair": 4,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.009338500000001915,
+          "fullScanMs": 0.0028541249999989304
+        },
+        {
+          "pair": 5,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.009447874999999328,
+          "fullScanMs": 0.002869875000001798
+        },
+        {
+          "pair": 6,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.009916749999998586,
+          "fullScanMs": 0.003171874999999602
+        },
+        {
+          "pair": 7,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.009531249999998437,
+          "fullScanMs": 0.0028958750000001032
+        },
+        {
+          "pair": 8,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.009817625000000163,
+          "fullScanMs": 0.0029166250000010052
+        },
+        {
+          "pair": 9,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.011489499999999708,
+          "fullScanMs": 0.0029322500000006357
+        },
+        {
+          "pair": 10,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.009453125000000284,
+          "fullScanMs": 0.002874999999999517
+        },
+        {
+          "pair": 11,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.009833249999999794,
+          "fullScanMs": 0.0028593749999998863
+        },
+        {
+          "pair": 12,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.009723874999998827,
+          "fullScanMs": 0.002984375000000483
+        },
+        {
+          "pair": 13,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.009416625000000067,
+          "fullScanMs": 0.0029738749999985714
+        },
+        {
+          "pair": 14,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.010468749999997584,
+          "fullScanMs": 0.0028906249999991473
+        },
+        {
+          "pair": 15,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.00945837500000124,
+          "fullScanMs": 0.0029427500000025475
+        },
+        {
+          "pair": 16,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.009374999999998579,
+          "fullScanMs": 0.0028541249999989304
+        },
+        {
+          "pair": 17,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.009484374999999545,
+          "fullScanMs": 0.0029322500000006357
+        },
+        {
+          "pair": 18,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.009437500000000654,
+          "fullScanMs": 0.002932249999997083
+        },
+        {
+          "pair": 19,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.009703125000001478,
+          "fullScanMs": 0.0029166249999974525
+        },
+        {
+          "pair": 20,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.009463499999998959,
+          "fullScanMs": 0.002906249999998778
+        },
+        {
+          "pair": 21,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.011041625000000721,
+          "fullScanMs": 0.0029010000000013747
+        },
+        {
+          "pair": 22,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.00889587500000033,
+          "fullScanMs": 0.002843750000000256
+        },
+        {
+          "pair": 23,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.008911499999999961,
+          "fullScanMs": 0.002906249999998778
+        }
+      ]
+    },
+    {
+      "entityCount": 1000,
+      "changedFraction": 1,
+      "changedCount": 1000,
+      "planBuildMs": 0.9649579999999958,
+      "runtimeSetupMs": 1.4163750000000164,
+      "repeatsPerSample": 8,
+      "pairCount": 24,
+      "medianMs": {
+        "taskGraph": 0.0935416250000003,
+        "fullScan": 0.007880249999999478
+      },
+      "p95Ms": {
+        "taskGraph": 0.13270312499999903,
+        "fullScan": 0.008427125000000757
+      },
+      "pairedWins": {
+        "taskGraph": 0,
+        "fullScan": 24,
+        "ties": 0
+      },
+      "parityFailures": 0,
+      "pairs": [
+        {
+          "pair": 0,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.1374583749999978,
+          "fullScanMs": 0.008364625000002235
+        },
+        {
+          "pair": 1,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.12486987500000168,
+          "fullScanMs": 0.008359375000001279
+        },
+        {
+          "pair": 2,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.11278125000000117,
+          "fullScanMs": 0.008427125000000757
+        },
+        {
+          "pair": 3,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.13270312499999903,
+          "fullScanMs": 0.007895874999999108
+        },
+        {
+          "pair": 4,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.10699474999999836,
+          "fullScanMs": 0.007937500000000597
+        },
+        {
+          "pair": 5,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.10574487500000274,
+          "fullScanMs": 0.00790100000000038
+        },
+        {
+          "pair": 6,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.1045573750000024,
+          "fullScanMs": 0.00788537500000075
+        },
+        {
+          "pair": 7,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.09403650000000141,
+          "fullScanMs": 0.007895874999999108
+        },
+        {
+          "pair": 8,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.094609375000001,
+          "fullScanMs": 0.00788537500000075
+        },
+        {
+          "pair": 9,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.09569800000000228,
+          "fullScanMs": 0.007895875000002661
+        },
+        {
+          "pair": 10,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.09356249999999733,
+          "fullScanMs": 0.009015624999999972
+        },
+        {
+          "pair": 11,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.0935416250000003,
+          "fullScanMs": 0.007880249999999478
+        },
+        {
+          "pair": 12,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.09056250000000077,
+          "fullScanMs": 0.00748962500000161
+        },
+        {
+          "pair": 13,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.08883849999999782,
+          "fullScanMs": 0.007494749999999328
+        },
+        {
+          "pair": 14,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.08918225000000035,
+          "fullScanMs": 0.008135500000001628
+        },
+        {
+          "pair": 15,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.08917187499999812,
+          "fullScanMs": 0.007484375000000654
+        },
+        {
+          "pair": 16,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.08882812499999915,
+          "fullScanMs": 0.007494750000002881
+        },
+        {
+          "pair": 17,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.08921349999999961,
+          "fullScanMs": 0.00748962500000161
+        },
+        {
+          "pair": 18,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.08871350000000078,
+          "fullScanMs": 0.0074894999999983725
+        },
+        {
+          "pair": 19,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.09710937499999872,
+          "fullScanMs": 0.007484375000000654
+        },
+        {
+          "pair": 20,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.08911462500000056,
+          "fullScanMs": 0.007500000000000284
+        },
+        {
+          "pair": 21,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.08867187499999929,
+          "fullScanMs": 0.007484375000000654
+        },
+        {
+          "pair": 22,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.08991675000000043,
+          "fullScanMs": 0.007494750000002881
+        },
+        {
+          "pair": 23,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.08628124999999898,
+          "fullScanMs": 0.007494874999999013
+        }
+      ]
+    },
+    {
+      "entityCount": 10000,
+      "changedFraction": 0.01,
+      "changedCount": 100,
+      "planBuildMs": 10.889916999999997,
+      "runtimeSetupMs": 3.3621669999999995,
+      "repeatsPerSample": 8,
+      "pairCount": 24,
+      "medianMs": {
+        "taskGraph": 0.0054635000000047285,
+        "fullScan": 0.016697999999998103
+      },
+      "p95Ms": {
+        "taskGraph": 0.006244750000000465,
+        "fullScan": 0.017145749999997406
+      },
+      "pairedWins": {
+        "taskGraph": 24,
+        "fullScan": 0,
+        "ties": 0
+      },
+      "parityFailures": 0,
+      "pairs": [
+        {
+          "pair": 0,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.005385375000003023,
+          "fullScanMs": 0.016723874999996724
+        },
+        {
+          "pair": 1,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.005447999999994124,
+          "fullScanMs": 0.01680199999999843
+        },
+        {
+          "pair": 2,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.005104125000002568,
+          "fullScanMs": 0.01774999999999949
+        },
+        {
+          "pair": 3,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.00563024999999584,
+          "fullScanMs": 0.016682375000002025
+        },
+        {
+          "pair": 4,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.005119749999998646,
+          "fullScanMs": 0.016630249999998625
+        },
+        {
+          "pair": 5,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.005682249999999556,
+          "fullScanMs": 0.016697999999998103
+        },
+        {
+          "pair": 6,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.0057291249999948946,
+          "fullScanMs": 0.017125000000000057
+        },
+        {
+          "pair": 7,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.006229124999997282,
+          "fullScanMs": 0.01669262500000457
+        },
+        {
+          "pair": 8,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.0051353750000018294,
+          "fullScanMs": 0.01686462500000374
+        },
+        {
+          "pair": 9,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.005416750000001969,
+          "fullScanMs": 0.016635374999999897
+        },
+        {
+          "pair": 10,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.005515624999993918,
+          "fullScanMs": 0.016692749999997147
+        },
+        {
+          "pair": 11,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.005229249999999297,
+          "fullScanMs": 0.016703124999999375
+        },
+        {
+          "pair": 12,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.005135500000001514,
+          "fullScanMs": 0.017145749999997406
+        },
+        {
+          "pair": 13,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.0064843749999994316,
+          "fullScanMs": 0.016635374999999897
+        },
+        {
+          "pair": 14,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.0059531250000048885,
+          "fullScanMs": 0.016692749999997147
+        },
+        {
+          "pair": 15,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.005515625000001023,
+          "fullScanMs": 0.016776000000000124
+        },
+        {
+          "pair": 16,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.0054635000000047285,
+          "fullScanMs": 0.016692749999997147
+        },
+        {
+          "pair": 17,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.0054948749999965685,
+          "fullScanMs": 0.016692750000004253
+        },
+        {
+          "pair": 18,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.005380249999994646,
+          "fullScanMs": 0.01670837500000033
+        },
+        {
+          "pair": 19,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.006187500000002899,
+          "fullScanMs": 0.016744875000000548
+        },
+        {
+          "pair": 20,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.006244750000000465,
+          "fullScanMs": 0.016630249999998625
+        },
+        {
+          "pair": 21,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.005083375000005219,
+          "fullScanMs": 0.016703124999999375
+        },
+        {
+          "pair": 22,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.005718749999999773,
+          "fullScanMs": 0.01668749999999619
+        },
+        {
+          "pair": 23,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.00542187500000324,
+          "fullScanMs": 0.016734374999998636
+        }
+      ]
+    },
+    {
+      "entityCount": 10000,
+      "changedFraction": 0.1,
+      "changedCount": 1000,
+      "planBuildMs": 15.918791999999996,
+      "runtimeSetupMs": 2.9202909999999633,
+      "repeatsPerSample": 8,
+      "pairCount": 24,
+      "medianMs": {
+        "taskGraph": 0.08821350000000194,
+        "fullScan": 0.01901037500000058
+      },
+      "p95Ms": {
+        "taskGraph": 0.11547912500000024,
+        "fullScan": 0.023057250000000806
+      },
+      "pairedWins": {
+        "taskGraph": 0,
+        "fullScan": 24,
+        "ties": 0
+      },
+      "parityFailures": 0,
+      "pairs": [
+        {
+          "pair": 0,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.11547912500000024,
+          "fullScanMs": 0.023416749999995545
+        },
+        {
+          "pair": 1,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.11194787499999848,
+          "fullScanMs": 0.019046875000000796
+        },
+        {
+          "pair": 2,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.108692750000003,
+          "fullScanMs": 0.01898962500000323
+        },
+        {
+          "pair": 3,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.11011462500000135,
+          "fullScanMs": 0.019057374999995602
+        },
+        {
+          "pair": 4,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.10471362499999515,
+          "fullScanMs": 0.018984375000002274
+        },
+        {
+          "pair": 5,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.08927599999999813,
+          "fullScanMs": 0.01901037500000058
+        },
+        {
+          "pair": 6,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.08906249999999716,
+          "fullScanMs": 0.01899999999999835
+        },
+        {
+          "pair": 7,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.08965100000000348,
+          "fullScanMs": 0.018994749999997396
+        },
+        {
+          "pair": 8,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.08821350000000194,
+          "fullScanMs": 0.01899999999999835
+        },
+        {
+          "pair": 9,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.08844787499999995,
+          "fullScanMs": 0.019015625000001535
+        },
+        {
+          "pair": 10,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.09046874999999943,
+          "fullScanMs": 0.01898949999999644
+        },
+        {
+          "pair": 11,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.08748949999999667,
+          "fullScanMs": 0.0189947500000045
+        },
+        {
+          "pair": 12,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.09750524999999755,
+          "fullScanMs": 0.023057250000000806
+        },
+        {
+          "pair": 13,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.08709899999999493,
+          "fullScanMs": 0.019724000000003628
+        },
+        {
+          "pair": 14,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.1411875000000009,
+          "fullScanMs": 0.019046875000000796
+        },
+        {
+          "pair": 15,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.08254687499999847,
+          "fullScanMs": 0.01981775000000141
+        },
+        {
+          "pair": 16,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.0821354999999997,
+          "fullScanMs": 0.019812500000000455
+        },
+        {
+          "pair": 17,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.07733337499999493,
+          "fullScanMs": 0.019015625000001535
+        },
+        {
+          "pair": 18,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.06790625000000006,
+          "fullScanMs": 0.018979125000001318
+        },
+        {
+          "pair": 19,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.06827087499999607,
+          "fullScanMs": 0.019005124999999623
+        },
+        {
+          "pair": 20,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.06881249999999994,
+          "fullScanMs": 0.01901037500000058
+        },
+        {
+          "pair": 21,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.0678750000000008,
+          "fullScanMs": 0.01898949999999644
+        },
+        {
+          "pair": 22,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.0680833750000005,
+          "fullScanMs": 0.019401000000002
+        },
+        {
+          "pair": 23,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.06833325000000201,
+          "fullScanMs": 0.018989500000003545
+        }
+      ]
+    },
+    {
+      "entityCount": 10000,
+      "changedFraction": 1,
+      "changedCount": 10000,
+      "planBuildMs": 9.09658300000001,
+      "runtimeSetupMs": 3.412167000000011,
+      "repeatsPerSample": 8,
+      "pairCount": 24,
+      "medianMs": {
+        "taskGraph": 0.9500781249999974,
+        "fullScan": 0.060958374999998455
+      },
+      "p95Ms": {
+        "taskGraph": 0.9966146250000065,
+        "fullScan": 0.06605737499999975
+      },
+      "pairedWins": {
+        "taskGraph": 0,
+        "fullScan": 24,
+        "ties": 0
+      },
+      "parityFailures": 0,
+      "pairs": [
+        {
+          "pair": 0,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.9397708750000007,
+          "fullScanMs": 0.06605737499999975
+        },
+        {
+          "pair": 1,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.9415937499999956,
+          "fullScanMs": 0.06440112500000339
+        },
+        {
+          "pair": 2,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.9387343750000028,
+          "fullScanMs": 0.06612499999999955
+        },
+        {
+          "pair": 3,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.9618906250000023,
+          "fullScanMs": 0.06343224999999819
+        },
+        {
+          "pair": 4,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 1.0138281250000034,
+          "fullScanMs": 0.06348950000000286
+        },
+        {
+          "pair": 5,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.9693802500000004,
+          "fullScanMs": 0.06089587499999993
+        },
+        {
+          "pair": 6,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.9612603749999948,
+          "fullScanMs": 0.06090625000000216
+        },
+        {
+          "pair": 7,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.9600886249999974,
+          "fullScanMs": 0.060901000000001204
+        },
+        {
+          "pair": 8,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.9500781249999974,
+          "fullScanMs": 0.06095824999999877
+        },
+        {
+          "pair": 9,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.9573644999999971,
+          "fullScanMs": 0.06094274999999527
+        },
+        {
+          "pair": 10,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.9574895000000012,
+          "fullScanMs": 0.060958374999998455
+        },
+        {
+          "pair": 11,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.9884062500000041,
+          "fullScanMs": 0.06360412499999768
+        },
+        {
+          "pair": 12,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.9353020000000001,
+          "fullScanMs": 0.0609009999999941
+        },
+        {
+          "pair": 13,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.9344636249999994,
+          "fullScanMs": 0.06086987500000163
+        },
+        {
+          "pair": 14,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.9245728749999955,
+          "fullScanMs": 0.06086987500000163
+        },
+        {
+          "pair": 15,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.9360468750000024,
+          "fullScanMs": 0.06173950000000161
+        },
+        {
+          "pair": 16,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.9370625000000032,
+          "fullScanMs": 0.060958374999998455
+        },
+        {
+          "pair": 17,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.9421250000000043,
+          "fullScanMs": 0.060849000000004594
+        },
+        {
+          "pair": 18,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.9381562500000058,
+          "fullScanMs": 0.06083337500000141
+        },
+        {
+          "pair": 19,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.9401146250000068,
+          "fullScanMs": 0.061494875000008165
+        },
+        {
+          "pair": 20,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.9550417499999924,
+          "fullScanMs": 0.06127599999999234
+        },
+        {
+          "pair": 21,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.9657135000000068,
+          "fullScanMs": 0.06132812500000284
+        },
+        {
+          "pair": 22,
+          "order": [
+            "fullScan",
+            "taskGraph"
+          ],
+          "taskGraphMs": 0.9827448749999945,
+          "fullScanMs": 0.06130737499999839
+        },
+        {
+          "pair": 23,
+          "order": [
+            "taskGraph",
+            "fullScan"
+          ],
+          "taskGraphMs": 0.9966146250000065,
+          "fullScanMs": 0.06514062499999795
+        }
+      ]
+    }
+  ]
+}

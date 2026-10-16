@@ -1,0 +1,60 @@
+import { defineComponent as __nativeDefineComponent, useStateAt as __nativeUseStateAt, useEffectAt as __nativeUseEffectAt } from "../../../src/native_runtime_api.ts";
+__nativeDefineComponent(".cache/structural-locality-protocol-v1/eligibility/native_generic.tsx#component:GenericRow", GenericRow, { propOnlySites: [] });
+__nativeDefineComponent(".cache/structural-locality-protocol-v1/eligibility/native_generic.tsx#component:NativeGenericBoard", NativeGenericBoard, { propOnlySites: [] });
+function GenericRow({ id, life }) {
+	const [selected, setSelected] = __nativeUseStateAt(".cache/structural-locality-protocol-v1/eligibility/native_generic.tsx#component:GenericRow#state:0", false);
+	__nativeUseEffectAt(".cache/structural-locality-protocol-v1/eligibility/native_generic.tsx#component:GenericRow#effect:0", () => {
+		life.mounted(id);
+		return () => life.cleaned(id);
+	});
+	return /* @__PURE__ */ __nativeJsx.jsx("li", {
+		"data-id": id,
+		"data-selected": String(selected),
+		onClick: () => setSelected((prior) => !prior)
+	}, id);
+}
+export function NativeGenericBoard({ initialIds, life, registerIdsSetter }) {
+	const [ids, setIds] = __nativeUseStateAt(".cache/structural-locality-protocol-v1/eligibility/native_generic.tsx#component:NativeGenericBoard#state:0", [...initialIds]);
+	__nativeUseEffectAt(".cache/structural-locality-protocol-v1/eligibility/native_generic.tsx#component:NativeGenericBoard#effect:0", () => {
+		return registerIdsSetter(setIds);
+	});
+	return /* @__PURE__ */ __nativeJsx.jsx("ul", { "data-list": "rows" }, ids.map((id) => /* @__PURE__ */ __nativeJsx.jsx(GenericRow, {
+		key: id,
+		id,
+		life
+	})));
+}
+export const compiledNativeComponentPlan = {
+	"schema_version": 2,
+	"source_file": ".cache/structural-locality-protocol-v1/eligibility/native_generic.tsx",
+	"helper_module": "",
+	"tasks": [],
+	"task_order": [],
+	"component_module": "import { useEffect, useState } from \"../../../src/native_runtime_api.ts\";\nimport { defineComponent as __nativeDefineComponent, useStateAt as __nativeUseStateAt, useEffectAt as __nativeUseEffectAt, useStoreAt as __nativeUseStoreAt, bindStatePropsAt as __nativeBindStatePropsAt, renderCollectionAt as __nativeRenderCollectionAt, useAt as __nativeUseAt, bindStatePropAt as __nativeBindStatePropAt } from \"../../../src/native_runtime_api.ts\";\n__nativeDefineComponent(\".cache/structural-locality-protocol-v1/eligibility/native_generic.tsx#component:GenericRow\", GenericRow, { propOnlySites: [] });\n__nativeDefineComponent(\".cache/structural-locality-protocol-v1/eligibility/native_generic.tsx#component:NativeGenericBoard\", NativeGenericBoard, { propOnlySites: [] });\nimport type { Life } from \"./native_collection.tsx\";\n\nfunction GenericRow({ id, life }: { id: string; life: Life; key?: string }) {\n  const [selected, setSelected] = __nativeUseStateAt(\".cache/structural-locality-protocol-v1/eligibility/native_generic.tsx#component:GenericRow#state:0\", false);\n  __nativeUseEffectAt(\".cache/structural-locality-protocol-v1/eligibility/native_generic.tsx#component:GenericRow#effect:0\", () => {\n    life.mounted(id);\n    return () => life.cleaned(id);\n  });\n  return <li data-id={id} data-selected={String(selected)} onClick={() => setSelected((prior) => !prior)}>{id}</li>;\n}\n\nexport function NativeGenericBoard({\n  initialIds,\n  life,\n  registerIdsSetter,\n}: {\n  initialIds: readonly string[];\n  life: Life;\n  registerIdsSetter(setter: (ids: string[]) => void): () => void;\n}) {\n  const [ids, setIds] = __nativeUseStateAt(\".cache/structural-locality-protocol-v1/eligibility/native_generic.tsx#component:NativeGenericBoard#state:0\", [...initialIds]);\n  __nativeUseEffectAt(\".cache/structural-locality-protocol-v1/eligibility/native_generic.tsx#component:NativeGenericBoard#effect:0\", () => {\n    return registerIdsSetter(setIds);\n  });\n  return <ul data-list=\"rows\">{ids.map((id) => <GenericRow key={id} id={id} life={life} />)}</ul>;\n}\n",
+	"components": [{
+		"name": "GenericRow",
+		"component_site_id": ".cache/structural-locality-protocol-v1/eligibility/native_generic.tsx#component:GenericRow",
+		"prop_only_sites": [],
+		"host_leaf_output": false,
+		"state_sites": [{
+			"site_id": ".cache/structural-locality-protocol-v1/eligibility/native_generic.tsx#component:GenericRow#state:0",
+			"initial_value": "false"
+		}],
+		"effect_sites": [{ "site_id": ".cache/structural-locality-protocol-v1/eligibility/native_generic.tsx#component:GenericRow#effect:0" }],
+		"store_sites": [],
+		"collection_sites": []
+	}, {
+		"name": "NativeGenericBoard",
+		"component_site_id": ".cache/structural-locality-protocol-v1/eligibility/native_generic.tsx#component:NativeGenericBoard",
+		"prop_only_sites": [],
+		"host_leaf_output": false,
+		"state_sites": [{
+			"site_id": ".cache/structural-locality-protocol-v1/eligibility/native_generic.tsx#component:NativeGenericBoard#state:0",
+			"initial_value": "[...initialIds]"
+		}],
+		"effect_sites": [{ "site_id": ".cache/structural-locality-protocol-v1/eligibility/native_generic.tsx#component:NativeGenericBoard#effect:0" }],
+		"store_sites": [],
+		"collection_sites": []
+	}]
+};
+import * as __nativeJsx from "../../../src/native_runtime_api.ts";

@@ -1,0 +1,1 @@
+../../../../src/three_property_writer.ts

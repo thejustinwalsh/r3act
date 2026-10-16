@@ -1,0 +1,1 @@
+../../../../compiler/host_jsx_declarations.ts

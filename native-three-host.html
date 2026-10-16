@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#101413" />
+    <link rel="icon" href="data:," />
+    <title>Native Three · Kinetic study</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: "Avenir Next", Avenir, "Segoe UI", sans-serif;
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+        --bg: #101413;
+        --surface: #171d1b;
+        --surface-raised: #1d2522;
+        --surface-inset: #111715;
+        --line: rgba(221, 235, 224, 0.09);
+        --line-strong: rgba(221, 235, 224, 0.16);
+        --ink: #e9eee8;
+        --muted: #a1aca3;
+        --quiet: #6f7c73;
+        --brass: #d2a76c;
+        --mint: #a8dfbd;
+        --cyan: #9adbe0;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-width: 360px;
+        min-height: 100vh;
+        overflow: hidden;
+        background:
+          radial-gradient(ellipse at 44% -20%, #2a3830 0, transparent 52%),
+          var(--bg);
+        color: var(--ink);
+      }
+      button, input {
+        font: inherit;
+      }
+      button {
+        color: inherit;
+      }
+      .app {
+        display: grid;
+        grid-template-rows: 62px minmax(0, 1fr);
+        height: 100vh;
+      }
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(16, 20, 19, 0.86);
+        backdrop-filter: blur(18px);
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .brand-mark {
+        display: grid;
+        place-items: center;
+        width: 30px;
+        height: 30px;
+        border: 1px solid rgba(210, 167, 108, 0.35);
+        border-radius: 9px;
+        color: var(--brass);
+        font: 600 14px ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .brand-name {
+        font-size: 13px;
+        font-weight: 650;
+        letter-spacing: -0.02em;
+      }
+      .crumb {
+        margin-left: 10px;
+        color: var(--quiet);
+        font-size: 11px;
+      }
+      .top-meta {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        color: var(--muted);
+        font-size: 10px;
+      }
+      .live {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        color: var(--mint);
+        letter-spacing: 0.11em;
+        text-transform: uppercase;
+      }
+      .live::before {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--mint);
+        box-shadow: 0 0 10px #a8dfbd80;
+        content: "";
+      }
+      .main {
+        display: grid;
+        min-height: 0;
+        grid-template-columns: 224px minmax(0, 1fr) 268px;
+      }
+      .rail, .inspector {
+        min-height: 0;
+        background: rgba(18, 23, 21, 0.8);
+      }
+      .rail {
+        border-right: 1px solid var(--line);
+        padding: 22px 14px;
+      }
+      .inspector {
+        border-left: 1px solid var(--line);
+        padding: 22px 16px;
+        overflow: auto;
+      }
+      .section-label {
+        color: var(--quiet);
+        font-size: 9px;
+        font-weight: 750;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+      }
+      .rail-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 9px 2px 16px;
+      }
+      .rail-title strong {
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .count {
+        color: var(--quiet);
+        font: 11px ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .tree {
+        display: grid;
+        gap: 3px;
+      }
+      .tree-row {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        width: 100%;
+        min-height: 36px;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        padding: 0 9px;
+        background: transparent;
+        color: #bbc5bc;
+        text-align: left;
+        cursor: pointer;
+        font-size: 11px;
+        transition: background 140ms ease-out, border-color 140ms ease-out;
+      }
+      .tree-row:hover {
+        background: #202824;
+      }
+      .tree-row[aria-current="true"] {
+        border-color: rgba(210, 167, 108, 0.25);
+        background: #28261f;
+        color: #f0d3a3;
+      }
+      .tree-glyph {
+        width: 17px;
+        color: var(--quiet);
+        text-align: center;
+        font: 12px ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .tree-row[aria-current="true"] .tree-glyph {
+        color: var(--brass);
+      }
+      .tree-row .row-kind {
+        margin-left: auto;
+        color: #69756c;
+        font: 9px ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .rail-note {
+        margin: 22px 3px 0;
+        color: var(--quiet);
+        font-size: 10px;
+        line-height: 1.6;
+      }
+      .stage {
+        position: relative;
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+        background: radial-gradient(
+          ellipse at 50% 47%,
+          rgba(101, 130, 111, 0.12),
+          transparent 46%
+        );
+      }
+      #scene-canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        outline: none;
+      }
+      .stage-head {
+        position: absolute;
+        inset: 22px 24px auto;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        pointer-events: none;
+      }
+      .stage-title {
+        display: grid;
+        gap: 5px;
+      }
+      .stage-title strong {
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+      .stage-title span {
+        color: var(--muted);
+        font-size: 10px;
+      }
+      .stage-coordinate {
+        color: #8c9a90;
+        font: 10px ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: 0.04em;
+      }
+      .hud-mount {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+      .selection-hud {
+        position: absolute;
+        top: 74px;
+        left: 24px;
+        display: grid;
+        gap: 5px;
+        min-width: 132px;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: rgba(18, 24, 21, 0.78);
+        backdrop-filter: blur(12px);
+      }
+      .selection-hud small {
+        color: var(--quiet);
+        font-size: 8px;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+      .selection-hud strong {
+        color: var(--ink);
+        font-size: 11px;
+        font-weight: 600;
+      }
+      .selection-hud span {
+        color: var(--brass);
+        font: 9px ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .stage-foot {
+        position: absolute;
+        inset: auto 24px 20px;
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        pointer-events: none;
+      }
+      .hint {
+        color: #8e9b91;
+        font-size: 9px;
+        letter-spacing: 0.02em;
+      }
+      .axis {
+        display: flex;
+        gap: 10px;
+        color: #8e9b91;
+        font: 9px ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .axis b {
+        font-weight: 500;
+      }
+      .axis b:nth-child(1) {
+        color: #df8f7b;
+      }
+      .axis b:nth-child(2) {
+        color: #9dcc91;
+      }
+      .axis b:nth-child(3) {
+        color: #88b8e4;
+      }
+      .inspector-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 9px 0 19px;
+      }
+      .inspector-head h1 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 620;
+        letter-spacing: -0.03em;
+      }
+      .selected-tag {
+        color: var(--brass);
+        font: 9px ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .control {
+        display: grid;
+        gap: 8px;
+        margin: 0 0 19px;
+      }
+      .control-label {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        color: #b5c0b6;
+        font-size: 10px;
+      }
+      .control-label output {
+        color: var(--muted);
+        font: 10px ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-variant-numeric: tabular-nums;
+      }
+      input[type="range"] {
+        width: 100%;
+        height: 3px;
+        accent-color: var(--brass);
+        cursor: pointer;
+      }
+      .swatches {
+        display: flex;
+        gap: 9px;
+      }
+      .swatch {
+        width: 24px;
+        height: 24px;
+        border: 2px solid transparent;
+        border-radius: 50%;
+        outline: 1px solid transparent;
+        cursor: pointer;
+      }
+      .swatch[aria-pressed="true"] {
+        border-color: #18201b;
+        outline-color: #e7c995;
+      }
+      .swatch:hover {
+        transform: scale(1.08);
+      }
+      .material-card {
+        display: grid;
+        gap: 9px;
+        margin-top: 24px;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: linear-gradient(140deg, #202822, #171d1a);
+      }
+      .material-card strong {
+        font-size: 10px;
+        font-weight: 600;
+      }
+      .material-card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 9px;
+        line-height: 1.55;
+      }
+      .material-meta {
+        display: flex;
+        justify-content: space-between;
+        color: var(--quiet);
+        font: 8px ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: 0.04em;
+      }
+      .toolbar {
+        position: absolute;
+        inset: auto 50% 18px auto;
+        display: flex;
+        transform: translateX(50%);
+        gap: 5px;
+        padding: 5px;
+        border: 1px solid var(--line-strong);
+        border-radius: 11px;
+        background: rgba(24, 30, 27, 0.92);
+        box-shadow: 0 8px 30px #0005;
+        backdrop-filter: blur(14px);
+      }
+      .toolbar button {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        min-height: 34px;
+        border: 1px solid transparent;
+        border-radius: 7px;
+        padding: 0 11px;
+        background: transparent;
+        color: #d1d9d1;
+        font-size: 10px;
+        cursor: pointer;
+      }
+      .toolbar button:hover {
+        border-color: var(--line-strong);
+        background: #27312b;
+      }
+      .toolbar button.primary {
+        background: #d3ad77;
+        color: #202019;
+        font-weight: 700;
+      }
+      .toolbar button.primary:hover {
+        background: #e0bd8c;
+      }
+      .toolbar button:active {
+        transform: scale(0.97);
+      }
+      .toolbar button:focus-visible,
+      .tree-row:focus-visible,
+      .swatch:focus-visible {
+        outline: 2px solid var(--cyan);
+        outline-offset: 2px;
+      }
+      .toolbar .sep {
+        width: 1px;
+        margin: 5px 2px;
+        background: var(--line-strong);
+      }
+      .runtime-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 8px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        color: var(--muted);
+        font: 9px ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .runtime-chip b {
+        color: var(--mint);
+        font-weight: 500;
+      }
+      @media (max-width: 980px) {
+        .main {
+          grid-template-columns: 180px minmax(0, 1fr);
+        }
+        .inspector {
+          display: none;
+        }
+      }
+      @media (max-width: 640px) {
+        body {
+          overflow: auto;
+        }
+        .app {
+          height: auto;
+          min-height: 100vh;
+          grid-template-rows: 56px minmax(0, 1fr);
+        }
+        .main {
+          min-height: calc(100vh - 56px);
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .rail {
+          display: none;
+        }
+        .stage {
+          min-height: calc(100vh - 56px);
+        }
+        .topbar {
+          padding: 0 14px;
+        }
+        .crumb, .top-meta > span:first-child {
+          display: none;
+        }
+        .stage-head {
+          inset: 17px 16px auto;
+        }
+        .stage-foot {
+          inset: auto 16px 74px;
+        }
+        .toolbar {
+          bottom: 14px;
+        }
+        .toolbar button {
+          padding: 0 9px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          scroll-behavior: auto !important;
+          transition-duration: 0.01ms !important;
+          animation-duration: 0.01ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark">N·3</span>
+          <span class="brand-name">Native Studio</span>
+          <span class="crumb">/ &nbsp; Kinetic study</span>
+        </div>
+        <div class="top-meta">
+          <span>KINETIC STUDY &nbsp;·&nbsp; PBR MATERIALS</span>
+          <span class="live">Live</span>
+        </div>
+      </header>
+      <main class="main">
+        <aside class="rail" aria-label="Scene hierarchy">
+          <span class="section-label">Composition</span>
+          <div class="rail-title">
+            <strong>Scene objects</strong><span class="count" id="object-count"
+            >—</span>
+          </div>
+          <div
+            class="tree"
+            id="scene-tree"
+            role="listbox"
+            aria-label="Select a scene object"
+          >
+          </div>
+          <p class="rail-note">
+            Drag-free editing. Select a form to tune its shared surface and
+            motion.
+          </p>
+        </aside>
+        <section class="stage" aria-label="3D scene">
+          <canvas
+            id="scene-canvas"
+            aria-label="Interactive three dimensional kinetic sculpture"
+          ></canvas>
+          <div class="stage-head">
+            <div class="stage-title">
+              <strong>Orbit / 01</strong><span>Shared geometry · authored
+                motion</span>
+            </div>
+            <span class="stage-coordinate"
+            >X &nbsp; 0.0 &nbsp;&nbsp; Y &nbsp; 1.2 &nbsp;&nbsp; Z &nbsp;
+              0.0</span>
+          </div>
+          <div class="hud-mount" id="hud-mount"></div>
+          <div class="stage-foot">
+            <span class="hint"
+            >Click any form to select &nbsp;·&nbsp; WASD camera motion
+              disabled</span><span class="axis"><b>X</b><b>Y</b><b>Z</b></span>
+          </div>
+          <div class="toolbar" role="toolbar" aria-label="Scene controls">
+            <button id="toggle-motion" type="button" aria-pressed="true">
+              <span>Ⅱ</span> Pause
+            </button>
+            <span class="sep" aria-hidden="true"></span>
+            <button id="reorder-shape" type="button">
+              <span>↕</span> Reorder
+            </button>
+            <button id="add-shape" class="primary" type="button">
+              <span>＋</span> Add form
+            </button>
+            <button id="reset-scene" type="button" title="Reset composition">
+              Reset
+            </button>
+          </div>
+        </section>
+        <aside class="inspector" aria-label="Object inspector">
+          <span class="section-label">Properties</span>
+          <div id="inspector-mount"></div>
+          <div class="material-card">
+            <span class="section-label">Surface library</span>
+            <strong>Brushed ceramic · shared</strong>
+            <p>
+              One material instance is borrowed by each mesh. Tint and roughness
+              update its surface without replacing the asset.
+            </p>
+            <div class="material-meta">
+              <span>STANDARD / PBR</span><span>ASSET 01</span>
+            </div>
+          </div>
+          <div class="runtime-chip" style="margin-top: 18px">
+            <b>●</b> retained scene <span>·</span> live props
+          </div>
+        </aside>
+      </main>
+    </div>
+    <script type="module" src="/src/browser/native_three_host.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,1 @@
+../../../../src/compiled_owner_update_program_metadata_test.ts

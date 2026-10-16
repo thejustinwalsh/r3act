@@ -1,0 +1,1873 @@
+--- a/src/vdom_snapshot_runtime.ts
++++ b/src/vdom_snapshot_runtime.ts
+@@ -10,6 +10,12 @@
+ } from "./jsx_binding_runtime.ts";
+ import { KeyedRegionBuckets } from "./keyed_region_buckets.ts";
+ import { createDOMStylePropWriter } from "./dom_style_writer.ts";
++import {
++  compiledStateLayoutSignature,
++  compiledStateLayoutSlot,
++  normalizeCompiledStateLayout,
++  type CompiledStateLayout,
++} from "./compiled_state_layout.ts";
+ 
+ type VText = { kind: "text"; text: string; key: string | null };
+ type VElement = {
+@@ -63,8 +69,48 @@
+   sourceColumnRow?: number;
+   programEpoch?: number;
+   styleWriter?: (next: unknown, previous: unknown) => void;
++  ownerRowInputs?: number[];
++  ownerRowSources?: readonly ScalarSource[];
++  ownerRowInputSlots?: readonly number[];
++  ownerRowCutEpoch?: number;
+ };
+ 
++export type PreparedNumericRowProgramSpec = Readonly<{
++  owner: number;
++  layout: CompiledStateLayout;
++  rowIdentity: object;
++  row: number;
++  generation: number;
++  sources: readonly (ScalarSource | undefined)[];
++  columns: readonly NumericColumn[];
++}>;
++
++const preparedNumericRowProgramBrand: unique symbol = Symbol();
++export interface PreparedNumericRowProgram {
++  readonly [preparedNumericRowProgramBrand]: never;
++}
++
++type PreparedNumericRowProgramRecord<H> = {
++  readonly token: PreparedNumericRowProgram;
++  readonly root: object;
++  readonly owner: number;
++  readonly layout: CompiledStateLayout;
++  readonly layoutSignature: string;
++  readonly rowIdentity: object;
++  readonly row: number;
++  readonly generation: number;
++  readonly sources: readonly ScalarSource[];
++  readonly columns: readonly NumericColumn[];
++  readonly groupsBySlot: readonly (readonly BoundPropGroup<H>[])[];
++  readonly inputValues: number[];
++  readonly lastValues: number[];
++  readonly changedEpochs: number[];
++  readonly changedValues: number[];
++  changedEpoch: number;
++  cutEpoch: number;
++  active: boolean;
++};
++
+ type SourceColumnCell = { column: NumericColumn; row: number };
+ 
+ type NumericProgramSourceSlot<H> = {
+@@ -97,6 +143,14 @@
+   readonly generation: number;
+   groups: BoundPropGroup<H>[] | undefined;
+   active: boolean;
++};
++
++const safeLayoutSignature = (layout: CompiledStateLayout): string | null => {
++  try {
++    return compiledStateLayoutSignature(layout);
++  } catch {
++    return null;
++  }
+ };
+ 
+ /** The CSR portion of a dependency plan emitted by OXC. */
+@@ -781,6 +835,23 @@
+   // share one scalar source. Compiled CSR indexes remain dense arrays/maps.
+   #groupsBySource = new Map<ScalarSource, Set<BoundPropGroup<H>>>();
+   #programSourceSlots = new Map<ScalarSource, NumericProgramSourceSlot<H>>();
++  #preparedNumericRowPrograms = new WeakMap<
++    PreparedNumericRowProgram,
++    PreparedNumericRowProgramRecord<H>
++  >();
++  #numericRowProgramsBySource = new Map<
++    ScalarSource,
++    Set<PreparedNumericRowProgramRecord<H>>
++  >();
++  #ownerRowCutEpoch = 0;
++  #ownerRowRecordScratch: Array<PreparedNumericRowProgramRecord<H> | undefined> = [];
++  #ownerRowRecordCount = 0;
++  #ownerRowGroupScratch: Array<BoundPropGroup<H> | undefined> = [];
++  #ownerRowGroupRecordScratch: Array<PreparedNumericRowProgramRecord<H> | undefined> = [];
++  #ownerRowValueScratch: unknown[] = [];
++  #ownerRowGroupCount = 0;
++  #ownerRowExecutionActive = false;
++  #ownerRowExecutionCancelled = false;
+   #preparedCellProgramRecords = new WeakMap<
+     PreparedNumericCellProgram,
+     PreparedNumericCellProgramRecord<H>
+@@ -2303,6 +2374,198 @@
+     return token;
+   }
+ 
++  /** Prepare a compiler-v2 owner-row fanout once for a committed World row. */
++  prepareNumericRowProgram(
++    spec: PreparedNumericRowProgramSpec,
++  ): PreparedNumericRowProgram | null {
++    if (
++      this.#numericWriteInProgress || this.#compiledGraph ||
++      !this.#directBindingWrites || !Number.isSafeInteger(spec.owner) ||
++      !Number.isSafeInteger(spec.row) || spec.row < 0 ||
++      !Number.isSafeInteger(spec.generation) || spec.generation < 0 ||
++      typeof spec.rowIdentity !== "object" || spec.rowIdentity === null
++    ) return null;
++    let layout: CompiledStateLayout;
++    try {
++      layout = normalizeCompiledStateLayout(spec.layout);
++    } catch {
++      return null;
++    }
++    if (!layout.programId || layout.slots.length === 0) return null;
++    const slotCount = layout.slots.length;
++    if (spec.sources.length !== slotCount || spec.columns.length !== slotCount) {
++      return null;
++    }
++    const layoutSignature = compiledStateLayoutSignature(layout);
++    const sources: ScalarSource[] = new Array(slotCount);
++    const columns: NumericColumn[] = new Array(slotCount);
++    const groupsBySlot: BoundPropGroup<H>[][] = new Array(slotCount);
++    const sourceSet = new Set<ScalarSource>();
++    for (let slotIndex = 0; slotIndex < slotCount; slotIndex++) {
++      const source = spec.sources[slotIndex];
++      const column = spec.columns[slotIndex];
++      const slot = layout.slots[slotIndex];
++      if (
++        !source || !column || sourceSet.has(source) ||
++        column.sourceSlot !== slotIndex || spec.row >= column.values.length ||
++        compiledStateLayoutSlot(layout, slot.siteId) !== slotIndex
++      ) return null;
++      sourceSet.add(source);
++      sources[slotIndex] = source;
++      columns[slotIndex] = column;
++      groupsBySlot[slotIndex] = [];
++    }
++    for (let slotIndex = 0; slotIndex < slotCount; slotIndex++) {
++      const source = sources[slotIndex];
++      const groups = this.#groupsBySource.get(source);
++      if (!groups?.size) return null;
++      for (const group of groups) {
++        const binding = getBoundValue(group.rawValue);
++        const ownerBinding = binding?.numericOwner;
++        const descriptor = binding?.numericProgram;
++        if (
++          !binding || !ownerBinding || !descriptor ||
++          descriptor.schemaVersion !== 2 ||
++          descriptor.ownerProgramId !== layout.programId ||
++          !descriptor.sinkId || !Array.isArray(descriptor.sourceSites) ||
++          !binding.project ||
++          ownerBinding.owner !== spec.owner ||
++          ownerBinding.programId !== layout.programId ||
++          safeLayoutSignature(ownerBinding.layout) !== layoutSignature ||
++          ownerBinding.sourceSlots.length !== group.sources.length ||
++          binding.projectInputs === undefined && group.sources.length > 1
++        ) return null;
++        const sites = descriptor.sourceSites;
++        if (
++          sites.length !== group.sources.length ||
++          ownerBinding.sourceSlots.length !== sites.length
++        ) return null;
++        for (let sourceIndex = 0; sourceIndex < group.sources.length; sourceIndex++) {
++          const sourceSlot = ownerBinding.sourceSlots[sourceIndex];
++          if (
++            !Number.isSafeInteger(sourceSlot) || sourceSlot < 0 ||
++            sourceSlot >= slotCount ||
++            group.sources[sourceIndex] !== sources[sourceSlot] ||
++            layout.slots[sourceSlot].siteId !== sites[sourceIndex]
++          ) return null;
++          if (sourceSlot === slotIndex && !groupsBySlot[slotIndex].includes(group)) {
++            groupsBySlot[slotIndex].push(group);
++          }
++        }
++      }
++      if (groupsBySlot[slotIndex].length === 0) return null;
++    }
++
++    // A sink must be unambiguously owned by this row; it cannot be attached
++    // through two independently prepared owner rows.
++    for (const groups of groupsBySlot) {
++      for (const group of groups) {
++        if (
++          group.ownerRowSources &&
++          (group.ownerRowSources.length !== sources.length ||
++            group.ownerRowSources.some((source, index) =>
++              source !== sources[index]
++            ))
++        ) {
++          return null;
++        }
++      }
++    }
++    const token = Object.freeze({}) as PreparedNumericRowProgram;
++    const inputValues = new Array<number>(slotCount);
++    const lastValues = new Array<number>(slotCount);
++    const changedEpochs = new Array<number>(slotCount).fill(0);
++    const changedValues = new Array<number>(slotCount).fill(0);
++    for (let slotIndex = 0; slotIndex < slotCount; slotIndex++) {
++      const value = columns[slotIndex].values[spec.row];
++      inputValues[slotIndex] = value;
++      lastValues[slotIndex] = value;
++    }
++    const record: PreparedNumericRowProgramRecord<H> = {
++      token,
++      root: this,
++      owner: spec.owner,
++      layout,
++      layoutSignature,
++      rowIdentity: spec.rowIdentity,
++      row: spec.row,
++      generation: spec.generation,
++      sources,
++      columns,
++      groupsBySlot,
++      inputValues,
++      lastValues,
++      changedEpochs,
++      changedValues,
++      changedEpoch: 0,
++      cutEpoch: 0,
++      active: true,
++    };
++    for (const groups of groupsBySlot) {
++      for (const group of groups) {
++        group.ownerRowInputs ??= new Array<number>(group.sources.length);
++        group.ownerRowSources = sources;
++        const ownerBinding = getBoundValue(group.rawValue)!.numericOwner!;
++        group.ownerRowInputSlots = ownerBinding.sourceSlots;
++      }
++    }
++    this.#preparedNumericRowPrograms.set(token, record);
++    for (const source of sources) {
++      let records = this.#numericRowProgramsBySource.get(source);
++      if (!records) this.#numericRowProgramsBySource.set(source, records = new Set());
++      records.add(record);
++    }
++    return token;
++  }
++
++  #invalidatePreparedNumericRowsForSource(source: ScalarSource) {
++    const records = this.#numericRowProgramsBySource.get(source);
++    if (!records) return;
++    for (const record of records) {
++      if (!record.active) continue;
++      record.active = false;
++      this.#preparedNumericRowPrograms.delete(record.token);
++      for (const recordSource of record.sources) {
++        const attached = this.#numericRowProgramsBySource.get(recordSource);
++        attached?.delete(record);
++        if (attached?.size === 0) this.#numericRowProgramsBySource.delete(recordSource);
++      }
++      for (const groups of record.groupsBySlot) {
++        for (const group of groups) {
++          group.ownerRowInputs = undefined;
++          group.ownerRowSources = undefined;
++          group.ownerRowInputSlots = undefined;
++          group.ownerRowCutEpoch = undefined;
++        }
++      }
++    }
++  }
++
++  /** Execute an explicit multi-row, multi-source cut through prepared sinks. */
++  executePreparedNumericRows(
++    tokens: readonly (PreparedNumericRowProgram | undefined)[],
++    changedRowIndices: Uint32Array,
++    changedSlots: Uint32Array,
++    values: readonly number[],
++    count: number,
++  ): boolean | null {
++    if (this.#numericWriteInProgress) {
++      throw new Error("Nested numeric VDOM writes are not supported");
++    }
++    this.#numericWriteInProgress = true;
++    try {
++      return this.#executePreparedNumericRows(
++        tokens,
++        changedRowIndices,
++        changedSlots,
++        values,
++        count,
++      );
++    } finally {
++      this.#numericWriteInProgress = false;
++    }
++  }
++
+   /** Check whether a cached opaque cell program still names its live fanout. */
+   isPreparedNumericCellProgramCurrent(
+     token: PreparedNumericCellProgram,
+@@ -2827,7 +3090,8 @@
+           if (
+             !source || !association || association.column !== column ||
+             association.row !== row ||
+-            !this.#isUnaryColumnGroup(source, group) ||
++            (!this.#isUnaryColumnGroup(source, group) &&
++              !this.#isUnaryColumnGroupV2Compatible(source, group)) ||
+             !this.#programSourceSlots.get(source)?.eligible
+           ) return null;
+           if (group.columnRowsStageEpoch === stageEpoch) {
+@@ -2902,7 +3166,219 @@
+       this.#columnRowsScratchCancelled = false;
+     }
+   }
++
++  #executePreparedNumericRows(
++    tokens: readonly (PreparedNumericRowProgram | undefined)[],
++    changedRowIndices: Uint32Array,
++    changedSlots: Uint32Array,
++    values: readonly number[],
++    count: number,
++  ): boolean | null {
++    if (
++      !Number.isSafeInteger(count) || count < 0 ||
++      count > changedRowIndices.length || count > changedSlots.length ||
++      count > values.length
++    ) throw new RangeError("Prepared owner-row cut exceeds supplied buffers");
++    this.#ownerRowRecordCount = 0;
++    this.#ownerRowGroupCount = 0;
++    this.#ownerRowExecutionActive = true;
++    this.#ownerRowExecutionCancelled = false;
++    try {
++      if (this.#ownerRowCutEpoch >= Number.MAX_SAFE_INTEGER) {
++        this.#ownerRowCutEpoch = 1;
++        for (const records of this.#numericRowProgramsBySource.values()) {
++          for (const record of records) {
++            record.cutEpoch = 0;
++            record.changedEpochs.fill(0);
++            for (const groups of record.groupsBySlot) {
++              for (const group of groups) group.ownerRowCutEpoch = 0;
++            }
++          }
++        }
++      } else this.#ownerRowCutEpoch++;
++      const epoch = this.#ownerRowCutEpoch;
++
++      // Validate the entire packed cut before source mirrors or projectors run.
++      for (let index = 0; index < count; index++) {
++        const tokenIndex = changedRowIndices[index];
++        const slotIndex = changedSlots[index];
++        const token = tokens[tokenIndex];
++        const value = values[index];
++        if (
++          !Number.isSafeInteger(tokenIndex) || tokenIndex >= tokens.length ||
++          !token || !Number.isSafeInteger(slotIndex) ||
++          typeof value !== "number"
++        ) return null;
++        const record = this.#preparedNumericRowPrograms.get(token);
++        if (
++          !record || record.root !== this || !record.active ||
++          record.token !== token || !record.layout.programId ||
++          record.layoutSignature !== compiledStateLayoutSignature(record.layout) ||
++          slotIndex >= record.sources.length ||
++          record.columns[slotIndex].values.length <= record.row
++        ) return null;
++        if (record.cutEpoch !== epoch) {
++          record.cutEpoch = epoch;
++          this.#ownerRowRecordScratch[this.#ownerRowRecordCount++] = record;
++        }
++        if (record.changedEpochs[slotIndex] === epoch) {
++          if (!Object.is(record.changedValues[slotIndex], value)) return null;
++        } else {
++          record.changedEpochs[slotIndex] = epoch;
++          record.changedValues[slotIndex] = value;
++        }
++      }
++      if (count === 0) return false;
+ 
++      // The same ScalarSource must not receive two different row snapshots.
++      for (let rowIndex = 0; rowIndex < this.#ownerRowRecordCount; rowIndex++) {
++        const record = this.#ownerRowRecordScratch[rowIndex]!;
++        for (let slotIndex = 0; slotIndex < record.sources.length; slotIndex++) {
++          const source = record.sources[slotIndex];
++          const value = record.changedEpochs[slotIndex] === epoch
++            ? record.changedValues[slotIndex]
++            : record.columns[slotIndex].values[record.row];
++          for (let priorRow = 0; priorRow < rowIndex; priorRow++) {
++            const prior = this.#ownerRowRecordScratch[priorRow]!;
++            for (let priorSlot = 0; priorSlot < prior.sources.length; priorSlot++) {
++              if (prior.sources[priorSlot] !== source) continue;
++              const priorValue = prior.changedEpochs[priorSlot] === epoch
++                ? prior.changedValues[priorSlot]
++                : prior.columns[priorSlot].values[prior.row];
++              if (!Object.is(value, priorValue)) return null;
++            }
++          }
++        }
++      }
++
++      for (let rowIndex = 0; rowIndex < this.#ownerRowRecordCount; rowIndex++) {
++        const record = this.#ownerRowRecordScratch[rowIndex]!;
++        for (const groups of record.groupsBySlot) {
++          for (const group of groups) {
++            const binding = getBoundValue(group.rawValue);
++            if (
++              !binding || typeof group.project !== "function" ||
++              !group.ownerRowInputSlots || !group.ownerRowInputs ||
++              group.ownerRowInputSlots.length !== group.sources.length ||
++              group.sources.length > 1 &&
++                typeof binding.projectInputs !== "function"
++            ) return null;
++            for (let input = 0; input < group.sources.length; input++) {
++              const slot = group.ownerRowInputSlots[input];
++              if (
++                !Number.isSafeInteger(slot) || slot < 0 ||
++                slot >= record.sources.length ||
++                group.sources[input] !== record.sources[slot]
++              ) return null;
++            }
++          }
++        }
++      }
++
++      // Capture every row's complete current vector, then overlay the exact
++      // changed values supplied by Root before any projector can run.
++      for (let rowIndex = 0; rowIndex < this.#ownerRowRecordCount; rowIndex++) {
++        const record = this.#ownerRowRecordScratch[rowIndex]!;
++        for (let slotIndex = 0; slotIndex < record.sources.length; slotIndex++) {
++          record.inputValues[slotIndex] = record.columns[slotIndex].values[record.row];
++          if (record.changedEpochs[slotIndex] === epoch) {
++            record.inputValues[slotIndex] = record.changedValues[slotIndex];
++          }
++        }
++      }
++
++      // Mirror all complete rows before evaluating a single sink.
++      for (let rowIndex = 0; rowIndex < this.#ownerRowRecordCount; rowIndex++) {
++        const record = this.#ownerRowRecordScratch[rowIndex]!;
++        for (let slotIndex = 0; slotIndex < record.sources.length; slotIndex++) {
++          record.sources[slotIndex].value = record.inputValues[slotIndex];
++        }
++      }
++
++      for (let rowIndex = 0; rowIndex < this.#ownerRowRecordCount; rowIndex++) {
++        const record = this.#ownerRowRecordScratch[rowIndex]!;
++        let rowChanged = false;
++        for (let slotIndex = 0; slotIndex < record.sources.length; slotIndex++) {
++          if (!Object.is(record.lastValues[slotIndex], record.inputValues[slotIndex])) {
++            rowChanged = true;
++            for (const group of record.groupsBySlot[slotIndex]) {
++              if (group.ownerRowCutEpoch === epoch) continue;
++              group.ownerRowCutEpoch = epoch;
++              const scratchIndex = this.#ownerRowGroupCount++;
++              this.#ownerRowGroupScratch[scratchIndex] = group;
++              this.#ownerRowGroupRecordScratch[scratchIndex] = record;
++            }
++          }
++        }
++        if (!rowChanged) continue;
++      }
++
++      for (let index = 0; index < this.#ownerRowGroupCount; index++) {
++        if (this.#ownerRowExecutionCancelled) return false;
++        const group = this.#ownerRowGroupScratch[index]!;
++        const record = this.#ownerRowGroupRecordScratch[index]!;
++        const binding = getBoundValue(group.rawValue);
++        if (!binding || !group.ownerRowInputSlots || !group.ownerRowInputs) {
++          throw new Error("Prepared owner-row sink lost its binding metadata");
++        }
++        for (let inputIndex = 0; inputIndex < group.ownerRowInputSlots.length; inputIndex++) {
++          group.ownerRowInputs[inputIndex] =
++            record.inputValues[group.ownerRowInputSlots[inputIndex]];
++        }
++        this.#ownerRowValueScratch[index] = group.ownerRowInputSlots.length === 1
++          ? group.project!(group.ownerRowInputs[0])
++          : binding.projectInputs!(group.ownerRowInputs);
++      }
++
++      for (let index = 0; index < this.#ownerRowRecordCount; index++) {
++        const record = this.#ownerRowRecordScratch[index]!;
++        for (let slotIndex = 0; slotIndex < record.sources.length; slotIndex++) {
++          record.lastValues[slotIndex] = record.inputValues[slotIndex];
++        }
++      }
++      for (let index = 0; index < this.#ownerRowGroupCount; index++) {
++        const group = this.#ownerRowGroupScratch[index]!;
++        const record = this.#ownerRowGroupRecordScratch[index]!;
++        const firstSlot = group.ownerRowInputSlots![0];
++        group.lastSourceValue = record.inputValues[firstSlot];
++      }
++
++      let wrote = false;
++      for (let index = 0; index < this.#ownerRowGroupCount; index++) {
++        if (this.#ownerRowExecutionCancelled) break;
++        const group = this.#ownerRowGroupScratch[index]!;
++        const next = this.#ownerRowValueScratch[index];
++        if (sameBoundValueCanSkipWrite(group.lastValue, next, group.forceWrite)) {
++          continue;
++        }
++        this.#writeBoundGroup(group, next);
++        wrote = true;
++        if (this.#ownerRowExecutionCancelled) break;
++        group.lastValue = next;
++      }
++      return wrote;
++    } finally {
++      for (let index = 0; index < this.#ownerRowRecordCount; index++) {
++        this.#ownerRowRecordScratch[index] = undefined;
++      }
++      for (let index = 0; index < this.#ownerRowGroupCount; index++) {
++        this.#ownerRowGroupScratch[index] = undefined;
++        this.#ownerRowGroupRecordScratch[index] = undefined;
++        this.#ownerRowValueScratch[index] = undefined;
++      }
++      this.#ownerRowRecordCount = 0;
++      this.#ownerRowGroupCount = 0;
++      this.#ownerRowExecutionActive = false;
++      if (this.#ownerRowExecutionCancelled) {
++        this.#ownerRowRecordScratch.length = 0;
++        this.#ownerRowGroupScratch.length = 0;
++        this.#ownerRowGroupRecordScratch.length = 0;
++        this.#ownerRowValueScratch.length = 0;
++      }
++      this.#ownerRowExecutionCancelled = false;
++    }
++  }
++
+   #executePreparedNumericCells(
+     tokens: readonly (PreparedNumericCellProgram | undefined)[],
+     values: readonly number[],
+@@ -3095,7 +3571,11 @@
+   dispose() {
+     const errors: unknown[] = [];
+     this.#invalidateAllPreparedNumericCellPrograms();
++    for (const source of this.#numericRowProgramsBySource.keys()) {
++      this.#invalidatePreparedNumericRowsForSource(source);
++    }
+     this.#refPublicationEpoch++;
++    if (this.#ownerRowExecutionActive) this.#ownerRowExecutionCancelled = true;
+     // Pending attaches belong to an uncommitted publication boundary and are
+     // abandoned. Only refs that were already published receive detaches.
+     this.#pendingRefs.clear();
+@@ -3125,6 +3605,7 @@
+       this.#nodesByKeyedRegion.clear();
+       this.#groupsBySource.clear();
+       this.#programSourceSlots.clear();
++      this.#numericRowProgramsBySource.clear();
+       this.#programSinkSlots.length = 0;
+       this.#programFreeSinkSlots.length = 0;
+       this.#programSinkSlotByGroup.clear();
+@@ -3146,6 +3627,14 @@
+         this.#preparedCellDirtySlots.length = 0;
+         this.#preparedCellDirtyValues.length = 0;
+         this.#preparedCellDirtyCount = 0;
++      }
++      if (!this.#ownerRowExecutionActive) {
++        this.#ownerRowRecordScratch.length = 0;
++        this.#ownerRowGroupScratch.length = 0;
++        this.#ownerRowGroupRecordScratch.length = 0;
++        this.#ownerRowValueScratch.length = 0;
++        this.#ownerRowRecordCount = 0;
++        this.#ownerRowGroupCount = 0;
+       }
+       this.#incompatibleScalarBindingGroups = 0;
+       this.#groupsByCompiledBinding.clear();
+@@ -3308,6 +3797,7 @@
+         this.#programSinkSlotByGroup.set(group, sinkSlot);
+       }
+       for (const source of group.sources) {
++        this.#invalidatePreparedNumericRowsForSource(source);
+         this.#pendingSourceColumnPrunes.delete(source);
+         let list = this.#groupsBySource.get(source);
+         if (!list) this.#groupsBySource.set(source, list = new Set());
+@@ -3347,6 +3837,7 @@
+       for (const group of groups) {
+         this.#unindexSourceColumnGroup(group);
+         for (const source of group.sources) {
++          this.#invalidatePreparedNumericRowsForSource(source);
+           const list = this.#groupsBySource.get(source);
+           if (!list || !list.delete(group)) continue;
+           const programSlot = this.#programSourceSlots.get(source);
+@@ -3400,9 +3891,13 @@
+       const binding = getBoundValue(group.rawValue);
+       const descriptor = binding?.numericProgram;
+       if (
+-        !descriptor || descriptor.schemaVersion !== 1 ||
++        !descriptor ||
++        (descriptor.schemaVersion !== 1 && descriptor.schemaVersion !== 2) ||
+         typeof descriptor.sinkId !== "string" ||
+         descriptor.sinkId.length === 0 ||
++        (descriptor.schemaVersion === 2 &&
++          (typeof descriptor.ownerProgramId !== "string" ||
++            descriptor.ownerProgramId.length === 0)) ||
+         !Array.isArray(descriptor.sourceSites) ||
+         descriptor.sourceSites.length !== group.sources.length ||
+         descriptor.sourceSites.some((site) => typeof site !== "string") ||
+@@ -3448,13 +3943,29 @@
+     return group.sources.length === 1 && group.sources[0] === source &&
+       typeof group.project === "function" && group.column === undefined &&
+       !!descriptor && descriptor.schemaVersion === 1 &&
++      descriptor.sourceSites.length === 1 &&
++      typeof descriptor.sourceSites[0] === "string";
++  }
++
++  #isUnaryColumnGroupV2Compatible(source: ScalarSource, group: BoundPropGroup<H>) {
++    const binding = getBoundValue(group.rawValue);
++    const descriptor = binding?.numericProgram;
++    return group.sources.length === 1 && group.sources[0] === source &&
++      typeof group.project === "function" && group.column === undefined &&
++      !!descriptor && descriptor.schemaVersion === 2 &&
++      typeof descriptor.ownerProgramId === "string" &&
++      descriptor.ownerProgramId.length > 0 &&
+       descriptor.sourceSites.length === 1 &&
+       typeof descriptor.sourceSites[0] === "string";
+   }
+ 
+   #indexSourceColumnGroup(source: ScalarSource, group: BoundPropGroup<H>) {
+     const cell = this.#sourceColumnCells.get(source);
+-    if (!cell || !this.#isUnaryColumnGroup(source, group)) return;
++    if (
++      !cell ||
++      (!this.#isUnaryColumnGroup(source, group) &&
++        !this.#isUnaryColumnGroupV2Compatible(source, group))
++    ) return;
+     let rows = this.#groupsByColumnCell.get(cell.column);
+     if (!rows) this.#groupsByColumnCell.set(cell.column, rows = new Map());
+     let groups = rows.get(cell.row);
+@@ -3526,6 +4037,9 @@
+       for (let index = 0; index < oldGroups.length; index++) {
+         const old = oldGroups[index];
+         const next = nextGroups[index];
++        for (const source of old.sources) {
++          this.#invalidatePreparedNumericRowsForSource(source);
++        }
+         old.rawValue = next.rawValue;
+         old.project = next.project;
+         old.lastValue = next.lastValue;
+@@ -3602,6 +4116,9 @@
+     let visits = 0;
+     const countVisits = this.#profileCounter !== undefined;
+     this.#invalidateAllPreparedNumericCellPrograms();
++    for (const source of this.#numericRowProgramsBySource.keys()) {
++      this.#invalidatePreparedNumericRowsForSource(source);
++    }
+     this.#groupsBySource.clear();
+     this.#programSourceSlots.clear();
+     this.#programSinkSlots.length = 0;
+--- /dev/null
++++ b/src/prepared_owner_row_program_test.ts
+@@ -0,0 +1,413 @@
++import {
++  bind,
++  bindSources,
++  jsx,
++  NumericColumn,
++  ScalarSource,
++} from "./jsx_binding_runtime.ts";
++import {
++  type MemoryNode,
++  MemoryVDOMHost,
++  PreparedNumericRowProgram,
++  VDOMSnapshotRoot,
++} from "./vdom_snapshot_runtime.ts";
++import type { CompiledStateLayout } from "./compiled_state_layout.ts";
++
++const assert = (condition: unknown, message: string) => {
++  if (!condition) throw new Error(message);
++};
++const same = (actual: unknown, expected: unknown, message: string) => {
++  if (!Object.is(actual, expected)) {
++    throw new Error(`${message}: expected ${String(expected)}, got ${String(actual)}`);
++  }
++};
++const throws = (operation: () => unknown, message: string) => {
++  let threw = false;
++  try {
++    operation();
++  } catch {
++    threw = true;
++  }
++  assert(threw, message);
++};
++const mustToken = (
++  token: PreparedNumericRowProgram | null,
++): PreparedNumericRowProgram => {
++  if (!token) throw new Error("Expected prepared owner-row token");
++  return token;
++};
++
++const layout: CompiledStateLayout = Object.freeze({
++  schemaVersion: 1,
++  programId: "Board",
++  slots: Object.freeze([
++    Object.freeze({ siteId: "x", slot: 0 }),
++    Object.freeze({ siteId: "y", slot: 1 }),
++  ]),
++});
++
++const owned = <T>(
++  value: object,
++  owner: number,
++  sites: readonly string[],
++  sinkId: string,
++) => {
++  const metadata = Object.freeze({
++    owner,
++    programId: "Board",
++    layout,
++    sourceSlots: Object.freeze(sites.map((site) =>
++      layout.slots.findIndex((entry) => entry.siteId === site)
++    )),
++  });
++  return Object.assign(value, {
++    numericProgram: Object.freeze({
++      schemaVersion: 2 as const,
++      ownerProgramId: "Board",
++      sinkId,
++      sourceSites: Object.freeze([...sites]),
++    }),
++    numericOwner: metadata,
++  }) as T;
++};
++
++const rowTree = (
++  sources: readonly [ScalarSource, ScalarSource],
++  owner: number,
++  project: (values: readonly number[]) => unknown,
++  trackUnary?: (value: number) => void,
++) => {
++  const binding = owned(
++    bindSources(sources, project, {
++      schemaVersion: 2,
++      ownerProgramId: "Board",
++      sinkId: `row-${owner}.sum`,
++      sourceSites: ["x", "y"],
++    }),
++    owner,
++    ["x", "y"],
++    `row-${owner}.sum`,
++  );
++  const unary = owned(
++    bind(sources[0], (value) => {
++      trackUnary?.(value);
++      return value;
++    }),
++    owner,
++    ["x"],
++    `row-${owner}.x`,
++  );
++  return jsx("output", {
++    key: `row-${owner}`,
++    "data-total": binding,
++    "data-x": unary,
++  });
++};
++
++Deno.test("prepared owner rows project multi-source sinks from sparse captured cuts", () => {
++  const projected: number[] = [];
++  let assertAllProjectedBeforeWrite = false;
++  let expectedProjectionsBeforeWrite = 0;
++  let inCut = false;
++  class Host extends MemoryVDOMHost {
++    override setProp(node: MemoryNode, name: string, value: unknown, previous: unknown) {
++      if (inCut && name === "data-total" && assertAllProjectedBeforeWrite) {
++        same(projected.length, expectedProjectionsBeforeWrite, "all row projectors run before the first host write");
++      }
++      super.setProp(node, name, value, previous);
++    }
++  }
++  const host = new Host();
++  const container = host.createContainer();
++  const root = new VDOMSnapshotRoot(host, container);
++  const x0 = new ScalarSource(10, 1);
++  const y0 = new ScalarSource(11, 2);
++  const x1 = new ScalarSource(12, 3);
++  const y1 = new ScalarSource(13, 4);
++  const xColumn = new NumericColumn(20, 0, new Float64Array([1, 3]));
++  const yColumn = new NumericColumn(21, 1, new Float64Array([2, 4]));
++  let mutateDuringProjection = false;
++  const sum = (values: readonly number[]) => {
++    projected.push(values[0] + values[1]);
++    if (mutateDuringProjection && values[0] === 7) {
++      yColumn.values[1] = 200;
++      y1.value = 500;
++    }
++    return values[0] + values[1];
++  };
++  root.commit(jsx("div", {}, [
++    rowTree([x0, y0], 100, sum, (value) => projected.push(value)),
++    rowTree([x1, y1], 101, sum, (value) => projected.push(value)),
++  ]), undefined, true);
++  const identity0 = {};
++  const identity1 = {};
++  const token0 = mustToken(root.prepareNumericRowProgram({
++    owner: 100,
++    layout,
++    rowIdentity: identity0,
++    row: 0,
++    generation: 1,
++    sources: [x0, y0],
++    columns: [xColumn, yColumn],
++  }));
++  const token1 = mustToken(root.prepareNumericRowProgram({
++    owner: 101,
++    layout,
++    rowIdentity: identity1,
++    row: 1,
++    generation: 4,
++    sources: [x1, y1],
++    columns: [xColumn, yColumn],
++  }));
++
++  xColumn.values[0] = 5;
++  yColumn.values[1] = 9;
++  projected.length = 0;
++  assertAllProjectedBeforeWrite = true;
++  expectedProjectionsBeforeWrite = 3;
++  inCut = true;
++  const writes = host.writeCount;
++  const changed = root.executePreparedNumericRows(
++    [token0, token1],
++    new Uint32Array([0, 1]),
++    new Uint32Array([0, 1]),
++    [5, 9],
++    2,
++  );
++  inCut = false;
++  same(changed, true, "a changed sparse row cut writes host props");
++  same(container.children[0].children[0].props["data-total"], 7, "row zero uses captured x and unchanged y");
++  same(container.children[0].children[1].props["data-total"], 12, "row one uses captured y and unchanged x");
++  same(container.children[0].children[0].props["data-x"], 5, "unary fanout updates the changed source");
++  same(host.writeCount - writes, 3, "fanout updates each affected sink once");
++
++  projected.length = 0;
++  assertAllProjectedBeforeWrite = false;
++  same(root.executePreparedNumericRows(
++    [token0, token1], new Uint32Array([0, 1]), new Uint32Array([0, 1]), [5, 9], 2,
++  ), false, "unchanged primitive outputs are suppressed");
++  same(projected.length, 0, "unchanged row snapshots do not reproject");
++
++  // Dense updates touch both slots on both rows. The first projector mutates
++  // the second row's column/source; later projection must still use its cut.
++  xColumn.values[0] = 7;
++  yColumn.values[0] = 8;
++  xColumn.values[1] = 6;
++  yColumn.values[1] = 10;
++  mutateDuringProjection = true;
++  projected.length = 0;
++  assertAllProjectedBeforeWrite = true;
++  expectedProjectionsBeforeWrite = 4;
++  inCut = true;
++  const denseResult = root.executePreparedNumericRows(
++    [token0, token1],
++    new Uint32Array([0, 0, 1, 1]),
++    new Uint32Array([0, 1, 0, 1]),
++    [7, 8, 6, 10],
++    4,
++  );
++  inCut = false;
++  assertAllProjectedBeforeWrite = false;
++  same(denseResult, true, "dense owner-row cut is accepted");
++  same(container.children[0].children[0].props["data-total"], 15, "dense first row projection is correct");
++  same(container.children[0].children[1].props["data-total"], 16, "later projection uses the captured vector after callback mutation");
++  same(projected.length, 4, "multi-source sink is deduplicated across changed slots");
++
++  // A derived mutable binding keeps its forced write when dependencies change
++  // but the projected primitive happens to compare equal.
++  mutateDuringProjection = false;
++  xColumn.values[0] = 6;
++  yColumn.values[0] = 9;
++  projected.length = 0;
++  const beforeForcedWrite = host.writeCount;
++  same(root.executePreparedNumericRows(
++    [token0], new Uint32Array([0, 0]), new Uint32Array([0, 1]), [6, 9], 2,
++  ), true, "derived binding retains its forced-write behavior");
++  same(container.children[0].children[0].props["data-total"], 15, "same derived primitive remains correct");
++  same(host.writeCount - beforeForcedWrite, 1, "primitive derived output is suppressed while unary output changes");
++
++  const sourceBeforeConflict = x0.value;
++  projected.length = 0;
++  same(root.executePreparedNumericRows(
++    [token0], new Uint32Array([0, 0]), new Uint32Array([0, 0]), [7, 8], 2,
++  ), null, "conflicting duplicate values decline the entire cut");
++  same(x0.value, sourceBeforeConflict, "declined duplicate does not change sources");
++  same(projected.length, 0, "declined duplicate does not project");
++
++  const refreshed = rowTree([x0, y0], 100, (values) => values[0] + values[1] + 1);
++  root.commit(jsx("div", {}, [refreshed, rowTree([x1, y1], 101, sum)]), undefined, true);
++  same(root.executePreparedNumericRows(
++    [token0], new Uint32Array([0]), new Uint32Array([0]), [6], 1,
++  ), null, "binding refresh invalidates its prepared row token");
++  root.dispose();
++});
++
++Deno.test("prepared owner row guard rejects reentry and disposal cancels later sinks", () => {
++  let root!: VDOMSnapshotRoot<MemoryNode, MemoryNode>;
++  let token!: PreparedNumericRowProgram;
++  let nestedRejected = false;
++  let disposeOnFirst = false;
++  const writes: string[] = [];
++  class Host extends MemoryVDOMHost {
++    override setProp(node: MemoryNode, name: string, value: unknown, previous: unknown) {
++      super.setProp(node, name, value, previous);
++      if (!disposeOnFirst || !name.startsWith("data-")) return;
++      writes.push(name);
++      if (name === "data-first") {
++        try {
++          root.executePreparedNumericRows(
++            [token], new Uint32Array([0]), new Uint32Array([0]), [3], 1,
++          );
++        } catch {
++          nestedRejected = true;
++        }
++        root.dispose();
++      }
++    }
++  }
++  const host = new Host();
++  const container = host.createContainer();
++  root = new VDOMSnapshotRoot(host, container);
++  const x = new ScalarSource(50, 1);
++  const y = new ScalarSource(51, 2);
++  const xColumn = new NumericColumn(52, 0, new Float64Array([1]));
++  const yColumn = new NumericColumn(53, 1, new Float64Array([2]));
++  const one = (source: ScalarSource, site: string, sink: string) => owned(
++    bind(source, (value) => value),
++    500,
++    [site],
++    sink,
++  );
++  root.commit(jsx("output", {
++    "data-first": one(x, "x", "first"),
++    "data-second": one(x, "x", "second"),
++    "data-third": one(y, "y", "third"),
++  }), undefined, true);
++  token = mustToken(root.prepareNumericRowProgram({
++    owner: 500,
++    layout,
++    rowIdentity: {},
++    row: 0,
++    generation: 1,
++    sources: [x, y],
++    columns: [xColumn, yColumn],
++  }));
++  xColumn.values[0] = 3;
++  disposeOnFirst = true;
++  same(root.executePreparedNumericRows(
++    [token], new Uint32Array([0]), new Uint32Array([0]), [3], 1,
++  ), true, "first writer commits before disposal");
++  same(nestedRejected, true, "nested prepared row execution is rejected");
++  same(writes.join(","), "data-first", "disposal prevents subsequent sink writes");
++});
++
++Deno.test("prepared owner row projector failure occurs before any host write", () => {
++  const host = new MemoryVDOMHost();
++  const container = host.createContainer();
++  const root = new VDOMSnapshotRoot(host, container);
++  const x = new ScalarSource(30, 1);
++  const y = new ScalarSource(31, 2);
++  const xColumn = new NumericColumn(32, 0, new Float64Array([1]));
++  const yColumn = new NumericColumn(33, 1, new Float64Array([2]));
++  let fail = false;
++  const binding = owned(
++    bindSources([x, y], (values) => {
++      if (fail) throw new Error("projector failed");
++      return values[0] + values[1];
++    }, {
++      schemaVersion: 2,
++      ownerProgramId: "Board",
++      sinkId: "throwing.sum",
++      sourceSites: ["x", "y"],
++    }),
++    300,
++    ["x", "y"],
++    "throwing.sum",
++  );
++  root.commit(jsx("output", { "data-total": binding }), undefined, true);
++  const token = mustToken(root.prepareNumericRowProgram({
++    owner: 300,
++    layout,
++    rowIdentity: {},
++    row: 0,
++    generation: 1,
++    sources: [x, y],
++    columns: [xColumn, yColumn],
++  }));
++  const writes = host.writeCount;
++  xColumn.values[0] = 8;
++  fail = true;
++  throws(() => root.executePreparedNumericRows(
++    [token], new Uint32Array([0]), new Uint32Array([0]), [8], 1,
++  ), "projector errors propagate");
++  same(host.writeCount, writes, "no host write runs before all projections succeed");
++  root.dispose();
++});
++
++Deno.test("prepared owner rows preserve forced writes for stable mutable outputs", () => {
++  const host = new MemoryVDOMHost();
++  const container = host.createContainer();
++  const root = new VDOMSnapshotRoot(host, container);
++  const x = new ScalarSource(60, 1);
++  const y = new ScalarSource(61, 2);
++  const xColumn = new NumericColumn(62, 0, new Float64Array([1]));
++  const yColumn = new NumericColumn(63, 1, new Float64Array([2]));
++  const tuple: number[] = [1, 2];
++  const binding = owned(bindSources([x, y], (values) => {
++    tuple[0] = values[0];
++    tuple[1] = values[1];
++    return tuple;
++  }, {
++    schemaVersion: 2,
++    ownerProgramId: "Board",
++    sinkId: "mutable.vector",
++    sourceSites: ["x", "y"],
++  }), 600, ["x", "y"], "mutable.vector");
++  root.commit(jsx("output", { position: binding }), undefined, true);
++  const token = mustToken(root.prepareNumericRowProgram({
++    owner: 600,
++    layout,
++    rowIdentity: {},
++    row: 0,
++    generation: 1,
++    sources: [x, y],
++    columns: [xColumn, yColumn],
++  }));
++  const output = container.children[0].props.position;
++  const writes = host.writeCount;
++  xColumn.values[0] = 2;
++  yColumn.values[0] = 1;
++  same(root.executePreparedNumericRows(
++    [token], new Uint32Array([0, 0]), new Uint32Array([0, 1]), [2, 1], 2,
++  ), true, "mutable projection is force-written after dependencies change");
++  same(container.children[0].props.position, output, "stable mutable object identity is preserved");
++  same(tuple.join(","), "2,1", "stable object receives the new captured values");
++  same(host.writeCount - writes, 1, "one host write is made for the mutable sink");
++  root.dispose();
++});
++
++Deno.test("prepared owner rows reject v1 and unassociated bindings", () => {
++  const host = new MemoryVDOMHost();
++  const container = host.createContainer();
++  const root = new VDOMSnapshotRoot(host, container);
++  const source = new ScalarSource(40, 1);
++  const column = new NumericColumn(41, 0, new Float64Array([1]));
++  const v1 = Object.assign(bind(source, (value) => value), {
++    numericProgram: { schemaVersion: 1 as const, sinkId: "legacy", sourceSites: ["x"] },
++  });
++  root.commit(jsx("output", { value: v1 }), undefined, true);
++  same(root.prepareNumericRowProgram({
++    owner: 400,
++    layout: Object.freeze({
++      schemaVersion: 1,
++      programId: "Board",
++      slots: Object.freeze([Object.freeze({ siteId: "x", slot: 0 })]),
++    }),
++    rowIdentity: {},
++    row: 0,
++    generation: 1,
++    sources: [source],
++    columns: [column],
++  }), null, "schema-v1 bindings cannot enter the owner-row path");
++  root.dispose();
++});
+--- a/src/vdom_snapshot_runtime.ts
++++ b/src/vdom_snapshot_runtime.ts
+@@ -72,6 +72,7 @@
+   ownerRowInputs?: number[];
+   ownerRowSources?: readonly ScalarSource[];
+   ownerRowInputSlots?: readonly number[];
++  ownerRowProjectInputs?: (values: readonly number[]) => unknown;
+   ownerRowCutEpoch?: number;
+ };
+ 
+@@ -99,11 +100,14 @@
+   readonly rowIdentity: object;
+   readonly row: number;
+   readonly generation: number;
+-  readonly sources: readonly ScalarSource[];
++  /** Caller-owned World vectors are revocable leases, not our cached view. */
++  readonly sourceLease: readonly (ScalarSource | undefined)[];
++  readonly columnLease: readonly NumericColumn[];
++  readonly sources: readonly (ScalarSource | undefined)[];
+   readonly columns: readonly NumericColumn[];
++  readonly usedSlots: Uint8Array;
+   readonly groupsBySlot: readonly (readonly BoundPropGroup<H>[])[];
+   readonly inputValues: number[];
+-  readonly lastValues: number[];
+   readonly changedEpochs: number[];
+   readonly changedValues: number[];
+   changedEpoch: number;
+@@ -839,10 +843,12 @@
+     PreparedNumericRowProgram,
+     PreparedNumericRowProgramRecord<H>
+   >();
++  #activePreparedNumericRowRecords = new Set<PreparedNumericRowProgramRecord<H>>();
+   #numericRowProgramsBySource = new Map<
+     ScalarSource,
+-    Set<PreparedNumericRowProgramRecord<H>>
++    { record: PreparedNumericRowProgramRecord<H>; slot: number }
+   >();
++  #preparedNumericRowByIdentity = new WeakMap<object, PreparedNumericRowProgramRecord<H>>();
+   #ownerRowCutEpoch = 0;
+   #ownerRowRecordScratch: Array<PreparedNumericRowProgramRecord<H> | undefined> = [];
+   #ownerRowRecordCount = 0;
+@@ -852,6 +858,7 @@
+   #ownerRowGroupCount = 0;
+   #ownerRowExecutionActive = false;
+   #ownerRowExecutionCancelled = false;
++  #ownerRowWorkVisits = 0;
+   #preparedCellProgramRecords = new WeakMap<
+     PreparedNumericCellProgram,
+     PreparedNumericCellProgramRecord<H>
+@@ -2397,29 +2404,52 @@
+       return null;
+     }
+     const layoutSignature = compiledStateLayoutSignature(layout);
+-    const sources: ScalarSource[] = new Array(slotCount);
++    const priorIdentityRecord = this.#preparedNumericRowByIdentity.get(spec.rowIdentity);
++    if (priorIdentityRecord) {
++      if (
++        !priorIdentityRecord.active || priorIdentityRecord.owner !== spec.owner ||
++        priorIdentityRecord.row !== spec.row ||
++        priorIdentityRecord.generation !== spec.generation ||
++        priorIdentityRecord.layoutSignature !== layoutSignature
++      ) return null;
++      for (let index = 0; index < slotCount; index++) {
++        if (
++          priorIdentityRecord.sources[index] !== spec.sources[index] ||
++          priorIdentityRecord.columns[index] !== spec.columns[index]
++        ) return null;
++      }
++      return priorIdentityRecord.token;
++    }
++
++    const sources: (ScalarSource | undefined)[] = new Array(slotCount);
+     const columns: NumericColumn[] = new Array(slotCount);
+     const groupsBySlot: BoundPropGroup<H>[][] = new Array(slotCount);
++    const usedSlots = new Uint8Array(slotCount);
+     const sourceSet = new Set<ScalarSource>();
+     for (let slotIndex = 0; slotIndex < slotCount; slotIndex++) {
+       const source = spec.sources[slotIndex];
+       const column = spec.columns[slotIndex];
+       const slot = layout.slots[slotIndex];
+       if (
+-        !source || !column || sourceSet.has(source) ||
+-        column.sourceSlot !== slotIndex || spec.row >= column.values.length ||
++        !column || column.sourceSlot !== slotIndex ||
+         compiledStateLayoutSlot(layout, slot.siteId) !== slotIndex
+       ) return null;
+-      sourceSet.add(source);
++      if (source) {
++        if (sourceSet.has(source) || this.#numericRowProgramsBySource.has(source)) {
++          return null;
++        }
++        sourceSet.add(source);
++      }
+       sources[slotIndex] = source;
+       columns[slotIndex] = column;
+       groupsBySlot[slotIndex] = [];
+     }
++
+     for (let slotIndex = 0; slotIndex < slotCount; slotIndex++) {
+       const source = sources[slotIndex];
++      if (!source) continue;
+       const groups = this.#groupsBySource.get(source);
+-      if (!groups?.size) return null;
+-      for (const group of groups) {
++      for (const group of groups ?? []) {
+         const binding = getBoundValue(group.rawValue);
+         const ownerBinding = binding?.numericOwner;
+         const descriptor = binding?.numericProgram;
+@@ -2427,60 +2457,44 @@
+           !binding || !ownerBinding || !descriptor ||
+           descriptor.schemaVersion !== 2 ||
+           descriptor.ownerProgramId !== layout.programId ||
+-          !descriptor.sinkId || !Array.isArray(descriptor.sourceSites) ||
+-          !binding.project ||
++          typeof descriptor.sinkId !== "string" || descriptor.sinkId.length === 0 ||
++          !Array.isArray(descriptor.sourceSites) ||
++          !Array.isArray(ownerBinding.sourceSlots) || !binding.project ||
+           ownerBinding.owner !== spec.owner ||
+           ownerBinding.programId !== layout.programId ||
+           safeLayoutSignature(ownerBinding.layout) !== layoutSignature ||
+           ownerBinding.sourceSlots.length !== group.sources.length ||
+-          binding.projectInputs === undefined && group.sources.length > 1
++          group.sources.length > 1 && typeof binding.projectInputs !== "function"
+         ) return null;
+         const sites = descriptor.sourceSites;
+-        if (
+-          sites.length !== group.sources.length ||
+-          ownerBinding.sourceSlots.length !== sites.length
+-        ) return null;
+-        for (let sourceIndex = 0; sourceIndex < group.sources.length; sourceIndex++) {
+-          const sourceSlot = ownerBinding.sourceSlots[sourceIndex];
++        if (sites.length !== group.sources.length) return null;
++        for (let input = 0; input < group.sources.length; input++) {
++          const sourceSlot = ownerBinding.sourceSlots[input];
+           if (
+             !Number.isSafeInteger(sourceSlot) || sourceSlot < 0 ||
+             sourceSlot >= slotCount ||
+-            group.sources[sourceIndex] !== sources[sourceSlot] ||
+-            layout.slots[sourceSlot].siteId !== sites[sourceIndex]
++            group.sources[input] !== sources[sourceSlot] ||
++            sites[input] !== layout.slots[sourceSlot].siteId
+           ) return null;
++          usedSlots[sourceSlot] = 1;
+           if (sourceSlot === slotIndex && !groupsBySlot[slotIndex].includes(group)) {
+             groupsBySlot[slotIndex].push(group);
+           }
+         }
+       }
+-      if (groupsBySlot[slotIndex].length === 0) return null;
+     }
+ 
+-    // A sink must be unambiguously owned by this row; it cannot be attached
+-    // through two independently prepared owner rows.
+-    for (const groups of groupsBySlot) {
+-      for (const group of groups) {
+-        if (
+-          group.ownerRowSources &&
+-          (group.ownerRowSources.length !== sources.length ||
+-            group.ownerRowSources.some((source, index) =>
+-              source !== sources[index]
+-            ))
+-        ) {
+-          return null;
+-        }
++    for (let slotIndex = 0; slotIndex < slotCount; slotIndex++) {
++      if (!usedSlots[slotIndex]) continue;
++      if (!sources[slotIndex]) return null;
++      for (const group of groupsBySlot[slotIndex]) {
++        if (group.ownerRowSources) return null;
+       }
+     }
+     const token = Object.freeze({}) as PreparedNumericRowProgram;
+     const inputValues = new Array<number>(slotCount);
+-    const lastValues = new Array<number>(slotCount);
+     const changedEpochs = new Array<number>(slotCount).fill(0);
+     const changedValues = new Array<number>(slotCount).fill(0);
+-    for (let slotIndex = 0; slotIndex < slotCount; slotIndex++) {
+-      const value = columns[slotIndex].values[spec.row];
+-      inputValues[slotIndex] = value;
+-      lastValues[slotIndex] = value;
+-    }
+     const record: PreparedNumericRowProgramRecord<H> = {
+       token,
+       root: this,
+@@ -2490,11 +2504,13 @@
+       rowIdentity: spec.rowIdentity,
+       row: spec.row,
+       generation: spec.generation,
++      sourceLease: spec.sources,
++      columnLease: spec.columns,
+       sources,
+       columns,
++      usedSlots,
+       groupsBySlot,
+       inputValues,
+-      lastValues,
+       changedEpochs,
+       changedValues,
+       changedEpoch: 0,
+@@ -2504,39 +2520,44 @@
+     for (const groups of groupsBySlot) {
+       for (const group of groups) {
+         group.ownerRowInputs ??= new Array<number>(group.sources.length);
+-        group.ownerRowSources = sources;
+-        const ownerBinding = getBoundValue(group.rawValue)!.numericOwner!;
+-        group.ownerRowInputSlots = ownerBinding.sourceSlots;
++        group.ownerRowSources = sources.filter((source): source is ScalarSource => source !== undefined);
++        const binding = getBoundValue(group.rawValue)!;
++        group.ownerRowInputSlots = binding.numericOwner!.sourceSlots;
++        group.ownerRowProjectInputs = binding.projectInputs;
+       }
+     }
+     this.#preparedNumericRowPrograms.set(token, record);
+-    for (const source of sources) {
+-      let records = this.#numericRowProgramsBySource.get(source);
+-      if (!records) this.#numericRowProgramsBySource.set(source, records = new Set());
+-      records.add(record);
++    this.#activePreparedNumericRowRecords.add(record);
++    this.#preparedNumericRowByIdentity.set(spec.rowIdentity, record);
++    for (let slotIndex = 0; slotIndex < sources.length; slotIndex++) {
++      const source = sources[slotIndex];
++      if (source) this.#numericRowProgramsBySource.set(source, { record, slot: slotIndex });
+     }
+     return token;
+   }
+ 
+   #invalidatePreparedNumericRowsForSource(source: ScalarSource) {
+-    const records = this.#numericRowProgramsBySource.get(source);
+-    if (!records) return;
+-    for (const record of records) {
+-      if (!record.active) continue;
+-      record.active = false;
+-      this.#preparedNumericRowPrograms.delete(record.token);
+-      for (const recordSource of record.sources) {
+-        const attached = this.#numericRowProgramsBySource.get(recordSource);
+-        attached?.delete(record);
+-        if (attached?.size === 0) this.#numericRowProgramsBySource.delete(recordSource);
+-      }
+-      for (const groups of record.groupsBySlot) {
+-        for (const group of groups) {
+-          group.ownerRowInputs = undefined;
+-          group.ownerRowSources = undefined;
+-          group.ownerRowInputSlots = undefined;
+-          group.ownerRowCutEpoch = undefined;
+-        }
++    const membership = this.#numericRowProgramsBySource.get(source);
++    if (!membership) return;
++    const record = membership.record;
++    if (!record.active) return;
++    record.active = false;
++    this.#activePreparedNumericRowRecords.delete(record);
++    this.#preparedNumericRowPrograms.delete(record.token);
++    this.#preparedNumericRowByIdentity.delete(record.rowIdentity);
++    for (const recordSource of record.sources) {
++      if (
++        recordSource &&
++        this.#numericRowProgramsBySource.get(recordSource)?.record === record
++      ) this.#numericRowProgramsBySource.delete(recordSource);
++    }
++    for (const groups of record.groupsBySlot) {
++      for (const group of groups) {
++        group.ownerRowInputs = undefined;
++        group.ownerRowSources = undefined;
++        group.ownerRowInputSlots = undefined;
++        group.ownerRowProjectInputs = undefined;
++        group.ownerRowCutEpoch = undefined;
+       }
+     }
+   }
+@@ -2921,6 +2942,7 @@
+       compiledColumnBindingGroups: groupCount(
+         this.#groupsByCompiledColumnBinding,
+       ),
++      preparedNumericRowWorkVisits: this.#ownerRowWorkVisits,
+       bindingIndexAttachOperations: this.#bindingIndexAttachOperations,
+       bindingIndexDetachOperations: this.#bindingIndexDetachOperations,
+       bindingIndexIndexOperations: this.#bindingIndexIndexOperations,
+@@ -3090,8 +3112,7 @@
+           if (
+             !source || !association || association.column !== column ||
+             association.row !== row ||
+-            (!this.#isUnaryColumnGroup(source, group) &&
+-              !this.#isUnaryColumnGroupV2Compatible(source, group)) ||
++            !this.#isUnaryColumnGroup(source, group) ||
+             !this.#programSourceSlots.get(source)?.eligible
+           ) return null;
+           if (group.columnRowsStageEpoch === stageEpoch) {
+@@ -3179,6 +3200,7 @@
+       count > changedRowIndices.length || count > changedSlots.length ||
+       count > values.length
+     ) throw new RangeError("Prepared owner-row cut exceeds supplied buffers");
++    this.#ownerRowWorkVisits = 0;
+     this.#ownerRowRecordCount = 0;
+     this.#ownerRowGroupCount = 0;
+     this.#ownerRowExecutionActive = true;
+@@ -3186,37 +3208,42 @@
+     try {
+       if (this.#ownerRowCutEpoch >= Number.MAX_SAFE_INTEGER) {
+         this.#ownerRowCutEpoch = 1;
+-        for (const records of this.#numericRowProgramsBySource.values()) {
+-          for (const record of records) {
+-            record.cutEpoch = 0;
+-            record.changedEpochs.fill(0);
+-            for (const groups of record.groupsBySlot) {
+-              for (const group of groups) group.ownerRowCutEpoch = 0;
+-            }
++        for (const record of this.#activePreparedNumericRowRecords) {
++          record.cutEpoch = 0;
++          record.changedEpochs.fill(0);
++          for (const groups of record.groupsBySlot) {
++            for (const group of groups) group.ownerRowCutEpoch = 0;
+           }
+         }
+       } else this.#ownerRowCutEpoch++;
+       const epoch = this.#ownerRowCutEpoch;
+ 
+-      // Validate the entire packed cut before source mirrors or projectors run.
++      // Validate the packed dirty cut before source mirrors or projections.
+       for (let index = 0; index < count; index++) {
++        this.#ownerRowWorkVisits++;
+         const tokenIndex = changedRowIndices[index];
+         const slotIndex = changedSlots[index];
+         const token = tokens[tokenIndex];
+         const value = values[index];
+         if (
+           !Number.isSafeInteger(tokenIndex) || tokenIndex >= tokens.length ||
+-          !token || !Number.isSafeInteger(slotIndex) ||
+-          typeof value !== "number"
++          !token || !Number.isSafeInteger(slotIndex) || typeof value !== "number"
+         ) return null;
+         const record = this.#preparedNumericRowPrograms.get(token);
+         if (
+           !record || record.root !== this || !record.active ||
+           record.token !== token || !record.layout.programId ||
+-          record.layoutSignature !== compiledStateLayoutSignature(record.layout) ||
+-          slotIndex >= record.sources.length ||
+-          record.columns[slotIndex].values.length <= record.row
++          slotIndex >= record.sources.length
+         ) return null;
++        const source = record.sources[slotIndex];
++        const column = record.columns[slotIndex];
++        if (
++          !source || record.sourceLease[slotIndex] !== source ||
++          record.columnLease[slotIndex] !== column ||
++          !column || column.values.length <= record.row ||
++          this.#numericRowProgramsBySource.get(source)?.record !== record ||
++          this.#numericRowProgramsBySource.get(source)?.slot !== slotIndex
++        ) return null;
+         if (record.cutEpoch !== epoch) {
+           record.cutEpoch = epoch;
+           this.#ownerRowRecordScratch[this.#ownerRowRecordCount++] = record;
+@@ -3230,117 +3257,92 @@
+       }
+       if (count === 0) return false;
+ 
+-      // The same ScalarSource must not receive two different row snapshots.
++      // Validate every dependency used by a reached sink. Shared lease arrays
++      // can be cleared on promotion or retired with a World row, even when that
++      // dependency was not itself in this cut.
+       for (let rowIndex = 0; rowIndex < this.#ownerRowRecordCount; rowIndex++) {
+         const record = this.#ownerRowRecordScratch[rowIndex]!;
+         for (let slotIndex = 0; slotIndex < record.sources.length; slotIndex++) {
++          this.#ownerRowWorkVisits++;
++          if (!record.usedSlots[slotIndex]) continue;
+           const source = record.sources[slotIndex];
+-          const value = record.changedEpochs[slotIndex] === epoch
+-            ? record.changedValues[slotIndex]
+-            : record.columns[slotIndex].values[record.row];
+-          for (let priorRow = 0; priorRow < rowIndex; priorRow++) {
+-            const prior = this.#ownerRowRecordScratch[priorRow]!;
+-            for (let priorSlot = 0; priorSlot < prior.sources.length; priorSlot++) {
+-              if (prior.sources[priorSlot] !== source) continue;
+-              const priorValue = prior.changedEpochs[priorSlot] === epoch
+-                ? prior.changedValues[priorSlot]
+-                : prior.columns[priorSlot].values[prior.row];
+-              if (!Object.is(value, priorValue)) return null;
+-            }
+-          }
++          const column = record.columns[slotIndex];
++          const membership = source
++            ? this.#numericRowProgramsBySource.get(source)
++            : undefined;
++          if (
++            !source || record.sourceLease[slotIndex] !== source ||
++            record.columnLease[slotIndex] !== column ||
++            !column || column.values.length <= record.row ||
++            membership?.record !== record || membership.slot !== slotIndex
++          ) return null;
+         }
+       }
+ 
++      // Capture all used dependency values for participating rows, then overlay
++      // the explicit dirty values. No projector can observe a partial cut.
+       for (let rowIndex = 0; rowIndex < this.#ownerRowRecordCount; rowIndex++) {
+         const record = this.#ownerRowRecordScratch[rowIndex]!;
+-        for (const groups of record.groupsBySlot) {
+-          for (const group of groups) {
+-            const binding = getBoundValue(group.rawValue);
+-            if (
+-              !binding || typeof group.project !== "function" ||
+-              !group.ownerRowInputSlots || !group.ownerRowInputs ||
+-              group.ownerRowInputSlots.length !== group.sources.length ||
+-              group.sources.length > 1 &&
+-                typeof binding.projectInputs !== "function"
+-            ) return null;
+-            for (let input = 0; input < group.sources.length; input++) {
+-              const slot = group.ownerRowInputSlots[input];
+-              if (
+-                !Number.isSafeInteger(slot) || slot < 0 ||
+-                slot >= record.sources.length ||
+-                group.sources[input] !== record.sources[slot]
+-              ) return null;
+-            }
+-          }
+-        }
+-      }
+-
+-      // Capture every row's complete current vector, then overlay the exact
+-      // changed values supplied by Root before any projector can run.
+-      for (let rowIndex = 0; rowIndex < this.#ownerRowRecordCount; rowIndex++) {
+-        const record = this.#ownerRowRecordScratch[rowIndex]!;
+         for (let slotIndex = 0; slotIndex < record.sources.length; slotIndex++) {
+-          record.inputValues[slotIndex] = record.columns[slotIndex].values[record.row];
++          this.#ownerRowWorkVisits++;
++          if (record.usedSlots[slotIndex]) {
++            record.inputValues[slotIndex] = record.columns[slotIndex].values[record.row];
++          }
+           if (record.changedEpochs[slotIndex] === epoch) {
+             record.inputValues[slotIndex] = record.changedValues[slotIndex];
+           }
+         }
+       }
+ 
+-      // Mirror all complete rows before evaluating a single sink.
++      // Mirror the complete captured dependency vectors before any sink runs.
+       for (let rowIndex = 0; rowIndex < this.#ownerRowRecordCount; rowIndex++) {
+         const record = this.#ownerRowRecordScratch[rowIndex]!;
+         for (let slotIndex = 0; slotIndex < record.sources.length; slotIndex++) {
+-          record.sources[slotIndex].value = record.inputValues[slotIndex];
++          this.#ownerRowWorkVisits++;
++          const source = record.sources[slotIndex];
++          if (source && (record.usedSlots[slotIndex] || record.changedEpochs[slotIndex] === epoch)) {
++            source.value = record.inputValues[slotIndex];
++          }
+         }
+       }
+ 
+-      for (let rowIndex = 0; rowIndex < this.#ownerRowRecordCount; rowIndex++) {
+-        const record = this.#ownerRowRecordScratch[rowIndex]!;
+-        let rowChanged = false;
+-        for (let slotIndex = 0; slotIndex < record.sources.length; slotIndex++) {
+-          if (!Object.is(record.lastValues[slotIndex], record.inputValues[slotIndex])) {
+-            rowChanged = true;
+-            for (const group of record.groupsBySlot[slotIndex]) {
+-              if (group.ownerRowCutEpoch === epoch) continue;
+-              group.ownerRowCutEpoch = epoch;
+-              const scratchIndex = this.#ownerRowGroupCount++;
+-              this.#ownerRowGroupScratch[scratchIndex] = group;
+-              this.#ownerRowGroupRecordScratch[scratchIndex] = record;
+-            }
+-          }
++      // Explicit changed-slot fanouts define the cut. This also handles lazy
++      // preparation after World has already written the new column value.
++      for (let index = 0; index < count; index++) {
++        const token = tokens[changedRowIndices[index]]!;
++        const record = this.#preparedNumericRowPrograms.get(token)!;
++        const slotIndex = changedSlots[index];
++        this.#ownerRowWorkVisits++;
++        for (const group of record.groupsBySlot[slotIndex]) {
++          this.#ownerRowWorkVisits++;
++          if (group.ownerRowCutEpoch === epoch) continue;
++          group.ownerRowCutEpoch = epoch;
++          const scratchIndex = this.#ownerRowGroupCount++;
++          this.#ownerRowGroupScratch[scratchIndex] = group;
++          this.#ownerRowGroupRecordScratch[scratchIndex] = record;
+         }
+-        if (!rowChanged) continue;
+       }
+ 
++      // Run every cached projector before the first host write.
+       for (let index = 0; index < this.#ownerRowGroupCount; index++) {
+         if (this.#ownerRowExecutionCancelled) return false;
++        this.#ownerRowWorkVisits++;
+         const group = this.#ownerRowGroupScratch[index]!;
+         const record = this.#ownerRowGroupRecordScratch[index]!;
+-        const binding = getBoundValue(group.rawValue);
+-        if (!binding || !group.ownerRowInputSlots || !group.ownerRowInputs) {
+-          throw new Error("Prepared owner-row sink lost its binding metadata");
++        const slots = group.ownerRowInputSlots!;
++        const inputs = group.ownerRowInputs!;
++        for (let inputIndex = 0; inputIndex < slots.length; inputIndex++) {
++          inputs[inputIndex] = record.inputValues[slots[inputIndex]];
+         }
+-        for (let inputIndex = 0; inputIndex < group.ownerRowInputSlots.length; inputIndex++) {
+-          group.ownerRowInputs[inputIndex] =
+-            record.inputValues[group.ownerRowInputSlots[inputIndex]];
+-        }
+-        this.#ownerRowValueScratch[index] = group.ownerRowInputSlots.length === 1
+-          ? group.project!(group.ownerRowInputs[0])
+-          : binding.projectInputs!(group.ownerRowInputs);
++        this.#ownerRowValueScratch[index] = slots.length === 1
++          ? group.project!(inputs[0])
++          : group.ownerRowProjectInputs!(inputs);
+       }
+ 
+-      for (let index = 0; index < this.#ownerRowRecordCount; index++) {
+-        const record = this.#ownerRowRecordScratch[index]!;
+-        for (let slotIndex = 0; slotIndex < record.sources.length; slotIndex++) {
+-          record.lastValues[slotIndex] = record.inputValues[slotIndex];
+-        }
+-      }
+       for (let index = 0; index < this.#ownerRowGroupCount; index++) {
+         const group = this.#ownerRowGroupScratch[index]!;
+         const record = this.#ownerRowGroupRecordScratch[index]!;
+-        const firstSlot = group.ownerRowInputSlots![0];
+-        group.lastSourceValue = record.inputValues[firstSlot];
++        group.lastSourceValue = record.inputValues[group.ownerRowInputSlots![0]];
+       }
+ 
+       let wrote = false;
+@@ -3348,9 +3350,7 @@
+         if (this.#ownerRowExecutionCancelled) break;
+         const group = this.#ownerRowGroupScratch[index]!;
+         const next = this.#ownerRowValueScratch[index];
+-        if (sameBoundValueCanSkipWrite(group.lastValue, next, group.forceWrite)) {
+-          continue;
+-        }
++        if (sameBoundValueCanSkipWrite(group.lastValue, next, group.forceWrite)) continue;
+         this.#writeBoundGroup(group, next);
+         wrote = true;
+         if (this.#ownerRowExecutionCancelled) break;
+@@ -3940,31 +3940,23 @@
+   #isUnaryColumnGroup(source: ScalarSource, group: BoundPropGroup<H>) {
+     const binding = getBoundValue(group.rawValue);
+     const descriptor = binding?.numericProgram;
+-    return group.sources.length === 1 && group.sources[0] === source &&
+-      typeof group.project === "function" && group.column === undefined &&
+-      !!descriptor && descriptor.schemaVersion === 1 &&
+-      descriptor.sourceSites.length === 1 &&
+-      typeof descriptor.sourceSites[0] === "string";
+-  }
+-
+-  #isUnaryColumnGroupV2Compatible(source: ScalarSource, group: BoundPropGroup<H>) {
+-    const binding = getBoundValue(group.rawValue);
+-    const descriptor = binding?.numericProgram;
++    const supportedDescriptor = !!descriptor && (
++      descriptor.schemaVersion === 1 ||
++      descriptor.schemaVersion === 2 &&
++        typeof descriptor.ownerProgramId === "string" &&
++        descriptor.ownerProgramId.length > 0
++    );
+     return group.sources.length === 1 && group.sources[0] === source &&
+       typeof group.project === "function" && group.column === undefined &&
+-      !!descriptor && descriptor.schemaVersion === 2 &&
+-      typeof descriptor.ownerProgramId === "string" &&
+-      descriptor.ownerProgramId.length > 0 &&
+-      descriptor.sourceSites.length === 1 &&
+-      typeof descriptor.sourceSites[0] === "string";
++      supportedDescriptor && descriptor!.sourceSites.length === 1 &&
++      typeof descriptor!.sourceSites[0] === "string";
+   }
+ 
+   #indexSourceColumnGroup(source: ScalarSource, group: BoundPropGroup<H>) {
+     const cell = this.#sourceColumnCells.get(source);
+     if (
+       !cell ||
+-      (!this.#isUnaryColumnGroup(source, group) &&
+-        !this.#isUnaryColumnGroupV2Compatible(source, group))
++      !this.#isUnaryColumnGroup(source, group)
+     ) return;
+     let rows = this.#groupsByColumnCell.get(cell.column);
+     if (!rows) this.#groupsByColumnCell.set(cell.column, rows = new Map());
+--- a/src/prepared_owner_row_program_test.ts
++++ b/src/prepared_owner_row_program_test.ts
+@@ -186,7 +186,7 @@
+   same(root.executePreparedNumericRows(
+     [token0, token1], new Uint32Array([0, 1]), new Uint32Array([0, 1]), [5, 9], 2,
+   ), false, "unchanged primitive outputs are suppressed");
+-  same(projected.length, 0, "unchanged row snapshots do not reproject");
++  same(projected.length, 3, "explicit captured dirty fanouts still project once per affected sink");
+ 
+   // Dense updates touch both slots on both rows. The first projector mutates
+   // the second row's column/source; later projection must still use its cut.
+@@ -411,3 +411,224 @@
+   }), null, "schema-v1 bindings cannot enter the owner-row path");
+   root.dispose();
+ });
++
++
++Deno.test("owner-row first dirty cut survives preparation after the column write", () => {
++  const host = new MemoryVDOMHost();
++  const container = host.createContainer();
++  const root = new VDOMSnapshotRoot(host, container);
++  const x = new ScalarSource(700, 1);
++  const y = new ScalarSource(701, 2);
++  const xColumn = new NumericColumn(702, 0, new Float64Array([1]));
++  const yColumn = new NumericColumn(703, 1, new Float64Array([2]));
++  let projections = 0;
++  const binding = owned(bindSources([x, y], (values) => {
++    projections++;
++    return values[0] + values[1];
++  }, {
++    schemaVersion: 2,
++    ownerProgramId: "Board",
++    sinkId: "lazy.sum",
++    sourceSites: ["x", "y"],
++  }), 700, ["x", "y"], "lazy.sum");
++  root.commit(jsx("output", { value: binding }), undefined, true);
++  const base = projections;
++  // Root can construct the token after World has already updated its lane.
++  xColumn.values[0] = 9;
++  const sources = [x, y];
++  const columns = [xColumn, yColumn];
++  const token = mustToken(root.prepareNumericRowProgram({
++    owner: 700, layout, rowIdentity: {}, row: 0, generation: 1, sources, columns,
++  }));
++  same(root.executePreparedNumericRows(
++    [token], new Uint32Array([0]), new Uint32Array([0]), [9], 1,
++  ), true, "the explicit dirty cut executes after lazy preparation");
++  same(container.children[0].props.value, 11, "projection sees new x and unchanged y");
++  same(projections, base + 1, "first dirty event reaches the sink");
++  root.dispose();
++});
++
++Deno.test("owner-row dirty fanouts preserve packed source and row order", () => {
++  const writes: string[] = [];
++  let capture = false;
++  class Host extends MemoryVDOMHost {
++    override setProp(node: MemoryNode, name: string, value: unknown, previous: unknown) {
++      super.setProp(node, name, value, previous);
++      if (capture && name.startsWith("data-")) {
++        writes.push(`${String(node.props["data-row"])}:${name}`);
++      }
++    }
++  }
++  const host = new Host();
++  const container = host.createContainer();
++  const root = new VDOMSnapshotRoot(host, container);
++  const xs = [new ScalarSource(710, 1), new ScalarSource(711, 3)];
++  const ys = [new ScalarSource(712, 2), new ScalarSource(713, 4)];
++  const xColumn = new NumericColumn(714, 0, new Float64Array([1, 3]));
++  const yColumn = new NumericColumn(715, 1, new Float64Array([2, 4]));
++  const trees = xs.map((x, row) => {
++    const owner = 710 + row;
++    const unary = (source: ScalarSource, site: string, sink: string) => owned(
++      bind(source, (value) => value), owner, [site], sink,
++    );
++    const total = owned(bindSources([x, ys[row]], (values) => values[0] + values[1], {
++      schemaVersion: 2, ownerProgramId: "Board", sinkId: `row-${row}.total`,
++      sourceSites: ["x", "y"],
++    }), owner, ["x", "y"], `row-${row}.total`);
++    return jsx("output", {
++      key: `row-${row}`,
++      "data-row": `r${row}`,
++      "data-x": unary(x, "x", `row-${row}.x`),
++      "data-y": unary(ys[row], "y", `row-${row}.y`),
++      "data-total": total,
++    });
++  });
++  root.commit(jsx("div", {}, trees), undefined, true);
++  const tokens = [0, 1].map((row) => mustToken(root.prepareNumericRowProgram({
++    owner: 710 + row,
++    layout,
++    rowIdentity: {},
++    row,
++    generation: row + 1,
++    sources: [xs[row], ys[row]],
++    columns: [xColumn, yColumn],
++  })));
++  xColumn.values[0] = 5;
++  yColumn.values[1] = 9;
++  xColumn.values[1] = 6;
++  writes.length = 0;
++  capture = true;
++  root.executePreparedNumericRows(
++    tokens,
++    new Uint32Array([1, 0, 1]),
++    new Uint32Array([1, 0, 0]),
++    [9, 5, 6],
++    3,
++  );
++  capture = false;
++  same(writes.join(","),
++    "r1:data-y,r1:data-total,r0:data-x,r0:data-total,r1:data-x",
++    "first-touch fanouts follow packed row/slot order and each source's retained group order",
++  );
++  root.dispose();
++});
++
++Deno.test("owner-row stale untouched lease dependencies decline atomically", () => {
++  const host = new MemoryVDOMHost();
++  const container = host.createContainer();
++  const root = new VDOMSnapshotRoot(host, container);
++  const x = new ScalarSource(720, 1);
++  const y = new ScalarSource(721, 2);
++  const xColumn = new NumericColumn(722, 0, new Float64Array([1]));
++  const yColumn = new NumericColumn(723, 1, new Float64Array([2]));
++  let projections = 0;
++  const binding = owned(bindSources([x, y], (values) => {
++    projections++;
++    return values[0] + values[1];
++  }, {
++    schemaVersion: 2, ownerProgramId: "Board", sinkId: "lease.sum",
++    sourceSites: ["x", "y"],
++  }), 720, ["x", "y"], "lease.sum");
++  root.commit(jsx("output", { value: binding }), undefined, true);
++  const sources: (ScalarSource | undefined)[] = [x, y];
++  const columns = [xColumn, yColumn];
++  const token = mustToken(root.prepareNumericRowProgram({
++    owner: 720, layout, rowIdentity: {}, row: 0, generation: 1, sources, columns,
++  }));
++  const sourceX = x.value;
++  const baseProjections = projections;
++  xColumn.values[0] = 8;
++  sources[1] = undefined; // World promotion revokes the untouched y dependency.
++  same(root.executePreparedNumericRows(
++    [token], new Uint32Array([0]), new Uint32Array([0]), [8], 1,
++  ), null, "stale untouched source lease declines the cut");
++  same(x.value, sourceX, "decline happens before source mirroring");
++  same(projections, baseProjections, "decline happens before projection");
++  same(container.children[0].props.value, 3, "decline leaves host state untouched");
++
++  sources[1] = y;
++  columns.length = 1; // Retiring the shared World column vector also revokes it.
++  same(root.executePreparedNumericRows(
++    [token], new Uint32Array([0]), new Uint32Array([0]), [8], 1,
++  ), null, "retired untouched column lease declines the cut");
++  same(x.value, sourceX, "retired lease still declines before source mirroring");
++  same(projections, baseProjections, "retired lease still declines before projection");
++  root.dispose();
++});
++
++Deno.test("owner-row work visits grow linearly across one thousand rows", () => {
++  const host = new MemoryVDOMHost();
++  const container = host.createContainer();
++  const root = new VDOMSnapshotRoot(host, container);
++  const oneSlotLayout: CompiledStateLayout = Object.freeze({
++    schemaVersion: 1,
++    programId: "Rows",
++    slots: Object.freeze([Object.freeze({ siteId: "value", slot: 0 })]),
++  });
++  const rowCount = 1000;
++  const sources: ScalarSource[] = [];
++  const columns = [new NumericColumn(730, 0, new Float64Array(rowCount))];
++  const trees = [];
++  for (let row = 0; row < rowCount; row++) {
++    const source = new ScalarSource(10000 + row, row);
++    sources.push(source);
++    const binding = Object.assign(bind(source, (value) => value), {
++      numericProgram: Object.freeze({
++        schemaVersion: 2 as const, ownerProgramId: "Rows", sinkId: `row-${row}`,
++        sourceSites: Object.freeze(["value"]),
++      }),
++      numericOwner: Object.freeze({
++        owner: 10000 + row, programId: "Rows", layout: oneSlotLayout,
++        sourceSlots: Object.freeze([0]),
++      }),
++    });
++    trees.push(jsx("output", { key: `row-${row}`, value: binding }));
++  }
++  root.commit(jsx("div", {}, trees), undefined, true);
++  const tokens: PreparedNumericRowProgram[] = [];
++  for (let row = 0; row < rowCount; row++) {
++    tokens.push(mustToken(root.prepareNumericRowProgram({
++      owner: 10000 + row, layout: oneSlotLayout, rowIdentity: {}, row,
++      generation: 1, sources: [sources[row]], columns,
++    })));
++    columns[0].values[row] = row + 1;
++  }
++  same(root.executePreparedNumericRows(
++    tokens,
++    Uint32Array.from({ length: rowCount }, (_, row) => row),
++    new Uint32Array(rowCount).fill(0),
++    Array.from({ length: rowCount }, (_, row) => row + 1),
++    rowCount,
++  ), true, "all row sinks are reached");
++  const visits = root.diagnostics().preparedNumericRowWorkVisits;
++  assert(visits <= 8000, `row work visits should be linear, got ${visits}`);
++  same(container.children[0].children[999].props.value, 1000, "last row projects correctly");
++  root.dispose();
++});
++
++Deno.test("owner-row unused absent slots are accepted and v2 unary stays eligible", () => {
++  const host = new MemoryVDOMHost();
++  const container = host.createContainer();
++  const root = new VDOMSnapshotRoot(host, container);
++  const x = new ScalarSource(740, 1);
++  const column = new NumericColumn(741, 0, new Float64Array([1]));
++  const unary = owned(bind(x, (value) => value), 740, ["x"], "v2.unary");
++  root.commit(jsx("output", { value: unary }), undefined, true);
++  assert(root.bindSourceColumn(x, column, 0), "v2 unary descriptor is admitted to the shared eligibility path");
++  assert(root.prepareNumericCellProgram(x, column, 0), "v2 unary cell preparation succeeds");
++
++  const twoSlotRow = mustToken(root.prepareNumericRowProgram({
++    owner: 740,
++    layout,
++    rowIdentity: {},
++    row: 0,
++    generation: 1,
++    sources: [x, undefined],
++    columns: [column, new NumericColumn(742, 1, new Float64Array([0]))],
++  }));
++  same(root.executePreparedNumericRows(
++    [twoSlotRow], new Uint32Array([0]), new Uint32Array([0]), [4], 1,
++  ), true, "unused missing layout slots do not reject an otherwise valid cut");
++  same(container.children[0].props.value, 4, "unary v2 sink receives the captured value");
++  root.dispose();
++});

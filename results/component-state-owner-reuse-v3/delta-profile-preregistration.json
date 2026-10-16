@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "component-state-owner-reuse-v3-delta-profile-preregistration-v1",
+  "createdAt": "2026-10-11",
+  "status": "FROZEN_BEFORE_FRESH_DIAGNOSTIC_REPLICATIONS",
+  "motivation": {
+    "v2Outcome": "The V2 token path passes rotation gates but fails the edge-replacement generic-runtime ceiling at 1.143x.",
+    "v2Diagnostic": "Five Deno MemoryVDOMHost processes show a +1.796 ms median token-minus-generic owner.expand-and-cache difference on edge replacement; source inspection suggests full keyed output-directory construction may contribute.",
+    "pilot": "One unfrozen sequential pilot showed token-delta could delete/upsert cache entries after commit and retain a fast path for the following rotation. It is excluded from the preregistered replication set and preserved separately."
+  },
+  "question": "Can staged delta maintenance of the keyed output directory reduce owner expansion/cache work on edge replacement while preserving the token reuse fast path for the next same-key rotation and preserving keyed state/host identity?",
+  "hypotheses": {
+    "H1": "For edge replacement, token-delta lowers owner.expand-and-cache median by at least 25% of the token arm's excess over generic, summarized as the median across five process-level paired improvement shares.",
+    "H2": "For the immediately following same-key rotation, token-delta root.flush median is no more than 1.10x the token arm's median across the five process replications.",
+    "H3": "Each token-delta edge update stages one removed owner, one removed output, one new owner mapping, and one output upsert; the next rotation has one token hit per row and no fallback."
+  },
+  "design": {
+    "runtimeArms": ["generic", "token", "token-delta"],
+    "host": "MemoryVDOMHost",
+    "rows": 10000,
+    "rowState": "A selected keyed sentinel at row-5000 is seeded before the workload and must remain selected.",
+    "sequencePerPair": ["replace the final key and change the region token", "rotate the same membership and preserve the region token"],
+    "freshProcessReplications": 5,
+    "warmupPairsPerArm": 8,
+    "measuredPairsPerArm": 12,
+    "pairOrder": "A cyclic rotation of the three arm orders balances each arm's position four times across 12 measured pairs.",
+    "instrumentation": "Runtime profile callbacks and work counters are enabled for all arms; all timings are diagnostic only."
+  },
+  "correctnessGates": [
+    "Output order and membership parity after edge replacement and rotation.",
+    "Retained host identity for every surviving key and a new host for the inserted key.",
+    "The seeded row-5000 local state remains selected after every operation.",
+    "Token-delta cache update is applied only after successful host commit; the following rotation reuses the refreshed directory."
+  ],
+  "analysisPlan": {
+    "replicationUnit": "Fresh Deno process; samples inside a process are nested.",
+    "summary": "Median of each process's 12 update samples, then median and range across five process medians; report process-level paired differences and improvement shares.",
+    "decision": "A mechanism pass can justify a later production-browser follow-up, but cannot repair or replace the V2 browser fallback gate by itself.",
+    "limitations": [
+      "Memory-host phase timings do not include browser DOM, layout, paint, presentation, or React.",
+      "Diagnostic callbacks add overhead and phase scopes are not guaranteed to be additive.",
+      "Only one-row edge replacement followed by one same-membership rotation is tested; filters and multi-key changes are outside this diagnostic."
+    ]
+  },
+  "pilotPath": "results/component-state-owner-reuse-v3/pilot/delta-profile-pilot.json",
+  "sourceBase": "The experimental runtime is copied from the V2 source-lock snapshot; the original V2 runtime and source lock are not modified."
+}

@@ -1,0 +1,10 @@
+[
+  {
+    "find": "    step(frame, dirtyIds) {\n      if (disposed || !root) throw new Error(\"Cannot step a disposed React arm\");\n      flushSync(() => {",
+    "replace": "    step(frame, dirtyIds) {\n      if (disposed || !root) throw new Error(\"Cannot step a disposed React arm\");\n      const ledger = (globalThis as typeof globalThis & {__denseLedger?: {mark(s:string):void;count(s:string,n?:number):void}}).__denseLedger;\n      ledger?.mark(\"react.flushSync.start\");\n      ledger?.count(\"react.setter.calls\", dirtyIds.length);\n      flushSync(() => {\n        ledger?.mark(\"react.dispatch.start\");"
+  },
+  {
+    "find": "          setter(frame);\n        }\n      });\n    },",
+    "replace": "          setter(frame);\n        }\n        ledger?.mark(\"react.dispatch.end\");\n      });\n      ledger?.mark(\"react.flushSync.end\");\n    },"
+  }
+]

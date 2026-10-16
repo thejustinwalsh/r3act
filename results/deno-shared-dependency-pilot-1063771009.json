@@ -1,0 +1,4599 @@
+{
+  "schemaVersion": 1,
+  "experiment": "Shared-source fan-out and dirty-binding de-duplication",
+  "environment": {
+    "deno": "2.6.3",
+    "v8": "14.2.231.17-rusty",
+    "os": "darwin",
+    "arch": "aarch64",
+    "hardwareConcurrency": 10,
+    "sampleDate": "2026-10-09T17:55:25.708Z"
+  },
+  "protocol": {
+    "entityCount": 10000,
+    "pairCount": 48,
+    "balancedRandomizedOrders": true,
+    "changedFractions": [
+      0.01,
+      0.1,
+      1
+    ],
+    "sharedModes": [
+      "none",
+      "scale",
+      "scaleAndOpacity"
+    ],
+    "localSource": "x[i] -> left[i], transform[i]",
+    "sharedScale": "scale -> transform[i] for every entity",
+    "sharedOpacity": "alpha -> opacity[i] for every entity",
+    "repeatedWritesForTimerFloor": true,
+    "setupExcluded": true,
+    "warmupPairs": 12,
+    "outputParity": "compare every left, transform, and opacity slot after paired updates"
+  },
+  "scenarios": [
+    {
+      "entityCount": 10000,
+      "changedFraction": 0.01,
+      "changedEntities": 100,
+      "sharedMode": "none",
+      "affectedBindingsPerBatch": 200,
+      "repeatsPerPair": 32,
+      "pairCount": 48,
+      "seed": 1063771009,
+      "orderCounts": {
+        "graph/fullScan": 24,
+        "fullScan/graph": 24
+      },
+      "medianMs": {
+        "graph": 0.0011198124999998171,
+        "fullScan": 0.006894531250000391
+      },
+      "p95Ms": {
+        "graph": 0.0024322812499999458,
+        "fullScan": 0.008355468750000483
+      },
+      "graphWins": 48,
+      "fullScanWins": 0,
+      "parityFailures": 0,
+      "pairs": [
+        {
+          "pair": 0,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.0024322812499999458,
+          "fullScanMs": 0.006894531250000391,
+          "repeats": 32
+        },
+        {
+          "pair": 1,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.0024687500000002416,
+          "fullScanMs": 0.006743499999999791,
+          "repeats": 32
+        },
+        {
+          "pair": 2,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.00244140625,
+          "fullScanMs": 0.007440093750000543,
+          "repeats": 32
+        },
+        {
+          "pair": 3,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.0011484375000003766,
+          "fullScanMs": 0.009738281249999758,
+          "repeats": 32
+        },
+        {
+          "pair": 4,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.001097656249999801,
+          "fullScanMs": 0.006692687499999295,
+          "repeats": 32
+        },
+        {
+          "pair": 5,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.0010963749999994832,
+          "fullScanMs": 0.006808593749999758,
+          "repeats": 32
+        },
+        {
+          "pair": 6,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.0011015625000005969,
+          "fullScanMs": 0.006684906250000289,
+          "repeats": 32
+        },
+        {
+          "pair": 7,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.0011028437500000265,
+          "fullScanMs": 0.006757812500000071,
+          "repeats": 32
+        },
+        {
+          "pair": 8,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.0010963749999994832,
+          "fullScanMs": 0.006701812500000237,
+          "repeats": 32
+        },
+        {
+          "pair": 9,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.0013411562499996421,
+          "fullScanMs": 0.00723437499999946,
+          "repeats": 32
+        },
+        {
+          "pair": 10,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.0014960937500001492,
+          "fullScanMs": 0.008352874999999926,
+          "repeats": 32
+        },
+        {
+          "pair": 11,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.001352843750000332,
+          "fullScanMs": 0.008355468750000483,
+          "repeats": 32
+        },
+        {
+          "pair": 12,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.0011041875000001866,
+          "fullScanMs": 0.007863281249999687,
+          "repeats": 32
+        },
+        {
+          "pair": 13,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.0011041562500002655,
+          "fullScanMs": 0.006746093750000348,
+          "repeats": 32
+        },
+        {
+          "pair": 14,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.0011041875000001866,
+          "fullScanMs": 0.006684906250000289,
+          "repeats": 32
+        },
+        {
+          "pair": 15,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.0011041562500002655,
+          "fullScanMs": 0.006700531249999919,
+          "repeats": 32
+        },
+        {
+          "pair": 16,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.0011015624999997087,
+          "fullScanMs": 0.0066965937500000905,
+          "repeats": 32
+        },
+        {
+          "pair": 17,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.0011067812499998553,
+          "fullScanMs": 0.006693999999999534,
+          "repeats": 32
+        },
+        {
+          "pair": 18,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.0011028750000008358,
+          "fullScanMs": 0.006686187500000607,
+          "repeats": 32
+        },
+        {
+          "pair": 19,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.0011067499999999342,
+          "fullScanMs": 0.006917968750000725,
+          "repeats": 32
+        },
+        {
+          "pair": 20,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.002153656249999969,
+          "fullScanMs": 0.0069427187500004095,
+          "repeats": 32
+        },
+        {
+          "pair": 21,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.0011054687500005045,
+          "fullScanMs": 0.006802093750000182,
+          "repeats": 32
+        },
+        {
+          "pair": 22,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.0011093750000004121,
+          "fullScanMs": 0.007441406249999893,
+          "repeats": 32
+        },
+        {
+          "pair": 23,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.0017448125000001369,
+          "fullScanMs": 0.00793618749999947,
+          "repeats": 32
+        },
+        {
+          "pair": 24,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.001178406250000208,
+          "fullScanMs": 0.00668359375000005,
+          "repeats": 32
+        },
+        {
+          "pair": 25,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.0011940312499998385,
+          "fullScanMs": 0.006954437500000132,
+          "repeats": 32
+        },
+        {
+          "pair": 26,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.0011926875000005666,
+          "fullScanMs": 0.00726431249999937,
+          "repeats": 32
+        },
+        {
+          "pair": 27,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.0012018437500005419,
+          "fullScanMs": 0.007411468749999983,
+          "repeats": 32
+        },
+        {
+          "pair": 28,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.0011953125000001563,
+          "fullScanMs": 0.007264312500000258,
+          "repeats": 32
+        },
+        {
+          "pair": 29,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.0011940312500007266,
+          "fullScanMs": 0.007270843749999756,
+          "repeats": 32
+        },
+        {
+          "pair": 30,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.001199218750000064,
+          "fullScanMs": 0.00727734375000022,
+          "repeats": 32
+        },
+        {
+          "pair": 31,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.0011953125000001563,
+          "fullScanMs": 0.007268250000000087,
+          "repeats": 32
+        },
+        {
+          "pair": 32,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.001098937500000119,
+          "fullScanMs": 0.00757031249999951,
+          "repeats": 32
+        },
+        {
+          "pair": 33,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.0012148437500005826,
+          "fullScanMs": 0.009960937499999822,
+          "repeats": 32
+        },
+        {
+          "pair": 34,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.001164062500000007,
+          "fullScanMs": 0.00686587499999991,
+          "repeats": 32
+        },
+        {
+          "pair": 35,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.001121093750000135,
+          "fullScanMs": 0.007382812500000391,
+          "repeats": 32
+        },
+        {
+          "pair": 36,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.001210937500000675,
+          "fullScanMs": 0.006761718749999979,
+          "repeats": 32
+        },
+        {
+          "pair": 37,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.0011145937499996705,
+          "fullScanMs": 0.006695312500000661,
+          "repeats": 32
+        },
+        {
+          "pair": 38,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.0011119687500000808,
+          "fullScanMs": 0.006872406250000296,
+          "repeats": 32
+        },
+        {
+          "pair": 39,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.0011198124999998171,
+          "fullScanMs": 0.0067070312499994955,
+          "repeats": 32
+        },
+        {
+          "pair": 40,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.0011171874999993392,
+          "fullScanMs": 0.006707031250000384,
+          "repeats": 32
+        },
+        {
+          "pair": 41,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.0011132812500003197,
+          "fullScanMs": 0.006904937499999875,
+          "repeats": 32
+        },
+        {
+          "pair": 42,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.0011080625000001731,
+          "fullScanMs": 0.007580718749999882,
+          "repeats": 32
+        },
+        {
+          "pair": 43,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.0011145937499996705,
+          "fullScanMs": 0.006687499999999957,
+          "repeats": 32
+        },
+        {
+          "pair": 44,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.0012122500000000258,
+          "fullScanMs": 0.008139312499999996,
+          "repeats": 32
+        },
+        {
+          "pair": 45,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.0011627500000006563,
+          "fullScanMs": 0.006710937499999403,
+          "repeats": 32
+        },
+        {
+          "pair": 46,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.0011119687500000808,
+          "fullScanMs": 0.00676040624999974,
+          "repeats": 32
+        },
+        {
+          "pair": 47,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.0011653437499994368,
+          "fullScanMs": 0.007007812499999488,
+          "repeats": 32
+        }
+      ]
+    },
+    {
+      "entityCount": 10000,
+      "changedFraction": 0.1,
+      "changedEntities": 1000,
+      "sharedMode": "none",
+      "affectedBindingsPerBatch": 2000,
+      "repeatsPerPair": 8,
+      "pairCount": 48,
+      "seed": 1063771106,
+      "orderCounts": {
+        "graph/fullScan": 24,
+        "fullScan/graph": 24
+      },
+      "medianMs": {
+        "graph": 0.016453125000001734,
+        "fullScan": 0.02433849999999893
+      },
+      "p95Ms": {
+        "graph": 0.020744749999998646,
+        "fullScan": 0.03053650000000019
+      },
+      "graphWins": 47,
+      "fullScanWins": 1,
+      "parityFailures": 0,
+      "pairs": [
+        {
+          "pair": 0,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.017526000000000153,
+          "fullScanMs": 0.026088624999999865,
+          "repeats": 8
+        },
+        {
+          "pair": 1,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.01766150000000266,
+          "fullScanMs": 0.02602074999999715,
+          "repeats": 8
+        },
+        {
+          "pair": 2,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.018364625000000245,
+          "fullScanMs": 0.02577612500000015,
+          "repeats": 8
+        },
+        {
+          "pair": 3,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.017416750000002423,
+          "fullScanMs": 0.03729687500000267,
+          "repeats": 8
+        },
+        {
+          "pair": 4,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.02537500000000037,
+          "fullScanMs": 0.026499999999998636,
+          "repeats": 8
+        },
+        {
+          "pair": 5,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.017640624999998522,
+          "fullScanMs": 0.025963499999999584,
+          "repeats": 8
+        },
+        {
+          "pair": 6,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.017499999999998295,
+          "fullScanMs": 0.027812499999999574,
+          "repeats": 8
+        },
+        {
+          "pair": 7,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.01736449999999934,
+          "fullScanMs": 0.027088625000001088,
+          "repeats": 8
+        },
+        {
+          "pair": 8,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.01753125000000111,
+          "fullScanMs": 0.03125,
+          "repeats": 8
+        },
+        {
+          "pair": 9,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.01748962499999962,
+          "fullScanMs": 0.025843749999999943,
+          "repeats": 8
+        },
+        {
+          "pair": 10,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.020744749999998646,
+          "fullScanMs": 0.028609375000002046,
+          "repeats": 8
+        },
+        {
+          "pair": 11,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.01647400000000232,
+          "fullScanMs": 0.024958375000000643,
+          "repeats": 8
+        },
+        {
+          "pair": 12,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.016453125000001734,
+          "fullScanMs": 0.02433337499999766,
+          "repeats": 8
+        },
+        {
+          "pair": 13,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.016437500000002103,
+          "fullScanMs": 0.024541750000000917,
+          "repeats": 8
+        },
+        {
+          "pair": 14,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.01646874999999781,
+          "fullScanMs": 0.024484375000000114,
+          "repeats": 8
+        },
+        {
+          "pair": 15,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.019635500000003248,
+          "fullScanMs": 0.028682249999999243,
+          "repeats": 8
+        },
+        {
+          "pair": 16,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.016833375000000927,
+          "fullScanMs": 0.024354250000001798,
+          "repeats": 8
+        },
+        {
+          "pair": 17,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.016708374999996778,
+          "fullScanMs": 0.024312500000000625,
+          "repeats": 8
+        },
+        {
+          "pair": 18,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.016494874999999354,
+          "fullScanMs": 0.02429162500000004,
+          "repeats": 8
+        },
+        {
+          "pair": 19,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.01642700000000019,
+          "fullScanMs": 0.024328125000000256,
+          "repeats": 8
+        },
+        {
+          "pair": 20,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.016432249999997595,
+          "fullScanMs": 0.024437500000001222,
+          "repeats": 8
+        },
+        {
+          "pair": 21,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.016546874999999517,
+          "fullScanMs": 0.024302124999998398,
+          "repeats": 8
+        },
+        {
+          "pair": 22,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.01644799999999691,
+          "fullScanMs": 0.025265624999999403,
+          "repeats": 8
+        },
+        {
+          "pair": 23,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.026812500000001904,
+          "fullScanMs": 0.02429162500000004,
+          "repeats": 8
+        },
+        {
+          "pair": 24,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.016359375000000398,
+          "fullScanMs": 0.03053650000000019,
+          "repeats": 8
+        },
+        {
+          "pair": 25,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.01638024999999743,
+          "fullScanMs": 0.024296875000000995,
+          "repeats": 8
+        },
+        {
+          "pair": 26,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.01642187499999892,
+          "fullScanMs": 0.024317625000001897,
+          "repeats": 8
+        },
+        {
+          "pair": 27,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.016427124999999876,
+          "fullScanMs": 0.024322999999998984,
+          "repeats": 8
+        },
+        {
+          "pair": 28,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.016468750000001364,
+          "fullScanMs": 0.024328125000000256,
+          "repeats": 8
+        },
+        {
+          "pair": 29,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.01701562499999909,
+          "fullScanMs": 0.024301999999998714,
+          "repeats": 8
+        },
+        {
+          "pair": 30,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.016458374999999137,
+          "fullScanMs": 0.02430724999999967,
+          "repeats": 8
+        },
+        {
+          "pair": 31,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.017312499999999176,
+          "fullScanMs": 0.024510500000001656,
+          "repeats": 8
+        },
+        {
+          "pair": 32,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.01640112500000157,
+          "fullScanMs": 0.024359374999999517,
+          "repeats": 8
+        },
+        {
+          "pair": 33,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.016437500000002103,
+          "fullScanMs": 0.02433849999999893,
+          "repeats": 8
+        },
+        {
+          "pair": 34,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.01828637500000241,
+          "fullScanMs": 0.029749999999999943,
+          "repeats": 8
+        },
+        {
+          "pair": 35,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.015583375000002064,
+          "fullScanMs": 0.02411462499999928,
+          "repeats": 8
+        },
+        {
+          "pair": 36,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.015557250000000522,
+          "fullScanMs": 0.023067750000002718,
+          "repeats": 8
+        },
+        {
+          "pair": 37,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.016312500000001506,
+          "fullScanMs": 0.02305199999999985,
+          "repeats": 8
+        },
+        {
+          "pair": 38,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.015541625000000892,
+          "fullScanMs": 0.023088500000000067,
+          "repeats": 8
+        },
+        {
+          "pair": 39,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.01628649999999965,
+          "fullScanMs": 0.025239500000001414,
+          "repeats": 8
+        },
+        {
+          "pair": 40,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.015921875000000085,
+          "fullScanMs": 0.023223999999999023,
+          "repeats": 8
+        },
+        {
+          "pair": 41,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.015677124999999847,
+          "fullScanMs": 0.023281250000000142,
+          "repeats": 8
+        },
+        {
+          "pair": 42,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.015578125000001108,
+          "fullScanMs": 0.02308862499999975,
+          "repeats": 8
+        },
+        {
+          "pair": 43,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.015557250000000522,
+          "fullScanMs": 0.023359375000001847,
+          "repeats": 8
+        },
+        {
+          "pair": 44,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.015635500000001912,
+          "fullScanMs": 0.02674999999999983,
+          "repeats": 8
+        },
+        {
+          "pair": 45,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.015578125000001108,
+          "fullScanMs": 0.023682250000000238,
+          "repeats": 8
+        },
+        {
+          "pair": 46,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.01563012499999772,
+          "fullScanMs": 0.023791749999997336,
+          "repeats": 8
+        },
+        {
+          "pair": 47,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.015895874999998227,
+          "fullScanMs": 0.023093750000001023,
+          "repeats": 8
+        }
+      ]
+    },
+    {
+      "entityCount": 10000,
+      "changedFraction": 1,
+      "changedEntities": 10000,
+      "sharedMode": "none",
+      "affectedBindingsPerBatch": 20000,
+      "repeatsPerPair": 1,
+      "pairCount": 48,
+      "seed": 1063771203,
+      "orderCounts": {
+        "graph/fullScan": 24,
+        "fullScan/graph": 24
+      },
+      "medianMs": {
+        "graph": 0.13366700000000264,
+        "fullScan": 0.08754200000001333
+      },
+      "p95Ms": {
+        "graph": 0.14329200000000242,
+        "fullScan": 0.09345900000002416
+      },
+      "graphWins": 0,
+      "fullScanWins": 48,
+      "parityFailures": 0,
+      "pairs": [
+        {
+          "pair": 0,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.14141700000001833,
+          "fullScanMs": 0.09279200000000287,
+          "repeats": 1
+        },
+        {
+          "pair": 1,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.1420829999999853,
+          "fullScanMs": 0.09237500000000409,
+          "repeats": 1
+        },
+        {
+          "pair": 2,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.13987500000001774,
+          "fullScanMs": 0.09345900000002416,
+          "repeats": 1
+        },
+        {
+          "pair": 3,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.13991699999999696,
+          "fullScanMs": 0.08770800000002055,
+          "repeats": 1
+        },
+        {
+          "pair": 4,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.13362500000002342,
+          "fullScanMs": 0.08729199999999082,
+          "repeats": 1
+        },
+        {
+          "pair": 5,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.133624999999995,
+          "fullScanMs": 0.087333000000001,
+          "repeats": 1
+        },
+        {
+          "pair": 6,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.133624999999995,
+          "fullScanMs": 0.08770900000001802,
+          "repeats": 1
+        },
+        {
+          "pair": 7,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.1337090000000103,
+          "fullScanMs": 0.0871659999999963,
+          "repeats": 1
+        },
+        {
+          "pair": 8,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.13370800000001282,
+          "fullScanMs": 0.08741700000001629,
+          "repeats": 1
+        },
+        {
+          "pair": 9,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.1353330000000028,
+          "fullScanMs": 0.10575000000000045,
+          "repeats": 1
+        },
+        {
+          "pair": 10,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.13383299999998144,
+          "fullScanMs": 0.0917090000000087,
+          "repeats": 1
+        },
+        {
+          "pair": 11,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.13349999999999795,
+          "fullScanMs": 0.08758399999999256,
+          "repeats": 1
+        },
+        {
+          "pair": 12,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.13345899999998778,
+          "fullScanMs": 0.08758299999999508,
+          "repeats": 1
+        },
+        {
+          "pair": 13,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.1390829999999994,
+          "fullScanMs": 0.087333000000001,
+          "repeats": 1
+        },
+        {
+          "pair": 14,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.138417000000004,
+          "fullScanMs": 0.09099999999997976,
+          "repeats": 1
+        },
+        {
+          "pair": 15,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.16612499999999386,
+          "fullScanMs": 0.08783300000001759,
+          "repeats": 1
+        },
+        {
+          "pair": 16,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.1347080000000176,
+          "fullScanMs": 0.08820800000000872,
+          "repeats": 1
+        },
+        {
+          "pair": 17,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.13466700000000742,
+          "fullScanMs": 0.08787499999999682,
+          "repeats": 1
+        },
+        {
+          "pair": 18,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.13466700000000742,
+          "fullScanMs": 0.08741700000001629,
+          "repeats": 1
+        },
+        {
+          "pair": 19,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.1349170000000015,
+          "fullScanMs": 0.087333000000001,
+          "repeats": 1
+        },
+        {
+          "pair": 20,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.13395899999997596,
+          "fullScanMs": 0.08733399999999847,
+          "repeats": 1
+        },
+        {
+          "pair": 21,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.1335420000000056,
+          "fullScanMs": 0.08754200000001333,
+          "repeats": 1
+        },
+        {
+          "pair": 22,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.13374999999999204,
+          "fullScanMs": 0.08729200000001924,
+          "repeats": 1
+        },
+        {
+          "pair": 23,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.13374999999999204,
+          "fullScanMs": 0.08720800000000395,
+          "repeats": 1
+        },
+        {
+          "pair": 24,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.1337910000000022,
+          "fullScanMs": 0.08954199999999446,
+          "repeats": 1
+        },
+        {
+          "pair": 25,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.13366700000000264,
+          "fullScanMs": 0.08774999999999977,
+          "repeats": 1
+        },
+        {
+          "pair": 26,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.13362500000002342,
+          "fullScanMs": 0.08749999999997726,
+          "repeats": 1
+        },
+        {
+          "pair": 27,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.1337090000000103,
+          "fullScanMs": 0.08741700000001629,
+          "repeats": 1
+        },
+        {
+          "pair": 28,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.13358300000001577,
+          "fullScanMs": 0.08737500000000864,
+          "repeats": 1
+        },
+        {
+          "pair": 29,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.13349999999999795,
+          "fullScanMs": 0.08729099999999335,
+          "repeats": 1
+        },
+        {
+          "pair": 30,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.14833300000000804,
+          "fullScanMs": 0.08745899999999551,
+          "repeats": 1
+        },
+        {
+          "pair": 31,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.1390829999999994,
+          "fullScanMs": 0.08783300000001759,
+          "repeats": 1
+        },
+        {
+          "pair": 32,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.14329200000000242,
+          "fullScanMs": 0.08816699999999855,
+          "repeats": 1
+        },
+        {
+          "pair": 33,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.13358299999998735,
+          "fullScanMs": 0.08745799999999804,
+          "repeats": 1
+        },
+        {
+          "pair": 34,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.13333399999999074,
+          "fullScanMs": 0.08745799999999804,
+          "repeats": 1
+        },
+        {
+          "pair": 35,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.13358400000001325,
+          "fullScanMs": 0.08766700000001038,
+          "repeats": 1
+        },
+        {
+          "pair": 36,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.1334579999999903,
+          "fullScanMs": 0.08750000000000568,
+          "repeats": 1
+        },
+        {
+          "pair": 37,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.13320800000002464,
+          "fullScanMs": 0.08787499999999682,
+          "repeats": 1
+        },
+        {
+          "pair": 38,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.1333750000000009,
+          "fullScanMs": 0.08770799999999213,
+          "repeats": 1
+        },
+        {
+          "pair": 39,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.13358299999998735,
+          "fullScanMs": 0.08762500000000273,
+          "repeats": 1
+        },
+        {
+          "pair": 40,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.133624999999995,
+          "fullScanMs": 0.08754200000001333,
+          "repeats": 1
+        },
+        {
+          "pair": 41,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.1411250000000166,
+          "fullScanMs": 0.08799999999999386,
+          "repeats": 1
+        },
+        {
+          "pair": 42,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.1279999999999859,
+          "fullScanMs": 0.08383299999999849,
+          "repeats": 1
+        },
+        {
+          "pair": 43,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.13175000000001091,
+          "fullScanMs": 0.10875000000001478,
+          "repeats": 1
+        },
+        {
+          "pair": 44,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.12950000000000728,
+          "fullScanMs": 0.08554200000000378,
+          "repeats": 1
+        },
+        {
+          "pair": 45,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.13012500000002092,
+          "fullScanMs": 0.0846249999999884,
+          "repeats": 1
+        },
+        {
+          "pair": 46,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.12987500000002683,
+          "fullScanMs": 0.08408299999999258,
+          "repeats": 1
+        },
+        {
+          "pair": 47,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.13024999999998954,
+          "fullScanMs": 0.08504199999998718,
+          "repeats": 1
+        }
+      ]
+    },
+    {
+      "entityCount": 10000,
+      "changedFraction": 0.01,
+      "changedEntities": 100,
+      "sharedMode": "scale",
+      "affectedBindingsPerBatch": 10100,
+      "repeatsPerPair": 2,
+      "pairCount": 48,
+      "seed": 1063772018,
+      "orderCounts": {
+        "graph/fullScan": 24,
+        "fullScan/graph": 24
+      },
+      "medianMs": {
+        "graph": 0.06022899999999254,
+        "fullScan": 0.025687500000003638
+      },
+      "p95Ms": {
+        "graph": 0.08433349999999962,
+        "fullScan": 0.030499999999989313
+      },
+      "graphWins": 0,
+      "fullScanWins": 48,
+      "parityFailures": 0,
+      "pairs": [
+        {
+          "pair": 0,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.08685450000000117,
+          "fullScanMs": 0.03545799999999133,
+          "repeats": 2
+        },
+        {
+          "pair": 1,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.08037500000000364,
+          "fullScanMs": 0.05160399999999754,
+          "repeats": 2
+        },
+        {
+          "pair": 2,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.08062499999999773,
+          "fullScanMs": 0.02847949999998889,
+          "repeats": 2
+        },
+        {
+          "pair": 3,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.08433349999999962,
+          "fullScanMs": 0.025812500000000682,
+          "repeats": 2
+        },
+        {
+          "pair": 4,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.08929150000000163,
+          "fullScanMs": 0.02560399999998708,
+          "repeats": 2
+        },
+        {
+          "pair": 5,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.06095850000001235,
+          "fullScanMs": 0.025728999999998337,
+          "repeats": 2
+        },
+        {
+          "pair": 6,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.061853999999996745,
+          "fullScanMs": 0.025728999999998337,
+          "repeats": 2
+        },
+        {
+          "pair": 7,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.06068750000000023,
+          "fullScanMs": 0.025771000000005984,
+          "repeats": 2
+        },
+        {
+          "pair": 8,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.06074999999999875,
+          "fullScanMs": 0.025728999999998337,
+          "repeats": 2
+        },
+        {
+          "pair": 9,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.06274999999999409,
+          "fullScanMs": 0.027583499999991545,
+          "repeats": 2
+        },
+        {
+          "pair": 10,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.06070800000000531,
+          "fullScanMs": 0.025833500000004506,
+          "repeats": 2
+        },
+        {
+          "pair": 11,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.06066699999999514,
+          "fullScanMs": 0.02575000000000216,
+          "repeats": 2
+        },
+        {
+          "pair": 12,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.06368750000000034,
+          "fullScanMs": 0.025687500000003638,
+          "repeats": 2
+        },
+        {
+          "pair": 13,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.06183350000000587,
+          "fullScanMs": 0.02945850000000405,
+          "repeats": 2
+        },
+        {
+          "pair": 14,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.062374999999988745,
+          "fullScanMs": 0.025667000000012763,
+          "repeats": 2
+        },
+        {
+          "pair": 15,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.06060450000001083,
+          "fullScanMs": 0.030499999999989313,
+          "repeats": 2
+        },
+        {
+          "pair": 16,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.06054149999999936,
+          "fullScanMs": 0.02570849999999325,
+          "repeats": 2
+        },
+        {
+          "pair": 17,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.06468750000000512,
+          "fullScanMs": 0.026604500000004805,
+          "repeats": 2
+        },
+        {
+          "pair": 18,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.060521000000008485,
+          "fullScanMs": 0.025729000000012547,
+          "repeats": 2
+        },
+        {
+          "pair": 19,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.060624999999987494,
+          "fullScanMs": 0.025728999999984126,
+          "repeats": 2
+        },
+        {
+          "pair": 20,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.06056250000000318,
+          "fullScanMs": 0.02554150000000277,
+          "repeats": 2
+        },
+        {
+          "pair": 21,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.06060399999998367,
+          "fullScanMs": 0.026020499999987123,
+          "repeats": 2
+        },
+        {
+          "pair": 22,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.058103999999985945,
+          "fullScanMs": 0.024582999999978483,
+          "repeats": 2
+        },
+        {
+          "pair": 23,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.058208500000006325,
+          "fullScanMs": 0.02893750000001205,
+          "repeats": 2
+        },
+        {
+          "pair": 24,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.058374999999983856,
+          "fullScanMs": 0.02466649999999504,
+          "repeats": 2
+        },
+        {
+          "pair": 25,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.058250000000015234,
+          "fullScanMs": 0.02575000000001637,
+          "repeats": 2
+        },
+        {
+          "pair": 26,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.058208500000006325,
+          "fullScanMs": 0.024750000000011596,
+          "repeats": 2
+        },
+        {
+          "pair": 27,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.058103999999985945,
+          "fullScanMs": 0.024708500000002687,
+          "repeats": 2
+        },
+        {
+          "pair": 28,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.059895500000010315,
+          "fullScanMs": 0.024687500000027285,
+          "repeats": 2
+        },
+        {
+          "pair": 29,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.05810449999998468,
+          "fullScanMs": 0.02470800000000395,
+          "repeats": 2
+        },
+        {
+          "pair": 30,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.05812499999998977,
+          "fullScanMs": 0.026916499999998678,
+          "repeats": 2
+        },
+        {
+          "pair": 31,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.05822900000001141,
+          "fullScanMs": 0.0246670000000222,
+          "repeats": 2
+        },
+        {
+          "pair": 32,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.06158299999998462,
+          "fullScanMs": 0.024687499999998863,
+          "repeats": 2
+        },
+        {
+          "pair": 33,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.05812499999998977,
+          "fullScanMs": 0.024541999999996733,
+          "repeats": 2
+        },
+        {
+          "pair": 34,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.060000000000002274,
+          "fullScanMs": 0.02466649999999504,
+          "repeats": 2
+        },
+        {
+          "pair": 35,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.058312499999999545,
+          "fullScanMs": 0.024666999999993777,
+          "repeats": 2
+        },
+        {
+          "pair": 36,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.058208500000006325,
+          "fullScanMs": 0.024645999999989954,
+          "repeats": 2
+        },
+        {
+          "pair": 37,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.059437500000001364,
+          "fullScanMs": 0.024562499999973397,
+          "repeats": 2
+        },
+        {
+          "pair": 38,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.05829149999999572,
+          "fullScanMs": 0.024749999999983174,
+          "repeats": 2
+        },
+        {
+          "pair": 39,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.0581875000000025,
+          "fullScanMs": 0.02458349999997722,
+          "repeats": 2
+        },
+        {
+          "pair": 40,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.06391650000000482,
+          "fullScanMs": 0.02472950000000651,
+          "repeats": 2
+        },
+        {
+          "pair": 41,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.05902100000000132,
+          "fullScanMs": 0.024749999999983174,
+          "repeats": 2
+        },
+        {
+          "pair": 42,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.05816649999999868,
+          "fullScanMs": 0.028333500000002232,
+          "repeats": 2
+        },
+        {
+          "pair": 43,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.058312499999999545,
+          "fullScanMs": 0.02470800000000395,
+          "repeats": 2
+        },
+        {
+          "pair": 44,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.05993749999998954,
+          "fullScanMs": 0.02662499999999568,
+          "repeats": 2
+        },
+        {
+          "pair": 45,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.060166499999979806,
+          "fullScanMs": 0.02802099999999541,
+          "repeats": 2
+        },
+        {
+          "pair": 46,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.05814599999999359,
+          "fullScanMs": 0.02456250000000182,
+          "repeats": 2
+        },
+        {
+          "pair": 47,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.06022899999999254,
+          "fullScanMs": 0.024687499999998863,
+          "repeats": 2
+        }
+      ]
+    },
+    {
+      "entityCount": 10000,
+      "changedFraction": 0.1,
+      "changedEntities": 1000,
+      "sharedMode": "scale",
+      "affectedBindingsPerBatch": 11000,
+      "repeatsPerPair": 2,
+      "pairCount": 48,
+      "seed": 1063772115,
+      "orderCounts": {
+        "graph/fullScan": 24,
+        "fullScan/graph": 24
+      },
+      "medianMs": {
+        "graph": 0.0724375000000066,
+        "fullScan": 0.02791700000000219
+      },
+      "p95Ms": {
+        "graph": 0.07889600000001451,
+        "fullScan": 0.031687500000003865
+      },
+      "graphWins": 0,
+      "fullScanWins": 48,
+      "parityFailures": 0,
+      "pairs": [
+        {
+          "pair": 0,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.13456250000001546,
+          "fullScanMs": 0.028853999999995494,
+          "repeats": 2
+        },
+        {
+          "pair": 1,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.10599999999999454,
+          "fullScanMs": 0.029103999999989583,
+          "repeats": 2
+        },
+        {
+          "pair": 2,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.0752704999999878,
+          "fullScanMs": 0.03816650000001687,
+          "repeats": 2
+        },
+        {
+          "pair": 3,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.0746040000000221,
+          "fullScanMs": 0.028853999999995494,
+          "repeats": 2
+        },
+        {
+          "pair": 4,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.07456250000001319,
+          "fullScanMs": 0.028812500000015007,
+          "repeats": 2
+        },
+        {
+          "pair": 5,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.07258350000000746,
+          "fullScanMs": 0.028041500000000497,
+          "repeats": 2
+        },
+        {
+          "pair": 6,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.07297900000000368,
+          "fullScanMs": 0.031687500000003865,
+          "repeats": 2
+        },
+        {
+          "pair": 7,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.07256250000000364,
+          "fullScanMs": 0.02831249999999841,
+          "repeats": 2
+        },
+        {
+          "pair": 8,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.07214550000000486,
+          "fullScanMs": 0.027937500000007276,
+          "repeats": 2
+        },
+        {
+          "pair": 9,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.07222949999999173,
+          "fullScanMs": 0.02789549999999963,
+          "repeats": 2
+        },
+        {
+          "pair": 10,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.07239599999999768,
+          "fullScanMs": 0.027896000000026788,
+          "repeats": 2
+        },
+        {
+          "pair": 11,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.072749999999985,
+          "fullScanMs": 0.04479200000000105,
+          "repeats": 2
+        },
+        {
+          "pair": 12,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.07250000000001933,
+          "fullScanMs": 0.028104500000011967,
+          "repeats": 2
+        },
+        {
+          "pair": 13,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.0724999999999909,
+          "fullScanMs": 0.027999999999991587,
+          "repeats": 2
+        },
+        {
+          "pair": 14,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.07252100000002315,
+          "fullScanMs": 0.027916500000003452,
+          "repeats": 2
+        },
+        {
+          "pair": 15,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.07889600000001451,
+          "fullScanMs": 0.028020499999996673,
+          "repeats": 2
+        },
+        {
+          "pair": 16,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.0724375000000066,
+          "fullScanMs": 0.027833000000015318,
+          "repeats": 2
+        },
+        {
+          "pair": 17,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.07258350000000746,
+          "fullScanMs": 0.027874999999994543,
+          "repeats": 2
+        },
+        {
+          "pair": 18,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.0724375000000066,
+          "fullScanMs": 0.027937500000007276,
+          "repeats": 2
+        },
+        {
+          "pair": 19,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.07235399999999004,
+          "fullScanMs": 0.027895999999998367,
+          "repeats": 2
+        },
+        {
+          "pair": 20,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.07233350000001337,
+          "fullScanMs": 0.02789549999999963,
+          "repeats": 2
+        },
+        {
+          "pair": 21,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.07241700000000151,
+          "fullScanMs": 0.02785399999999072,
+          "repeats": 2
+        },
+        {
+          "pair": 22,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.07233299999998621,
+          "fullScanMs": 0.027958499999982678,
+          "repeats": 2
+        },
+        {
+          "pair": 23,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.07264599999999177,
+          "fullScanMs": 0.027895999999998367,
+          "repeats": 2
+        },
+        {
+          "pair": 24,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.07241649999997435,
+          "fullScanMs": 0.02791700000000219,
+          "repeats": 2
+        },
+        {
+          "pair": 25,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.07235400000001846,
+          "fullScanMs": 0.03012499999999818,
+          "repeats": 2
+        },
+        {
+          "pair": 26,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.072458499999982,
+          "fullScanMs": 0.0279585000000111,
+          "repeats": 2
+        },
+        {
+          "pair": 27,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.07250000000001933,
+          "fullScanMs": 0.027916500000003452,
+          "repeats": 2
+        },
+        {
+          "pair": 28,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.07235399999999004,
+          "fullScanMs": 0.0279794999999865,
+          "repeats": 2
+        },
+        {
+          "pair": 29,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.07224999999999682,
+          "fullScanMs": 0.027916500000003452,
+          "repeats": 2
+        },
+        {
+          "pair": 30,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.07229200000000446,
+          "fullScanMs": 0.027916500000003452,
+          "repeats": 2
+        },
+        {
+          "pair": 31,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.07635400000000914,
+          "fullScanMs": 0.027895999999998367,
+          "repeats": 2
+        },
+        {
+          "pair": 32,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.07468750000001023,
+          "fullScanMs": 0.02791700000000219,
+          "repeats": 2
+        },
+        {
+          "pair": 33,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.07383300000000759,
+          "fullScanMs": 0.0279794999999865,
+          "repeats": 2
+        },
+        {
+          "pair": 34,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.07275000000001342,
+          "fullScanMs": 0.027958000000012362,
+          "repeats": 2
+        },
+        {
+          "pair": 35,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.07245800000001168,
+          "fullScanMs": 0.02810400000001323,
+          "repeats": 2
+        },
+        {
+          "pair": 36,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.07281249999999773,
+          "fullScanMs": 0.02806250000000432,
+          "repeats": 2
+        },
+        {
+          "pair": 37,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.07147900000001073,
+          "fullScanMs": 0.027479499999998325,
+          "repeats": 2
+        },
+        {
+          "pair": 38,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.07135450000001242,
+          "fullScanMs": 0.027562500000016144,
+          "repeats": 2
+        },
+        {
+          "pair": 39,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.0713955000000226,
+          "fullScanMs": 0.02750000000000341,
+          "repeats": 2
+        },
+        {
+          "pair": 40,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.07158350000000269,
+          "fullScanMs": 0.027437499999990678,
+          "repeats": 2
+        },
+        {
+          "pair": 41,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.07160399999997935,
+          "fullScanMs": 0.027541999999982636,
+          "repeats": 2
+        },
+        {
+          "pair": 42,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.07137500000001751,
+          "fullScanMs": 0.027520500000008496,
+          "repeats": 2
+        },
+        {
+          "pair": 43,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.07320800000002237,
+          "fullScanMs": 0.027542000000011058,
+          "repeats": 2
+        },
+        {
+          "pair": 44,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.07154150000002346,
+          "fullScanMs": 0.027542000000011058,
+          "repeats": 2
+        },
+        {
+          "pair": 45,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.07122900000001664,
+          "fullScanMs": 0.02754150000001232,
+          "repeats": 2
+        },
+        {
+          "pair": 46,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.07145850000000564,
+          "fullScanMs": 0.02750000000000341,
+          "repeats": 2
+        },
+        {
+          "pair": 47,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.07152099999998995,
+          "fullScanMs": 0.028646000000009053,
+          "repeats": 2
+        }
+      ]
+    },
+    {
+      "entityCount": 10000,
+      "changedFraction": 1,
+      "changedEntities": 10000,
+      "sharedMode": "scale",
+      "affectedBindingsPerBatch": 20000,
+      "repeatsPerPair": 2,
+      "pairCount": 48,
+      "seed": 1063772212,
+      "orderCounts": {
+        "graph/fullScan": 24,
+        "fullScan/graph": 24
+      },
+      "medianMs": {
+        "graph": 0.14131249999999795,
+        "fullScan": 0.07606250000000614
+      },
+      "p95Ms": {
+        "graph": 0.15918749999997317,
+        "fullScan": 0.08595800000000509
+      },
+      "graphWins": 0,
+      "fullScanWins": 48,
+      "parityFailures": 0,
+      "pairs": [
+        {
+          "pair": 0,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.14639599999998154,
+          "fullScanMs": 0.08006249999999682,
+          "repeats": 2
+        },
+        {
+          "pair": 1,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.14535449999999628,
+          "fullScanMs": 0.0797914999999989,
+          "repeats": 2
+        },
+        {
+          "pair": 2,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.14074999999999704,
+          "fullScanMs": 0.07766699999999105,
+          "repeats": 2
+        },
+        {
+          "pair": 3,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.14202099999999973,
+          "fullScanMs": 0.07587499999999636,
+          "repeats": 2
+        },
+        {
+          "pair": 4,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.1415835000000243,
+          "fullScanMs": 0.07587499999999636,
+          "repeats": 2
+        },
+        {
+          "pair": 5,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.1441455000000076,
+          "fullScanMs": 0.0757914999999798,
+          "repeats": 2
+        },
+        {
+          "pair": 6,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.13941650000001005,
+          "fullScanMs": 0.07850000000001955,
+          "repeats": 2
+        },
+        {
+          "pair": 7,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.13947900000002278,
+          "fullScanMs": 0.07606250000000614,
+          "repeats": 2
+        },
+        {
+          "pair": 8,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.13941649999998162,
+          "fullScanMs": 0.07589600000000019,
+          "repeats": 2
+        },
+        {
+          "pair": 9,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.14156249999999204,
+          "fullScanMs": 0.07762500000001182,
+          "repeats": 2
+        },
+        {
+          "pair": 10,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.1413545000000056,
+          "fullScanMs": 0.07587499999999636,
+          "repeats": 2
+        },
+        {
+          "pair": 11,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.15918749999997317,
+          "fullScanMs": 0.07579150000000823,
+          "repeats": 2
+        },
+        {
+          "pair": 12,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.13800000000000523,
+          "fullScanMs": 0.07420849999999746,
+          "repeats": 2
+        },
+        {
+          "pair": 13,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.14881249999999113,
+          "fullScanMs": 0.08014549999998621,
+          "repeats": 2
+        },
+        {
+          "pair": 14,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.13612499999999272,
+          "fullScanMs": 0.07389600000001906,
+          "repeats": 2
+        },
+        {
+          "pair": 15,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.1509580000000028,
+          "fullScanMs": 0.07431249999999068,
+          "repeats": 2
+        },
+        {
+          "pair": 16,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.15639550000000213,
+          "fullScanMs": 0.07385400000001141,
+          "repeats": 2
+        },
+        {
+          "pair": 17,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.1368125000000191,
+          "fullScanMs": 0.07479150000000345,
+          "repeats": 2
+        },
+        {
+          "pair": 18,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.13587499999999864,
+          "fullScanMs": 0.07583350000001587,
+          "repeats": 2
+        },
+        {
+          "pair": 19,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.13835400000002096,
+          "fullScanMs": 0.07550000000000523,
+          "repeats": 2
+        },
+        {
+          "pair": 20,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.13720850000001406,
+          "fullScanMs": 0.07679200000001174,
+          "repeats": 2
+        },
+        {
+          "pair": 21,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.1413960000000145,
+          "fullScanMs": 0.07708350000001474,
+          "repeats": 2
+        },
+        {
+          "pair": 22,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.14150000000000773,
+          "fullScanMs": 0.07754150000002369,
+          "repeats": 2
+        },
+        {
+          "pair": 23,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.13966700000000287,
+          "fullScanMs": 0.07612499999999045,
+          "repeats": 2
+        },
+        {
+          "pair": 24,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.139291500000013,
+          "fullScanMs": 0.0759584999999845,
+          "repeats": 2
+        },
+        {
+          "pair": 25,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.153812500000015,
+          "fullScanMs": 0.07595850000001292,
+          "repeats": 2
+        },
+        {
+          "pair": 26,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.1451669999999865,
+          "fullScanMs": 0.07724999999999227,
+          "repeats": 2
+        },
+        {
+          "pair": 27,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.14072899999999322,
+          "fullScanMs": 0.07837500000002251,
+          "repeats": 2
+        },
+        {
+          "pair": 28,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.13993750000000205,
+          "fullScanMs": 0.07977049999999508,
+          "repeats": 2
+        },
+        {
+          "pair": 29,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.140625,
+          "fullScanMs": 0.07654149999999049,
+          "repeats": 2
+        },
+        {
+          "pair": 30,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.14185399999999504,
+          "fullScanMs": 0.07745850000000587,
+          "repeats": 2
+        },
+        {
+          "pair": 31,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.1412704999999903,
+          "fullScanMs": 0.077604000000008,
+          "repeats": 2
+        },
+        {
+          "pair": 32,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.1393124999999884,
+          "fullScanMs": 0.07595850000001292,
+          "repeats": 2
+        },
+        {
+          "pair": 33,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.13929200000001174,
+          "fullScanMs": 0.07591650000000527,
+          "repeats": 2
+        },
+        {
+          "pair": 34,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.15964599999998086,
+          "fullScanMs": 0.08287500000000136,
+          "repeats": 2
+        },
+        {
+          "pair": 35,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.15183350000000928,
+          "fullScanMs": 0.07414600000001315,
+          "repeats": 2
+        },
+        {
+          "pair": 36,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.138417000000004,
+          "fullScanMs": 0.08595800000000509,
+          "repeats": 2
+        },
+        {
+          "pair": 37,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.15427099999999427,
+          "fullScanMs": 0.07770849999999996,
+          "repeats": 2
+        },
+        {
+          "pair": 38,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.15691649999999413,
+          "fullScanMs": 0.0757914999999798,
+          "repeats": 2
+        },
+        {
+          "pair": 39,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.13585449999999355,
+          "fullScanMs": 0.07379149999999868,
+          "repeats": 2
+        },
+        {
+          "pair": 40,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.14379150000002028,
+          "fullScanMs": 0.10499999999998977,
+          "repeats": 2
+        },
+        {
+          "pair": 41,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.1446459999999945,
+          "fullScanMs": 0.0830829999999878,
+          "repeats": 2
+        },
+        {
+          "pair": 42,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.14131249999999795,
+          "fullScanMs": 0.07560400000002687,
+          "repeats": 2
+        },
+        {
+          "pair": 43,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.13589600000000246,
+          "fullScanMs": 0.08131249999999568,
+          "repeats": 2
+        },
+        {
+          "pair": 44,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.14804149999997662,
+          "fullScanMs": 0.09443749999999795,
+          "repeats": 2
+        },
+        {
+          "pair": 45,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.20272899999997662,
+          "fullScanMs": 0.07579150000000823,
+          "repeats": 2
+        },
+        {
+          "pair": 46,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.13966700000000287,
+          "fullScanMs": 0.07393749999999955,
+          "repeats": 2
+        },
+        {
+          "pair": 47,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.1363749999999868,
+          "fullScanMs": 0.07797949999999787,
+          "repeats": 2
+        }
+      ]
+    },
+    {
+      "entityCount": 10000,
+      "changedFraction": 0.01,
+      "changedEntities": 100,
+      "sharedMode": "scaleAndOpacity",
+      "affectedBindingsPerBatch": 20100,
+      "repeatsPerPair": 1,
+      "pairCount": 48,
+      "seed": 1063773027,
+      "orderCounts": {
+        "graph/fullScan": 24,
+        "fullScan/graph": 24
+      },
+      "medianMs": {
+        "graph": 0.09904200000005403,
+        "fullScan": 0.026917000000025837
+      },
+      "p95Ms": {
+        "graph": 0.16233400000004394,
+        "fullScan": 0.04320899999999028
+      },
+      "graphWins": 0,
+      "fullScanWins": 48,
+      "parityFailures": 0,
+      "pairs": [
+        {
+          "pair": 0,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.16295900000000074,
+          "fullScanMs": 0.043166999999982636,
+          "repeats": 1
+        },
+        {
+          "pair": 1,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.15237500000000637,
+          "fullScanMs": 0.04320899999999028,
+          "repeats": 1
+        },
+        {
+          "pair": 2,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.15100000000001046,
+          "fullScanMs": 0.04308400000002166,
+          "repeats": 1
+        },
+        {
+          "pair": 3,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.15229199999998855,
+          "fullScanMs": 0.043250000000000455,
+          "repeats": 1
+        },
+        {
+          "pair": 4,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.15158300000001645,
+          "fullScanMs": 0.04879199999999173,
+          "repeats": 1
+        },
+        {
+          "pair": 5,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.15300000000002,
+          "fullScanMs": 0.04320799999999281,
+          "repeats": 1
+        },
+        {
+          "pair": 6,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.15270800000001827,
+          "fullScanMs": 0.043042000000014013,
+          "repeats": 1
+        },
+        {
+          "pair": 7,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.152499999999975,
+          "fullScanMs": 0.04320799999999281,
+          "repeats": 1
+        },
+        {
+          "pair": 8,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.15279199999997672,
+          "fullScanMs": 0.04320799999999281,
+          "repeats": 1
+        },
+        {
+          "pair": 9,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.15545799999995324,
+          "fullScanMs": 0.04320799999999281,
+          "repeats": 1
+        },
+        {
+          "pair": 10,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.16399999999998727,
+          "fullScanMs": 0.026499999999998636,
+          "repeats": 1
+        },
+        {
+          "pair": 11,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.1447909999999979,
+          "fullScanMs": 0.02891600000003791,
+          "repeats": 1
+        },
+        {
+          "pair": 12,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.14512499999995043,
+          "fullScanMs": 0.02633400000001984,
+          "repeats": 1
+        },
+        {
+          "pair": 13,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.14654200000001083,
+          "fullScanMs": 0.02637499999997317,
+          "repeats": 1
+        },
+        {
+          "pair": 14,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.1460419999999658,
+          "fullScanMs": 0.026292000000012195,
+          "repeats": 1
+        },
+        {
+          "pair": 15,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.1463340000000244,
+          "fullScanMs": 0.026333000000022366,
+          "repeats": 1
+        },
+        {
+          "pair": 16,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.1465409999999565,
+          "fullScanMs": 0.02629100000001472,
+          "repeats": 1
+        },
+        {
+          "pair": 17,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.16233400000004394,
+          "fullScanMs": 0.026375000000030013,
+          "repeats": 1
+        },
+        {
+          "pair": 18,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.09408400000000938,
+          "fullScanMs": 0.026250000000004547,
+          "repeats": 1
+        },
+        {
+          "pair": 19,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.09320800000000418,
+          "fullScanMs": 0.026250000000004547,
+          "repeats": 1
+        },
+        {
+          "pair": 20,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.09362500000003138,
+          "fullScanMs": 0.02637499999997317,
+          "repeats": 1
+        },
+        {
+          "pair": 21,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.09316599999999653,
+          "fullScanMs": 0.0262079999999969,
+          "repeats": 1
+        },
+        {
+          "pair": 22,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.093166999999994,
+          "fullScanMs": 0.026167000000043572,
+          "repeats": 1
+        },
+        {
+          "pair": 23,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.100750000000005,
+          "fullScanMs": 0.026333000000022366,
+          "repeats": 1
+        },
+        {
+          "pair": 24,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.09337499999998045,
+          "fullScanMs": 0.026416999999980817,
+          "repeats": 1
+        },
+        {
+          "pair": 25,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.09345899999999574,
+          "fullScanMs": 0.026125000000035925,
+          "repeats": 1
+        },
+        {
+          "pair": 26,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.09350000000000591,
+          "fullScanMs": 0.026416999999980817,
+          "repeats": 1
+        },
+        {
+          "pair": 27,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.09683300000000372,
+          "fullScanMs": 0.0262079999999969,
+          "repeats": 1
+        },
+        {
+          "pair": 28,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.09670799999997826,
+          "fullScanMs": 0.026375000000030013,
+          "repeats": 1
+        },
+        {
+          "pair": 29,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.0967499999999859,
+          "fullScanMs": 0.026250000000004547,
+          "repeats": 1
+        },
+        {
+          "pair": 30,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.09783299999998007,
+          "fullScanMs": 0.02616699999998673,
+          "repeats": 1
+        },
+        {
+          "pair": 31,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.094791999999984,
+          "fullScanMs": 0.02708300000000463,
+          "repeats": 1
+        },
+        {
+          "pair": 32,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.09587499999997817,
+          "fullScanMs": 0.026917000000025837,
+          "repeats": 1
+        },
+        {
+          "pair": 33,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.09933399999999892,
+          "fullScanMs": 0.027125000000012278,
+          "repeats": 1
+        },
+        {
+          "pair": 34,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.09591599999998834,
+          "fullScanMs": 0.026999999999986812,
+          "repeats": 1
+        },
+        {
+          "pair": 35,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.09583400000002484,
+          "fullScanMs": 0.026999999999986812,
+          "repeats": 1
+        },
+        {
+          "pair": 36,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.0993750000000091,
+          "fullScanMs": 0.027042000000051303,
+          "repeats": 1
+        },
+        {
+          "pair": 37,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.09579199999996035,
+          "fullScanMs": 0.027040999999996984,
+          "repeats": 1
+        },
+        {
+          "pair": 38,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.0957920000000172,
+          "fullScanMs": 0.027040999999996984,
+          "repeats": 1
+        },
+        {
+          "pair": 39,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.09587500000003502,
+          "fullScanMs": 0.031167000000039025,
+          "repeats": 1
+        },
+        {
+          "pair": 40,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.10212500000000091,
+          "fullScanMs": 0.02708300000000463,
+          "repeats": 1
+        },
+        {
+          "pair": 41,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.09583299999997053,
+          "fullScanMs": 0.02704199999999446,
+          "repeats": 1
+        },
+        {
+          "pair": 42,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.10320899999999256,
+          "fullScanMs": 0.02687500000001819,
+          "repeats": 1
+        },
+        {
+          "pair": 43,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.09583300000002737,
+          "fullScanMs": 0.02695800000003601,
+          "repeats": 1
+        },
+        {
+          "pair": 44,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.09583299999997053,
+          "fullScanMs": 0.026833000000010543,
+          "repeats": 1
+        },
+        {
+          "pair": 45,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.10295899999999847,
+          "fullScanMs": 0.026957999999979165,
+          "repeats": 1
+        },
+        {
+          "pair": 46,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.09583300000002737,
+          "fullScanMs": 0.027041000000053828,
+          "repeats": 1
+        },
+        {
+          "pair": 47,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.09904200000005403,
+          "fullScanMs": 0.026834000000008018,
+          "repeats": 1
+        }
+      ]
+    },
+    {
+      "entityCount": 10000,
+      "changedFraction": 0.1,
+      "changedEntities": 1000,
+      "sharedMode": "scaleAndOpacity",
+      "affectedBindingsPerBatch": 21000,
+      "repeatsPerPair": 1,
+      "pairCount": 48,
+      "seed": 1063773124,
+      "orderCounts": {
+        "graph/fullScan": 24,
+        "fullScan/graph": 24
+      },
+      "medianMs": {
+        "graph": 0.10924999999997453,
+        "fullScan": 0.03141700000003311
+      },
+      "p95Ms": {
+        "graph": 0.17637500000000728,
+        "fullScan": 0.035041999999975815
+      },
+      "graphWins": 0,
+      "fullScanWins": 48,
+      "parityFailures": 0,
+      "pairs": [
+        {
+          "pair": 0,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.1721249999999941,
+          "fullScanMs": 0.032417000000009466,
+          "repeats": 1
+        },
+        {
+          "pair": 1,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.17137500000001182,
+          "fullScanMs": 0.032417000000009466,
+          "repeats": 1
+        },
+        {
+          "pair": 2,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.17637500000000728,
+          "fullScanMs": 0.032374999999944976,
+          "repeats": 1
+        },
+        {
+          "pair": 3,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.17529199999995626,
+          "fullScanMs": 0.03237500000000182,
+          "repeats": 1
+        },
+        {
+          "pair": 4,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.17500000000001137,
+          "fullScanMs": 0.03237500000000182,
+          "repeats": 1
+        },
+        {
+          "pair": 5,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.17112500000001774,
+          "fullScanMs": 0.032291999999984,
+          "repeats": 1
+        },
+        {
+          "pair": 6,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.17441700000000537,
+          "fullScanMs": 0.03233299999999417,
+          "repeats": 1
+        },
+        {
+          "pair": 7,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.24070800000004056,
+          "fullScanMs": 0.03237500000000182,
+          "repeats": 1
+        },
+        {
+          "pair": 8,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.17245900000000347,
+          "fullScanMs": 0.032083000000000084,
+          "repeats": 1
+        },
+        {
+          "pair": 9,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.17133400000000165,
+          "fullScanMs": 0.03187500000001364,
+          "repeats": 1
+        },
+        {
+          "pair": 10,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.18570800000003373,
+          "fullScanMs": 0.031916000000023814,
+          "repeats": 1
+        },
+        {
+          "pair": 11,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.10770899999999983,
+          "fullScanMs": 0.030458000000010088,
+          "repeats": 1
+        },
+        {
+          "pair": 12,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.1097920000000272,
+          "fullScanMs": 0.031458000000043285,
+          "repeats": 1
+        },
+        {
+          "pair": 13,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.10920800000002373,
+          "fullScanMs": 0.03133300000001782,
+          "repeats": 1
+        },
+        {
+          "pair": 14,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.10966700000000174,
+          "fullScanMs": 0.031458999999983916,
+          "repeats": 1
+        },
+        {
+          "pair": 15,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.10920800000002373,
+          "fullScanMs": 0.031542000000001735,
+          "repeats": 1
+        },
+        {
+          "pair": 16,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.10987499999998818,
+          "fullScanMs": 0.03149999999999409,
+          "repeats": 1
+        },
+        {
+          "pair": 17,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.10904099999999062,
+          "fullScanMs": 0.03125,
+          "repeats": 1
+        },
+        {
+          "pair": 18,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.10912500000000591,
+          "fullScanMs": 0.03145799999998644,
+          "repeats": 1
+        },
+        {
+          "pair": 19,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.10916600000001608,
+          "fullScanMs": 0.031375000000025466,
+          "repeats": 1
+        },
+        {
+          "pair": 20,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.10912499999994907,
+          "fullScanMs": 0.03145799999998644,
+          "repeats": 1
+        },
+        {
+          "pair": 21,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.10912500000000591,
+          "fullScanMs": 0.031375000000025466,
+          "repeats": 1
+        },
+        {
+          "pair": 22,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.10900000000003729,
+          "fullScanMs": 0.031458000000043285,
+          "repeats": 1
+        },
+        {
+          "pair": 23,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.10945800000001782,
+          "fullScanMs": 0.031375000000025466,
+          "repeats": 1
+        },
+        {
+          "pair": 24,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.10924999999997453,
+          "fullScanMs": 0.03158400000000938,
+          "repeats": 1
+        },
+        {
+          "pair": 25,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.10925000000003138,
+          "fullScanMs": 0.03129200000000765,
+          "repeats": 1
+        },
+        {
+          "pair": 26,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.10924999999997453,
+          "fullScanMs": 0.031375000000025466,
+          "repeats": 1
+        },
+        {
+          "pair": 27,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.10912500000000591,
+          "fullScanMs": 0.03125,
+          "repeats": 1
+        },
+        {
+          "pair": 28,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.10916600000001608,
+          "fullScanMs": 0.03141700000003311,
+          "repeats": 1
+        },
+        {
+          "pair": 29,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.10929199999998218,
+          "fullScanMs": 0.03137499999996862,
+          "repeats": 1
+        },
+        {
+          "pair": 30,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.10908299999999826,
+          "fullScanMs": 0.03137499999996862,
+          "repeats": 1
+        },
+        {
+          "pair": 31,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.11275000000000546,
+          "fullScanMs": 0.031334000000015294,
+          "repeats": 1
+        },
+        {
+          "pair": 32,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.10916699999995672,
+          "fullScanMs": 0.031375000000025466,
+          "repeats": 1
+        },
+        {
+          "pair": 33,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.10904099999999062,
+          "fullScanMs": 0.031415999999978794,
+          "repeats": 1
+        },
+        {
+          "pair": 34,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.10912500000000591,
+          "fullScanMs": 0.03141699999997627,
+          "repeats": 1
+        },
+        {
+          "pair": 35,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.11425000000002683,
+          "fullScanMs": 0.03141700000003311,
+          "repeats": 1
+        },
+        {
+          "pair": 36,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.10912499999994907,
+          "fullScanMs": 0.03141699999997627,
+          "repeats": 1
+        },
+        {
+          "pair": 37,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.10904199999998809,
+          "fullScanMs": 0.03141699999997627,
+          "repeats": 1
+        },
+        {
+          "pair": 38,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.11270799999999781,
+          "fullScanMs": 0.035041999999975815,
+          "repeats": 1
+        },
+        {
+          "pair": 39,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.10929199999998218,
+          "fullScanMs": 0.04079199999995353,
+          "repeats": 1
+        },
+        {
+          "pair": 40,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.10908299999999826,
+          "fullScanMs": 0.031415999999978794,
+          "repeats": 1
+        },
+        {
+          "pair": 41,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.10908299999999826,
+          "fullScanMs": 0.03145799999998644,
+          "repeats": 1
+        },
+        {
+          "pair": 42,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.1279999999999859,
+          "fullScanMs": 0.031334000000015294,
+          "repeats": 1
+        },
+        {
+          "pair": 43,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.11533400000001848,
+          "fullScanMs": 0.04075000000000273,
+          "repeats": 1
+        },
+        {
+          "pair": 44,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.10895899999997027,
+          "fullScanMs": 0.03054199999996854,
+          "repeats": 1
+        },
+        {
+          "pair": 45,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.10620799999998098,
+          "fullScanMs": 0.030666999999994005,
+          "repeats": 1
+        },
+        {
+          "pair": 46,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.10670899999996664,
+          "fullScanMs": 0.030458000000010088,
+          "repeats": 1
+        },
+        {
+          "pair": 47,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.11137500000000955,
+          "fullScanMs": 0.030624999999986358,
+          "repeats": 1
+        }
+      ]
+    },
+    {
+      "entityCount": 10000,
+      "changedFraction": 1,
+      "changedEntities": 10000,
+      "sharedMode": "scaleAndOpacity",
+      "affectedBindingsPerBatch": 30000,
+      "repeatsPerPair": 1,
+      "pairCount": 48,
+      "seed": 1063773221,
+      "orderCounts": {
+        "graph/fullScan": 24,
+        "fullScan/graph": 24
+      },
+      "medianMs": {
+        "graph": 0.166499999999985,
+        "fullScan": 0.07945899999998574
+      },
+      "p95Ms": {
+        "graph": 0.17979099999996606,
+        "fullScan": 0.08870899999999438
+      },
+      "graphWins": 0,
+      "fullScanWins": 48,
+      "parityFailures": 0,
+      "pairs": [
+        {
+          "pair": 0,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.16212499999994634,
+          "fullScanMs": 0.08404200000001083,
+          "repeats": 1
+        },
+        {
+          "pair": 1,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.16237499999999727,
+          "fullScanMs": 0.07741700000002538,
+          "repeats": 1
+        },
+        {
+          "pair": 2,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.16241700000000492,
+          "fullScanMs": 0.07791700000001356,
+          "repeats": 1
+        },
+        {
+          "pair": 3,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.16199999999997772,
+          "fullScanMs": 0.07708400000001348,
+          "repeats": 1
+        },
+        {
+          "pair": 4,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.1626250000000482,
+          "fullScanMs": 0.07737500000001774,
+          "repeats": 1
+        },
+        {
+          "pair": 5,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.16183300000000145,
+          "fullScanMs": 0.07712500000002365,
+          "repeats": 1
+        },
+        {
+          "pair": 6,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.16258400000003803,
+          "fullScanMs": 0.07749999999998636,
+          "repeats": 1
+        },
+        {
+          "pair": 7,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.16212500000000318,
+          "fullScanMs": 0.07724999999999227,
+          "repeats": 1
+        },
+        {
+          "pair": 8,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.16237499999999727,
+          "fullScanMs": 0.07795799999996689,
+          "repeats": 1
+        },
+        {
+          "pair": 9,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.1701659999999947,
+          "fullScanMs": 0.07983300000000781,
+          "repeats": 1
+        },
+        {
+          "pair": 10,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.16758399999997664,
+          "fullScanMs": 0.07991599999996879,
+          "repeats": 1
+        },
+        {
+          "pair": 11,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.16662500000001046,
+          "fullScanMs": 0.07991700000002311,
+          "repeats": 1
+        },
+        {
+          "pair": 12,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.17074999999999818,
+          "fullScanMs": 0.07966699999997218,
+          "repeats": 1
+        },
+        {
+          "pair": 13,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.1664580000000342,
+          "fullScanMs": 0.07933300000001964,
+          "repeats": 1
+        },
+        {
+          "pair": 14,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.17941700000000083,
+          "fullScanMs": 0.07962499999996453,
+          "repeats": 1
+        },
+        {
+          "pair": 15,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.16695799999996552,
+          "fullScanMs": 0.07925000000000182,
+          "repeats": 1
+        },
+        {
+          "pair": 16,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.1669170000000122,
+          "fullScanMs": 0.07958300000001373,
+          "repeats": 1
+        },
+        {
+          "pair": 17,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.16683399999999438,
+          "fullScanMs": 0.0793329999999628,
+          "repeats": 1
+        },
+        {
+          "pair": 18,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.16645899999997482,
+          "fullScanMs": 0.07970799999998235,
+          "repeats": 1
+        },
+        {
+          "pair": 19,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.17054200000001174,
+          "fullScanMs": 0.07929200000000947,
+          "repeats": 1
+        },
+        {
+          "pair": 20,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.18095799999997553,
+          "fullScanMs": 0.08870899999999438,
+          "repeats": 1
+        },
+        {
+          "pair": 21,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.17958300000003646,
+          "fullScanMs": 0.09858399999995981,
+          "repeats": 1
+        },
+        {
+          "pair": 22,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.17408399999999347,
+          "fullScanMs": 0.08370800000000145,
+          "repeats": 1
+        },
+        {
+          "pair": 23,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.265041999999994,
+          "fullScanMs": 0.08837500000004184,
+          "repeats": 1
+        },
+        {
+          "pair": 24,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.16679200000004357,
+          "fullScanMs": 0.07741700000002538,
+          "repeats": 1
+        },
+        {
+          "pair": 25,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.16212500000000318,
+          "fullScanMs": 0.07749999999998636,
+          "repeats": 1
+        },
+        {
+          "pair": 26,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.1619580000000269,
+          "fullScanMs": 0.07716699999997445,
+          "repeats": 1
+        },
+        {
+          "pair": 27,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.16200000000003456,
+          "fullScanMs": 0.07741700000002538,
+          "repeats": 1
+        },
+        {
+          "pair": 28,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.162208000000021,
+          "fullScanMs": 0.0771670000000313,
+          "repeats": 1
+        },
+        {
+          "pair": 29,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.16245799999995825,
+          "fullScanMs": 0.07737500000001774,
+          "repeats": 1
+        },
+        {
+          "pair": 30,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.16212500000000318,
+          "fullScanMs": 0.07729199999999992,
+          "repeats": 1
+        },
+        {
+          "pair": 31,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.16195799999997007,
+          "fullScanMs": 0.07749999999998636,
+          "repeats": 1
+        },
+        {
+          "pair": 32,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.1624580000000151,
+          "fullScanMs": 0.08758299999999508,
+          "repeats": 1
+        },
+        {
+          "pair": 33,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.16220799999996416,
+          "fullScanMs": 0.07754099999999653,
+          "repeats": 1
+        },
+        {
+          "pair": 34,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.16541699999999082,
+          "fullScanMs": 0.07733399999995072,
+          "repeats": 1
+        },
+        {
+          "pair": 35,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.16266600000000153,
+          "fullScanMs": 0.07787500000000591,
+          "repeats": 1
+        },
+        {
+          "pair": 36,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.1622499999999718,
+          "fullScanMs": 0.09154100000000653,
+          "repeats": 1
+        },
+        {
+          "pair": 37,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.16704100000004019,
+          "fullScanMs": 0.08025000000003502,
+          "repeats": 1
+        },
+        {
+          "pair": 38,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.1668329999999969,
+          "fullScanMs": 0.07974999999999,
+          "repeats": 1
+        },
+        {
+          "pair": 39,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.16670799999997143,
+          "fullScanMs": 0.07945899999998574,
+          "repeats": 1
+        },
+        {
+          "pair": 40,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.16674999999997908,
+          "fullScanMs": 0.07991699999996627,
+          "repeats": 1
+        },
+        {
+          "pair": 41,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.17733299999997598,
+          "fullScanMs": 0.07962500000002137,
+          "repeats": 1
+        },
+        {
+          "pair": 42,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.16733300000004192,
+          "fullScanMs": 0.07970800000003919,
+          "repeats": 1
+        },
+        {
+          "pair": 43,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.17454200000003084,
+          "fullScanMs": 0.07966700000002902,
+          "repeats": 1
+        },
+        {
+          "pair": 44,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.166499999999985,
+          "fullScanMs": 0.07970899999997982,
+          "repeats": 1
+        },
+        {
+          "pair": 45,
+          "order": [
+            "graph",
+            "fullScan"
+          ],
+          "graphMs": 0.17525000000000546,
+          "fullScanMs": 0.0841249999999718,
+          "repeats": 1
+        },
+        {
+          "pair": 46,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.17979099999996606,
+          "fullScanMs": 0.08591599999999744,
+          "repeats": 1
+        },
+        {
+          "pair": 47,
+          "order": [
+            "fullScan",
+            "graph"
+          ],
+          "graphMs": 0.174666000000002,
+          "fullScanMs": 0.08499999999997954,
+          "repeats": 1
+        }
+      ]
+    }
+  ]
+}

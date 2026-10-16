@@ -1,0 +1,229 @@
+{
+  "schemaVersion": "keyed-region-columnar-layout-v1",
+  "status": "PASS",
+  "label": "exploratory single-process mechanism benchmark",
+  "replication": 3,
+  "runtime": {
+    "node": "v24.19.0",
+    "v8": "13.6.233.17-node.51",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "warmupOperations": 80,
+  "measuredOperationsPerArm": 315,
+  "workload": "identical keyed move-to-tail traces and full sequential scans over a prebuilt ordered region; setup and parity checks are outside timed operations",
+  "arms": {
+    "array-map": "array of row objects plus key-to-index Map; shifts and reindexes the suffix",
+    "object-buckets": "existing linked buckets with per-row entry objects and key-to-entry Map",
+    "columnar-buckets": "linked buckets with parallel key/value arrays and packed key-to-slot indexes"
+  },
+  "cells": [
+    {
+      "size": 1000,
+      "scenario": "head-to-tail",
+      "traceOperations": 395,
+      "samplesPerArm": 315,
+      "results": {
+        "array-map": {
+          "medianMs": 0.015166000000000679,
+          "p95Ms": 0.020458000000004972,
+          "totalMs": 5.208958000000074
+        },
+        "object-buckets": {
+          "medianMs": 0.0011670000000023606,
+          "p95Ms": 0.004207999999998435,
+          "totalMs": 0.5190050000001065
+        },
+        "columnar-buckets": {
+          "medianMs": 0.0020840000000035275,
+          "p95Ms": 0.009582999999999231,
+          "totalMs": 1.0455009999999731
+        }
+      }
+    },
+    {
+      "size": 1000,
+      "scenario": "middle-to-tail",
+      "traceOperations": 395,
+      "samplesPerArm": 315,
+      "results": {
+        "array-map": {
+          "medianMs": 0.005832999999995536,
+          "p95Ms": 0.006166999999990708,
+          "totalMs": 1.8450010000001953
+        },
+        "object-buckets": {
+          "medianMs": 0.0007080000000030395,
+          "p95Ms": 0.0029590000000041528,
+          "totalMs": 0.3139950000000482
+        },
+        "columnar-buckets": {
+          "medianMs": 0.0017919999999946867,
+          "p95Ms": 0.004666000000000281,
+          "totalMs": 0.7144539999998187
+        }
+      }
+    },
+    {
+      "size": 10000,
+      "scenario": "head-to-tail",
+      "traceOperations": 395,
+      "samplesPerArm": 315,
+      "results": {
+        "array-map": {
+          "medianMs": 0.19166699999999537,
+          "p95Ms": 0.24191700000000083,
+          "totalMs": 61.81147300000012
+        },
+        "object-buckets": {
+          "medianMs": 0.0009579999999971278,
+          "p95Ms": 0.003417000000013104,
+          "totalMs": 0.3875410000000272
+        },
+        "columnar-buckets": {
+          "medianMs": 0.0020409999999912998,
+          "p95Ms": 0.008416999999980135,
+          "totalMs": 1.112214000000165
+        }
+      }
+    },
+    {
+      "size": 10000,
+      "scenario": "middle-to-tail",
+      "traceOperations": 395,
+      "samplesPerArm": 315,
+      "results": {
+        "array-map": {
+          "medianMs": 0.07162499999998317,
+          "p95Ms": 0.07695799999999053,
+          "totalMs": 22.926794000000257
+        },
+        "object-buckets": {
+          "medianMs": 0.0007090000000005148,
+          "p95Ms": 0.0029169999999965057,
+          "totalMs": 0.3334550000000718
+        },
+        "columnar-buckets": {
+          "medianMs": 0.0015830000000107702,
+          "p95Ms": 0.008125000000006821,
+          "totalMs": 0.7424080000000686
+        }
+      }
+    },
+    {
+      "size": 50000,
+      "scenario": "head-to-tail",
+      "traceOperations": 395,
+      "samplesPerArm": 315,
+      "results": {
+        "array-map": {
+          "medianMs": 1.169333999999992,
+          "p95Ms": 1.7212500000000546,
+          "totalMs": 402.88154499999985
+        },
+        "object-buckets": {
+          "medianMs": 0.0007500000000391083,
+          "p95Ms": 0.0014999999999645297,
+          "totalMs": 0.2807449999997971
+        },
+        "columnar-buckets": {
+          "medianMs": 0.0015000000000782165,
+          "p95Ms": 0.005666000000019267,
+          "totalMs": 0.6353730000005271
+        }
+      }
+    },
+    {
+      "size": 50000,
+      "scenario": "middle-to-tail",
+      "traceOperations": 395,
+      "samplesPerArm": 315,
+      "results": {
+        "array-map": {
+          "medianMs": 0.4183330000000751,
+          "p95Ms": 0.5990829999999505,
+          "totalMs": 139.74761999999805
+        },
+        "object-buckets": {
+          "medianMs": 0.0004999999998744897,
+          "p95Ms": 0.0011670000001231529,
+          "totalMs": 0.18111900000576497
+        },
+        "columnar-buckets": {
+          "medianMs": 0.0009999999999763531,
+          "p95Ms": 0.003375000000005457,
+          "totalMs": 0.426752000002125
+        }
+      }
+    },
+    {
+      "size": 1000,
+      "scenario": "full-sequential-scan",
+      "traceOperations": 395,
+      "samplesPerArm": 315,
+      "results": {
+        "array-map": {
+          "medianMs": 0.0026250000000800355,
+          "p95Ms": 0.009500000000116415,
+          "totalMs": 1.1796749999996337
+        },
+        "object-buckets": {
+          "medianMs": 0.0028330000000096334,
+          "p95Ms": 0.013167000000066764,
+          "totalMs": 1.3746199999995952
+        },
+        "columnar-buckets": {
+          "medianMs": 0.0028750000001309672,
+          "p95Ms": 0.005250000000160071,
+          "totalMs": 1.1064090000027136
+        }
+      }
+    },
+    {
+      "size": 10000,
+      "scenario": "full-sequential-scan",
+      "traceOperations": 395,
+      "samplesPerArm": 315,
+      "results": {
+        "array-map": {
+          "medianMs": 0.04829100000006292,
+          "p95Ms": 0.06304099999988466,
+          "totalMs": 17.053548000002365
+        },
+        "object-buckets": {
+          "medianMs": 0.051458999999795196,
+          "p95Ms": 0.07620799999995143,
+          "totalMs": 17.09974999999804
+        },
+        "columnar-buckets": {
+          "medianMs": 0.042542000000139524,
+          "p95Ms": 0.056249999999863576,
+          "totalMs": 14.974667000002
+        }
+      }
+    },
+    {
+      "size": 50000,
+      "scenario": "full-sequential-scan",
+      "traceOperations": 395,
+      "samplesPerArm": 315,
+      "results": {
+        "array-map": {
+          "medianMs": 0.2744589999999789,
+          "p95Ms": 0.3092079999998987,
+          "totalMs": 86.12822500000198
+        },
+        "object-buckets": {
+          "medianMs": 0.28766700000005585,
+          "p95Ms": 0.3274580000002061,
+          "totalMs": 89.3819170000013
+        },
+        "columnar-buckets": {
+          "medianMs": 0.31779200000005403,
+          "p95Ms": 0.35324999999988904,
+          "totalMs": 95.93449000000123
+        }
+      }
+    }
+  ]
+}

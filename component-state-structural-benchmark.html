@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Structural owner updates: React vs compiled runtime</title>
+    <style>
+      body { font: 15px/1.5 ui-monospace, monospace; margin: 2rem; }
+      label, button { margin-right: .75rem; }
+      #result { white-space: pre-wrap; overflow-wrap: anywhere; }
+      .pass { color: #087443; }
+      .fail { color: #b42318; }
+      .roots { position: fixed; left: -200vw; top: 0; opacity: 0; pointer-events: none; contain: layout; }
+    </style>
+  </head>
+  <body>
+    <h1>Structural state update: React vs compiled runtime</h1>
+    <p>Each parent-owned update rotates, replaces, or filters keyed child components. Child components also own local state. The timer ends after synchronous host commit; mount, layout, and paint are reported or excluded separately.</p>
+    <label>Leaves <select id="count"><option selected>10000</option></select></label>
+    <label>Seed <input id="seed" type="number" value="83001001" min="1" max="4294967295" step="1"></label>
+    <button id="run" type="button">Run structural study</button>
+    <button id="export" type="button" disabled>Export JSON</button>
+    <pre id="result">Ready.</pre>
+    <details><summary>Latest raw record</summary><pre id="record">Run the study to populate samples and checks.</pre></details>
+    <div class="roots"><div id="react-root"></div><div id="runtime-root"></div></div>
+    <script type="module" src="/src/browser/component_state_structural_benchmark.tsx"></script>
+  </body>
+</html>

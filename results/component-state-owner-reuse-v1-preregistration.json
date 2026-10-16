@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "component-state-owner-reuse-preregistration-v1",
+  "status": "FROZEN_BEFORE_IMPLEMENTATION_AND_COLLECTION",
+  "frozenAt": "2026-10-11T06:49:19Z",
+  "question": "Can a compiler-described homogeneous keyed-owner region reuse the prior owner/cache records during structural updates, reducing owner expansion work and end-to-host-commit time without changing keyed state, identity, or effect semantics?",
+  "hypotheses": {
+    "primary": "Compared with generic recursive owner expansion in the same ComponentStateRoot and VDOM, the keyed-owner path will reduce median update-to-host-commit time by at least 20% for rotation and one-edge replacement on at least four of five pages.",
+    "mechanism": "For a same-key-set rotation, generated keyed-region metadata permits reusing unchanged row owner/cache records without generic per-component expansion. Edge replacement and filter changes update the keyed owner directory by added/removed keys and fall back for unsupported shapes.",
+    "guardrail": "Filter shrink and restore must not regress by more than 10% in the median page-level paired ratio; otherwise the optimization must be restricted to the structural shapes that benefit.",
+    "context": "React 19.3 plus React Compiler is reported as a contextual reference, not as the causal control for the runtime-only treatment."
+  },
+  "design": {
+    "count": 10000,
+    "runtimeArms": ["generic-owner-expansion", "compiled-keyed-owner-reuse"],
+    "contextualArm": "react-19.3-react-compiler",
+    "sameComponentStateRoot": true,
+    "sameVDOMSnapshotRoot": true,
+    "sameKeyIndexMaintenance": "delta",
+    "operations": ["rotate", "replace-edge", "filter-half"],
+    "filterDirections": ["shrink", "restore"],
+    "filterDirectionSamplesPerPage": {
+      "shrink": 12,
+      "restore": 12
+    },
+    "warmupPairsPerOperation": 8,
+    "measuredPairsPerOperation": 24,
+    "armOrder": "Seeded shuffle of all six arm permutations, balanced four times each across 24 measured pairs per operation; treatment and control receive identical input keys and update direction.",
+    "replicationUnit": "Fresh visible browser page; within-page updates are repeated measures, not independent replications.",
+    "pageReplications": 5,
+    "seeds": [83005001, 83005002, 83005003, 83005004, 83005005],
+    "browserProfile": "Chrome on one MacIntel device and one visible browser profile. Record browser version, OS, CPU, visibility, and DPR per page. This collection is a within-device replication, not cross-device evidence.",
+    "build": "Production build for latency pages. Run profiler/work counters in a separate diagnostic build so instrumentation is excluded from primary latency.",
+    "treatmentEligibility": "Compiler metadata may mark only direct homogeneous arrays of function components with explicit unique stable keys. The runtime must verify site/type, key uniqueness, stable props, cache presence, and dirty-owner status. Any failed precondition takes the existing generic path and increments a reason-specific fallback counter.",
+    "operationDefinitions": {
+      "rotate": "Move the first row key to the end; preserve the key set.",
+      "replace-edge": "Replace one tail key with a fresh key; all other keys remain stable.",
+      "filter-half": "Alternate between the full list and a deterministic 50% subset; schedule exactly 12 shrink and 12 restore samples per page."
+    }
+  },
+  "measurements": {
+    "primary": "Per-page median paired difference (generic minus keyed-owner) and paired ratio (keyed-owner divided by generic) for event-to-host-commit time, grouped by operation and explicit filter direction. Summarize the five page-level values; do not pool updates across pages.",
+    "secondary": [
+      "Per-page update p95 by arm and operation/direction.",
+      "Component visits, keyed-owner cache hits, owner records created/retired, fallback counts by reason, VDOM reconciliation time, host mutations, and elapsed time for the affected structural commit in a separate diagnostic pass.",
+      "One mount and teardown observation per arm and page; report descriptively and do not combine with update medians.",
+      "Output parity, stable host identity for retained keys, removal/reinsertion identity, local row state, effect setup/cleanup balance, unrelated sibling stability, duplicate-key rejection, and empty teardown."
+    ],
+    "excluded": ["Layout", "paint", "display presentation", "cross-device generalization", "profiler-instrumented timing as a latency claim"]
+  },
+  "acceptance": {
+    "all_page_records_must_pass": true,
+    "required_visibility_state": "visible",
+    "required_measured_pairs_per_operation": 24,
+    "required_filter_direction_samples_per_page": {
+      "shrink": 12,
+      "restore": 12
+    },
+    "retain_invalid_attempts": true,
+    "no_performance_based_exclusion": true,
+    "primary_performance_gate": "For both rotate and replace-edge, keyed-owner median update time is at least 20% lower on at least four of five pages.",
+    "filter_guardrail": "For each filter direction, median page-level paired ratio is at most 1.10; otherwise narrow eligibility or reject the general optimization.",
+    "mechanism_gate": "On rotate, generic component visits fall by at least 75% while every key remains present exactly once; the treatment records cache reuse for all retained owners.",
+    "claim_limit": "A pass supports only the named structural workloads on the tested device/profile. It does not establish smoother frames, cross-device speed, or a general React replacement."
+  },
+  "falsification": [
+    "Correctness or lifecycle contract failure rejects the treatment regardless of speed.",
+    "Large work-count reduction without the preregistered end-to-host-commit gain rejects the performance hypothesis for this runtime path.",
+    "A filter guardrail failure narrows treatment eligibility to same-key-set structural changes; it does not justify averaging the directions together.",
+    "A high fallback rate means the compiler/runtime eligibility contract is not yet useful for the named fixture."
+  ],
+  "collectionStatus": "No treatment implementation or preregistered latency page has been collected. The existing V8 phase profiles are diagnostic motivation only and are not part of this experiment."
+}

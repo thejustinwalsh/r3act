@@ -1,0 +1,31 @@
+Check src/native_task_execution_test.ts
+Check src/native_task_transition_test.ts
+running 8 tests from ./src/native_task_execution_test.ts
+native task execution exposes typed stable resources with early DAG outputs ... ok (1ms)
+native task execution publishes reused outputs once and reruns invalidated closure ... ok (0ms)
+native task execution cancellation rejects resources and ignores late providers ... ok (0ms)
+native task execution relays an external abort signal ... ok (0ms)
+native task failure rejects every outstanding resource with one cause ... ok (7ms)
+native task execution snapshots inputs and task edges before startup ... ok (0ms)
+native task execution validates inputs and cycles before any task starts ... ok (0ms)
+native task execution disposal preserves held fulfilled resources and is idempotent ... ok (0ms)
+running 16 tests from ./src/native_task_transition_test.ts
+task transition shares one execution across equal cuts and commits after true fan-in ... ok (10ms)
+live task input restart ignores late non-cooperative results and reuses unaffected output ... ok (3ms)
+same selected live value refreshes its cut without restarting tasks ... ok (3ms)
+roots with different live projections receive distinct task executions ... ok (1ms)
+one grouped generation publishes neither root until both are ready; observers see both ... ok (1ms)
+live restart reuses only outputs from the changed root's prior input group ... ok (3ms)
+overlapping operations coexist; root disposal cancels only its own operation ... ok (0ms)
+captures authored tasks and immutable input values at enqueue ... ok (0ms)
+captures reserved immutable and live input keys as ordinary bindings ... ok (0ms)
+initial multi-root capture retries the entire cohort before starting tasks ... ok (0ms)
+explicit operation keys replace prior work; unkeyed overlap remains independent ... ok (1ms)
+cancellation aborts providers and releases task-only store subscriptions ... ok (0ms)
+hidden task prewarm continues after its visible root commits ... ok (1ms)
+committed prewarm is cancelled only after its last interested root detaches ... ok (1ms)
+unrelated store notifications do not restart declared task inputs ... ok (1ms)
+input notifications arriving during a recapture are drained instead of dropped ... ok (0ms)
+
+ok | 24 passed | 0 failed (94ms)
+

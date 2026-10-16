@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "high-frequency-postbuild-transform-audit-v2",
+  "status": "FAIL",
+  "supersedesReport": {
+    "path": "build-proof-status.json",
+    "sha256": "e22da81d1dd53a4819bd5b739b3a76103e6092ea51b1f31bc68ad66eba6e7532",
+    "reason": "V1 misread programId presence from a plan-oriented interpretation; V2 parses actual __nativeDefineComponent call registrations and stateLayout objects from native-transformed.js."
+  },
+  "productionBundleProduced": true,
+  "buildProofGate": "FAIL",
+  "nativeTransform": {
+    "path": "native-transformed.js",
+    "sha256": "ed81f28e857bfbf0ce81944a3b1d268ef29c30e10afb622856dbe276f4a428c2",
+    "components": [
+      {
+        "name": "NativeRowA",
+        "componentId": "src/browser/native_high_frequency_arm.tsx#component:NativeRowA",
+        "programId": "src/browser/native_high_frequency_arm.tsx#component:NativeRowA",
+        "schemaVersion": 1,
+        "slots": [
+          {
+            "siteId": "src/browser/native_high_frequency_arm.tsx#component:NativeRowA#state:0",
+            "slot": 0
+          },
+          {
+            "siteId": "src/browser/native_high_frequency_arm.tsx#component:NativeRowA#state:1",
+            "slot": 1
+          },
+          {
+            "siteId": "src/browser/native_high_frequency_arm.tsx#component:NativeRowA#state:2",
+            "slot": 2
+          }
+        ]
+      },
+      {
+        "name": "NativeRowB",
+        "componentId": "src/browser/native_high_frequency_arm.tsx#component:NativeRowB",
+        "programId": "src/browser/native_high_frequency_arm.tsx#component:NativeRowB",
+        "schemaVersion": 1,
+        "slots": [
+          {
+            "siteId": "src/browser/native_high_frequency_arm.tsx#component:NativeRowB#state:0",
+            "slot": 0
+          },
+          {
+            "siteId": "src/browser/native_high_frequency_arm.tsx#component:NativeRowB#state:1",
+            "slot": 1
+          },
+          {
+            "siteId": "src/browser/native_high_frequency_arm.tsx#component:NativeRowB#state:2",
+            "slot": 2
+          }
+        ]
+      }
+    ],
+    "allRowsHaveMatchingProgramIdAndThreeSlots": true,
+    "componentMixConditionalMapsBothRows": true
+  },
+  "reactTransform": {
+    "path": "react-transformed.js",
+    "sha256": "afea9c79adf5bb6fb33d2e265d506970aae8d1760979e2222fc776688a8e952b",
+    "rowCacheAllocations": {
+      "ReactRowA": false,
+      "ReactRowB": false
+    },
+    "boardCacheAllocation": true,
+    "diagnosticsPath": "react-compiler-diagnostics.json",
+    "diagnosticsSha256": "561cc81da706072292e3cfdc2de4eed072337b07c01a0054c606a98942f45565"
+  },
+  "blocker": "React Compiler diagnostics report Immutability CompileError for both row components because the effect body mutates session.mounts; these errors prevented row compilation/memo caches.",
+  "nextStageChange": "Move lifecycle and setter-map mutations behind session callback methods owned by each arm factory; preserve row props, three state hooks, render output, selection, and timing boundaries."
+}

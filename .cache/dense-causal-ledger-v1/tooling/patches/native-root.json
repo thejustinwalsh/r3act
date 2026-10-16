@@ -1,0 +1,22 @@
+[
+  {
+    "find": "  #acknowledgeNativeCellCut(count: number) {\n    if (this.#disposed) return;",
+    "replace": "  #acknowledgeNativeCellCut(count: number) {\n    const ledger = (globalThis as any).__denseLedger;\n    ledger?.mark(\"native.ack.start\");\n    ledger?.count(\"native.ack.cells\", count);\n    if (this.#disposed) return;"
+  },
+  {
+    "find": "    this.#pendingChanges.clearNativeThrough(\n      this.#nativeCellHandles,\n      this.#nativeCellVersions,\n      count,\n    );\n  }",
+    "replace": "    this.#pendingChanges.clearNativeThrough(\n      this.#nativeCellHandles,\n      this.#nativeCellVersions,\n      count,\n    );\n    ledger?.mark(\"native.ack.end\");\n  }"
+  },
+  {
+    "find": "  #tryCommitNativeRows(count: number): boolean | null {\n    if (this.#nativeChangedRows.length < count) {",
+    "replace": "  #tryCommitNativeRows(count: number): boolean | null {\n    const ledger = (globalThis as any).__denseLedger;\n    ledger?.mark(\"native.resolve.start\");\n    ledger?.count(\"native.row.inputCells\", count);\n    if (this.#nativeChangedRows.length < count) {"
+  },
+  {
+    "find": "        this.#nativeChangedSlots[index] = view.slot;\n        this.#numericProgramSources[index] = view.source;\n        this.#numericProgramCurrentValues[index] = view.columns[view.slot].values[view.row];\n        this.#numericProgramUsedCount = index + 1;\n      }\n      let declined = false;\n      let wrote = this.#commitHostMutation(() => {",
+    "replace": "        this.#nativeChangedSlots[index] = view.slot;\n        this.#numericProgramSources[index] = view.source;\n        this.#numericProgramCurrentValues[index] = view.columns[view.slot].values[view.row];\n        this.#numericProgramUsedCount = index + 1;\n      }\n      ledger?.mark(\"native.resolve.end\");\n      ledger?.count(\"native.row.distinctRows\", this.#nativeRowUsedCount);\n      let declined = false;\n      let wrote = this.#commitHostMutation(() => {"
+  },
+  {
+    "find": "    const count = this.#pendingChanges.captureNative(\n      this.#nativeCellHandles,\n      this.#nativeCellVersions,\n    );",
+    "replace": "    const ledger = (globalThis as any).__denseLedger;\n    ledger?.mark(\"native.capture.start\");\n    const count = this.#pendingChanges.captureNative(\n      this.#nativeCellHandles,\n      this.#nativeCellVersions,\n    );\n    ledger?.mark(\"native.capture.end\");"
+  }
+]

@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "dense-ledger-native-128-pilot-v1",
+  "approval": "native arm, 128 rows only; original -> off -> on -> count, then existing analyzer; stop on first failed collector",
+  "outcome": "BLOCKED_AFTER_FIRST_FAILED_COLLECTOR",
+  "collectorInvocations": [
+    {
+      "mode": "original",
+      "arm": "native",
+      "rows": 128,
+      "exitCode": 1,
+      "stdout": "original.stdout.log",
+      "stderr": "original.stderr.log",
+      "record": "../runs/original-native-128-1791945769047-97cdb0d3-eb67-4932-ae3d-37fe979b3330/record.json",
+      "status": "FAIL",
+      "failure": "Headless Chromium launch aborted under sandbox; Playwright logged kill EPERM for PID 81041. Failure occurred before navigation; no browser result, samples, asset responses or measurements."
+    }
+  ],
+  "notRun": [
+    "diagnostic off collector",
+    "diagnostic on collector",
+    "diagnostic count collector",
+    "pilot analyzer"
+  ],
+  "cleanup": {
+    "originalPreviewSession": 60894,
+    "diagnosticPreviewSession": 43361,
+    "bothExitedByCtrlCWithCode": 130,
+    "portlessRoutesAfterStop": "only the three previously present unrelated aliases remain",
+    "ownedPreviewURLChecks": "both app names return proxy 404 after sessions stopped",
+    "sharedPortlessProxyLeftRunning": true
+  },
+  "integrity": {
+    "frozenInputCount": 287,
+    "changedFrozenInputs": 0,
+    "diagnosticBuildLockSha256": "68fefba20876c02c0e2013699c64d4b31eb4deb6d02b3abbacb2fde09f798372",
+    "originalAssetsMatchedBeforeRun": true,
+    "diagnosticAssetsMatchedBeforeRun": true,
+    "details": "cleanup-and-integrity.json and readiness asset receipts"
+  },
+  "noMeasurementsInvented": true
+}

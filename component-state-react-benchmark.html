@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Local state update: React vs compiled runtime</title>
+    <style>
+      body { font: 15px/1.5 ui-monospace, monospace; margin: 2rem; }
+      label, button { margin-right: .75rem; }
+      #result { white-space: pre-wrap; overflow-wrap: anywhere; }
+      .pass { color: #087443; }
+      .fail { color: #b42318; }
+      .roots { position: fixed; left: -200vw; top: 0; opacity: 0; pointer-events: none; contain: layout; }
+    </style>
+  </head>
+  <body>
+    <h1>One local state update per arm</h1>
+    <p>Each timed update clicks the same keyed leaf and waits for its committed output. The timer includes event dispatch and the framework update through host commit, not mount, layout, or paint.</p>
+    <label>Components <select id="count"><option>100</option><option>1000</option><option>5000</option><option selected>10000</option></select></label>
+    <label>Seed <input id="seed" type="number" value="71000001" /></label>
+    <button id="run">Run paired study</button>
+    <button id="export" disabled>Export JSON</button>
+    <pre id="result">Ready.</pre>
+    <div class="roots"><div id="react-root"></div><div id="runtime-root"></div></div>
+    <script type="module" src="/src/browser/component_state_react_benchmark.tsx"></script>
+  </body>
+</html>

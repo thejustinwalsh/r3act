@@ -1,0 +1,326 @@
+{
+  "schemaVersion": "keyed-region-columnar-layout-v1-summary",
+  "status": "EXPLORATORY_PASS",
+  "benchmark": "keyed bucket move and allocation-free ordered scan microbenchmark",
+  "replications": [
+    {
+      "replication": 1,
+      "runtime": {
+        "node": "v24.19.0",
+        "v8": "13.6.233.17-node.51",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      "measuredOperationsPerArm": 315
+    },
+    {
+      "replication": 2,
+      "runtime": {
+        "node": "v24.19.0",
+        "v8": "13.6.233.17-node.51",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      "measuredOperationsPerArm": 315
+    },
+    {
+      "replication": 3,
+      "runtime": {
+        "node": "v24.19.0",
+        "v8": "13.6.233.17-node.51",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      "measuredOperationsPerArm": 315
+    }
+  ],
+  "aggregation": "median of per-process sample medians; p95 is median of per-process p95 values",
+  "cells": [
+    {
+      "size": 1000,
+      "scenario": "head-to-tail",
+      "processReplications": 3,
+      "arms": {
+        "array-map": {
+          "medianOfProcessMediansMs": 0.013791999999995141,
+          "medianOfProcessP95Ms": 0.018582999999999572,
+          "processMedianRangeMs": [
+            0.013708000000001164,
+            0.015166000000000679
+          ]
+        },
+        "object-buckets": {
+          "medianOfProcessMediansMs": 0.0011670000000023606,
+          "medianOfProcessP95Ms": 0.003958000000004347,
+          "processMedianRangeMs": [
+            0.0010839999999987526,
+            0.0012499999999988631
+          ]
+        },
+        "columnar-buckets": {
+          "medianOfProcessMediansMs": 0.00216700000000003,
+          "medianOfProcessP95Ms": 0.009582999999999231,
+          "processMedianRangeMs": [
+            0.0020840000000035275,
+            0.0022090000000005716
+          ]
+        }
+      }
+    },
+    {
+      "size": 1000,
+      "scenario": "middle-to-tail",
+      "processReplications": 3,
+      "arms": {
+        "array-map": {
+          "medianOfProcessMediansMs": 0.005583000000001448,
+          "medianOfProcessP95Ms": 0.006166999999990708,
+          "processMedianRangeMs": [
+            0.005375000000000796,
+            0.005832999999995536
+          ]
+        },
+        "object-buckets": {
+          "medianOfProcessMediansMs": 0.0007080000000030395,
+          "medianOfProcessP95Ms": 0.0025830000000013342,
+          "processMedianRangeMs": [
+            0.0007080000000030395,
+            0.0007909999999924366
+          ]
+        },
+        "columnar-buckets": {
+          "medianOfProcessMediansMs": 0.0017919999999946867,
+          "medianOfProcessP95Ms": 0.0050829999999990605,
+          "processMedianRangeMs": [
+            0.0016669999999976426,
+            0.0017920000000088976
+          ]
+        }
+      }
+    },
+    {
+      "size": 1000,
+      "scenario": "full-sequential-scan",
+      "processReplications": 3,
+      "arms": {
+        "array-map": {
+          "medianOfProcessMediansMs": 0.002708999999867956,
+          "medianOfProcessP95Ms": 0.009583000000020547,
+          "processMedianRangeMs": [
+            0.0026250000000800355,
+            0.0027909999998882995
+          ]
+        },
+        "object-buckets": {
+          "medianOfProcessMediansMs": 0.0028330000000096334,
+          "medianOfProcessP95Ms": 0.010708000000022366,
+          "processMedianRangeMs": [
+            0.0028330000000096334,
+            0.003457999999909589
+          ]
+        },
+        "columnar-buckets": {
+          "medianOfProcessMediansMs": 0.0027500000001055014,
+          "medianOfProcessP95Ms": 0.005249999999932697,
+          "processMedianRangeMs": [
+            0.0026669999999739957,
+            0.0028750000001309672
+          ]
+        }
+      }
+    },
+    {
+      "size": 10000,
+      "scenario": "head-to-tail",
+      "processReplications": 3,
+      "arms": {
+        "array-map": {
+          "medianOfProcessMediansMs": 0.19166699999999537,
+          "medianOfProcessP95Ms": 0.24191700000000083,
+          "processMedianRangeMs": [
+            0.18216699999999264,
+            0.19333400000000722
+          ]
+        },
+        "object-buckets": {
+          "medianOfProcessMediansMs": 0.0009579999999971278,
+          "medianOfProcessP95Ms": 0.003417000000013104,
+          "processMedianRangeMs": [
+            0.0008339999999975589,
+            0.0009999999999763531
+          ]
+        },
+        "columnar-buckets": {
+          "medianOfProcessMediansMs": 0.0017500000000154614,
+          "medianOfProcessP95Ms": 0.007625000000018645,
+          "processMedianRangeMs": [
+            0.0016670000000260643,
+            0.0020409999999912998
+          ]
+        }
+      }
+    },
+    {
+      "size": 10000,
+      "scenario": "middle-to-tail",
+      "processReplications": 3,
+      "arms": {
+        "array-map": {
+          "medianOfProcessMediansMs": 0.06954200000001265,
+          "medianOfProcessP95Ms": 0.07620799999997985,
+          "processMedianRangeMs": [
+            0.06491699999997991,
+            0.07162499999998317
+          ]
+        },
+        "object-buckets": {
+          "medianOfProcessMediansMs": 0.0007090000000005148,
+          "medianOfProcessP95Ms": 0.0027910000000019863,
+          "processMedianRangeMs": [
+            0.0007090000000005148,
+            0.0007500000000106866
+          ]
+        },
+        "columnar-buckets": {
+          "medianOfProcessMediansMs": 0.0014999999999929514,
+          "medianOfProcessP95Ms": 0.008125000000006821,
+          "processMedianRangeMs": [
+            0.0014999999999929514,
+            0.0015830000000107702
+          ]
+        }
+      }
+    },
+    {
+      "size": 10000,
+      "scenario": "full-sequential-scan",
+      "processReplications": 3,
+      "arms": {
+        "array-map": {
+          "medianOfProcessMediansMs": 0.046250000000100044,
+          "medianOfProcessP95Ms": 0.060500000000047294,
+          "processMedianRangeMs": [
+            0.03875000000016371,
+            0.04829100000006292
+          ]
+        },
+        "object-buckets": {
+          "medianOfProcessMediansMs": 0.046875,
+          "medianOfProcessP95Ms": 0.061958000000004176,
+          "processMedianRangeMs": [
+            0.04150000000004184,
+            0.051458999999795196
+          ]
+        },
+        "columnar-buckets": {
+          "medianOfProcessMediansMs": 0.03912500000001273,
+          "medianOfProcessP95Ms": 0.056249999999863576,
+          "processMedianRangeMs": [
+            0.038791999999830296,
+            0.042542000000139524
+          ]
+        }
+      }
+    },
+    {
+      "size": 50000,
+      "scenario": "head-to-tail",
+      "processReplications": 3,
+      "arms": {
+        "array-map": {
+          "medianOfProcessMediansMs": 1.169333999999992,
+          "medianOfProcessP95Ms": 1.7212500000000546,
+          "processMedianRangeMs": [
+            1.1548329999999396,
+            1.174000000000035
+          ]
+        },
+        "object-buckets": {
+          "medianOfProcessMediansMs": 0.0007910000000492801,
+          "medianOfProcessP95Ms": 0.0016660000000001673,
+          "processMedianRangeMs": [
+            0.0007500000000391083,
+            0.0008750000000645741
+          ]
+        },
+        "columnar-buckets": {
+          "medianOfProcessMediansMs": 0.0015000000000782165,
+          "medianOfProcessP95Ms": 0.005625000000009095,
+          "processMedianRangeMs": [
+            0.0014999999999645297,
+            0.0015000000000782165
+          ]
+        }
+      }
+    },
+    {
+      "size": 50000,
+      "scenario": "middle-to-tail",
+      "processReplications": 3,
+      "arms": {
+        "array-map": {
+          "medianOfProcessMediansMs": 0.4222499999999627,
+          "medianOfProcessP95Ms": 0.5990829999999505,
+          "processMedianRangeMs": [
+            0.4183330000000751,
+            0.42495800000006057
+          ]
+        },
+        "object-buckets": {
+          "medianOfProcessMediansMs": 0.0005830000000059954,
+          "medianOfProcessP95Ms": 0.0011670000001231529,
+          "processMedianRangeMs": [
+            0.0004999999998744897,
+            0.0006670000000212895
+          ]
+        },
+        "columnar-buckets": {
+          "medianOfProcessMediansMs": 0.0009999999999763531,
+          "medianOfProcessP95Ms": 0.003416999999899417,
+          "processMedianRangeMs": [
+            0.0009999999999763531,
+            0.001040999999986525
+          ]
+        }
+      }
+    },
+    {
+      "size": 50000,
+      "scenario": "full-sequential-scan",
+      "processReplications": 3,
+      "arms": {
+        "array-map": {
+          "medianOfProcessMediansMs": 0.27375000000006366,
+          "medianOfProcessP95Ms": 0.3092079999998987,
+          "processMedianRangeMs": [
+            0.2602079999999205,
+            0.2744589999999789
+          ]
+        },
+        "object-buckets": {
+          "medianOfProcessMediansMs": 0.28449999999998,
+          "medianOfProcessP95Ms": 0.3274580000002061,
+          "processMedianRangeMs": [
+            0.269457999999986,
+            0.28766700000005585
+          ]
+        },
+        "columnar-buckets": {
+          "medianOfProcessMediansMs": 0.31291600000008657,
+          "medianOfProcessP95Ms": 0.3505000000000109,
+          "processMedianRangeMs": [
+            0.30112499999995634,
+            0.31779200000005403
+          ]
+        }
+      }
+    }
+  ],
+  "limitations": [
+    "One host/runtime and three serialized Node processes; this is not browser or end-to-end UI evidence.",
+    "The columnar candidate stores parallel JavaScript arrays of strings and values, not typed numeric VDOM columns.",
+    "The measured scan reads only ordered keys and values; it does not model props, dependency dispatch, or host writes.",
+    "No allocation, heap, garbage-collection, or hardware cache-miss measurements were collected.",
+    "Many local edit samples are below one microsecond; interpret small differences as directional only."
+  ]
+}

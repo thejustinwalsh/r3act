@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Native event to source update differential</title>
+    <style>
+      body { font: 15px/1.5 ui-monospace, monospace; margin: 2rem; }
+      main { display: flex; gap: 2rem; margin-block: 1rem; }
+      section { width: 16rem; }
+      [data-meter] { height: 1rem; min-width: 1px; background: #0f766e; margin-top: .5rem; }
+      #result { white-space: pre-wrap; }
+      .pass { color: #087443; }
+      .fail { color: #b42318; }
+    </style>
+  </head>
+  <body>
+    <h1>Native event to source update</h1>
+    <p>Same click sequence and output contract in React 19.3.0 and the retained VDOM source-binding path.</p>
+    <main>
+      <section><h2>React</h2><div id="react-root"></div></section>
+      <section><h2>Retained VDOM</h2><div id="vdom-root"></div></section>
+    </main>
+    <pre id="result">Running…</pre>
+    <script type="module" src="/src/browser/event_source_differential.ts"></script>
+  </body>
+</html>

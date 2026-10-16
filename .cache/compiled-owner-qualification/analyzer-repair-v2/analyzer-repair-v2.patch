@@ -1,0 +1,128 @@
+--- scripts/summarize_product_mixed_compiled_owner_rows.mjs	2026-10-13 07:53:05
++++ scripts/summarize_product_mixed_compiled_owner_rows_v2.mjs	2026-10-13 08:31:28
+@@ -11,8 +11,8 @@
+ const collectionManifestPath = path.join(rawDirectory, "manifest.json");
+ const finalResultsPath = path.join(rawDirectory, "FINALresults.json");
+ const postlockPath = path.join(rawDirectory, "postlock.json");
+-const summaryPath = path.join(rawDirectory, "summary.json");
+-const svgPath = path.join(rawDirectory, "summary.svg");
++const summaryPath = path.join(rawDirectory, "summary-v2.json");
++const svgPath = path.join(rawDirectory, "summary-v2.svg");
+ const expectedProtocolPath = "product-mixed-compiled-owner-rows-confirmation-protocol.md";
+ const protocolPath = path.join(projectRoot, expectedProtocolPath);
+ const sizes = [128, 512, 1024];
+@@ -30,10 +30,14 @@
+ const basePreviewConfigPath = "vite.product-mixed-compiled-owner-rows.config.ts";
+ const collectorPath = "scripts/collect_product_mixed_compiled_owner_rows.mjs";
+ const analyzerPath = "scripts/summarize_product_mixed_compiled_owner_rows.mjs";
++const v2AnalyzerPath = "scripts/summarize_product_mixed_compiled_owner_rows_v2.mjs";
++const v2VerifierPath = "scripts/verify_product_mixed_compiled_owner_rows_evidence_v2.mjs";
+ const verifierPath = "scripts/verify_product_mixed_compiled_owner_rows_evidence.mjs";
+ const scheduleSourcePath = "src/browser/product_mixed_schedule.ts";
+ const buildDirectory = "dist-product-mixed-compiled-owner-rows";
+ const expectedArchiveSha256 = "4aabe8b6cb3168aae50ba8474464452494d790aac60b472611fc20f54ec7a08c";
++const expectedRawStudy = "compiled-product-mixed-owner-rows-confirmation";
++const originalSummaryPath = path.join(rawDirectory, "summary.json");
+ const expectedChromiumDiagnosticPath = "results/numeric-cell-storage-candidate-v5/diagnostic.json";
+ const expectedChromiumDiagnosticScriptPath = "results/numeric-cell-storage-candidate-v5/inspect_numeric_cell_storage_candidate_v5.mjs";
+ const expectedChromiumDiagnosticBundlePath = "results/numeric-cell-storage-candidate-v5/owner-state-world.iife.js";
+@@ -102,6 +106,7 @@
+ 
+ const expectedPages = expectedSchedule();
+ const registeredSchedule = Array.isArray(preregistration?.schedule) ? preregistration.schedule : [];
++if (preregistration?.study !== expectedRawStudy) preregistrationErrors.push("Prerecording study identifier differs from the frozen compiled owner-rows confirmation study");
+ if (!Array.isArray(preregistration?.schedule)) preregistrationErrors.push("Preregistration schedule is missing or not an array");
+ if (registeredSchedule.length !== expectedRecordCount) {
+   preregistrationErrors.push(`Preregistration schedule has ${registeredSchedule.length} entries; expected ${expectedRecordCount}`);
+@@ -392,10 +397,10 @@
+   const pilotManifestHash = sha256(pilotManifestBytes);
+   const pilotManifest = JSON.parse(pilotManifestBytes.toString("utf8"));
+   const expectedPilotRecords = [128, 512, 1024].flatMap((size) => [
+-    { arm: "native", size, status: "PASS", file: `native-${size}.json` },
+-    { arm: "react", size, status: "PASS", file: `react-${size}.json` },
++    { arm: "native", size, status: "PASS" },
++    { arm: "react", size, status: "PASS" },
+   ]);
+-  const expectedPilotPageFiles = expectedPilotRecords.map(({ arm, size, file }) => ({ arm, size, file }));
++  const expectedPilotPageFiles = expectedPilotRecords.map(({ arm, size }) => ({ arm, size, file: `${arm}-${size}.json` }));
+   const expectedProductionHashes = Object.fromEntries(Object.entries(candidateStatus.sourceAndBuildSha256 ?? {})
+     .filter(([filename]) => filename.startsWith(`${buildDirectory}/`)));
+   const expectedPilotEngineEpoch = {
+@@ -761,7 +766,7 @@
+     if (manifestEntry.file !== `results/product-mixed-compiled-owner-rows-confirmation/${filename}`) validationErrors.push("Collection manifest raw-file path differs from expected filename");
+     if (manifestEntry.sha256 !== rawSha256) validationErrors.push("Raw record SHA-256 differs from collection manifest");
+   }
+-  if (wrapper.schemaVersion !== 1 || wrapper.study !== "compiled-product-mixed-compiled-owner-rows-confirmation") validationErrors.push("Raw wrapper study or schema version is invalid");
++  if (wrapper.schemaVersion !== 1 || wrapper.study !== expectedRawStudy) validationErrors.push("Raw wrapper study or schema version is invalid");
+   if (!Number.isFinite(Date.parse(wrapper.startedAt)) || !Number.isFinite(Date.parse(wrapper.finishedAt)) || Date.parse(wrapper.finishedAt) < Date.parse(wrapper.startedAt)) validationErrors.push("Raw wrapper timestamps are missing or out of order");
+   if (wrapper.preregistrationSha256 !== preregistrationSha256) validationErrors.push("Raw wrapper preregistration hash differs from frozen preregistration");
+   if (wrapper.archiveSha256 !== preregistration?.archiveSha256) validationErrors.push("Raw wrapper archive hash differs from frozen archive");
+@@ -931,7 +936,7 @@
+ const directoryErrors = [];
+ try {
+   const names = await readdir(rawDirectory);
+-  const allowedJson = new Set(["preregistration.json", "manifest.json", "postlock.json", "FINALresults.json", "summary.json", "verification.json"]);
++  const allowedJson = new Set(["preregistration.json", "manifest.json", "postlock.json", "FINALresults.json", "summary.json", "summary-v2.json", "verification.json", "verification-v2.json"]);
+   const unexpectedJson = names.filter((name) => name.endsWith(".json") && !/^sequence-\d{2}\.json$/.test(name) && !allowedJson.has(name));
+   const sequenceFiles = names.filter((name) => /^sequence-\d{2}\.json$/.test(name));
+   if (sequenceFiles.length !== expectedRecordCount) {
+@@ -1069,11 +1074,55 @@
+       ? "UNRESOLVED"
+       : "PASS";
+ 
+-const summary = {
+-  schemaVersion: "product-mixed-compiled-owner-rows-confirmation-analysis-v1",
+-  study: "compiled-product-mixed-compiled-owner-rows-confirmation",
++let originalSummary = null;
++let originalSummarySha256 = null;
++try {
++  const bytes = await readFile(originalSummaryPath);
++  originalSummarySha256 = sha256(bytes);
++  originalSummary = JSON.parse(bytes.toString("utf8"));
++} catch (error) {
++  archiveContentErrors.push(`Cannot read preserved V1 summary for repair provenance: ${String(error)}`);
++}
++const v2AnalyzerSha256 = sha256(await readFile(fileURLToPath(import.meta.url)));
++const v2VerifierSha256 = sha256(await readFile(path.resolve(projectRoot, v2VerifierPath)));
++const originalAnalyzerSha256 = frozenInputLocks[analyzerPath] ?? null;
++const originalVerifierPath = preregistration?.verifier?.path ?? verifierPath;
++const originalVerifierSha256 = frozenInputLocks[originalVerifierPath] ?? null;
++const v2GeneratedAt = new Date().toISOString();
++const originalValidationErrors = [
++  ...(originalSummary?.validation?.preregistrationErrors ?? []),
++  ...(originalSummary?.validation?.archiveContentErrors ?? []),
++  ...(originalSummary?.validation?.directoryErrors ?? []),
++  ...(originalSummary?.validation?.invalidPages ?? []).flatMap((page) =>
++    (page.validationErrors ?? []).map((error) => `${page.filename}: ${error}`)
++  ),
++];
++
++const summary = {
++  schemaVersion: "product-mixed-compiled-owner-rows-confirmation-analysis-v2",
++  study: expectedRawStudy,
+   gate,
+-  generatedAt: new Date().toISOString(),
++  generatedAt: v2GeneratedAt,
++  repairProvenance: {
++    reason: "The preserved V1 analyzer expected a nonmatching raw study identifier and expected a file field on manifest.records; V2 matches the frozen preregistration identifier and the actual separate pageFiles record shape.",
++    originalAnalyzer: { path: analyzerPath, sha256: originalAnalyzerSha256 },
++    originalVerifier: { path: originalVerifierPath, sha256: originalVerifierSha256 },
++    originalSummary: {
++      path: "results/product-mixed-compiled-owner-rows-confirmation/summary.json",
++      sha256: originalSummarySha256,
++      gate: originalSummary?.gate ?? null,
++      validation: originalSummary?.validation ?? null,
++      validationErrors: originalValidationErrors,
++    },
++    v2Analyzer: { path: v2AnalyzerPath, sha256: v2AnalyzerSha256 },
++    v2Verifier: { path: v2VerifierPath, sha256: v2VerifierSha256 },
++    v2Run: {
++      generatedAt: v2GeneratedAt,
++      rawRunId: preregistration?.runId ?? null,
++      reusedRawRecords: true,
++      recordCount: expectedRecordCount,
++    },
++  },
+   preregistration: {
+     path: "results/product-mixed-compiled-owner-rows-confirmation/preregistration.json",
+     sha256: preregistrationSha256,

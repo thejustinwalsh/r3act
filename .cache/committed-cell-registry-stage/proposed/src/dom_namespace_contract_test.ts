@@ -1,0 +1,1 @@
+../../../../src/dom_namespace_contract_test.ts

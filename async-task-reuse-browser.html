@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Async task reuse: React vs compiled runtime</title>
+    <style>
+      body {
+        max-width: 1120px;
+        margin: 32px auto;
+        padding: 0 20px;
+        font: 16px/1.5 system-ui, sans-serif;
+        color: #172033;
+      }
+      .lede, .note {
+        color: #536078;
+      }
+      button {
+        padding: 9px 14px;
+        margin-right: 8px;
+      }
+      .arms {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        margin: 20px 0;
+      }
+      .arm {
+        border: 1px solid #cbd3df;
+        border-radius: 8px;
+        padding: 12px;
+        min-height: 130px;
+        overflow-wrap: anywhere;
+      }
+      .arm h2 {
+        font-size: 17px;
+      }
+      input {
+        width: 120px;
+        padding: 6px;
+      }
+      [data-node="result"] {
+        display: block;
+        margin-top: 12px;
+      }
+      #status {
+        white-space: pre-wrap;
+        background: #f4f6fa;
+        padding: 12px;
+        min-height: 80px;
+        overflow: auto;
+      }
+      @media (max-width: 760px) {
+        .arms {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Async invalidation and retry: React vs compiled runtime</h1>
+    <p class="lede">
+      React uses React Compiler, a Suspense resource cache, and a transition.
+      The compiled runtime uses the OXC task DAG, same-root urgent state, and
+      either full restart or reuse of completed tasks outside the changed-input
+      closure.
+    </p>
+    <p class="note">
+      Each trial starts a slow stale search, changes the query while it is
+      pending, then measures query-update to fresh DOM commit. React keeps the
+      old result visible and transitions only to the latest query; the runtime
+      starts the stale task and invalidates it when ECS state changes. The
+      independent catalog result is cached by React and reused by the runtime's
+      selective policy. Mount, layout, paint, and frame presentation are
+      excluded.
+    </p>
+    <button id="run">Run browser retry study</button>
+    <button id="export" disabled>Download JSON</button>
+    <div class="arms">
+      <section class="arm">
+        <h2>React 19 + Compiler</h2>
+        <div id="react-root"></div>
+      </section>
+      <section class="arm">
+        <h2>Compiled runtime: full restart</h2>
+        <div id="full-root"></div>
+      </section>
+      <section class="arm">
+        <h2>Compiled runtime: completed reuse</h2>
+        <div id="reuse-root"></div>
+      </section>
+    </div>
+    <pre id="status" aria-live="polite">Ready.</pre>
+    <script
+      type="module"
+      src="/src/browser/async_task_reuse_browser.tsx"
+    ></script>
+  </body>
+</html>

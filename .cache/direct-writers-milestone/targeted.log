@@ -1,0 +1,43 @@
+Check src/component_state_runtime_test.ts
+Check src/native_direct_writers_test.ts
+Check src/vdom_binding_index_test.ts
+Check src/vdom_derived_equality_test.ts
+running 14 tests from ./src/component_state_runtime_test.ts
+OXC-lowered state sites execute through VDOM and survive conditional activation ... ok (5ms)
+OXC-lowered keyed components preserve state and host nodes through reorder and removal ... ok (1ms)
+failed component candidate removes new owner state and preserves committed output ... ok (1ms)
+compiled component event writes automatically coalesce into one scheduled VDOM commit ... ok (0ms)
+state updates rerun only the owning component and match a forced full render ... ok (0ms)
+component partial commit falls back without rendering a structural update twice ... ok (0ms)
+structural owner updates reconcile one keyed region and preserve child state ... ok (1ms)
+compiled invalidation edges select the state-owning component region ... ok (0ms)
+nested dirty descendants reuse clean component subtrees without dropping effects ... ok (0ms)
+indexed leaf updates remain local beneath Fragment-only component groups ... ok (2ms)
+batched state writes update multiple owner regions in one indexed commit ... ok (0ms)
+effect sites run after successful activation and clean up on site or owner removal ... ok (0ms)
+compiled keyed-owner reuse skips generic expansion for same-key reorder and falls back safely ... ok (1ms)
+token keyed-owner reuse skips eligibility rows and mismatches before fallback ... ok (0ms)
+running 6 tests from ./src/native_direct_writers_test.ts
+native style bindings use the whole property contract when the host lacks style field writes ... ok (4ms)
+native roots write changed bound style properties without replacing static styles ... ok (0ms)
+native roots batch compounded bindings on store and structural candidates before effects ... ok (1ms)
+native direct writer keeps a reentrant state write for the next flush ... ok (0ms)
+native direct bindings retain keyed hosts across insert and move and release removed sources ... ok (2ms)
+empty-start roots use direct style writers after keyed schema discovery ... ok (1ms)
+running 6 tests from ./src/vdom_binding_index_test.ts
+delta and rebuild binding indexes agree across source, style, and removal changes ... ok (12ms)
+delta binding registration changes only groups with changed source membership ... ok (0ms)
+cleanup failure does not retain bindings for a disposed host node ... ok (0ms)
+plain scalar binding metadata stays sparse-ineligible when compiler tags differ ... ok (0ms)
+direct scalar styles retain CSR/column fallback after rebuild and incremental metadata changes ... ok (0ms)
+mode and graph transitions rebuild before plain delta maintenance resumes ... ok (0ms)
+running 6 tests from ./src/vdom_derived_equality_test.ts
+direct derived bindings suppress unchanged primitive projections ... ok (1ms)
+derived equality handles null and NaN primitive results ... ok (7ms)
+stable mutable vector bindings retain forced writes ... ok (0ms)
+multi-source batch writes only changed derived results ... ok (0ms)
+derived equality does not swallow host writer errors ... ok (0ms)
+numeric column dirty-row writers retain primitive equality behavior ... ok (1ms)
+
+ok | 32 passed | 0 failed (153ms)
+

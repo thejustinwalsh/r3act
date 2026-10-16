@@ -1,0 +1,809 @@
+{
+  "schemaVersion": 1,
+  "experiment": "paired React two-trait subscriptions vs OXC multi-source CSR and dense dependency dispatch",
+  "timestamp": "2026-10-09T17:45:00.963Z",
+  "seed": 31100006,
+  "entities": 10000,
+  "changedFraction": 1,
+  "changedEntitiesPerBatch": 10000,
+  "sourceSlotsChangedPerBatch": 20000,
+  "hostPropsChangedPerBatch": 30000,
+  "warmupPairs": 24,
+  "timedPairs": 48,
+  "repeatsPerPair": 1,
+  "orderProtocol": "balanced blocks over all six three-arm permutations; seeded xorshift32",
+  "reactBaseline": "React 19.3 + React Compiler; one component per entity; two useSyncExternalStore subscriptions; batched x/y writes in flushSync",
+  "graphPlan": {
+    "compiler": "OXC Rust frontend, schema v4",
+    "sourceCount": 2,
+    "sourcePaths": [
+      "node.x",
+      "node.y"
+    ],
+    "sourceBindingOffsets": [
+      0,
+      2,
+      3
+    ],
+    "bindingIds": [
+      0,
+      2,
+      1
+    ],
+    "bindings": [
+      {
+        "id": 0,
+        "property": "left",
+        "sourceSlot": 0
+      },
+      {
+        "id": 1,
+        "property": "opacity",
+        "sourceSlot": 1
+      },
+      {
+        "id": 2,
+        "property": "transform",
+        "sourceSlot": 0
+      }
+    ]
+  },
+  "setupMs": {
+    "reactMs": 90.79999999701977,
+    "csrMs": 30.300000000745058,
+    "denseMs": 11
+  },
+  "summaries": {
+    "react": {
+      "medianMs": 64.59999999403954,
+      "p95Ms": 73.20000000298023
+    },
+    "csr": {
+      "medianMs": 7.899999998509884,
+      "p95Ms": 12.700000002980232
+    },
+    "dense": {
+      "medianMs": 7.300000004470348,
+      "p95Ms": 8.300000004470348
+    }
+  },
+  "pairedWins": {
+    "denseVsCsr": 38,
+    "denseVsReact": 48,
+    "csrVsReact": 48
+  },
+  "parityFailures": 0,
+  "environment": {
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+    "platform": "MacIntel",
+    "hardwareConcurrency": 10,
+    "devicePixelRatio": 2,
+    "visibilityState": "visible",
+    "react": "19.3.0",
+    "reactCompiler": "1.0.0",
+    "build": "Vite production",
+    "timing": "performance.now; input loop plus synchronous update and host commit; paint excluded"
+  },
+  "pairs": [
+    {
+      "pair": 1,
+      "order": [
+        "csr",
+        "dense",
+        "react"
+      ],
+      "timingsMs": {
+        "react": 68.60000000149012,
+        "csr": 8.5,
+        "dense": 7.700000002980232
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 2,
+      "order": [
+        "dense",
+        "csr",
+        "react"
+      ],
+      "timingsMs": {
+        "react": 69.90000000596046,
+        "csr": 7.899999998509884,
+        "dense": 7.5
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 3,
+      "order": [
+        "react",
+        "csr",
+        "dense"
+      ],
+      "timingsMs": {
+        "react": 43.79999999701977,
+        "csr": 8.100000001490116,
+        "dense": 12.800000004470348
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 4,
+      "order": [
+        "dense",
+        "react",
+        "csr"
+      ],
+      "timingsMs": {
+        "react": 65.90000000596046,
+        "csr": 7.699999995529652,
+        "dense": 6.699999995529652
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 5,
+      "order": [
+        "csr",
+        "react",
+        "dense"
+      ],
+      "timingsMs": {
+        "react": 53.400000005960464,
+        "csr": 8,
+        "dense": 6.899999998509884
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 6,
+      "order": [
+        "react",
+        "dense",
+        "csr"
+      ],
+      "timingsMs": {
+        "react": 59,
+        "csr": 7.600000001490116,
+        "dense": 7.899999998509884
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 7,
+      "order": [
+        "react",
+        "csr",
+        "dense"
+      ],
+      "timingsMs": {
+        "react": 73.20000000298023,
+        "csr": 9.299999997019768,
+        "dense": 7.5
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 8,
+      "order": [
+        "dense",
+        "react",
+        "csr"
+      ],
+      "timingsMs": {
+        "react": 64.19999999552965,
+        "csr": 7.700000002980232,
+        "dense": 7
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 9,
+      "order": [
+        "react",
+        "dense",
+        "csr"
+      ],
+      "timingsMs": {
+        "react": 60.100000001490116,
+        "csr": 7.600000001490116,
+        "dense": 7.299999997019768
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 10,
+      "order": [
+        "csr",
+        "dense",
+        "react"
+      ],
+      "timingsMs": {
+        "react": 68,
+        "csr": 7.199999995529652,
+        "dense": 7.100000001490116
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 11,
+      "order": [
+        "dense",
+        "csr",
+        "react"
+      ],
+      "timingsMs": {
+        "react": 70.70000000298023,
+        "csr": 8.199999995529652,
+        "dense": 7.300000004470348
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 12,
+      "order": [
+        "csr",
+        "react",
+        "dense"
+      ],
+      "timingsMs": {
+        "react": 56.19999999552965,
+        "csr": 7.700000002980232,
+        "dense": 7.100000001490116
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 13,
+      "order": [
+        "react",
+        "dense",
+        "csr"
+      ],
+      "timingsMs": {
+        "react": 59.70000000298023,
+        "csr": 7.899999998509884,
+        "dense": 7.100000001490116
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 14,
+      "order": [
+        "dense",
+        "csr",
+        "react"
+      ],
+      "timingsMs": {
+        "react": 71.10000000149012,
+        "csr": 7.899999998509884,
+        "dense": 7.600000001490116
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 15,
+      "order": [
+        "csr",
+        "dense",
+        "react"
+      ],
+      "timingsMs": {
+        "react": 67.59999999403954,
+        "csr": 7.5,
+        "dense": 8.300000004470348
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 16,
+      "order": [
+        "dense",
+        "react",
+        "csr"
+      ],
+      "timingsMs": {
+        "react": 58.399999998509884,
+        "csr": 8.100000001490116,
+        "dense": 7.5
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 17,
+      "order": [
+        "csr",
+        "react",
+        "dense"
+      ],
+      "timingsMs": {
+        "react": 54.80000000447035,
+        "csr": 7.399999998509884,
+        "dense": 7.600000001490116
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 18,
+      "order": [
+        "react",
+        "csr",
+        "dense"
+      ],
+      "timingsMs": {
+        "react": 62.19999999552965,
+        "csr": 8,
+        "dense": 7.700000002980232
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 19,
+      "order": [
+        "react",
+        "csr",
+        "dense"
+      ],
+      "timingsMs": {
+        "react": 83.60000000149012,
+        "csr": 16.5,
+        "dense": 6.899999998509884
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 20,
+      "order": [
+        "csr",
+        "dense",
+        "react"
+      ],
+      "timingsMs": {
+        "react": 69.39999999850988,
+        "csr": 7.4000000059604645,
+        "dense": 6.799999997019768
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 21,
+      "order": [
+        "dense",
+        "react",
+        "csr"
+      ],
+      "timingsMs": {
+        "react": 57.5,
+        "csr": 8.100000001490116,
+        "dense": 8.300000004470348
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 22,
+      "order": [
+        "react",
+        "dense",
+        "csr"
+      ],
+      "timingsMs": {
+        "react": 58.29999999701977,
+        "csr": 7.899999998509884,
+        "dense": 7.5
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 23,
+      "order": [
+        "csr",
+        "react",
+        "dense"
+      ],
+      "timingsMs": {
+        "react": 71.5,
+        "csr": 7.0999999940395355,
+        "dense": 7.600000001490116
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 24,
+      "order": [
+        "dense",
+        "csr",
+        "react"
+      ],
+      "timingsMs": {
+        "react": 68.5,
+        "csr": 8,
+        "dense": 6.899999998509884
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 25,
+      "order": [
+        "csr",
+        "dense",
+        "react"
+      ],
+      "timingsMs": {
+        "react": 72.89999999850988,
+        "csr": 7.5,
+        "dense": 8.100000001490116
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 26,
+      "order": [
+        "react",
+        "dense",
+        "csr"
+      ],
+      "timingsMs": {
+        "react": 41.70000000298023,
+        "csr": 8,
+        "dense": 7.5
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 27,
+      "order": [
+        "react",
+        "csr",
+        "dense"
+      ],
+      "timingsMs": {
+        "react": 70,
+        "csr": 7.700000002980232,
+        "dense": 6.899999998509884
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 28,
+      "order": [
+        "csr",
+        "react",
+        "dense"
+      ],
+      "timingsMs": {
+        "react": 64.59999999403954,
+        "csr": 6.800000004470348,
+        "dense": 7.5
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 29,
+      "order": [
+        "dense",
+        "react",
+        "csr"
+      ],
+      "timingsMs": {
+        "react": 59.30000000447035,
+        "csr": 7.799999997019768,
+        "dense": 6.5999999940395355
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 30,
+      "order": [
+        "dense",
+        "csr",
+        "react"
+      ],
+      "timingsMs": {
+        "react": 66.90000000596046,
+        "csr": 7.199999995529652,
+        "dense": 7.800000004470348
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 31,
+      "order": [
+        "dense",
+        "csr",
+        "react"
+      ],
+      "timingsMs": {
+        "react": 64.09999999403954,
+        "csr": 12.700000002980232,
+        "dense": 7.399999998509884
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 32,
+      "order": [
+        "dense",
+        "react",
+        "csr"
+      ],
+      "timingsMs": {
+        "react": 59,
+        "csr": 8.399999998509884,
+        "dense": 7.299999997019768
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 33,
+      "order": [
+        "react",
+        "dense",
+        "csr"
+      ],
+      "timingsMs": {
+        "react": 55.30000000447035,
+        "csr": 8,
+        "dense": 7.199999995529652
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 34,
+      "order": [
+        "react",
+        "csr",
+        "dense"
+      ],
+      "timingsMs": {
+        "react": 70,
+        "csr": 7.899999998509884,
+        "dense": 7.299999997019768
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 35,
+      "order": [
+        "csr",
+        "dense",
+        "react"
+      ],
+      "timingsMs": {
+        "react": 68.19999999552965,
+        "csr": 8.699999995529652,
+        "dense": 7.300000004470348
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 36,
+      "order": [
+        "csr",
+        "react",
+        "dense"
+      ],
+      "timingsMs": {
+        "react": 60.5,
+        "csr": 8.399999998509884,
+        "dense": 7.600000001490116
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 37,
+      "order": [
+        "react",
+        "csr",
+        "dense"
+      ],
+      "timingsMs": {
+        "react": 55.5,
+        "csr": 7.799999997019768,
+        "dense": 8.100000001490116
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 38,
+      "order": [
+        "csr",
+        "react",
+        "dense"
+      ],
+      "timingsMs": {
+        "react": 72.69999999552965,
+        "csr": 7.899999998509884,
+        "dense": 7.600000001490116
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 39,
+      "order": [
+        "csr",
+        "dense",
+        "react"
+      ],
+      "timingsMs": {
+        "react": 97.79999999701977,
+        "csr": 9,
+        "dense": 7.200000002980232
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 40,
+      "order": [
+        "react",
+        "dense",
+        "csr"
+      ],
+      "timingsMs": {
+        "react": 42.29999999701977,
+        "csr": 7.899999998509884,
+        "dense": 7.600000001490116
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 41,
+      "order": [
+        "dense",
+        "react",
+        "csr"
+      ],
+      "timingsMs": {
+        "react": 69.5,
+        "csr": 8.799999997019768,
+        "dense": 6.600000001490116
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 42,
+      "order": [
+        "dense",
+        "csr",
+        "react"
+      ],
+      "timingsMs": {
+        "react": 70.60000000149012,
+        "csr": 8.199999995529652,
+        "dense": 7.100000001490116
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 43,
+      "order": [
+        "csr",
+        "dense",
+        "react"
+      ],
+      "timingsMs": {
+        "react": 66.60000000149012,
+        "csr": 7.700000002980232,
+        "dense": 7.299999997019768
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 44,
+      "order": [
+        "react",
+        "csr",
+        "dense"
+      ],
+      "timingsMs": {
+        "react": 48.100000001490116,
+        "csr": 7.699999995529652,
+        "dense": 7.100000001490116
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 45,
+      "order": [
+        "react",
+        "dense",
+        "csr"
+      ],
+      "timingsMs": {
+        "react": 67.5,
+        "csr": 8,
+        "dense": 7.199999995529652
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 46,
+      "order": [
+        "dense",
+        "csr",
+        "react"
+      ],
+      "timingsMs": {
+        "react": 67.10000000149012,
+        "csr": 12.700000002980232,
+        "dense": 7.0999999940395355
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 47,
+      "order": [
+        "csr",
+        "react",
+        "dense"
+      ],
+      "timingsMs": {
+        "react": 58.899999998509884,
+        "csr": 8.399999998509884,
+        "dense": 7.4000000059604645
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    },
+    {
+      "pair": 48,
+      "order": [
+        "dense",
+        "react",
+        "csr"
+      ],
+      "timingsMs": {
+        "react": 54.80000000447035,
+        "csr": 8.399999998509884,
+        "dense": 6.899999998509884
+      },
+      "valuesMatch": true,
+      "repeats": 1
+    }
+  ]
+}

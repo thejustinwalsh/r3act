@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f4f6f3" />
+    <title>Relay — Async transition workspace</title>
+    <link rel="icon" href="data:," />
+    <style>
+      :root {
+        color-scheme: light;
+        font: 15px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #1f2925;
+        background: #f4f6f3;
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+        --ink: #1f2925;
+        --muted: #75817a;
+        --line: #e2e8e3;
+        --green: #17825d;
+        --green-soft: #e8f4ee;
+        --amber: #a66c13;
+        --amber-soft: #fff3dc;
+      }
+      * { box-sizing: border-box; }
+      body { min-width: 320px; margin: 0; }
+      button, input { font: inherit; }
+      button { cursor: pointer; }
+      [hidden] { display: none !important; }
+      .topbar { height: 66px; display: flex; align-items: center; justify-content: space-between; padding: 0 max(24px, calc((100vw - 1220px) / 2)); border-bottom: 1px solid var(--line); background: rgba(255,255,255,.82); }
+      .brand { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 750; letter-spacing: -.03em; }
+      .brand-mark { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 10px; color: white; background: #1c7658; font-size: 14px; }
+      .top-meta { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
+      .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #29a875; box-shadow: 0 0 0 3px #e2f3e9; }
+      .shell { max-width: 1220px; margin: 0 auto; padding: 38px 24px 64px; }
+      .page-head { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 27px; }
+      .eyebrow { margin: 0 0 8px; color: var(--green); font-size: 11px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+      h1 { margin: 0; font-size: clamp(28px, 4vw, 36px); line-height: 1.12; letter-spacing: -.045em; }
+      .lede { max-width: 620px; margin: 9px 0 0; color: #6d7972; font-size: 14px; }
+      .room-pill { display: flex; align-items: center; gap: 8px; flex: none; padding: 8px 12px; border: 1px solid var(--line); border-radius: 99px; background: white; color: #56645d; font-size: 12px; }
+      .room-avatars { display: flex; padding-left: 5px; }
+      .room-avatars span { width: 23px; height: 23px; display: grid; place-items: center; margin-left: -5px; border: 2px solid white; border-radius: 50%; background: #d8eae0; color: #31644b; font-size: 9px; font-weight: 700; }
+      .layout { display: grid; grid-template-columns: minmax(0, 1fr) 326px; align-items: start; gap: 20px; }
+      .main-column, .side-column { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; }
+      .card { border: 1px solid var(--line); border-radius: 15px; background: #fff; box-shadow: 0 3px 12px rgba(30,55,40,.025); }
+      .composer { padding: 17px; }
+      .composer-top { display: flex; gap: 12px; }
+      .avatar { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border-radius: 50%; background: #e7f1ea; color: #317553; font-size: 12px; font-weight: 750; }
+      .compose-field { flex: 1; min-width: 0; }
+      .compose-field label { display: block; margin: 1px 0 6px; color: #39463f; font-size: 13px; font-weight: 650; }
+      #compose-input { display: block; width: 100%; min-height: 42px; padding: 10px 12px; border: 1px solid #dfe6e0; border-radius: 9px; outline: none; color: var(--ink); background: #fbfcfb; transition: border-color .15s, box-shadow .15s, background .15s; }
+      #compose-input::placeholder { color: #9aa49d; }
+      #compose-input:focus { border-color: #5ca784; background: white; box-shadow: 0 0 0 3px #e4f2e9; }
+      .composer-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 13px 0 0 48px; }
+      .hint { color: #89948d; font-size: 11px; }
+      .primary, .secondary, .icon-button { min-height: 36px; border-radius: 8px; font-size: 12px; font-weight: 650; transition: background .15s, border-color .15s, transform .15s; }
+      .primary { padding: 0 15px; border: 1px solid #176e50; background: #197b59; color: white; }
+      .primary:hover { background: #116748; }
+      .primary:active, .secondary:active, .icon-button:active { transform: translateY(1px); }
+      .secondary { padding: 0 11px; border: 1px solid #dfe6e0; background: white; color: #44534b; }
+      .secondary:hover, .icon-button:hover { border-color: #bdcfc2; background: #f6faf7; }
+      .icon-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 10px; border: 1px solid transparent; background: transparent; color: #69766f; }
+      button:focus-visible { outline: 3px solid #9bcbb0; outline-offset: 2px; }
+      .feed-card { overflow: hidden; }
+      .section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 17px; border-bottom: 1px solid #edf0ed; }
+      .section-title { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: -.01em; }
+      .section-subtitle { margin: 2px 0 0; color: #8a958e; font-size: 11px; }
+      .feed-list { list-style: none; margin: 0; padding: 0; }
+      .feed-item { display: flex; gap: 12px; padding: 16px 17px; border-bottom: 1px solid #f0f2f0; animation: arrive .24s ease-out both; }
+      .feed-item:last-child { border-bottom: 0; }
+      @keyframes arrive { from { opacity: .55; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+      .feed-content { flex: 1; min-width: 0; }
+      .feed-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin: 0 0 6px; color: #7b8780; font-size: 11px; }
+      .feed-name { color: #35423b; font-size: 12px; font-weight: 700; }
+      .feed-copy { margin: 0; color: #46534c; font-size: 13px; line-height: 1.55; overflow-wrap: anywhere; }
+      .kind-chip { padding: 2px 7px; border-radius: 99px; background: #f0f3f0; color: #68766d; font-size: 10px; font-weight: 650; }
+      .kind-chip.optimistic { background: var(--green-soft); color: #28714f; }
+      .kind-chip.remote { background: #edf2fa; color: #536a91; }
+      .feed-actions { display: flex; gap: 2px; margin: 9px 0 -7px -8px; }
+      .feed-actions .icon-button { min-height: 30px; font-size: 11px; }
+      .liked { color: #b85665 !important; }
+      .empty-note { padding: 20px 17px; color: #89948d; font-size: 12px; }
+      .progress-card { padding: 16px; }
+      .progress-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+      .progress-heading h2, .inspector-card h2 { margin: 0; font-size: 13px; letter-spacing: -.01em; }
+      .count-pill { min-width: 24px; padding: 2px 7px; border-radius: 99px; background: #f0f4f1; color: #64736a; text-align: center; font-size: 10px; font-weight: 700; }
+      .jobs { display: grid; gap: 10px; }
+      .compiled-plan-note { margin: -4px 0 2px; color: #87938b; font-size: 10px; }
+      .job { padding: 10px 11px; border: 1px solid #edf0ed; border-radius: 10px; background: #fcfdfc; }
+      .job-top { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 8px; color: #46554c; font-size: 11px; }
+      .job-root { color: #8a958d; }
+      .progress-track { height: 5px; overflow: hidden; border-radius: 99px; background: #e8eee9; }
+      .progress-fill { width: 100%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #4ab17b, #16825b); transform: scaleX(0); transform-origin: left center; animation: fill linear forwards; }
+      @keyframes fill { to { transform: scaleX(1); } }
+      .no-jobs { display: flex; align-items: center; gap: 8px; color: #87938b; font-size: 11px; }
+      .no-jobs-mark { width: 7px; height: 7px; border-radius: 50%; background: #c5d7ca; }
+      .inspector-card { padding: 16px; }
+      .inspector-card header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 13px; }
+      .fork-label { color: #87938b; font-size: 10px; }
+      .inspector-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 13px; }
+      .metric { padding: 10px; border-radius: 9px; background: #f6f8f6; }
+      .metric-value { display: block; font-size: 18px; font-weight: 730; letter-spacing: -.04em; }
+      .metric-label { color: #849087; font-size: 10px; }
+      .inspector-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; }
+      .inspector-row { display: flex; align-items: center; gap: 8px; padding: 8px; border: 1px solid #eef1ee; border-radius: 9px; }
+      .inspector-avatar { width: 25px; height: 25px; display: grid; place-items: center; flex: none; border-radius: 8px; background: #eef4ef; color: #548066; font-size: 9px; font-weight: 750; }
+      .inspector-copy { min-width: 0; flex: 1; }
+      .inspector-copy strong { display: block; color: #526057; font-size: 10px; font-weight: 650; }
+      .inspector-copy span { display: block; overflow: hidden; color: #8b968e; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+      .runtime { padding: 0 16px; }
+      .runtime summary { display: flex; min-height: 46px; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; color: #6d7971; font-size: 11px; font-weight: 650; list-style: none; }
+      .runtime summary::-webkit-details-marker { display: none; }
+      .runtime summary::after { content: "+"; color: #87938b; font-size: 17px; font-weight: 400; }
+      .runtime[open] summary::after { content: "−"; }
+      #status { margin: 0 0 14px; padding: 11px 12px; border-radius: 9px; background: #f6f8f6; color: #68766d; font: 10px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; }
+      #startup { max-width: 1220px; margin: 45px auto; padding: 22px 24px; color: #75817a; }
+      .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+      @media (max-width: 850px) { .layout { grid-template-columns: minmax(0, 1fr) 285px; gap: 14px; } .shell { padding-inline: 18px; } }
+      @media (max-width: 680px) { .topbar { height: 58px; padding-inline: 18px; } .top-meta .top-meta-label { display: none; } .shell { padding: 27px 14px 44px; } .page-head { align-items: start; margin-bottom: 20px; } .room-pill { display: none; } .layout { grid-template-columns: 1fr; } .side-column { grid-row: 1; } .side-column .inspector-card { display: none; } .main-column { grid-row: 2; } .feed-item { padding: 14px; } }
+      @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">↗</span> Relay</div>
+      <div class="top-meta"><span class="live-dot" aria-hidden="true"></span><span class="top-meta-label">Live workspace</span><span>·</span><span>2 connected views</span></div>
+    </header>
+    <main class="shell">
+      <section class="page-head">
+        <div><p class="eyebrow">Realtime systems · demo room</p><h1>Release room</h1><p class="lede">A shared activity feed with optimistic updates and async work that settles in the background. Keep using the room while it catches up.</p></div>
+        <div class="room-pill"><span class="room-avatars" aria-hidden="true"><span>AL</span><span>MK</span><span>JS</span></span> 3 teammates · synced</div>
+      </section>
+      <section id="startup" class="card" aria-live="polite">Opening the release room…</section>
+      <section id="app" class="layout" hidden>
+        <div class="main-column">
+          <form id="compose-form" class="card composer">
+            <div class="composer-top"><div class="avatar" aria-hidden="true">AL</div><div class="compose-field"><label for="compose-input">Share an update with the room</label><input id="compose-input" name="message" maxlength="180" autocomplete="off" placeholder="What are you working on?" /></div></div>
+            <div class="composer-footer"><span class="hint">Posts appear immediately while the save finishes.</span><button class="primary" type="submit">Post update <span aria-hidden="true">↗</span></button></div>
+          </form>
+          <section class="card feed-card" aria-labelledby="feed-title">
+            <header class="section-head"><div><h2 class="section-title" id="feed-title">Room activity</h2><p class="section-subtitle">Updates from this shared session</p></div><button class="icon-button" id="like" type="button" aria-label="Like the latest update">♡ <span>Appreciate</span></button></header>
+            <div id="workspace-root"></div>
+          </section>
+          <details class="card runtime"><summary>Runtime trace · stress controls</summary><div class="controls" style="display:flex; flex-wrap:wrap; gap:8px; padding:0 0 12px;"><button class="secondary" id="transition" type="button">Queue shared work</button><button class="secondary" id="fork-transition" type="button">Queue fork-only work</button><button class="secondary" id="auto" type="button">Start timer loop</button></div><p id="status" role="status" aria-live="polite">Starting…</p></details>
+        </div>
+        <aside class="side-column">
+          <section class="card progress-card" aria-labelledby="progress-title"><div class="progress-heading"><h2 id="progress-title">Background saves</h2><span class="count-pill" id="pending-count">0</span></div><div id="progress-root"></div></section>
+          <section class="card inspector-card"><header><h2>Forked view</h2><span class="fork-label">ROOT B · LIVE</span></header><div id="inspector-root"></div></section>
+        </aside>
+      </section>
+    </main>
+    <script type="module" src="/src/browser/async_transition_stress_v1.tsx"></script>
+  </body>
+</html>

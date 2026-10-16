@@ -1,0 +1,10 @@
+Slot-count ABI revision, staged separately from module-only byte-parity patch.
+
+Change: emitted owner kernel objects now include `slotCount`, equal to the ordered layout width. Rust and Node proofs assert that both fixture owner kernels expose slotCount 2. This revision intentionally is not claimed byte-identical to v4; only the preceding module-extraction-only revision passed exact output parity.
+
+Verification:
+- `cargo test --locked --manifest-path "$PWD/compiler/oxc-spike/Cargo.toml"` — 34 passed, 0 failed.
+- `PATH="/Users/tjw/.nvm/versions/node/v24.18.0/bin:$PATH" CARGO_HOME="$PWD/../../cargo" node node-proof/execute_owner_cut_kernel.mjs` — PASS staged primitive whole-cut owner-kernel proof.
+
+Binary: `target/debug/ui-graph-compiler-spike`.
+No live compiler/runtime files were changed.

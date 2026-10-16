@@ -1,0 +1,5473 @@
+{
+  "schemaVersion": 2,
+  "experiment": "Deno randomized paired full scan versus compiled binding graph",
+  "environment": {
+    "deno": "2.6.3",
+    "v8": "14.2.231.17-rusty",
+    "typescript": "5.9.2",
+    "os": "darwin",
+    "arch": "aarch64",
+    "hardwareConcurrency": 10,
+    "sampleDate": "2026-10-09T15:57:25.086Z"
+  },
+  "protocol": {
+    "pairCount": 41,
+    "warmupPairs": 5,
+    "order": "balanced randomized within pair; per-scenario deterministic xorshift seed",
+    "targetOperationsPerArmSample": 50000,
+    "maxFramesPerArmSample": 1000,
+    "p95": "nearest-rank",
+    "changedIds": "evenly spaced; identical across arms",
+    "host": "Float64Array; equal number of host-buffer writes",
+    "outputCheck": "all outputs compared after timing",
+    "setup": "graph constructed before timed samples; setup excluded"
+  },
+  "baseSeed": 1736031009,
+  "results": [
+    {
+      "entityCount": 1000,
+      "changedFraction": 0.01,
+      "changedCount": 10,
+      "randomizationSeed": 1736031009,
+      "scanEntitiesVisitedPerBatch": 1000,
+      "graphBindingVisitsPerBatch": 10,
+      "equivalentHostWritesPerBatch": 10,
+      "pairSamples": [
+        {
+          "pairIndex": 0,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.000553340000000162,
+          "graphMs": 0.0002817080000000374,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 1,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0004666799999995419,
+          "graphMs": 0.00035899999999998043,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 2,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0004616600000008475,
+          "graphMs": 0.0002377089999999953,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 3,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.00044082000000003065,
+          "graphMs": 0.00023270800000000237,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 4,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.00044665999999892847,
+          "graphMs": 0.0002534589999999639,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 5,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0004458199999999124,
+          "graphMs": 0.0003074579999999969,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 6,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0004383399999994708,
+          "graphMs": 0.00008370800000000144,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 7,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.00043582000000014887,
+          "graphMs": 0.00008287500000000136,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 8,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0004349999999999454,
+          "graphMs": 0.00008329199999997172,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 9,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0004349999999999454,
+          "graphMs": 0.00008283399999999119,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 10,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0004358400000000984,
+          "graphMs": 0.0000827080000000251,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 11,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0004349999999999454,
+          "graphMs": 0.00008266699999995808,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 12,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.000434179999999742,
+          "graphMs": 0.00008262500000000728,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 13,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0004375000000004547,
+          "graphMs": 0.0000830829999999878,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 14,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0004341599999997925,
+          "graphMs": 0.00008304199999997763,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 15,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0004349999999999454,
+          "graphMs": 0.00008295799999996234,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 16,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0004349999999999454,
+          "graphMs": 0.0000827080000000251,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 17,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0004349999999999454,
+          "graphMs": 0.00008279200000004039,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 18,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.00043333999999958903,
+          "graphMs": 0.00008279099999998607,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 19,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.00043665999999916496,
+          "graphMs": 0.00008304199999997763,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 20,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0004349999999999454,
+          "graphMs": 0.00008291600000001154,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 21,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0004358400000000984,
+          "graphMs": 0.00008258400000005395,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 22,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0004349999999999454,
+          "graphMs": 0.0000836659999999938,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 23,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0004350000000010823,
+          "graphMs": 0.00008279199999998355,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 24,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0004333400000007259,
+          "graphMs": 0.00008287500000000136,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 25,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.00043333999999958903,
+          "graphMs": 0.00008262500000000728,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 26,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.00043333999999958903,
+          "graphMs": 0.00008262499999995043,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 27,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.00043331999999963956,
+          "graphMs": 0.00008262500000000728,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 28,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0004341599999997925,
+          "graphMs": 0.00008258299999999963,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 29,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.000434179999999742,
+          "graphMs": 0.0000827080000000251,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 30,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0004349999999999454,
+          "graphMs": 0.00008262500000000728,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 31,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.00043331999999963956,
+          "graphMs": 0.00008266700000001492,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 32,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0004341600000009294,
+          "graphMs": 0.00008266700000001492,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 33,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.00043331999999963956,
+          "graphMs": 0.00008262500000000728,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 34,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0004324999999994361,
+          "graphMs": 0.00008266700000001492,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 35,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.000434179999999742,
+          "graphMs": 0.00008258299999999963,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 36,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0004333400000007259,
+          "graphMs": 0.0000827499999999759,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 37,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0004341599999997925,
+          "graphMs": 0.00008262500000000728,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 38,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0004349999999999454,
+          "graphMs": 0.00008275000000003275,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 39,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.000434179999999742,
+          "graphMs": 0.00008266600000001745,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 40,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.00043333999999958903,
+          "graphMs": 0.00008266699999995808,
+          "scanFrames": 50,
+          "graphFrames": 1000,
+          "graphFaster": true
+        }
+      ],
+      "scan": {
+        "medianMs": 0.0004349999999999454,
+        "p95Ms": 0.0004616600000008475,
+        "samplesMs": [
+          0.000553340000000162,
+          0.0004666799999995419,
+          0.0004616600000008475,
+          0.00044082000000003065,
+          0.00044665999999892847,
+          0.0004458199999999124,
+          0.0004383399999994708,
+          0.00043582000000014887,
+          0.0004349999999999454,
+          0.0004349999999999454,
+          0.0004358400000000984,
+          0.0004349999999999454,
+          0.000434179999999742,
+          0.0004375000000004547,
+          0.0004341599999997925,
+          0.0004349999999999454,
+          0.0004349999999999454,
+          0.0004349999999999454,
+          0.00043333999999958903,
+          0.00043665999999916496,
+          0.0004349999999999454,
+          0.0004358400000000984,
+          0.0004349999999999454,
+          0.0004350000000010823,
+          0.0004333400000007259,
+          0.00043333999999958903,
+          0.00043333999999958903,
+          0.00043331999999963956,
+          0.0004341599999997925,
+          0.000434179999999742,
+          0.0004349999999999454,
+          0.00043331999999963956,
+          0.0004341600000009294,
+          0.00043331999999963956,
+          0.0004324999999994361,
+          0.000434179999999742,
+          0.0004333400000007259,
+          0.0004341599999997925,
+          0.0004349999999999454,
+          0.000434179999999742,
+          0.00043333999999958903
+        ]
+      },
+      "compiledGraph": {
+        "medianMs": 0.00008275000000003275,
+        "p95Ms": 0.0002817080000000374,
+        "samplesMs": [
+          0.0002817080000000374,
+          0.00035899999999998043,
+          0.0002377089999999953,
+          0.00023270800000000237,
+          0.0002534589999999639,
+          0.0003074579999999969,
+          0.00008370800000000144,
+          0.00008287500000000136,
+          0.00008329199999997172,
+          0.00008283399999999119,
+          0.0000827080000000251,
+          0.00008266699999995808,
+          0.00008262500000000728,
+          0.0000830829999999878,
+          0.00008304199999997763,
+          0.00008295799999996234,
+          0.0000827080000000251,
+          0.00008279200000004039,
+          0.00008279099999998607,
+          0.00008304199999997763,
+          0.00008291600000001154,
+          0.00008258400000005395,
+          0.0000836659999999938,
+          0.00008279199999998355,
+          0.00008287500000000136,
+          0.00008262500000000728,
+          0.00008262499999995043,
+          0.00008262500000000728,
+          0.00008258299999999963,
+          0.0000827080000000251,
+          0.00008262500000000728,
+          0.00008266700000001492,
+          0.00008266700000001492,
+          0.00008262500000000728,
+          0.00008266700000001492,
+          0.00008258299999999963,
+          0.0000827499999999759,
+          0.00008262500000000728,
+          0.00008275000000003275,
+          0.00008266600000001745,
+          0.00008266699999995808
+        ]
+      },
+      "paired": {
+        "medianScanOverGraph": 5.2446596066547535,
+        "graphFasterPairs": 41,
+        "scanFasterPairs": 0,
+        "scanFirstPairs": 20,
+        "graphFirstPairs": 21
+      },
+      "outputParity": true
+    },
+    {
+      "entityCount": 1000,
+      "changedFraction": 0.1,
+      "changedCount": 100,
+      "randomizationSeed": 1736031026,
+      "scanEntitiesVisitedPerBatch": 1000,
+      "graphBindingVisitsPerBatch": 100,
+      "equivalentHostWritesPerBatch": 100,
+      "pairSamples": [
+        {
+          "pairIndex": 0,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0008833400000003166,
+          "graphMs": 0.00091274999999996,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 1,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0008658199999990756,
+          "graphMs": 0.0009049999999999727,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 2,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0008633400000007896,
+          "graphMs": 0.0009046659999999065,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 3,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0008616799999981594,
+          "graphMs": 0.00090300000000002,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 4,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0008600000000001274,
+          "graphMs": 0.0008990820000001349,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 5,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0008608400000002802,
+          "graphMs": 0.0008990839999999025,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 6,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0008591599999999744,
+          "graphMs": 0.0008990000000001146,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 7,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.000836659999999938,
+          "graphMs": 0.0008864180000000488,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 8,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0008349999999995816,
+          "graphMs": 0.0009877500000000056,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 9,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0008666799999991781,
+          "graphMs": 0.0008991659999999229,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 10,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0008600000000001274,
+          "graphMs": 0.0008994159999999738,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 11,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0008425000000011096,
+          "graphMs": 0.00092450000000008,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 12,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0008341799999993782,
+          "graphMs": 0.0008736660000001848,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 13,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0008233399999994617,
+          "graphMs": 0.0009076659999998355,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 14,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.000825839999999971,
+          "graphMs": 0.0009394159999999374,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 15,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0008449999999993452,
+          "graphMs": 0.0008946660000001429,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 16,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0008391600000004474,
+          "graphMs": 0.0008765820000000985,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 17,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0008316600000011931,
+          "graphMs": 0.0008661660000000211,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 18,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.000825839999999971,
+          "graphMs": 0.0009007500000000163,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 19,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0008400000000006002,
+          "graphMs": 0.0008853340000000571,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 20,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.000837500000000091,
+          "graphMs": 0.0008796660000000429,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 21,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0008391800000003968,
+          "graphMs": 0.0008885820000000421,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 22,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0008383400000002439,
+          "graphMs": 0.0008744159999998828,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 23,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0008341800000016519,
+          "graphMs": 0.0008730820000000676,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 24,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.000832500000001346,
+          "graphMs": 0.0008742500000000746,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 25,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0008249999999998181,
+          "graphMs": 0.0009190840000001117,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 26,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0008308400000009897,
+          "graphMs": 0.0008605819999997948,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 27,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0008316599999989194,
+          "graphMs": 0.0008622499999999036,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 28,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0008233199999995122,
+          "graphMs": 0.0008610839999998916,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 29,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0008233399999994617,
+          "graphMs": 0.0008654160000000957,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 30,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0008358399999997346,
+          "graphMs": 0.0008691679999999451,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 31,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0008349999999995816,
+          "graphMs": 0.0008730839999998352,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 32,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.000833340000001499,
+          "graphMs": 0.0008843320000000858,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 33,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0008616600000004838,
+          "graphMs": 0.0008848339999999553,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 34,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0008383400000002439,
+          "graphMs": 0.00087824999999998,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 35,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0008249999999998181,
+          "graphMs": 0.000867332000000033,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 36,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0008275000000003274,
+          "graphMs": 0.0009061659999999847,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 37,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.000864160000000993,
+          "graphMs": 0.0009066660000000866,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 38,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0008433399999989888,
+          "graphMs": 0.0009715819999998984,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 39,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0008291600000006838,
+          "graphMs": 0.0008683340000000043,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 40,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0008258200000000216,
+          "graphMs": 0.0008779999999999291,
+          "scanFrames": 50,
+          "graphFrames": 500,
+          "graphFaster": false
+        }
+      ],
+      "scan": {
+        "medianMs": 0.000836659999999938,
+        "p95Ms": 0.0008658199999990756,
+        "samplesMs": [
+          0.0008833400000003166,
+          0.0008658199999990756,
+          0.0008633400000007896,
+          0.0008616799999981594,
+          0.0008600000000001274,
+          0.0008608400000002802,
+          0.0008591599999999744,
+          0.000836659999999938,
+          0.0008349999999995816,
+          0.0008666799999991781,
+          0.0008600000000001274,
+          0.0008425000000011096,
+          0.0008341799999993782,
+          0.0008233399999994617,
+          0.000825839999999971,
+          0.0008449999999993452,
+          0.0008391600000004474,
+          0.0008316600000011931,
+          0.000825839999999971,
+          0.0008400000000006002,
+          0.000837500000000091,
+          0.0008391800000003968,
+          0.0008383400000002439,
+          0.0008341800000016519,
+          0.000832500000001346,
+          0.0008249999999998181,
+          0.0008308400000009897,
+          0.0008316599999989194,
+          0.0008233199999995122,
+          0.0008233399999994617,
+          0.0008358399999997346,
+          0.0008349999999995816,
+          0.000833340000001499,
+          0.0008616600000004838,
+          0.0008383400000002439,
+          0.0008249999999998181,
+          0.0008275000000003274,
+          0.000864160000000993,
+          0.0008433399999989888,
+          0.0008291600000006838,
+          0.0008258200000000216
+        ]
+      },
+      "compiledGraph": {
+        "medianMs": 0.0008864180000000488,
+        "p95Ms": 0.0009394159999999374,
+        "samplesMs": [
+          0.00091274999999996,
+          0.0009049999999999727,
+          0.0009046659999999065,
+          0.00090300000000002,
+          0.0008990820000001349,
+          0.0008990839999999025,
+          0.0008990000000001146,
+          0.0008864180000000488,
+          0.0009877500000000056,
+          0.0008991659999999229,
+          0.0008994159999999738,
+          0.00092450000000008,
+          0.0008736660000001848,
+          0.0009076659999998355,
+          0.0009394159999999374,
+          0.0008946660000001429,
+          0.0008765820000000985,
+          0.0008661660000000211,
+          0.0009007500000000163,
+          0.0008853340000000571,
+          0.0008796660000000429,
+          0.0008885820000000421,
+          0.0008744159999998828,
+          0.0008730820000000676,
+          0.0008742500000000746,
+          0.0009190840000001117,
+          0.0008605819999997948,
+          0.0008622499999999036,
+          0.0008610839999998916,
+          0.0008654160000000957,
+          0.0008691679999999451,
+          0.0008730839999998352,
+          0.0008843320000000858,
+          0.0008848339999999553,
+          0.00087824999999998,
+          0.000867332000000033,
+          0.0009061659999999847,
+          0.0009066660000000866,
+          0.0009715819999998984,
+          0.0008683340000000043,
+          0.0008779999999999291
+        ]
+      },
+      "paired": {
+        "medianScanOverGraph": 0.9543190525573846,
+        "graphFasterPairs": 0,
+        "scanFasterPairs": 41,
+        "scanFirstPairs": 20,
+        "graphFirstPairs": 21
+      },
+      "outputParity": true
+    },
+    {
+      "entityCount": 1000,
+      "changedFraction": 1,
+      "changedCount": 1000,
+      "randomizationSeed": 1736031043,
+      "scanEntitiesVisitedPerBatch": 1000,
+      "graphBindingVisitsPerBatch": 1000,
+      "equivalentHostWritesPerBatch": 1000,
+      "pairSamples": [
+        {
+          "pairIndex": 0,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0015350000000012188,
+          "graphMs": 0.009094159999999647,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 1,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.001515839999999571,
+          "graphMs": 0.008654179999998632,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 2,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0015066799999999604,
+          "graphMs": 0.008671659999999975,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 3,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0015274999999996908,
+          "graphMs": 0.008683320000000095,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 4,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0015108200000008764,
+          "graphMs": 0.008694160000000012,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 5,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0015141600000015388,
+          "graphMs": 0.008828340000000025,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 6,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.001510840000000826,
+          "graphMs": 0.008811659999998937,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 7,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0014924999999993815,
+          "graphMs": 0.008758319999999457,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 8,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0015158200000018952,
+          "graphMs": 0.00873168000000078,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 9,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0015149999999994179,
+          "graphMs": 0.00877999999999929,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 10,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0023933400000009895,
+          "graphMs": 0.008959160000001702,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 11,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.001510840000000826,
+          "graphMs": 0.009159179999999196,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 12,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0016224999999985812,
+          "graphMs": 0.00923334000000068,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 13,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0016591799999991963,
+          "graphMs": 0.009135839999999007,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 14,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0016316599999981918,
+          "graphMs": 0.008693339999999806,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 15,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0015258400000016082,
+          "graphMs": 0.00941915999999992,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 16,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0015066799999999604,
+          "graphMs": 0.008678339999999025,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 17,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0015091599999982463,
+          "graphMs": 0.008938339999999698,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 18,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.001795839999999771,
+          "graphMs": 0.010084159999998975,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 19,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0015516800000000331,
+          "graphMs": 0.00918081999999913,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 20,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0016641600000002654,
+          "graphMs": 0.0095699999999988,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 21,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0015941799999995964,
+          "graphMs": 0.00915081999999984,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 22,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0015633399999978792,
+          "graphMs": 0.009615839999999026,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 23,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0015933400000017173,
+          "graphMs": 0.009003320000001622,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 24,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.001514159999999265,
+          "graphMs": 0.009413319999998749,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 25,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0015124999999989086,
+          "graphMs": 0.008725819999999657,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 26,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0016075000000000728,
+          "graphMs": 0.009536680000001069,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 27,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0016875000000004547,
+          "graphMs": 0.00928666000000021,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 28,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0015041799999994509,
+          "graphMs": 0.009072499999999763,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 29,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0014924999999993815,
+          "graphMs": 0.00907416000000012,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 30,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.001769179999998869,
+          "graphMs": 0.009149999999999636,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 31,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.001490000000001146,
+          "graphMs": 0.009093339999999443,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 32,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.001547499999999218,
+          "graphMs": 0.009763319999999567,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 33,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0015816599999993741,
+          "graphMs": 0.00895584000000099,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 34,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0015491799999995236,
+          "graphMs": 0.009040820000000166,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 35,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0019499999999993633,
+          "graphMs": 0.010183340000000953,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 36,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0015841599999998834,
+          "graphMs": 0.008966660000000957,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 37,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0015566599999988285,
+          "graphMs": 0.008931680000000598,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 38,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0015516599999978098,
+          "graphMs": 0.008784160000000157,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 39,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.00150916000000052,
+          "graphMs": 0.008661679999997887,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 40,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0015083400000003167,
+          "graphMs": 0.008658319999999548,
+          "scanFrames": 50,
+          "graphFrames": 50,
+          "graphFaster": false
+        }
+      ],
+      "scan": {
+        "medianMs": 0.0015350000000012188,
+        "p95Ms": 0.001795839999999771,
+        "samplesMs": [
+          0.0015350000000012188,
+          0.001515839999999571,
+          0.0015066799999999604,
+          0.0015274999999996908,
+          0.0015108200000008764,
+          0.0015141600000015388,
+          0.001510840000000826,
+          0.0014924999999993815,
+          0.0015158200000018952,
+          0.0015149999999994179,
+          0.0023933400000009895,
+          0.001510840000000826,
+          0.0016224999999985812,
+          0.0016591799999991963,
+          0.0016316599999981918,
+          0.0015258400000016082,
+          0.0015066799999999604,
+          0.0015091599999982463,
+          0.001795839999999771,
+          0.0015516800000000331,
+          0.0016641600000002654,
+          0.0015941799999995964,
+          0.0015633399999978792,
+          0.0015933400000017173,
+          0.001514159999999265,
+          0.0015124999999989086,
+          0.0016075000000000728,
+          0.0016875000000004547,
+          0.0015041799999994509,
+          0.0014924999999993815,
+          0.001769179999998869,
+          0.001490000000001146,
+          0.001547499999999218,
+          0.0015816599999993741,
+          0.0015491799999995236,
+          0.0019499999999993633,
+          0.0015841599999998834,
+          0.0015566599999988285,
+          0.0015516599999978098,
+          0.00150916000000052,
+          0.0015083400000003167
+        ]
+      },
+      "compiledGraph": {
+        "medianMs": 0.009003320000001622,
+        "p95Ms": 0.009763319999999567,
+        "samplesMs": [
+          0.009094159999999647,
+          0.008654179999998632,
+          0.008671659999999975,
+          0.008683320000000095,
+          0.008694160000000012,
+          0.008828340000000025,
+          0.008811659999998937,
+          0.008758319999999457,
+          0.00873168000000078,
+          0.00877999999999929,
+          0.008959160000001702,
+          0.009159179999999196,
+          0.00923334000000068,
+          0.009135839999999007,
+          0.008693339999999806,
+          0.00941915999999992,
+          0.008678339999999025,
+          0.008938339999999698,
+          0.010084159999998975,
+          0.00918081999999913,
+          0.0095699999999988,
+          0.00915081999999984,
+          0.009615839999999026,
+          0.009003320000001622,
+          0.009413319999998749,
+          0.008725819999999657,
+          0.009536680000001069,
+          0.00928666000000021,
+          0.009072499999999763,
+          0.00907416000000012,
+          0.009149999999999636,
+          0.009093339999999443,
+          0.009763319999999567,
+          0.00895584000000099,
+          0.009040820000000166,
+          0.010183340000000953,
+          0.008966660000000957,
+          0.008931680000000598,
+          0.008784160000000157,
+          0.008661679999997887,
+          0.008658319999999548
+        ]
+      },
+      "paired": {
+        "medianScanOverGraph": 0.17374758696719714,
+        "graphFasterPairs": 0,
+        "scanFasterPairs": 41,
+        "scanFirstPairs": 20,
+        "graphFirstPairs": 21
+      },
+      "outputParity": true
+    },
+    {
+      "entityCount": 10000,
+      "changedFraction": 0.01,
+      "changedCount": 100,
+      "randomizationSeed": 1736031110,
+      "scanEntitiesVisitedPerBatch": 10000,
+      "graphBindingVisitsPerBatch": 100,
+      "equivalentHostWritesPerBatch": 100,
+      "pairSamples": [
+        {
+          "pairIndex": 0,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.008166600000004109,
+          "graphMs": 0.0009245840000000953,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 1,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.008083200000010038,
+          "graphMs": 0.0009159179999999196,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 2,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.008108399999991888,
+          "graphMs": 0.0009119160000000192,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 3,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.00823320000001786,
+          "graphMs": 0.0009338339999999335,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 4,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.009366800000020704,
+          "graphMs": 0.0009182499999999436,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 5,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.008133399999996982,
+          "graphMs": 0.0009555840000000444,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 6,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.007974999999987631,
+          "graphMs": 0.0009232500000000527,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 7,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.00817500000000564,
+          "graphMs": 0.0009214999999999236,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 8,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.00805840000000444,
+          "graphMs": 0.0009176660000000538,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 9,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0080831999999873,
+          "graphMs": 0.0009209160000000339,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 10,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.007974999999987631,
+          "graphMs": 0.0009217499999999746,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 11,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.008116799999993419,
+          "graphMs": 0.0009261680000001889,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 12,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.00805840000000444,
+          "graphMs": 0.0009080819999999221,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 13,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.008191800000008697,
+          "graphMs": 0.0009269160000001193,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 14,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.008075000000008003,
+          "graphMs": 0.0009309160000000248,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 15,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.009041600000000472,
+          "graphMs": 0.000926834000000099,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 16,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.008391600000004473,
+          "graphMs": 0.0009545840000000681,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 17,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.008216599999991558,
+          "graphMs": 0.0009600000000000363,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 18,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.007925000000000182,
+          "graphMs": 0.0009104160000001684,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 19,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.007966800000008333,
+          "graphMs": 0.0009129179999999905,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 20,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.008666799999991781,
+          "graphMs": 0.0009265839999998206,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 21,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.008091799999988325,
+          "graphMs": 0.0009105819999999766,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 22,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.00809159999998883,
+          "graphMs": 0.0009093319999999494,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 23,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.00800840000001699,
+          "graphMs": 0.000909416000000192,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 24,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.00784160000000611,
+          "graphMs": 0.0009070840000001681,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 25,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.008091800000011062,
+          "graphMs": 0.0009067500000001018,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 26,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.008100000000013097,
+          "graphMs": 0.000908083999999917,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 27,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.008024999999997817,
+          "graphMs": 0.0009063340000000152,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 28,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.007941600000003745,
+          "graphMs": 0.0009065839999998389,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 29,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.00804160000000138,
+          "graphMs": 0.0009055820000000949,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 30,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.008016600000019025,
+          "graphMs": 0.000905334000000039,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 31,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.007899999999995088,
+          "graphMs": 0.00090949999999998,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 32,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.008274999999980538,
+          "graphMs": 0.0009449999999999363,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 33,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.00845000000001619,
+          "graphMs": 0.000959916000000021,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 34,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.008199999999987995,
+          "graphMs": 0.0009413320000001022,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 35,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.008049999999980174,
+          "graphMs": 0.0009249159999999392,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 36,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.00809999999999036,
+          "graphMs": 0.0009249179999999341,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 37,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.008216799999991054,
+          "graphMs": 0.0009280839999998989,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 38,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.008233399999994617,
+          "graphMs": 0.0009251679999999851,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 39,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.008016599999996288,
+          "graphMs": 0.0009302499999998872,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 40,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.008216799999991054,
+          "graphMs": 0.0009281679999999142,
+          "scanFrames": 5,
+          "graphFrames": 500,
+          "graphFaster": true
+        }
+      ],
+      "scan": {
+        "medianMs": 0.008091800000011062,
+        "p95Ms": 0.008666799999991781,
+        "samplesMs": [
+          0.008166600000004109,
+          0.008083200000010038,
+          0.008108399999991888,
+          0.00823320000001786,
+          0.009366800000020704,
+          0.008133399999996982,
+          0.007974999999987631,
+          0.00817500000000564,
+          0.00805840000000444,
+          0.0080831999999873,
+          0.007974999999987631,
+          0.008116799999993419,
+          0.00805840000000444,
+          0.008191800000008697,
+          0.008075000000008003,
+          0.009041600000000472,
+          0.008391600000004473,
+          0.008216599999991558,
+          0.007925000000000182,
+          0.007966800000008333,
+          0.008666799999991781,
+          0.008091799999988325,
+          0.00809159999998883,
+          0.00800840000001699,
+          0.00784160000000611,
+          0.008091800000011062,
+          0.008100000000013097,
+          0.008024999999997817,
+          0.007941600000003745,
+          0.00804160000000138,
+          0.008016600000019025,
+          0.007899999999995088,
+          0.008274999999980538,
+          0.00845000000001619,
+          0.008199999999987995,
+          0.008049999999980174,
+          0.00809999999999036,
+          0.008216799999991054,
+          0.008233399999994617,
+          0.008016599999996288,
+          0.008216799999991054
+        ]
+      },
+      "compiledGraph": {
+        "medianMs": 0.0009217499999999746,
+        "p95Ms": 0.0009555840000000444,
+        "samplesMs": [
+          0.0009245840000000953,
+          0.0009159179999999196,
+          0.0009119160000000192,
+          0.0009338339999999335,
+          0.0009182499999999436,
+          0.0009555840000000444,
+          0.0009232500000000527,
+          0.0009214999999999236,
+          0.0009176660000000538,
+          0.0009209160000000339,
+          0.0009217499999999746,
+          0.0009261680000001889,
+          0.0009080819999999221,
+          0.0009269160000001193,
+          0.0009309160000000248,
+          0.000926834000000099,
+          0.0009545840000000681,
+          0.0009600000000000363,
+          0.0009104160000001684,
+          0.0009129179999999905,
+          0.0009265839999998206,
+          0.0009105819999999766,
+          0.0009093319999999494,
+          0.000909416000000192,
+          0.0009070840000001681,
+          0.0009067500000001018,
+          0.000908083999999917,
+          0.0009063340000000152,
+          0.0009065839999998389,
+          0.0009055820000000949,
+          0.000905334000000039,
+          0.00090949999999998,
+          0.0009449999999999363,
+          0.000959916000000021,
+          0.0009413320000001022,
+          0.0009249159999999392,
+          0.0009249179999999341,
+          0.0009280839999998989,
+          0.0009251679999999851,
+          0.0009302499999998872,
+          0.0009281679999999142
+        ]
+      },
+      "paired": {
+        "medianScanOverGraph": 8.806090941896008,
+        "graphFasterPairs": 41,
+        "scanFasterPairs": 0,
+        "scanFirstPairs": 20,
+        "graphFirstPairs": 21
+      },
+      "outputParity": true
+    },
+    {
+      "entityCount": 10000,
+      "changedFraction": 0.1,
+      "changedCount": 1000,
+      "randomizationSeed": 1736031127,
+      "scanEntitiesVisitedPerBatch": 10000,
+      "graphBindingVisitsPerBatch": 1000,
+      "equivalentHostWritesPerBatch": 1000,
+      "pairSamples": [
+        {
+          "pairIndex": 0,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.008275000000003275,
+          "graphMs": 0.01150666000000001,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 1,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.008216599999991558,
+          "graphMs": 0.010119999999999437,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 2,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.008150000000000546,
+          "graphMs": 0.010227499999998599,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 3,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.008183199999984936,
+          "graphMs": 0.010104160000000775,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 4,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.008141799999998511,
+          "graphMs": 0.01040749999999889,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 5,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.008608399999980065,
+          "graphMs": 0.01059500000000071,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 6,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.008500000000003638,
+          "graphMs": 0.01060167999999976,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 7,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.008500000000003638,
+          "graphMs": 0.010745819999999639,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 8,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.00858339999999771,
+          "graphMs": 0.010580820000000131,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 9,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.008541599999989557,
+          "graphMs": 0.01057416000000103,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 10,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.008150000000000546,
+          "graphMs": 0.01025331999999935,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 11,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.008150000000000546,
+          "graphMs": 0.010208340000001499,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 12,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.008150000000000546,
+          "graphMs": 0.01020915999999943,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 13,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.008150000000000546,
+          "graphMs": 0.010118340000001353,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 14,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.008183400000007168,
+          "graphMs": 0.01008083999999826,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 15,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.008116799999993419,
+          "graphMs": 0.01008333999999877,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 16,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.008108399999991888,
+          "graphMs": 0.010086679999999433,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 17,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.008116599999993923,
+          "graphMs": 0.010080000000000382,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 18,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.008108200000015131,
+          "graphMs": 0.010078340000000026,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 19,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.008133399999996982,
+          "graphMs": 0.010513320000000022,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 20,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.008116799999993419,
+          "graphMs": 0.010078340000000026,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 21,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.008124999999995452,
+          "graphMs": 0.010068339999997988,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 22,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.008133399999996982,
+          "graphMs": 0.010094159999998737,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 23,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.008133399999996982,
+          "graphMs": 0.010111679999999979,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 24,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.00824999999999818,
+          "graphMs": 0.010164159999999357,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 25,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.008591599999999745,
+          "graphMs": 0.010215820000000804,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 26,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.008150000000000546,
+          "graphMs": 0.010231659999999466,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 27,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.008349999999995816,
+          "graphMs": 0.010544160000001739,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 28,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.008816799999999602,
+          "graphMs": 0.010600839999999606,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 29,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.008333199999992758,
+          "graphMs": 0.010556659999999739,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 30,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.00829999999998563,
+          "graphMs": 0.010372500000000855,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 31,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.008858399999985523,
+          "graphMs": 0.010509159999999155,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 32,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.008116799999993419,
+          "graphMs": 0.010190000000000055,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 33,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.008124999999995452,
+          "graphMs": 0.01006418000000167,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 34,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.008108400000014625,
+          "graphMs": 0.010058340000000499,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 35,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.008108399999991888,
+          "graphMs": 0.010201680000000124,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 36,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.008116599999993923,
+          "graphMs": 0.01005999999999858,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 37,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.008124999999995452,
+          "graphMs": 0.010062499999999091,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 38,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.008141799999998511,
+          "graphMs": 0.010200839999999971,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 39,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.00811660000001666,
+          "graphMs": 0.010133339999999862,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 40,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.008116599999993923,
+          "graphMs": 0.01039166000000023,
+          "scanFrames": 5,
+          "graphFrames": 50,
+          "graphFaster": false
+        }
+      ],
+      "scan": {
+        "medianMs": 0.008150000000000546,
+        "p95Ms": 0.008608399999980065,
+        "samplesMs": [
+          0.008275000000003275,
+          0.008216599999991558,
+          0.008150000000000546,
+          0.008183199999984936,
+          0.008141799999998511,
+          0.008608399999980065,
+          0.008500000000003638,
+          0.008500000000003638,
+          0.00858339999999771,
+          0.008541599999989557,
+          0.008150000000000546,
+          0.008150000000000546,
+          0.008150000000000546,
+          0.008150000000000546,
+          0.008183400000007168,
+          0.008116799999993419,
+          0.008108399999991888,
+          0.008116599999993923,
+          0.008108200000015131,
+          0.008133399999996982,
+          0.008116799999993419,
+          0.008124999999995452,
+          0.008133399999996982,
+          0.008133399999996982,
+          0.00824999999999818,
+          0.008591599999999745,
+          0.008150000000000546,
+          0.008349999999995816,
+          0.008816799999999602,
+          0.008333199999992758,
+          0.00829999999998563,
+          0.008858399999985523,
+          0.008116799999993419,
+          0.008124999999995452,
+          0.008108400000014625,
+          0.008108399999991888,
+          0.008116599999993923,
+          0.008124999999995452,
+          0.008141799999998511,
+          0.00811660000001666,
+          0.008116599999993923
+        ]
+      },
+      "compiledGraph": {
+        "medianMs": 0.010201680000000124,
+        "p95Ms": 0.01060167999999976,
+        "samplesMs": [
+          0.01150666000000001,
+          0.010119999999999437,
+          0.010227499999998599,
+          0.010104160000000775,
+          0.01040749999999889,
+          0.01059500000000071,
+          0.01060167999999976,
+          0.010745819999999639,
+          0.010580820000000131,
+          0.01057416000000103,
+          0.01025331999999935,
+          0.010208340000001499,
+          0.01020915999999943,
+          0.010118340000001353,
+          0.01008083999999826,
+          0.01008333999999877,
+          0.010086679999999433,
+          0.010080000000000382,
+          0.010078340000000026,
+          0.010513320000000022,
+          0.010078340000000026,
+          0.010068339999997988,
+          0.010094159999998737,
+          0.010111679999999979,
+          0.010164159999999357,
+          0.010215820000000804,
+          0.010231659999999466,
+          0.010544160000001739,
+          0.010600839999999606,
+          0.010556659999999739,
+          0.010372500000000855,
+          0.010509159999999155,
+          0.010190000000000055,
+          0.01006418000000167,
+          0.010058340000000499,
+          0.010201680000000124,
+          0.01005999999999858,
+          0.010062499999999091,
+          0.010200839999999971,
+          0.010133339999999862,
+          0.01039166000000023
+        ]
+      },
+      "paired": {
+        "medianScanOverGraph": 0.8045174106068173,
+        "graphFasterPairs": 0,
+        "scanFasterPairs": 41,
+        "scanFirstPairs": 20,
+        "graphFirstPairs": 21
+      },
+      "outputParity": true
+    },
+    {
+      "entityCount": 10000,
+      "changedFraction": 1,
+      "changedCount": 10000,
+      "randomizationSeed": 1736031144,
+      "scanEntitiesVisitedPerBatch": 10000,
+      "graphBindingVisitsPerBatch": 10000,
+      "equivalentHostWritesPerBatch": 10000,
+      "pairSamples": [
+        {
+          "pairIndex": 0,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.014983400000005531,
+          "graphMs": 0.08737499999999727,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 1,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.014891600000009931,
+          "graphMs": 0.08771659999999884,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 2,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.014849999999978537,
+          "graphMs": 0.08765000000000782,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 3,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.014724999999998545,
+          "graphMs": 0.0874082000000044,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 4,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.014699999999993451,
+          "graphMs": 0.08707500000000437,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 5,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.01471679999999651,
+          "graphMs": 0.08724179999999251,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 6,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.014925000000016553,
+          "graphMs": 0.08750840000000153,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 7,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.014841799999999239,
+          "graphMs": 0.08815839999999753,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 8,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.014708399999994981,
+          "graphMs": 0.08741680000000543,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 9,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.015058399999998074,
+          "graphMs": 0.08690819999999348,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 10,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.014716599999997016,
+          "graphMs": 0.08675000000000636,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 11,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.014991600000007566,
+          "graphMs": 0.08689999999999146,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 12,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.014750000000003639,
+          "graphMs": 0.08698340000000826,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 13,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.014750000000003639,
+          "graphMs": 0.0875250000000051,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 14,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.014800000000013825,
+          "graphMs": 0.0889332000000195,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 15,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.014708199999995486,
+          "graphMs": 0.08689160000001266,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 16,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.014733400000000074,
+          "graphMs": 0.08695820000000368,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 17,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.014724999999998545,
+          "graphMs": 0.08675000000000636,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 18,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.014741600000002108,
+          "graphMs": 0.08706660000000284,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 19,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.014975000000004002,
+          "graphMs": 0.08720000000000709,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 20,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.014716599999997016,
+          "graphMs": 0.08690000000001419,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 21,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0155332000000044,
+          "graphMs": 0.087175000000002,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 22,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.01483339999999771,
+          "graphMs": 0.08749179999999797,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 23,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.015566600000011022,
+          "graphMs": 0.08755839999998898,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 24,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.014850000000001274,
+          "graphMs": 0.0874332000000095,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 25,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.014866800000004333,
+          "graphMs": 0.08758319999999457,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 26,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.014808399999992616,
+          "graphMs": 0.08751680000000306,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 27,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.014933400000018082,
+          "graphMs": 0.08992500000001655,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 28,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.01477500000000873,
+          "graphMs": 0.08787500000000818,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 29,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.014716600000019753,
+          "graphMs": 0.08733320000001185,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 30,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.014708399999994981,
+          "graphMs": 0.08681659999999738,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 31,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.01471679999999651,
+          "graphMs": 0.0869499999999789,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 32,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.014875000000006366,
+          "graphMs": 0.08720839999998589,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 33,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.014758400000005167,
+          "graphMs": 0.08693339999999808,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 34,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.014741600000002108,
+          "graphMs": 0.08735000000001492,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 35,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.014774999999985994,
+          "graphMs": 0.08692499999999655,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 36,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.014750000000003639,
+          "graphMs": 0.08684160000000248,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 37,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.015158199999996213,
+          "graphMs": 0.08704999999999927,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 38,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.014724999999998545,
+          "graphMs": 0.08712499999999182,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 39,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.014716599999997016,
+          "graphMs": 0.08734160000001338,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 40,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.015066600000000107,
+          "graphMs": 0.0873583999999937,
+          "scanFrames": 5,
+          "graphFrames": 5,
+          "graphFaster": false
+        }
+      ],
+      "scan": {
+        "medianMs": 0.014774999999985994,
+        "p95Ms": 0.015158199999996213,
+        "samplesMs": [
+          0.014983400000005531,
+          0.014891600000009931,
+          0.014849999999978537,
+          0.014724999999998545,
+          0.014699999999993451,
+          0.01471679999999651,
+          0.014925000000016553,
+          0.014841799999999239,
+          0.014708399999994981,
+          0.015058399999998074,
+          0.014716599999997016,
+          0.014991600000007566,
+          0.014750000000003639,
+          0.014750000000003639,
+          0.014800000000013825,
+          0.014708199999995486,
+          0.014733400000000074,
+          0.014724999999998545,
+          0.014741600000002108,
+          0.014975000000004002,
+          0.014716599999997016,
+          0.0155332000000044,
+          0.01483339999999771,
+          0.015566600000011022,
+          0.014850000000001274,
+          0.014866800000004333,
+          0.014808399999992616,
+          0.014933400000018082,
+          0.01477500000000873,
+          0.014716600000019753,
+          0.014708399999994981,
+          0.01471679999999651,
+          0.014875000000006366,
+          0.014758400000005167,
+          0.014741600000002108,
+          0.014774999999985994,
+          0.014750000000003639,
+          0.015158199999996213,
+          0.014724999999998545,
+          0.014716599999997016,
+          0.015066600000000107
+        ]
+      },
+      "compiledGraph": {
+        "medianMs": 0.08724179999999251,
+        "p95Ms": 0.08815839999999753,
+        "samplesMs": [
+          0.08737499999999727,
+          0.08771659999999884,
+          0.08765000000000782,
+          0.0874082000000044,
+          0.08707500000000437,
+          0.08724179999999251,
+          0.08750840000000153,
+          0.08815839999999753,
+          0.08741680000000543,
+          0.08690819999999348,
+          0.08675000000000636,
+          0.08689999999999146,
+          0.08698340000000826,
+          0.0875250000000051,
+          0.0889332000000195,
+          0.08689160000001266,
+          0.08695820000000368,
+          0.08675000000000636,
+          0.08706660000000284,
+          0.08720000000000709,
+          0.08690000000001419,
+          0.087175000000002,
+          0.08749179999999797,
+          0.08755839999998898,
+          0.0874332000000095,
+          0.08758319999999457,
+          0.08751680000000306,
+          0.08992500000001655,
+          0.08787500000000818,
+          0.08733320000001185,
+          0.08681659999999738,
+          0.0869499999999789,
+          0.08720839999998589,
+          0.08693339999999808,
+          0.08735000000001492,
+          0.08692499999999655,
+          0.08684160000000248,
+          0.08704999999999927,
+          0.08712499999999182,
+          0.08734160000001338,
+          0.0873583999999937
+        ]
+      },
+      "paired": {
+        "medianScanOverGraph": 0.16943082998497497,
+        "graphFasterPairs": 0,
+        "scanFasterPairs": 41,
+        "scanFirstPairs": 20,
+        "graphFirstPairs": 21
+      },
+      "outputParity": true
+    },
+    {
+      "entityCount": 50000,
+      "changedFraction": 0.01,
+      "changedCount": 500,
+      "randomizationSeed": 1736031211,
+      "scanEntitiesVisitedPerBatch": 50000,
+      "graphBindingVisitsPerBatch": 500,
+      "equivalentHostWritesPerBatch": 500,
+      "pairSamples": [
+        {
+          "pairIndex": 0,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.04041699999993398,
+          "graphMs": 0.005086249999999381,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 1,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.040500000000065484,
+          "graphMs": 0.005346250000000055,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 2,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.04179199999998673,
+          "graphMs": 0.006009159999999838,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 3,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.04112499999996544,
+          "graphMs": 0.005072499999999991,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 4,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.04062499999997726,
+          "graphMs": 0.005069999999999481,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 5,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.039915999999948326,
+          "graphMs": 0.00506917000000044,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 6,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.03966600000001108,
+          "graphMs": 0.005066249999999855,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 7,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.040541999999959444,
+          "graphMs": 0.005078750000000127,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 8,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.039499999999975444,
+          "graphMs": 0.005072089999999889,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 9,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.039416999999957625,
+          "graphMs": 0.005117500000000064,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 10,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.04020899999989069,
+          "graphMs": 0.00504291999999964,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 11,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.04016699999999673,
+          "graphMs": 0.005039170000000013,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 12,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.03920900000002803,
+          "graphMs": 0.005037919999999758,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 13,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.04029199999990851,
+          "graphMs": 0.005039170000000013,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 14,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.04020900000000438,
+          "graphMs": 0.005131250000000591,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 15,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.04041600000005019,
+          "graphMs": 0.00503582999999935,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 16,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.03954199999998309,
+          "graphMs": 0.005033339999999953,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 17,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.039333999999939806,
+          "graphMs": 0.005033339999999953,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 18,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.039709000000016204,
+          "graphMs": 0.005191250000000309,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 19,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.04070799999999508,
+          "graphMs": 0.00504833000000076,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 20,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.040665999999987434,
+          "graphMs": 0.005071669999999813,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 21,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.03999999999996362,
+          "graphMs": 0.005185000000000173,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 22,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0404999999999518,
+          "graphMs": 0.005168750000000273,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 23,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.040417000000047665,
+          "graphMs": 0.005073750000000246,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 24,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.04033300000003237,
+          "graphMs": 0.005071669999999813,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 25,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.039915999999948326,
+          "graphMs": 0.005049579999999878,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 26,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0404999999999518,
+          "graphMs": 0.0050649999999996,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 27,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.04037499999992633,
+          "graphMs": 0.005060419999999795,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 28,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.04045799999994415,
+          "graphMs": 0.005074579999999287,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 29,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.03979100000003655,
+          "graphMs": 0.005084580000000187,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 30,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0404999999999518,
+          "graphMs": 0.005064169999999421,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 31,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.04091700000003584,
+          "graphMs": 0.005130419999999276,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 32,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.040792000000010376,
+          "graphMs": 0.005053329999999506,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 33,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.03991700000005949,
+          "graphMs": 0.00504709000000048,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 34,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.040291000000024724,
+          "graphMs": 0.005040830000000369,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 35,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.04037499999992633,
+          "graphMs": 0.005039580000000115,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 36,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0394579999999678,
+          "graphMs": 0.005110419999999749,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 37,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.03945800000008148,
+          "graphMs": 0.005068330000000287,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 38,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.04025000000001455,
+          "graphMs": 0.005040000000000191,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 39,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.04054200000007313,
+          "graphMs": 0.0050429200000007765,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        },
+        {
+          "pairIndex": 40,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.039667000000008557,
+          "graphMs": 0.0050404099999991556,
+          "scanFrames": 1,
+          "graphFrames": 100,
+          "graphFaster": true
+        }
+      ],
+      "scan": {
+        "medianMs": 0.04029199999990851,
+        "p95Ms": 0.04091700000003584,
+        "samplesMs": [
+          0.04041699999993398,
+          0.040500000000065484,
+          0.04179199999998673,
+          0.04112499999996544,
+          0.04062499999997726,
+          0.039915999999948326,
+          0.03966600000001108,
+          0.040541999999959444,
+          0.039499999999975444,
+          0.039416999999957625,
+          0.04020899999989069,
+          0.04016699999999673,
+          0.03920900000002803,
+          0.04029199999990851,
+          0.04020900000000438,
+          0.04041600000005019,
+          0.03954199999998309,
+          0.039333999999939806,
+          0.039709000000016204,
+          0.04070799999999508,
+          0.040665999999987434,
+          0.03999999999996362,
+          0.0404999999999518,
+          0.040417000000047665,
+          0.04033300000003237,
+          0.039915999999948326,
+          0.0404999999999518,
+          0.04037499999992633,
+          0.04045799999994415,
+          0.03979100000003655,
+          0.0404999999999518,
+          0.04091700000003584,
+          0.040792000000010376,
+          0.03991700000005949,
+          0.040291000000024724,
+          0.04037499999992633,
+          0.0394579999999678,
+          0.03945800000008148,
+          0.04025000000001455,
+          0.04054200000007313,
+          0.039667000000008557
+        ]
+      },
+      "compiledGraph": {
+        "medianMs": 0.005068330000000287,
+        "p95Ms": 0.005191250000000309,
+        "samplesMs": [
+          0.005086249999999381,
+          0.005346250000000055,
+          0.006009159999999838,
+          0.005072499999999991,
+          0.005069999999999481,
+          0.00506917000000044,
+          0.005066249999999855,
+          0.005078750000000127,
+          0.005072089999999889,
+          0.005117500000000064,
+          0.00504291999999964,
+          0.005039170000000013,
+          0.005037919999999758,
+          0.005039170000000013,
+          0.005131250000000591,
+          0.00503582999999935,
+          0.005033339999999953,
+          0.005033339999999953,
+          0.005191250000000309,
+          0.00504833000000076,
+          0.005071669999999813,
+          0.005185000000000173,
+          0.005168750000000273,
+          0.005073750000000246,
+          0.005071669999999813,
+          0.005049579999999878,
+          0.0050649999999996,
+          0.005060419999999795,
+          0.005074579999999287,
+          0.005084580000000187,
+          0.005064169999999421,
+          0.005130419999999276,
+          0.005053329999999506,
+          0.00504709000000048,
+          0.005040830000000369,
+          0.005039580000000115,
+          0.005110419999999749,
+          0.005068330000000287,
+          0.005040000000000191,
+          0.0050429200000007765,
+          0.0050404099999991556
+        ]
+      },
+      "paired": {
+        "medianScanOverGraph": 7.952607326587467,
+        "graphFasterPairs": 41,
+        "scanFasterPairs": 0,
+        "scanFirstPairs": 20,
+        "graphFirstPairs": 21
+      },
+      "outputParity": true
+    },
+    {
+      "entityCount": 50000,
+      "changedFraction": 0.1,
+      "changedCount": 5000,
+      "randomizationSeed": 1736031228,
+      "scanEntitiesVisitedPerBatch": 50000,
+      "graphBindingVisitsPerBatch": 5000,
+      "equivalentHostWritesPerBatch": 5000,
+      "pairSamples": [
+        {
+          "pairIndex": 0,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.04070799999999508,
+          "graphMs": 0.050504100000000565,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 1,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.04070899999999256,
+          "graphMs": 0.050495899999998525,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 2,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.04112499999996544,
+          "graphMs": 0.050804199999993215,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 3,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0407910000000129,
+          "graphMs": 0.05082919999999831,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 4,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.040792000000010376,
+          "graphMs": 0.05160419999999703,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 5,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.04079199999989669,
+          "graphMs": 0.051062500000000455,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 6,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.040541999999959444,
+          "graphMs": 0.05098749999999654,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 7,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.040875000000028194,
+          "graphMs": 0.05101249999999027,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 8,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.040792000000010376,
+          "graphMs": 0.05097089999999298,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 9,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.04083299999990686,
+          "graphMs": 0.05122499999999945,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 10,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.04066699999998491,
+          "graphMs": 0.050487500000008366,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 11,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.04075000000000273,
+          "graphMs": 0.05056250000000091,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 12,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.04054099999996197,
+          "graphMs": 0.050462500000003276,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 13,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.04075000000000273,
+          "graphMs": 0.050491699999997766,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 14,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.041333000000008724,
+          "graphMs": 0.050854199999992036,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 15,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.04141700000002402,
+          "graphMs": 0.050929099999996195,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 16,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.040665999999987434,
+          "graphMs": 0.05045000000000073,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 17,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.04070899999999256,
+          "graphMs": 0.0506958999999938,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 18,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.04070799999999508,
+          "graphMs": 0.05074580000000424,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 19,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.040875000000028194,
+          "graphMs": 0.05067080000000033,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 20,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.041249999999990905,
+          "graphMs": 0.0507082999999966,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 21,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.040875000000028194,
+          "graphMs": 0.050691599999993286,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 22,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.04062499999997726,
+          "graphMs": 0.052049999999997,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 23,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.04112499999996544,
+          "graphMs": 0.05072499999999991,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 24,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.04099999999993997,
+          "graphMs": 0.05094579999999951,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 25,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.04070799999999508,
+          "graphMs": 0.050812499999995,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 26,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.04075000000000273,
+          "graphMs": 0.050966700000003584,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 27,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.04108300000007148,
+          "graphMs": 0.05094170000000986,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 28,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.040916999999922155,
+          "graphMs": 0.05089590000000044,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 29,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.040875000000028194,
+          "graphMs": 0.051004199999999854,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 30,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.04083300000002055,
+          "graphMs": 0.05093749999999773,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 31,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.04079099999989921,
+          "graphMs": 0.050433399999997165,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 32,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.04070799999999508,
+          "graphMs": 0.050487499999997,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 33,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.04070799999999508,
+          "graphMs": 0.0507874999999899,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 34,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.04075000000000273,
+          "graphMs": 0.0504291999999964,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 35,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.04379200000005312,
+          "graphMs": 0.050983400000006895,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 36,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.04070799999999508,
+          "graphMs": 0.050425000000007006,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 37,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.04075000000000273,
+          "graphMs": 0.05050840000000108,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 38,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.04062499999997726,
+          "graphMs": 0.05047079999999369,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 39,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.040665999999987434,
+          "graphMs": 0.050462500000003276,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 40,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.04075000000000273,
+          "graphMs": 0.050441699999998944,
+          "scanFrames": 1,
+          "graphFrames": 10,
+          "graphFaster": false
+        }
+      ],
+      "scan": {
+        "medianMs": 0.04075000000000273,
+        "p95Ms": 0.041333000000008724,
+        "samplesMs": [
+          0.04070799999999508,
+          0.04070899999999256,
+          0.04112499999996544,
+          0.0407910000000129,
+          0.040792000000010376,
+          0.04079199999989669,
+          0.040541999999959444,
+          0.040875000000028194,
+          0.040792000000010376,
+          0.04083299999990686,
+          0.04066699999998491,
+          0.04075000000000273,
+          0.04054099999996197,
+          0.04075000000000273,
+          0.041333000000008724,
+          0.04141700000002402,
+          0.040665999999987434,
+          0.04070899999999256,
+          0.04070799999999508,
+          0.040875000000028194,
+          0.041249999999990905,
+          0.040875000000028194,
+          0.04062499999997726,
+          0.04112499999996544,
+          0.04099999999993997,
+          0.04070799999999508,
+          0.04075000000000273,
+          0.04108300000007148,
+          0.040916999999922155,
+          0.040875000000028194,
+          0.04083300000002055,
+          0.04079099999989921,
+          0.04070799999999508,
+          0.04070799999999508,
+          0.04075000000000273,
+          0.04379200000005312,
+          0.04070799999999508,
+          0.04075000000000273,
+          0.04062499999997726,
+          0.040665999999987434,
+          0.04075000000000273
+        ]
+      },
+      "compiledGraph": {
+        "medianMs": 0.05074580000000424,
+        "p95Ms": 0.05122499999999945,
+        "samplesMs": [
+          0.050504100000000565,
+          0.050495899999998525,
+          0.050804199999993215,
+          0.05082919999999831,
+          0.05160419999999703,
+          0.051062500000000455,
+          0.05098749999999654,
+          0.05101249999999027,
+          0.05097089999999298,
+          0.05122499999999945,
+          0.050487500000008366,
+          0.05056250000000091,
+          0.050462500000003276,
+          0.050491699999997766,
+          0.050854199999992036,
+          0.050929099999996195,
+          0.05045000000000073,
+          0.0506958999999938,
+          0.05074580000000424,
+          0.05067080000000033,
+          0.0507082999999966,
+          0.050691599999993286,
+          0.052049999999997,
+          0.05072499999999991,
+          0.05094579999999951,
+          0.050812499999995,
+          0.050966700000003584,
+          0.05094170000000986,
+          0.05089590000000044,
+          0.051004199999999854,
+          0.05093749999999773,
+          0.050433399999997165,
+          0.050487499999997,
+          0.0507874999999899,
+          0.0504291999999964,
+          0.050983400000006895,
+          0.050425000000007006,
+          0.05050840000000108,
+          0.05047079999999369,
+          0.050462500000003276,
+          0.050441699999998944
+        ]
+      },
+      "paired": {
+        "medianScanOverGraph": 0.8058657418872389,
+        "graphFasterPairs": 0,
+        "scanFasterPairs": 41,
+        "scanFirstPairs": 20,
+        "graphFirstPairs": 21
+      },
+      "outputParity": true
+    },
+    {
+      "entityCount": 50000,
+      "changedFraction": 1,
+      "changedCount": 50000,
+      "randomizationSeed": 1736031245,
+      "scanEntitiesVisitedPerBatch": 50000,
+      "graphBindingVisitsPerBatch": 50000,
+      "equivalentHostWritesPerBatch": 50000,
+      "pairSamples": [
+        {
+          "pairIndex": 0,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.07470899999998437,
+          "graphMs": 0.43650000000002365,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 1,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.07454199999995126,
+          "graphMs": 0.44925000000000637,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 2,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.07375000000001819,
+          "graphMs": 0.44287499999995816,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 3,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.07349999999996726,
+          "graphMs": 0.43479100000001836,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 4,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.07387500000004366,
+          "graphMs": 0.43479200000001583,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 5,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.07341600000006565,
+          "graphMs": 0.43487500000003365,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 6,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.07345900000007077,
+          "graphMs": 0.4345419999999649,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 7,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0739170000000513,
+          "graphMs": 0.43441699999993943,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 8,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.07383300000003601,
+          "graphMs": 0.4344580000000633,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 9,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.07754099999999653,
+          "graphMs": 0.4365829999999278,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 10,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.07416599999999107,
+          "graphMs": 0.438083000000006,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 11,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.07370900000000802,
+          "graphMs": 0.43583300000000236,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 12,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.07366700000000037,
+          "graphMs": 0.43650000000002365,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 13,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.07441700000003948,
+          "graphMs": 0.43737499999997453,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 14,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.07495800000003783,
+          "graphMs": 0.4375,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 15,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.07474999999999454,
+          "graphMs": 0.4405829999999469,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 16,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.07458299999996143,
+          "graphMs": 0.43770900000004076,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 17,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0745000000000573,
+          "graphMs": 0.4375830000000178,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 18,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.07695799999999053,
+          "graphMs": 0.43670799999995324,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 19,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.07349999999996726,
+          "graphMs": 0.4393750000000409,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 20,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.07387500000004366,
+          "graphMs": 0.43425000000002,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 21,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.07445800000004965,
+          "graphMs": 0.4365420000000313,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 22,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.07379200000002584,
+          "graphMs": 0.4340829999999869,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 23,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.07354099999997743,
+          "graphMs": 0.43450000000007094,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 24,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.07362499999999272,
+          "graphMs": 0.4416249999999309,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 25,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.07383400000003348,
+          "graphMs": 0.4343749999999318,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 26,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.0736660000000029,
+          "graphMs": 0.43450000000007094,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 27,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.07370800000001054,
+          "graphMs": 0.43383300000004965,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 28,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.07379199999991215,
+          "graphMs": 0.44429200000001856,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 29,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0735419999999749,
+          "graphMs": 0.4411249999999427,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 30,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.0741249999999809,
+          "graphMs": 0.4353330000000142,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 31,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.07454199999995126,
+          "graphMs": 0.4370000000000118,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 32,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.07462500000008276,
+          "graphMs": 0.43716700000004494,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 33,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.07462499999996908,
+          "graphMs": 0.43725000000006276,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 34,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.07458300000007512,
+          "graphMs": 0.4412090000000717,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 35,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.07462499999996908,
+          "graphMs": 0.4374169999999822,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 36,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.07408299999997325,
+          "graphMs": 0.4372079999999414,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 37,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.07399999999995543,
+          "graphMs": 0.4367499999999609,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 38,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.07345899999995709,
+          "graphMs": 0.43412499999999454,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 39,
+          "order": [
+            "compiledGraph",
+            "scan"
+          ],
+          "scanMs": 0.07379199999991215,
+          "graphMs": 0.43470800000000054,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        },
+        {
+          "pairIndex": 40,
+          "order": [
+            "scan",
+            "compiledGraph"
+          ],
+          "scanMs": 0.07362499999999272,
+          "graphMs": 0.43962499999997817,
+          "scanFrames": 1,
+          "graphFrames": 1,
+          "graphFaster": false
+        }
+      ],
+      "scan": {
+        "medianMs": 0.07387500000004366,
+        "p95Ms": 0.07495800000003783,
+        "samplesMs": [
+          0.07470899999998437,
+          0.07454199999995126,
+          0.07375000000001819,
+          0.07349999999996726,
+          0.07387500000004366,
+          0.07341600000006565,
+          0.07345900000007077,
+          0.0739170000000513,
+          0.07383300000003601,
+          0.07754099999999653,
+          0.07416599999999107,
+          0.07370900000000802,
+          0.07366700000000037,
+          0.07441700000003948,
+          0.07495800000003783,
+          0.07474999999999454,
+          0.07458299999996143,
+          0.0745000000000573,
+          0.07695799999999053,
+          0.07349999999996726,
+          0.07387500000004366,
+          0.07445800000004965,
+          0.07379200000002584,
+          0.07354099999997743,
+          0.07362499999999272,
+          0.07383400000003348,
+          0.0736660000000029,
+          0.07370800000001054,
+          0.07379199999991215,
+          0.0735419999999749,
+          0.0741249999999809,
+          0.07454199999995126,
+          0.07462500000008276,
+          0.07462499999996908,
+          0.07458300000007512,
+          0.07462499999996908,
+          0.07408299999997325,
+          0.07399999999995543,
+          0.07345899999995709,
+          0.07379199999991215,
+          0.07362499999999272
+        ]
+      },
+      "compiledGraph": {
+        "medianMs": 0.43670799999995324,
+        "p95Ms": 0.44287499999995816,
+        "samplesMs": [
+          0.43650000000002365,
+          0.44925000000000637,
+          0.44287499999995816,
+          0.43479100000001836,
+          0.43479200000001583,
+          0.43487500000003365,
+          0.4345419999999649,
+          0.43441699999993943,
+          0.4344580000000633,
+          0.4365829999999278,
+          0.438083000000006,
+          0.43583300000000236,
+          0.43650000000002365,
+          0.43737499999997453,
+          0.4375,
+          0.4405829999999469,
+          0.43770900000004076,
+          0.4375830000000178,
+          0.43670799999995324,
+          0.4393750000000409,
+          0.43425000000002,
+          0.4365420000000313,
+          0.4340829999999869,
+          0.43450000000007094,
+          0.4416249999999309,
+          0.4343749999999318,
+          0.43450000000007094,
+          0.43383300000004965,
+          0.44429200000001856,
+          0.4411249999999427,
+          0.4353330000000142,
+          0.4370000000000118,
+          0.43716700000004494,
+          0.43725000000006276,
+          0.4412090000000717,
+          0.4374169999999822,
+          0.4372079999999414,
+          0.4367499999999609,
+          0.43412499999999454,
+          0.43470800000000054,
+          0.43962499999997817
+        ]
+      },
+      "paired": {
+        "medianScanOverGraph": 0.16975072922493273,
+        "graphFasterPairs": 0,
+        "scanFasterPairs": 41,
+        "scanFirstPairs": 20,
+        "graphFirstPairs": 21
+      },
+      "outputParity": true
+    }
+  ]
+}

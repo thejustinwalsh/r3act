@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "high-frequency-postbuild-transform-audit-v1",
+  "status": "FAIL",
+  "productionBundleProduced": true,
+  "buildProofPluginStatus": "FAIL",
+  "failure": "React Compiler transformed the React arm but produced no row-local memo caches for ReactRowA or ReactRowB; no source/workload adjustment was made.",
+  "nativeTransform": {
+    "path": "native-transformed.js",
+    "sha256": "ed81f28e857bfbf0ce81944a3b1d268ef29c30e10afb622856dbe276f4a428c2",
+    "bytes": 21279,
+    "rows": [
+      {
+        "name": "NativeRowA",
+        "componentId": "src/browser/native_high_frequency_arm.tsx#component:NativeRowA",
+        "programIdInCompilerABI": false,
+        "layoutSchemaVersion": 1,
+        "stateSites": [
+          "src/browser/native_high_frequency_arm.tsx#component:NativeRowA#state:0",
+          "src/browser/native_high_frequency_arm.tsx#component:NativeRowA#state:1",
+          "src/browser/native_high_frequency_arm.tsx#component:NativeRowA#state:2"
+        ],
+        "registrationPresent": true,
+        "layoutSlotsPresent": true
+      },
+      {
+        "name": "NativeRowB",
+        "componentId": "src/browser/native_high_frequency_arm.tsx#component:NativeRowB",
+        "programIdInCompilerABI": false,
+        "layoutSchemaVersion": 1,
+        "stateSites": [
+          "src/browser/native_high_frequency_arm.tsx#component:NativeRowB#state:0",
+          "src/browser/native_high_frequency_arm.tsx#component:NativeRowB#state:1",
+          "src/browser/native_high_frequency_arm.tsx#component:NativeRowB#state:2"
+        ],
+        "registrationPresent": true,
+        "layoutSlotsPresent": true
+      }
+    ]
+  },
+  "reactTransform": {
+    "path": "react-transformed.js",
+    "sha256": "afea9c79adf5bb6fb33d2e265d506970aae8d1760979e2222fc776688a8e952b",
+    "bytes": 3870,
+    "rows": [
+      {
+        "name": "ReactRowA",
+        "present": true,
+        "compilerMemoCacheAllocation": false,
+        "compilerMemoCacheSlots": false
+      },
+      {
+        "name": "ReactRowB",
+        "present": true,
+        "compilerMemoCacheAllocation": false,
+        "compilerMemoCacheSlots": false
+      }
+    ],
+    "boardMemoCachePresent": true
+  },
+  "note": "Current native compiler ABI emits component IDs and V1 state layouts, not a separate owner programId field. This audit records the IDs/layouts actually emitted; it does not infer a programId."
+}

@@ -1,0 +1,28 @@
+Check src/state_change_identity_test.ts
+Check src/pending_state_changes_test.ts
+Check src/owner_state_world_test.ts
+running 7 tests from ./src/state_change_identity_test.ts
+reused foreign identity cannot alias another owner or site ... ok (0ms)
+world cell identity stays stable through renders and existing-cell publish ... ok (0ms)
+new candidate cells get distinct identity only after publication ... ok (0ms)
+discarded candidates emit no identity notification and world destruction cleans state ... ok (0ms)
+pending identity records coalesce with legacy records and preserve first order ... ok (0ms)
+identity clearThrough preserves reentrant newer versions ... ok (0ms)
+pending identity cache resets on clear and invalidates on owner drop ... ok (0ms)
+running 8 tests from ./src/pending_state_changes_test.ts
+pending changes expose current values in insertion order ... ok (0ms)
+repeated writes coalesce without changing insertion order ... ok (0ms)
+different owners and unusual site strings remain distinct ... ok (0ms)
+clearThrough only removes entries at or below captured versions ... ok (0ms)
+a write after a captured clear is preserved ... ok (0ms)
+cleared identities are reused without moving pending entries ... ok (0ms)
+dropOwner removes that owner's entries and permits clean reuse ... ok (0ms)
+clear removes pending changes and cached identities ... ok (0ms)
+running 4 tests from ./src/owner_state_world_test.ts
+owner/site state survives skipped conditional sites without shifting neighboring state ... ok (0ms)
+keyed owner identity is stable through reorder and fresh after destruction ... ok (0ms)
+state writes use Object.is, functional updates, and coalesced owner/site change records ... ok (0ms)
+destroying an owner recursively removes child traits and queued updates ... ok (0ms)
+
+ok | 19 passed | 0 failed (58ms)
+

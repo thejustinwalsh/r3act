@@ -1,0 +1,21 @@
+{
+  "status": "PASS",
+  "date": "2026-10-13",
+  "platform": "darwin-arm64",
+  "node": "v24.18.0",
+  "repositoryPnpmCli": "11.25.0",
+  "cargo": "1.98.1",
+  "buildCommand": "PATH=Node-v24 PNPM_CONFIG_FROZEN_LOCKFILE=true CARGO_HOME=.cache/cargo node scripts/build_native_package.mjs",
+  "buildResult": "success; script ran pnpm exec tsgo, cargo build --locked --release --bin ui-graph-compiler-spike, then packed @compiled-ui/runtime",
+  "consumerCommandPass": "PATH=Node-v24 env -u PNPM_CONFIG_FROZEN_LOCKFILE node scripts/verify_native_package.mjs",
+  "consumerCommandInitialFailure": "The verifier creates a fresh temporary consumer without pnpm-lock.yaml; PNPM_CONFIG_FROZEN_LOCKFILE=true caused ERR_PNPM_NO_LOCKFILE. The first failure is retained in consumer-verification.log. The passing verifier uses its exact-version temporary manifest and does not modify repository dependencies or lockfiles.",
+  "consumerResult": "PASS",
+  "consumerInstallToolNote": "The standalone verification helper's pnpm child reported pnpm v12.10.1; repository shell resolves pnpm v11.25.0. The exact package manifest versions and installed artifact hashes were checked in either case.",
+  "sourceMapAudit": {"mapCount":68,"javascriptMaps":34,"declarationMaps":34,"mappedSourceCount":34,"packagedSourceCount":35},
+  "packagedKernelProof": "PASS; installed release binary emitted two schemaVersion 2 owner kernels with six-argument ordinal ABI and no changedRows argument",
+  "installedOwnerKernelConsumer": "PASS; fresh installed tarball and packaged compiler transformed primitive numeric TSX, mounted into MemoryVDOMHost, called the v2 owner kernel once for a changed style while suppressing equal parity, avoided rerender, ignored an equal state update, and disposed host state. No Cargo was available in its PATH.",
+  "prebuiltModuleCheck": "main.rs declares mod owner_update_program; cargo release build succeeded; package binary equals freshly built release binary",
+  "sourceFreshness": "10 current runtime/compiler TypeScript sources match package-report hashes; prebuild/postrun source and lock input hashes identical",
+  "priorArtifacts": "prior build tree, tarball, and verification results preserved under prior/",
+  "failedProbeAttempts": "All prior failed syntax/instrumentation assertions are preserved in installed-kernel-proof.log, installed-kernel-proof-v2.log, installed-kernel-proof-v3.log, and installed-owner-kernel-failure-*.json. Final passing attempt is installed-kernel-proof-v4.log and installed-owner-kernel-result.json."
+}

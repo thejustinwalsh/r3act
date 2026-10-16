@@ -1,0 +1,1 @@
+../../../../src/direct_cell_capability_test.ts

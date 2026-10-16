@@ -1,0 +1,38 @@
+[
+  {
+    "find": "const status = document.querySelector<HTMLElement>(\"#status\")!;",
+    "replace": "const ledgerMode = params.get(\"ledger\") ?? \"off\";\nif (![\"off\", \"on\", \"count\", \"allocation\"].includes(ledgerMode)) throw new Error(\"Invalid dense ledger mode\");\nconst ledgerEvents: Array<{frame:number; label:string; atMs:number}> = [];\nconst ledgerCounts: Record<string, number> = {};\nlet ledgerFrame = 0;\nconst denseLedger = {\n  mode: ledgerMode,\n  mark(label: string) { if (ledgerMode === \"on\") ledgerEvents.push({frame:ledgerFrame,label,atMs:performance.now()}); },\n  count(label: string, amount = 1) { if (ledgerMode === \"count\") ledgerCounts[label] = (ledgerCounts[label] ?? 0) + amount; },\n};\n(globalThis as typeof globalThis & {__denseLedger?: typeof denseLedger}).__denseLedger = denseLedger;\nconst status = document.querySelector<HTMLElement>(\"#status\")!;"
+  },
+  {
+    "find": "      const commitStarted = performance.now();\n      controller.step(frame, dirtyIds);",
+    "replace": "      ledgerFrame = frame;\n      const commitStarted = performance.now();\n      denseLedger.mark(\"commit.start\");\n      controller.step(frame, dirtyIds);\n      denseLedger.mark(\"commit.end\");"
+  },
+  {
+    "find": "mark(label: string) { if (ledgerMode === \"on\") ledgerEvents.push({frame:ledgerFrame,label,atMs:performance.now()}); },",
+    "replace": "mark(label: string) { if (ledgerMode === \"on\" && ledgerFrame >= 1 && ledgerFrame <= 300) ledgerEvents.push({frame:ledgerFrame,label,atMs:performance.now()}); },"
+  },
+  {
+    "find": "count(label: string, amount = 1) { if (ledgerMode === \"count\") ledgerCounts[label] = (ledgerCounts[label] ?? 0) + amount; },",
+    "replace": "count(label: string, amount = 1) { if (ledgerMode === \"count\" && ledgerFrame > 60 && ledgerFrame <= 300) ledgerCounts[label] = (ledgerCounts[label] ?? 0) + amount; },"
+  },
+  {
+    "find": "    timingContract: \"dirtyIds are selected once",
+    "replace": "    ledger: {mode:ledgerMode,countScope:\"measured-only-frames-61-300\",events:ledgerEvents,counts:ledgerCounts},\n    timingContract: \"dirtyIds are selected once"
+  },
+  {
+    "find": "      const now = await nextFrame();\n      const intervalMs = now - previousFrameAt;",
+    "replace": "      const now = ledgerMode === \"allocation\" && frame > warmupFrames ? previousFrameAt : await nextFrame();\n      const intervalMs = now - previousFrameAt;"
+  },
+  {
+    "find": "      const dirtyIds = selectDirtyIds(size, dirty, placement, frame);",
+    "replace": "      const dirtyIds = ledgerMode === \"allocation\" && frame > warmupFrames ? ids : selectDirtyIds(size, dirty, placement, frame);"
+  },
+  {
+    "find": "      inspect(frame, identity);\n      const d = controller.diagnostics();\n      check(d.mounts === size && d.cleanups === 0 && d.writers === size,\n        `Frame ${frame}: active lifecycle mismatch`, \"lifecycle\");\n      if (errors.length) break;",
+    "replace": "      if (ledgerMode !== \"allocation\" || frame <= warmupFrames) {\n        inspect(frame, identity);\n        const d = controller.diagnostics();\n        check(d.mounts === size && d.cleanups === 0 && d.writers === size,\n          `Frame ${frame}: active lifecycle mismatch`, \"lifecycle\");\n        if (errors.length) break;\n      }\n      if (ledgerMode === \"allocation\" && (frame === warmupFrames || frame === warmupFrames + measuredFrames)) {\n        const gate = globalThis as typeof globalThis & {__denseLedgerGate?: string | null; __denseLedgerRelease?: (() => void) | null};\n        gate.__denseLedgerGate = frame === warmupFrames ? \"warmup-complete\" : \"updates-complete\";\n        await new Promise<void>(resolve => { gate.__denseLedgerRelease = resolve; });\n        gate.__denseLedgerGate = null; gate.__denseLedgerRelease = null;\n        if (frame === warmupFrames + measuredFrames) inspect(frame, identity);\n      }"
+  },
+  {
+    "find": "    }\n  } catch (error) {\n    fatal = true;",
+    "replace": "    }\n    ledgerFrame = 0;\n  } catch (error) {\n    fatal = true;"
+  }
+]

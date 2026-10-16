@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Structural phase diagnostic</title>
+    <style>
+      body { font: 14px/1.5 ui-monospace, monospace; margin: 2rem; color: #17202a; }
+      label, button { margin-right: .75rem; }
+      #result, #phase-profile { white-space: pre-wrap; overflow-wrap: anywhere; }
+      #diagnostic { margin: 1.5rem 0; padding: 1rem; border: 1px solid #c8d0d8; background: #f7f9fb; }
+      #phase-profile { max-height: 36rem; overflow: auto; }
+      .roots { position: fixed; left: -200vw; top: 0; opacity: 0; pointer-events: none; contain: layout; }
+    </style>
+  </head>
+  <body>
+    <h1>Structural phase diagnostic</h1>
+    <p>This exploratory run reuses the structural React/runtime harness. Enable <code>diagnostics=1</code> to expose runtime phase timings after all three operations finish. Diagnostic instrumentation adds overhead; these values are not the primary AP v4 timings.</p>
+    <label>Leaves <select id="count"><option selected>10000</option></select></label>
+    <label>Seed <input id="seed" type="number" value="83001040" min="1" max="4294967295" step="1"></label>
+    <button id="run" type="button">Run structural diagnostic</button>
+    <button id="export" type="button" disabled>Export raw operation timings</button>
+    <pre id="result">Ready.</pre>
+    <details open id="diagnostic"><summary>Runtime phase profile (diagnostic timing)</summary><pre id="phase-profile">Waiting for the profiling run to finish…</pre></details>
+    <details><summary>Latest raw operation record</summary><pre id="record">Run the diagnostic to populate samples and parity checks.</pre></details>
+    <div class="roots" aria-hidden="true"><div id="react-root"></div><div id="runtime-root"></div></div>
+    <script type="module" src="/src/browser/component_state_structural_benchmark.tsx"></script>
+    <script type="module" src="/src/browser/structural_phase_profile_panel.ts"></script>
+  </body>
+</html>

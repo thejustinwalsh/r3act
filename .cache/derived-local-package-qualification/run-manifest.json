@@ -1,0 +1,43 @@
+{
+  "status": "PASS",
+  "date": "2026-10-13",
+  "platform": "darwin-arm64",
+  "buildCommand": "PATH=Node-v24 PNPM_CONFIG_FROZEN_LOCKFILE=true CARGO_HOME=.cache/cargo node scripts/build_native_package.mjs",
+  "consumerCommand": "env -u PNPM_CONFIG_FROZEN_LOCKFILE PATH=Node-v24 node scripts/verify_native_package.mjs",
+  "build": {
+    "log": "build.log",
+    "releaseCompilerSha256": "3b6f5ca21269b96ecd749c8d357cdb7a8f14cdbb8fc0eaafab73699f4f732c48",
+    "packageReportSha256": "e44c3434fbe028ac773ce5d98e79794a81ae8751fc61bf29b6be52c718638a9e",
+    "tarballSha256": "0c50e0056bb9e53e4c06976191e73f3a052a126e46af145a8588e90690c03d45"
+  },
+  "installedConsumer": {
+    "status": "PASS",
+    "checks": 8,
+    "sourceMaps": 68,
+    "mappedSources": 34,
+    "packagedSources": 35,
+    "result": "consumer-results.json",
+    "log": "consumer-verification.log"
+  },
+  "installedDerivedKernelProof": {
+    "status": "PASS",
+    "script": "verify_installed_derived_kernel.mjs",
+    "log": "installed-derived-kernel-proof.log",
+    "installedCompilerSha256": "3b6f5ca21269b96ecd749c8d357cdb7a8f14cdbb8fc0eaafab73699f4f732c48",
+    "fixture": "Derived locals parity=value%2 and offset=value+2 feed ordinary TSX props; update changes offset from 3px to 5px while parity output stays equal.",
+    "kernelCut": { "schemaVersion": 2, "arguments": 6, "calls": 1, "changedInputs": 1, "stagedSinks": 1 },
+    "componentRenders": 1,
+    "checks": "Installed Root and MemoryVDOMHost mounted the TSX output; emitted packaged owner kernel ran, equal parity output was suppressed, changed style reached the host without rerender, equal state update caused no additional cut, and dispose removed host state. Cargo was blocked from PATH during the consumer proof."
+  },
+  "sourceAndBuildLocks": {
+    "prebuildInputs": "prebuild-inputs.sha256",
+    "postrunInputs": "postrun-inputs.sha256",
+    "inputHashDiff": "input-hash-diff.txt",
+    "inputDiffEmpty": true,
+    "currentCompilerMainSha256": "521f6e5f3dd569fdeb67f57e71ec96ad419403872df1222d4affb4430d7faf65",
+    "currentOwnerUpdateModuleSha256": "666ab9e317c9f83092b45afc558be656896b6dff69b772609371bc9025a656a9",
+    "currentRootSha256": "dc6ceceba93b59c6c688e250cb0cce2be3ed836296994d4101de218fada602a9",
+    "currentVDOMSha256": "00d8516d2164d1f212e804dd3a579bc13588158eb361e756e2ebd25753b73aab"
+  },
+  "preservedPriorArtifacts": "prior/ contains the previously current tarball, package report, verifier result, and hashes."
+}

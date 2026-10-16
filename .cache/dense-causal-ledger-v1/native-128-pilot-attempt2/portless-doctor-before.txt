@@ -1,0 +1,32 @@
+
+portless doctor
+
+Version: 0.15.7
+Node.js: 24.18.0
+Platform: darwin arm64
+State dir: /Users/tjw/.portless
+Proxy target: https://127.0.0.1:1355
+Mode: HTTPS, .localhost
+
+ok    Node.js 24.18.0 satisfies portless requirements.
+fail  State directory is not writable: /Users/tjw/.portless
+warn  Proxy is not running on port 1355.
+      Run: portless proxy start -p 1355
+warn  Proxy PID file points to PID 43235, but no portless proxy is responding on port 1355.
+      Run: portless proxy stop
+ok    OpenSSL is available for certificate generation.
+ok    Local CA is trusted by the OS trust store.
+ok    Routes: 3 active routes.
+warn  Route yacht-club-test-access.localhost points to port 4580, but nothing is listening there.
+      Remove the alias or start that service.
+warn  Route yacht-agent-settings.localhost points to port 4405, but nothing is listening there.
+      Remove the alias or start that service.
+warn  Route yacht-simdeck.localhost points to port 4784, but nothing is listening there.
+      Remove the alias or start that service.
+warn  3 hostnames did not resolve through the system resolver.
+      Run: portless hosts sync
+warn  yacht-club-test-access.localhost is missing from hosts block.
+warn  yacht-agent-settings.localhost is missing from hosts block.
+warn  yacht-simdeck.localhost is missing from hosts block.
+
+Summary: 1 failure, 9 warnings.

@@ -1,0 +1,1 @@
+../../../../src/vdom_prepared_regions_test.ts

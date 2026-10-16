@@ -1,0 +1,401 @@
+{
+  "schemaVersion": "component-state-tree-shape-browser-summary-v1",
+  "status": "PASS",
+  "benchmark": "one leaf-local boolean state update in a 10,000-span DOM tree with four component/Fiber topologies",
+  "primaryUnit": "median milliseconds per update, summarized within page load then across three page-load medians per topology",
+  "browser": {
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+    "platform": "MacIntel",
+    "hardwareConcurrency": 10,
+    "devicePixelRatio": 2
+  },
+  "manifestFile": "results/browser-component-state-tree-shape-manifest-v1.json",
+  "scheduleFile": "results/browser-component-state-tree-shape-schedule-v1.json",
+  "deployment": "Vite production build served by Vite preview through Portless at react-runtime-tree-shape-prod.localhost:1355; React 19.3.0 with React Compiler enabled",
+  "pageLoadsAreReplicationUnit": true,
+  "independentBrowserProfiles": 1,
+  "scenarios": [
+    {
+      "groupCount": 0,
+      "groupSize": null,
+      "label": "Flat",
+      "pageLoadReplications": 3,
+      "medianMs": {
+        "react": 15.114000000059605,
+        "runtime": 0.012000000178813934
+      },
+      "pageMedianRangeMs": {
+        "react": [
+          14.00600000023842,
+          15.626999999880791
+        ],
+        "runtime": [
+          0.012000000178813934,
+          0.01300000011920929
+        ]
+      },
+      "medianPageP95Ms": {
+        "react": 15.482999999821185,
+        "runtime": 0.017000000178813934
+      },
+      "medianPageMountMs": {
+        "react": 52.400000005960464,
+        "runtime": 54.30000001192093
+      },
+      "medianPerPageSpeedup": 1202.0769120447735,
+      "pairedSampleWins": {
+        "runtime": 120,
+        "react": 0,
+        "ties": 0,
+        "total": 120
+      },
+      "runs": [
+        {
+          "file": "results/browser-component-state-tree-shape-v1-0-71002001.json",
+          "seed": 71002001,
+          "collectedAt": "2026-10-10T22:29:17.739Z",
+          "medianMs": {
+            "react": 15.114000000059605,
+            "runtime": 0.012000000178813934
+          },
+          "p95Ms": {
+            "react": 15.482999999821185,
+            "runtime": 0.017000000178813934
+          },
+          "mountMs": {
+            "react": 54.79999998211861,
+            "runtime": 53.5
+          }
+        },
+        {
+          "file": "results/browser-component-state-tree-shape-v1-0-71002007.json",
+          "seed": 71002007,
+          "collectedAt": "2026-10-10T22:37:14.291Z",
+          "medianMs": {
+            "react": 14.00600000023842,
+            "runtime": 0.012000000178813934
+          },
+          "p95Ms": {
+            "react": 14.428000000119209,
+            "runtime": 0.01699999988079071
+          },
+          "mountMs": {
+            "react": 52.400000005960464,
+            "runtime": 54.30000001192093
+          }
+        },
+        {
+          "file": "results/browser-component-state-tree-shape-v1-0-71002010.json",
+          "seed": 71002010,
+          "collectedAt": "2026-10-10T22:41:02.245Z",
+          "medianMs": {
+            "react": 15.626999999880791,
+            "runtime": 0.01300000011920929
+          },
+          "p95Ms": {
+            "react": 16.574000000059605,
+            "runtime": 0.017999999821186066
+          },
+          "mountMs": {
+            "react": 50.69999998807907,
+            "runtime": 56.400000005960464
+          }
+        }
+      ],
+      "contractsPass": true
+    },
+    {
+      "groupCount": 10,
+      "groupSize": 1000,
+      "label": "10 × 1,000",
+      "pageLoadReplications": 3,
+      "medianMs": {
+        "react": 13.585,
+        "runtime": 0.01199999988079071
+      },
+      "pageMedianRangeMs": {
+        "react": [
+          13.139000000059605,
+          14.032999999821186
+        ],
+        "runtime": [
+          0.01199999988079071,
+          0.012000000178813934
+        ]
+      },
+      "medianPageP95Ms": {
+        "react": 14.134000000059604,
+        "runtime": 0.01699999988079071
+      },
+      "medianPageMountMs": {
+        "react": 61.20000001788139,
+        "runtime": 60.19999998807907
+      },
+      "medianPerPageSpeedup": 1132.0833164639773,
+      "pairedSampleWins": {
+        "runtime": 120,
+        "react": 0,
+        "ties": 0,
+        "total": 120
+      },
+      "runs": [
+        {
+          "file": "results/browser-component-state-tree-shape-v1-10-71002002.json",
+          "seed": 71002002,
+          "collectedAt": "2026-10-10T22:30:43.821Z",
+          "medianMs": {
+            "react": 13.139000000059605,
+            "runtime": 0.01199999988079071
+          },
+          "p95Ms": {
+            "react": 14.134000000059604,
+            "runtime": 0.021000000238418578
+          },
+          "mountMs": {
+            "react": 67.7000000178814,
+            "runtime": 73.59999999403954
+          }
+        },
+        {
+          "file": "results/browser-component-state-tree-shape-v1-10-71002008.json",
+          "seed": 71002008,
+          "collectedAt": "2026-10-10T22:38:27.703Z",
+          "medianMs": {
+            "react": 14.032999999821186,
+            "runtime": 0.01199999988079071
+          },
+          "p95Ms": {
+            "react": 14.584000000059605,
+            "runtime": 0.015999999940395356
+          },
+          "mountMs": {
+            "react": 47.400000005960464,
+            "runtime": 59.599999994039536
+          }
+        },
+        {
+          "file": "results/browser-component-state-tree-shape-v1-10-71002011.json",
+          "seed": 71002011,
+          "collectedAt": "2026-10-10T22:42:20.353Z",
+          "medianMs": {
+            "react": 13.585,
+            "runtime": 0.012000000178813934
+          },
+          "p95Ms": {
+            "react": 14.032999999821186,
+            "runtime": 0.01699999988079071
+          },
+          "mountMs": {
+            "react": 61.20000001788139,
+            "runtime": 60.19999998807907
+          }
+        }
+      ],
+      "contractsPass": true
+    },
+    {
+      "groupCount": 100,
+      "groupSize": 100,
+      "label": "100 × 100",
+      "pageLoadReplications": 3,
+      "medianMs": {
+        "react": 13.600999999940395,
+        "runtime": 0.012000000178813934
+      },
+      "pageMedianRangeMs": {
+        "react": [
+          13.207999999821187,
+          13.963000000119209
+        ],
+        "runtime": [
+          0.012000000178813934,
+          0.012000000178813934
+        ]
+      },
+      "medianPageP95Ms": {
+        "react": 14.03800000011921,
+        "runtime": 0.017999999821186066
+      },
+      "medianPageMountMs": {
+        "react": 56.29999998211861,
+        "runtime": 57.400000005960464
+      },
+      "medianPerPageSpeedup": 1133.4166497724755,
+      "pairedSampleWins": {
+        "runtime": 120,
+        "react": 0,
+        "ties": 0,
+        "total": 120
+      },
+      "runs": [
+        {
+          "file": "results/browser-component-state-tree-shape-v1-100-71002003.json",
+          "seed": 71002003,
+          "collectedAt": "2026-10-10T22:31:58.611Z",
+          "medianMs": {
+            "react": 13.207999999821187,
+            "runtime": 0.012000000178813934
+          },
+          "p95Ms": {
+            "react": 13.819000000059605,
+            "runtime": 0.01800000011920929
+          },
+          "mountMs": {
+            "react": 57.30000001192093,
+            "runtime": 57.400000005960464
+          }
+        },
+        {
+          "file": "results/browser-component-state-tree-shape-v1-100-71002005.json",
+          "seed": 71002005,
+          "collectedAt": "2026-10-10T22:34:29.256Z",
+          "medianMs": {
+            "react": 13.600999999940395,
+            "runtime": 0.012000000178813934
+          },
+          "p95Ms": {
+            "react": 14.03800000011921,
+            "runtime": 0.01699999988079071
+          },
+          "mountMs": {
+            "react": 56.29999998211861,
+            "runtime": 65.5
+          }
+        },
+        {
+          "file": "results/browser-component-state-tree-shape-v1-100-71002012.json",
+          "seed": 71002012,
+          "collectedAt": "2026-10-10T22:43:37.221Z",
+          "medianMs": {
+            "react": 13.963000000119209,
+            "runtime": 0.012000000178813934
+          },
+          "p95Ms": {
+            "react": 15.217999999821187,
+            "runtime": 0.017999999821186066
+          },
+          "mountMs": {
+            "react": 52.69999998807907,
+            "runtime": 57.400000005960464
+          }
+        }
+      ],
+      "contractsPass": true
+    },
+    {
+      "groupCount": 1000,
+      "groupSize": 10,
+      "label": "1,000 × 10",
+      "pageLoadReplications": 3,
+      "medianMs": {
+        "react": 13.76699999988079,
+        "runtime": 0.012999999821186065
+      },
+      "pageMedianRangeMs": {
+        "react": [
+          13.59,
+          13.893000000119208
+        ],
+        "runtime": [
+          0.01199999988079071,
+          0.01300000011920929
+        ]
+      },
+      "medianPageP95Ms": {
+        "react": 14.36199999988079,
+        "runtime": 0.01699999988079071
+      },
+      "medianPageMountMs": {
+        "react": 54.20000001788139,
+        "runtime": 59.79999998211861
+      },
+      "medianPerPageSpeedup": 1068.6923224012528,
+      "pairedSampleWins": {
+        "runtime": 120,
+        "react": 0,
+        "ties": 0,
+        "total": 120
+      },
+      "runs": [
+        {
+          "file": "results/browser-component-state-tree-shape-v1-1000-71002004.json",
+          "seed": 71002004,
+          "collectedAt": "2026-10-10T22:33:14.365Z",
+          "medianMs": {
+            "react": 13.76699999988079,
+            "runtime": 0.01199999988079071
+          },
+          "p95Ms": {
+            "react": 14.36199999988079,
+            "runtime": 0.01699999988079071
+          },
+          "mountMs": {
+            "react": 54.20000001788139,
+            "runtime": 59.79999998211861
+          }
+        },
+        {
+          "file": "results/browser-component-state-tree-shape-v1-1000-71002006.json",
+          "seed": 71002006,
+          "collectedAt": "2026-10-10T22:35:57.738Z",
+          "medianMs": {
+            "react": 13.59,
+            "runtime": 0.01300000011920929
+          },
+          "p95Ms": {
+            "react": 14.149000000059605,
+            "runtime": 0.01800000011920929
+          },
+          "mountMs": {
+            "react": 58,
+            "runtime": 57.400000005960464
+          }
+        },
+        {
+          "file": "results/browser-component-state-tree-shape-v1-1000-71002009.json",
+          "seed": 71002009,
+          "collectedAt": "2026-10-10T22:39:43.054Z",
+          "medianMs": {
+            "react": 13.893000000119208,
+            "runtime": 0.012999999821186065
+          },
+          "p95Ms": {
+            "react": 14.619000000059605,
+            "runtime": 0.01699999988079071
+          },
+          "mountMs": {
+            "react": 50.900000005960464,
+            "runtime": 62
+          }
+        }
+      ],
+      "contractsPass": true
+    }
+  ],
+  "methodology": {
+    "warmupPairs": 8,
+    "measuredPairsPerPage": 40,
+    "updatesPerPairArm": 100,
+    "armOrder": "seeded randomized within page load; each arm receives the same programmatic HTMLElement.click() event shape",
+    "controlledStructure": "All arms render the same flat 10,000-span DOM. Keyed component groups returning Fragments change component/Fiber topology only; groups are 0, 10, 100, or 1,000.",
+    "react": "React 19.3.0 production build with React Compiler enabled; local useState at the target leaf.",
+    "runtime": "OXC-generated owner/site state, graph-selected leaf owner, indexed partial VDOM commit; group components return Fragments.",
+    "timing": "Programmatic event dispatch through committed DOM text/attribute; mount timed separately; layout and paint excluded.",
+    "correctness": "Every update checks target output; each page checks full parity, stable target identity, one leaf render per update, zero group renders per update, and one runtime partial commit per update."
+  },
+  "limitation": "Three page loads per topology share one Chrome profile and device. The comparison tests only one selected-leaf local boolean update, programmatic clicks, and a flat 10,000-span DOM with Fragment-only groups. It excludes structural updates, multiple dirty owners, trusted input, layout/paint, and independent profile/device replication. A topology effect is specific to this fixture and does not identify every source of React update cost.",
+  "rawFiles": [
+    "results/browser-component-state-tree-shape-v1-0-71002001.json",
+    "results/browser-component-state-tree-shape-v1-10-71002002.json",
+    "results/browser-component-state-tree-shape-v1-100-71002003.json",
+    "results/browser-component-state-tree-shape-v1-1000-71002004.json",
+    "results/browser-component-state-tree-shape-v1-100-71002005.json",
+    "results/browser-component-state-tree-shape-v1-1000-71002006.json",
+    "results/browser-component-state-tree-shape-v1-0-71002007.json",
+    "results/browser-component-state-tree-shape-v1-10-71002008.json",
+    "results/browser-component-state-tree-shape-v1-1000-71002009.json",
+    "results/browser-component-state-tree-shape-v1-0-71002010.json",
+    "results/browser-component-state-tree-shape-v1-10-71002011.json",
+    "results/browser-component-state-tree-shape-v1-100-71002012.json"
+  ]
+}

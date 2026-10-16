@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "study": "compiled-product-mixed-owner-row-fusion-allocation-diagnostic",
+  "runId": "e756c44a-eb7c-48f4-932e-4dcf75d59735",
+  "finalizedAt": "2026-10-13T14:28:15.586Z",
+  "status": "PASS",
+  "records": [
+    {
+      "sequence": 0,
+      "pair": 0,
+      "arm": "react",
+      "size": 128,
+      "status": "PASS",
+      "file": "00-react-128.json",
+      "sha256": "8c05451622a4b8a0aadc603d2eb18224023e3ecf86d29aabab3f02299bdf325b"
+    },
+    {
+      "sequence": 1,
+      "pair": 0,
+      "arm": "native",
+      "size": 128,
+      "status": "PASS",
+      "file": "01-native-128.json",
+      "sha256": "b86538c2754adbe348e5644babab5a0a3a2a1627a7b8f68276c9b9c3675e77ac"
+    },
+    {
+      "sequence": 10,
+      "pair": 0,
+      "arm": "react",
+      "size": 512,
+      "status": "PASS",
+      "file": "10-react-512.json",
+      "sha256": "3c7928ddb83dbb2cd3796a0def171139835d42fa65132420f230ea7dba0aa9a8"
+    },
+    {
+      "sequence": 11,
+      "pair": 0,
+      "arm": "native",
+      "size": 512,
+      "status": "PASS",
+      "file": "11-native-512.json",
+      "sha256": "b810bfbed2bb976486ecd4976d6c960e71f36e178e832ba175f69d29d42eeb89"
+    },
+    {
+      "sequence": 20,
+      "pair": 0,
+      "arm": "react",
+      "size": 1024,
+      "status": "PASS",
+      "file": "20-react-1024.json",
+      "sha256": "edfc4b972299aaaf4f29e83920c56024c2b701594522a729a2a85282af3788e9"
+    },
+    {
+      "sequence": 21,
+      "pair": 0,
+      "arm": "native",
+      "size": 1024,
+      "status": "PASS",
+      "file": "21-native-1024.json",
+      "sha256": "ae526cded220baf24e53d2f2cd49d56f2e32b4eaa001632cbd63d8742cc4c418"
+    }
+  ],
+  "postlock": {
+    "path": "postlock.json",
+    "status": "PASS",
+    "mismatches": []
+  },
+  "interpretation": {
+    "kind": "diagnostic-only",
+    "allocationPassGate": false,
+    "speedVerdict": false,
+    "releaseVerdict": false,
+    "currentTimingResult": {
+      "path": "implementation/2026-10-13-owner-row-fusion-timing/status.json",
+      "sha256": "fa9670e98c10d11c5d0f16ef908935d28162d07349fe5f425d62a36f6cbf891e",
+      "status": "TIMING_VERIFIED_SPEED_FAIL",
+      "speedGate": "FAIL"
+    },
+    "priorTimingResult": {
+      "value": "FAIL_OWNER_ROWS_27_TO_43_PERCENT_SLOWER",
+      "label": "historical checkpoint summary; superseded by the separately locked current timing evidence"
+    }
+  },
+  "interpretationText": "Separate untimed allocation and JavaScript heap diagnostics; do not pool with latency pages or interpret as exact allocation totals or CPU frame speed.",
+  "limitations": [
+    "HeapProfiler sampling estimates sampled JavaScript allocations; node selfSize and flat samples are reported as separate CDP outputs and are not required to agree.",
+    "Runtime.getHeapUsage reports JavaScript heap usage and excludes native DOM, GPU, and presentation allocations.",
+    "The profile spans import, mount, warmup, measured frames, checks, and disposal; it is not an update-only profile or a CPU frame-speed claim.",
+    "Post-teardown heap readings occur after harness disposal, before and after forced GC; they do not measure mounted-only cache memory or prove absence of leaks.",
+    "A second browser context on this computer is not independent-device replication.",
+    "One pair per size is diagnostic only and does not create an allocation pass/fail gate.",
+    "This profile cannot reverse the checkpoint's existing timing failure or establish a release verdict."
+  ]
+}

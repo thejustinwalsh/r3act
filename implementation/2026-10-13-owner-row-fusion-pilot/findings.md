@@ -1,0 +1,7 @@
+# Owner-row executor fusion: production correctness pilot
+
+The frozen JavaScript runtime and Rust/OXC-generated TSX passed the six-page production pilot: native and React at 128, 512 and 1,024 rows. Each page has 60 measured harness samples with structural samples at frames 35 and 65. Checks cover output, order, identity, visibility, lifecycle and disposal. The independent verifier checks all 1,093 source-checkpoint members, five local/served production assets, isolation headers, the exact browser engine tuple, compiler proofs and the authored/Three correctness proofs.
+
+This is correctness evidence only. Pilot samples do not establish a performance improvement. The latest qualified confirmatory study remains the earlier owner-row revision, which failed its speed gate and was 27–43% slower than React Compiler for steady updates. The fused revision requires its own fixed comparative study and allocation qualification. The installed package was qualified before fusion and must be requalified; package source-map usability, independent-device evidence and human maintenance comparisons remain open. The Sol review remains held.
+
+The reused v5 World diagnostic is historical evidence with six byte-identical inputs; it is not a new fused-VDOM browser diagnostic. This archive supplements the pre-pilot source checkpoint without modifying it. The temporary Portless preview was stopped after collection.

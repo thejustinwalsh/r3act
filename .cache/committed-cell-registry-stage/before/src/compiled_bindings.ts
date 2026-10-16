@@ -1,0 +1,1 @@
+../../../../src/compiled_bindings.ts

@@ -1,0 +1,34 @@
+{
+  "study": "keyed-region-buckets-v1",
+  "status": "preregistered before collection",
+  "question": "Do bounded ordered buckets reduce keyed move work as a keyed collection grows, compared with a flat array that searches for the moved key and anchor?",
+  "claimBoundary": "Data-structure mechanism evidence only. This does not establish React or DOM performance, end-to-end UI performance, or the value of using this structure inside the runtime.",
+  "workload": {
+    "operation": "move an existing keyed row before a stable anchor",
+    "sizes": [1000, 10000, 50000],
+    "localities": ["head", "middle", "tail"],
+    "bucketCapacities": [32, 64, 128, 256],
+    "operationsPerSample": 64,
+    "warmupSamples": 2,
+    "measuredSamples": 7,
+    "seed": 247119
+  },
+  "arms": {
+    "flat-array": "Array.findIndex plus Array.splice to remove and reinsert in order",
+    "bucketed": "KeyedRegionBuckets Map lookup plus bounded bucket-local splice and linked bucket traversal"
+  },
+  "measures": [
+    "operation elapsed time",
+    "flat-array key and anchor comparisons",
+    "flat-array row shifts",
+    "bucket slot reads and writes",
+    "bucket splits and merges",
+    "final ordered key equality and bucket integrity"
+  ],
+  "analysis": "Report per-sample median and p95 time by size, locality, arm, and bucket capacity. Keep work counters beside time. Verify final key order after the timed section. Do not aggregate localities or claim a universal complexity crossover.",
+  "knownLimitations": [
+    "The flat-array arm uses linear key lookup and is not an indexed-array baseline.",
+    "This isolates keyed ordered-row edits, not component scheduling, JSX compilation, host writes, or browser frame pacing.",
+    "The bucket implementation's counters describe bucket slot movement, not total JavaScript engine work or bytes allocated."
+  ]
+}

@@ -1,0 +1,1 @@
+../../../../src/vdom_prepared_delta_program_test.ts

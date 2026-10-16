@@ -1,0 +1,33 @@
+Check src/native_numeric_cell_cut_test.ts
+Check src/native_cell_cut_test.ts
+Check src/native_numeric_program_test.ts
+Check src/native_numeric_cut_test.ts
+running 5 tests from ./src/native_numeric_cell_cut_test.ts
+native numeric cut bypasses StateChange capture and defers reentrant flush ... ok (4ms)
+native numeric cuts stay scoped to roots sharing one World ... ok (0ms)
+native numeric cut leaves state pending after a host writer throws ... ok (0ms)
+disposing during a native cell writer clears its queued cut ... ok (0ms)
+mixed store work keeps the independent captured-change path ... ok (1ms)
+running 8 tests from ./src/native_cell_cut_test.ts
+captureNative coalesces in first-arrival order into reused buffers ... ok (0ms)
+legacy fallback scrubs the partially written native prefix ... ok (0ms)
+capacity fallback scrubs partial output without changing the queue ... ok (0ms)
+native to legacy to native preserves reference and queue order ... ok (0ms)
+native queue clear requires exact handle address and incarnation ... ok (0ms)
+world validates exact cell handles and preserves writes newer than a cut ... ok (0ms)
+dead cell handles resolve to null and stale native cuts cannot clear state ... ok (0ms)
+two roots can capture and independently acknowledge one shared-world cut ... ok (0ms)
+running 8 tests from ./src/native_numeric_program_test.ts
+program host disposal stops later writers and releases root buffers ... ok (4ms)
+numeric programs project a compound captured cut and share sources ... ok (0ms)
+numeric program reentry leaves newer source version pending ... ok (0ms)
+bindings without a numeric descriptor keep the generic path ... ok (0ms)
+one unannotated shared sink demotes the source to generic updates ... ok (0ms)
+validated program descriptors are frozen for retained eligibility ... ok (0ms)
+only descriptor-backed compound bindings reuse their input array ... ok (0ms)
+root numeric source scratch arrays retain high-water length ... ok (0ms)
+running 1 test from ./src/native_numeric_cut_test.ts
+reentrant host writes do not mix numeric projection versions in one commit ... ok (4ms)
+
+ok | 22 passed | 0 failed (137ms)
+

@@ -1,0 +1,397 @@
+--- a/src/component_state_runtime.ts
++++ b/src/component_state_runtime.ts
+@@ -378,9 +378,8 @@
+       );
+     }
+   }
+-  // Descriptor identity and source shape participate in cached VDOM
+-  // eligibility. Freeze them once during activation so caller mutation cannot
+-  // change the proof after the sink has been retained.
++  // Freeze descriptor identity and source shape at activation; cached VDOM eligibility
++  // must not change if callers later mutate the descriptor.
+   Object.freeze(descriptor.sourceSites);
+   return Object.freeze(descriptor);
+ };
+@@ -533,9 +532,8 @@
+         active.stateLayout?.slots.some((slot) => slot.siteId === siteId)) ||
+       numericOwner !== undefined
+     ) {
+-      // A compiler-certified numeric site can promote to general state. Its
+-      // ordinary initializer already ran; read the same private/committed cell
+-      // and evaluate the authored expression without a numeric subscription.
++      // Promotion reuses the already-initialized cell and evaluates the authored action
++      // without retaining a numeric subscription.
+       const [value] = active.world.useState<unknown>(
+         active.owner,
+         siteId,
+@@ -846,10 +844,8 @@
+   #liveEffects = new Map<string, LiveEffect>();
+   #liveEffectKeysByOwner = new Map<OwnerId, Set<string>>();
+   #componentCache = new Map<OwnerId, ComponentCache>();
+-  // Metadata describes every compiler-approved prop sink a component can use;
+-  // the committed cache records only the sites actually bound in this render.
+-  // Cache identity changes on render, so the intersection is naturally
+-  // invalidated when conditional output changes.
++  // Metadata lists compiler-approved sinks; the committed cache records sinks bound
++  // in this render, so render identity invalidates conditional-output changes.
+   #compiledPropSitesByCache = new WeakMap<
+     ComponentCache,
+     ReadonlySet<string>
+@@ -900,9 +896,8 @@
+   #liveStoreReaders = new Map<string, Set<AnyAsyncStore>>();
+   readonly #resourceTable: AsyncResourceTable;
+   #liveResourceSubscriptions = new Map<AsyncResource<any>, () => void>();
+-  // Resource reads are transaction-scoped. Until their read footprint is
+-  // cached per owner, any store-driven selective candidate must conservatively
+-  // rebuild the complete tree once a root has observed a resource.
++  // Resource reads are transaction-scoped; until owner footprints are cached, a
++  // store-driven candidate rebuilds the tree after any resource read.
+   #everReadResource = false;
+   // This sticky bit avoids scanning every cache to decide whether a store
+   // candidate may safely skip native-boundary expansion.
+@@ -1590,9 +1585,8 @@
+     const baseVDOMVersion = this.#vdom.version;
+     const storeGenerationAtPrepare = this.#storeNotificationGeneration;
+     const capturedChanges = this.#pendingChanges.capture();
+-    // A direct writer's owner is deliberately reused by this candidate, so
+-    // OwnerPreparation cannot validate its state version for us. Capture the
+-    // source and version anew for every candidate attempt instead.
++    // Direct-writer owners are reused, so recapture their source/version on every
++    // candidate attempt instead of relying on OwnerPreparation validation.
+     const numericWrites: CandidateNumericWrite[] = [];
+     const numericSources = new Set<ScalarSource>();
+     for (const change of numericChanges) {
+@@ -1680,9 +1674,7 @@
+       for (const key of nextBoundaryPrimaries.keys()) {
+         if (!boundaryState.visited.has(key)) nextBoundaryPrimaries.delete(key);
+       }
+-      // Tagged scalar bindings already carry the property/source contract.
+-      // Select direct writers from the first native commit, including empty
+-      // collections whose first bound row is inserted later through a delta.
++      // Tagged bindings select direct writers on the first commit, even for empty collections.
+       // The VDOM retains whole-style fallback when the host lacks field writes.
+       preparedHost = this.#vdom.prepareCommit(expanded, null, true);
+       expanded = null;
+@@ -1907,9 +1899,8 @@
+   /** Commit one batched owner/site update; return false when there is no work. */
+   flush(): boolean {
+     this.#assertActive();
+-    // A host writer may synchronously call flush after a setter. Keep this
+-    // route's reusable capture buffers owned by the outer frame until it
+-    // finishes; the outer acknowledgement will schedule the newer version.
++    // Keep capture buffers owned by the outer frame across reentrant flushes; its
++    // acknowledgement schedules any newer setter version.
+     if (this.#nativeCellCutActive) {
+       this.#scheduled = false;
+       this.#deferredFlush = true;
+@@ -2119,10 +2110,8 @@
+       "collection.parent-owners-selected",
+       collectionParentOwners.size,
+     );
+-    // Store selector history and subscription footprints are transaction
+-    // scoped. Re-execute every live store-reader owner on selective candidates
+-    // so readers with unchanged sources are retained and switched sources are
+-    // detached atomically with publication.
++    // Store selectors and footprints are transaction-scoped; re-execute live readers
++    // so source switches detach atomically at publication.
+     if (
+       this.#everReadResource || this.#everHadNativeBoundary ||
+       hasSuspendedStoreReader ||
+@@ -2178,9 +2167,8 @@
+       }
+     };
+     addRelevantLineage(dirtyOwners);
+-    // In a mixed batch, the generic candidate carries the latest numeric
+-    // bindings. Keep direct-only owners cached so they are not re-executed;
+-    // host writes happen only as part of the successful VDOM commit.
++    // The generic candidate carries latest numeric bindings; retain direct-only owners
++    // and defer host writes until the VDOM commit succeeds.
+     if (directOnlyOwners.size > 0) {
+       for (const owner of directOnlyOwners) {
+         if (
+@@ -3663,9 +3651,8 @@
+         readerOwners.set(owner, ids);
+       }
+ 
+-      // Resolve only owners that actually have store readers. Looking up each
+-      // reader owner in the maintained reverse index keeps this candidate
+-      // proportional to participating readers instead of collection size.
++      // Resolve only store-reader owners through the reverse index, keeping work
++      // proportional to participating readers.
+       for (const owner of readerOwners.keys()) {
+         this.#count("collection.mixed-store-reader-visits");
+         for (const stage of stages.values()) {
+@@ -3690,9 +3677,8 @@
+         }
+       }
+ 
+-      // Store readers inside a touched collection are folded into that region;
+-      // retained rows are replaced in place and edited rows already have their
+-      // candidate render. Other readers must be independent host leaves.
++      // Fold touched collection readers into that region; other store readers must be
++      // independent host leaves.
+       if (storeChangePending) {
+         for (const [owner, ids] of readerOwners) {
+           if (retiredOwners.has(owner)) continue;
+@@ -4486,10 +4472,8 @@
+       this.world.destroyOwner(owner);
+       this.#dropPendingForOwner(owner);
+     }
+-    // Authored and expanded ancestor arrays retain row props and closures from
+-    // this snapshot. Drop them in O(depth); the stable host key and per-row
+-    // maps above are sufficient for the next sparse delta. A later generic
+-    // render must rebuild every invalidated ancestor from current inputs.
++    // Drop snapshot ancestor arrays in O(depth); stable keys/maps serve sparse deltas,
++    // and the next generic render rebuilds invalidated ancestors.
+     for (const ancestor of this.world.ownerLineage(region.parentOwner)) {
+       const cache = this.#componentCache.get(ancestor);
+       if (!cache) continue;
+@@ -4782,9 +4766,8 @@
+       }
+     }
+     if (pending.length === 0) return;
+-    // VDOM validates and updates the batch's source values before calling any
+-    // writers. Refs and effects remain behind the candidate publication
+-    // barrier until this complete source-to-prop update succeeds.
++    // VDOM validates and updates sources before writers; refs and effects wait until
++    // the source-to-prop update and candidate publication succeed.
+     const updates = pending.map(({ source, current }) =>
+       [source, current] as const
+     );
+@@ -5026,9 +5009,8 @@
+       });
+       if (declined) {
+         declined = false;
+-        // The VDOM preflight declined before changing sources, projecting,
+-        // or writing hosts. Refresh cached tokens and retry this exact cut
+-        // once, preserving the values captured above.
++        // On a mutation-free preflight decline, refresh tokens and retry once with
++        // the same captured values.
+         for (let index = 0; index < count; index++) {
+           const handle = this.#nativeCellHandles[index]!;
+           const lane = this.world.numericLaneForCell(
+@@ -5605,10 +5587,8 @@
+         }
+         branchJournal.rollback(journalMark);
+         if (suspendedReaders.size) {
+-          // The retained primary can read the same lexical sites from a
+-          // different source. Keep the suspended branch's dependencies under
+-          // boundary-scoped IDs so those reads cannot overwrite them. These
+-          // are subscription footprints only; they stage no selector history.
++          // Boundary-scoped IDs keep retained-branch subscription footprints separate
++          // when lexical sites read from different sources; no selector history is staged.
+           const pendingReaderDependencies = new Map(
+             [...suspendedReaders].map(([readerId, stores]) => [
+               `\u0000suspense-pending:${boundaryKey}:${readerId}`,
+@@ -5650,10 +5630,8 @@
+               true,
+               boundaryOwner,
+             );
+-            // A successful retained re-expansion is already a complete read
+-            // of this candidate's pinned projection. Its actual current reads
+-            // define the retained branch dependencies, so conditional reads
+-            // removed by a draft update are released naturally.
++            // Successful re-expansion records actual reads as retained dependencies,
++            // naturally releasing conditional reads removed by this draft.
+             storeTransaction.releaseCheckpoint(retainedStoreMark);
+             if (retainedOwnerMark) {
+               ownerPreparation?.releaseCheckpoint(retainedOwnerMark);
+--- a/src/vdom_snapshot_runtime.ts
++++ b/src/vdom_snapshot_runtime.ts
+@@ -277,10 +277,8 @@
+   }
+   if (input.type === Fragment) return normalizeMany(input.props.children);
+   const keyedRegionId = getKeyedOwnerRegionId(input.props.children);
+-  // Keyed-region VNodes discard their original child array after mounting so
+-  // sparse edits can release removed row descriptions. Do not cache these
+-  // containers: a later normalization of the same RuntimeElement must rebuild
+-  // its children from the still-current input tree.
++  // Keyed regions release removed row descriptions after mount; normalization must
++  // rebuild children from the RuntimeElement's current input tree.
+   const cached = keyedRegionId === null
+     ? normalizedElementCache.get(input)
+     : undefined;
+@@ -392,10 +390,8 @@
+ ) => {
+   const names = new Set([...Object.keys(previous), ...Object.keys(next)]);
+   for (const name of names) {
+-    // A source may have advanced before this candidate reaches VDOM commit.
+-    // Reading the old BoundValue here would observe the new value and suppress
+-    // the host write. Its writer index retains the value last committed to the
+-    // host, which is the correct previous value for diffing.
++    // Diff against the writer's last committed value: BoundValue may already expose
++    // a newer source and would incorrectly suppress this host write.
+     const previousWriter = previousWriters?.get(name);
+     let before: unknown;
+     if (previousWriter?.length) {
+@@ -734,9 +730,7 @@
+   next: readonly VNode[],
+   keyIndex?: MountedKeyIndex<H>,
+ ): MountedNode<H>[] => {
+-  // Preserve the allocation-light path for props/text changes when sibling
+-  // identity and order stay fixed. Previously we built key maps and sets
+-  // before reaching this check, even though no key lookup was needed.
++  // Skip key maps when only props/text change and sibling identity/order are fixed.
+   if (
+     next.length === previous.length &&
+     next.every((vnode, index) =>
+@@ -1180,9 +1174,8 @@
+             keyIndex,
+           );
+         } catch (error) {
+-          // Host cleanup can dispose a mounted record before a later host step
+-          // fails, and attached candidate nodes may not belong to this root's
+-          // retained tree. Re-index only reachable live records in either mode.
++          // Re-index reachable live records only: cleanup may dispose mounted records,
++          // and candidate nodes may not belong to the retained tree.
+           const repairErrors: unknown[] = [];
+           try {
+             this.#rebuildKeyIndex();
+@@ -1358,9 +1351,8 @@
+   ): boolean {
+     if (
+       !parentKey || !regionId ||
+-      // The sparse delta path supports the ordinary ScalarSource/BoundValue
+-      // index below. Compiled CSR and direct-column writers have separate
+-      // identity/lifetime rules and deliberately keep the generic fallback.
++      // Sparse deltas use the ScalarSource/BoundValue index; compiled CSR and
++      // direct-column writers retain their separate fallback.
+       this.#compiledGraph ||
+       this.#incompatibleScalarBindingGroups > 0
+     ) {
+@@ -1379,9 +1371,8 @@
+     let matches = 0;
+     for (const candidate of candidates ?? []) {
+       let ancestor: MountedNode<H> = candidate;
+-      // `parentKey` identifies the keyed host root for this delta. A mounted
+-      // component root can itself be nested inside the application tree, so
+-      // walking to the outermost mounted node would incorrectly reject it.
++      // Use the keyed host root: a mounted component root may be nested in the app
++      // tree, so the outermost mounted node is not the delta root.
+       while (ancestor !== root && ancestor.parent) ancestor = ancestor.parent;
+       if (ancestor !== root) continue;
+       if (
+@@ -1533,9 +1524,8 @@
+         this.#attachScalarBindingSubtree(region.get(operation.key)!);
+       }
+     }
+-    // The mounted bucket owns the current row order. Drop the initial VNode
+-    // child array and cached snapshot now so removed rows are not retained
+-    // until a later snapshot read or full render.
++    // The mounted bucket owns row order; drop the initial child array and snapshot
++    // so removed rows are released immediately.
+     const releasedChildVNodeCount = parent.vnode.children.length;
+     parent.vnode.children = [];
+     this.#snapshot = [];
+@@ -1929,9 +1919,8 @@
+       for (const [name, value] of Object.entries(node.props)) {
+         if (hasNonScalarBindingMetadata(name, value)) return false;
+         if (compiledBindingsIn(name, value).length > 0) return false;
+-        // Validate scalar binding enumeration without evaluating user
+-        // projections during prepare. Their values are read once in the host
+-        // diff, just as in a normal commit.
++        // Validate bindings without evaluating user projections; the host diff reads
++        // their values once, as in a normal commit.
+         boundSourcesIn(name, value);
+       }
+       return node.children.every(validateCandidate);
+@@ -2829,9 +2818,8 @@
+         : this.#groupsBySource.get(source);
+       for (const group of groups ?? []) affected.add(group);
+     }
+-    // Capture every projection before invoking host code. A host writer may
+-    // synchronously reenter this root and change source.value; all writers in
+-    // this batch must still consume the same source cut.
++    // Capture projections before host calls so reentrant source changes cannot alter
++    // the values consumed by this batch.
+     const projectedValues: unknown[] = [];
+     for (const group of affected) {
+       const directBinding = group.styleProperty === undefined
+@@ -3255,9 +3243,8 @@
+       }
+       if (count === 0) return false;
+ 
+-      // Validate and capture every dependency used by a reached sink in one
+-      // scratch-only pass. Shared lease arrays can be cleared on promotion or
+-      // retired with a World row, even when that dependency was not itself in the cut.
++      // Validate reached dependencies in scratch first: shared leases may be cleared
++      // by promotion or row retirement, including untouched dependencies.
+       for (let rowIndex = 0; rowIndex < this.#ownerRowRecordCount; rowIndex++) {
+         const record = this.#ownerRowRecordScratch[rowIndex]!;
+         for (let slotIndex = 0; slotIndex < record.sources.length; slotIndex++) {
+@@ -4787,9 +4774,7 @@
+   }
+ 
+   prepareStyleProp(node: Node, name: string) {
+-    // A subclass may attach extra semantics to the established setter. Keep
+-    // that override in control unless the subclass also supplies its own
+-    // preparation policy.
++    // Preserve subclass setter semantics unless it also supplies a preparation policy.
+     if (this.setStyleProp !== DOMVDOMHost.prototype.setStyleProp) return;
+     if (!(node instanceof HTMLElement || node instanceof SVGElement)) return;
+     return createDOMStylePropWriter(node.style, name);
+--- a/src/owner_state_world.ts
++++ b/src/owner_state_world.ts
+@@ -1237,9 +1237,8 @@
+         if (activeCheckpointCount !== 0) {
+           recordUndo(() => hasStateWrites = previousHasStateWrites);
+         }
+-        // Index private children and surviving slot owners once. Discarding a
+-        // deep/multi-row private tree then takes O(P) map work, where P is the
+-        // number of private owners in this preparation (plus removed cells).
++        // Index private children and surviving slot owners once, so discard work is
++        // proportional to private owners and removed cells.
+         const privateChildren = new Map<OwnerId, OwnerId[]>();
+         const fallbackSlots = new Map<
+           OwnerId | null,
+@@ -1342,9 +1341,8 @@
+                 record.componentSiteId,
+               );
+               const expected = expectedByKey?.get(record.key);
+-              // fallbackSlots was built from every private owner outside the
+-              // discarded subtree, so an absent fallback means there is no
+-              // surviving private owner that still depends on this capture.
++              // An absent fallback means no surviving private owner depends on this
++              // capture; fallbackSlots excludes the discarded subtree.
+               if (expectedByKey && expected && !expected.retained) {
+                 deleteMap(expectedByKey, record.key);
+                 if (expectedByKey.size === 0) {
+--- a/compiler/oxc-spike/src/main.rs
++++ b/compiler/oxc-spike/src/main.rs
+@@ -2397,9 +2397,8 @@
+ 
+     fn visit_import_declaration(&mut self, node: &ImportDeclaration<'a>) {
+         let source_module = node.source.value.as_str();
+-        // `native_runtime_api.ts` publicly re-exports asyncTask. Accept that
+-        // public entry point alongside the configured helper module so native
+-        // files do not need to reach into the compiler implementation module.
++        // Accept the public asyncTask re-export so native files need not import the
++        // compiler implementation module.
+         let from_helper =
+             source_module == self.helper_module || is_native_runtime_module(source_module);
+         if let Some(specifiers) = &node.specifiers {
+@@ -3938,9 +3937,8 @@
+         end: import_span.end as usize,
+         replacement: format!("{helper_import}{numeric_program_table}{registrations}"),
+     });
+-    // `use(use(value))` puts the outer call's site argument at the same source
+-    // offset as the inner call's callee replacement. Coalesce those edits so
+-    // the Vite source-map consumer sees one non-overlapping edit.
++    // Coalesce overlapping nested-use edits so Vite receives one non-overlapping
++    // source-map edit.
+     edits.sort_by(|left, right| left.start.cmp(&right.start).then(left.end.cmp(&right.end)));
+     let mut normalized_edits = Vec::with_capacity(edits.len());
+     let mut edit_index = 0;
+@@ -5092,10 +5090,8 @@
+                             self.maps.push(MapIr {
+                                 collection_expression,
+                                 item_parameter,
+-                                // The index is optional in JavaScript's map callback.
+-                                // Existing repeated-host plans keep a stable placeholder
+-                                // when a template doesn't declare it; derived keyed
+-                                // regions only need the item parameter.
++                                // Keep a stable placeholder for repeated-host templates without an index;
++                                // derived keyed regions need only the item parameter.
+                                 index_parameter: pattern_name(1)
+                                     .unwrap_or_else(|| "_index".to_owned()),
+                                 element_span: span(element.span.start, element.span.end),

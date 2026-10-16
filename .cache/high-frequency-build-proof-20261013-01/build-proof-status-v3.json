@@ -1,0 +1,83 @@
+{
+  "schemaVersion": "high-frequency-postbuild-transform-audit-v3",
+  "status": "FAIL",
+  "repairProvenance": {
+    "preservedV1": {
+      "path": "build-proof-status.json",
+      "sha256": "e22da81d1dd53a4819bd5b739b3a76103e6092ea51b1f31bc68ad66eba6e7532",
+      "failure": "native programId was incorrectly reported absent"
+    },
+    "correctedV2": {
+      "path": "build-proof-status-v2.json",
+      "sha256": "d5d15a5c52de7383715ddd129f3e2ef09a165d32f4f08b1b8a719fd8512370fa",
+      "failure": "native programId correction was sound, but V2 did not associate compiler events with their function spans"
+    },
+    "correction": "V3 parses actual native defineComponent registration AST and maps React compiler diagnostic locations to function AST spans. No transform or build was rerun."
+  },
+  "productionBundleProduced": true,
+  "buildProofGate": "FAIL",
+  "nativeTransform": {
+    "path": "native-transformed.js",
+    "sha256": "ed81f28e857bfbf0ce81944a3b1d268ef29c30e10afb622856dbe276f4a428c2",
+    "components": [
+      {
+        "name": "NativeRowA",
+        "componentId": "src/browser/native_high_frequency_arm.tsx#component:NativeRowA",
+        "schemaVersion": 1,
+        "programId": "src/browser/native_high_frequency_arm.tsx#component:NativeRowA",
+        "slots": [
+          {
+            "siteId": "src/browser/native_high_frequency_arm.tsx#component:NativeRowA#state:0",
+            "slot": 0
+          },
+          {
+            "siteId": "src/browser/native_high_frequency_arm.tsx#component:NativeRowA#state:1",
+            "slot": 1
+          },
+          {
+            "siteId": "src/browser/native_high_frequency_arm.tsx#component:NativeRowA#state:2",
+            "slot": 2
+          }
+        ]
+      },
+      {
+        "name": "NativeRowB",
+        "componentId": "src/browser/native_high_frequency_arm.tsx#component:NativeRowB",
+        "schemaVersion": 1,
+        "programId": "src/browser/native_high_frequency_arm.tsx#component:NativeRowB",
+        "slots": [
+          {
+            "siteId": "src/browser/native_high_frequency_arm.tsx#component:NativeRowB#state:0",
+            "slot": 0
+          },
+          {
+            "siteId": "src/browser/native_high_frequency_arm.tsx#component:NativeRowB#state:1",
+            "slot": 1
+          },
+          {
+            "siteId": "src/browser/native_high_frequency_arm.tsx#component:NativeRowB#state:2",
+            "slot": 2
+          }
+        ]
+      }
+    ],
+    "allRowsHaveMatchingProgramIdAndThreeSlots": true,
+    "componentMixConditionalMapsBothRows": true
+  },
+  "reactTransform": {
+    "path": "react-transformed.js",
+    "sha256": "afea9c79adf5bb6fb33d2e265d506970aae8d1760979e2222fc776688a8e952b",
+    "compilerDiagnosticsPath": "react-compiler-diagnostics-v2.json",
+    "compilerDiagnosticsSha256": "728200fd39e98124f9e757c7feb85484a7d1891bd41fe6ff02343b1f04ff970d",
+    "rowResults": {
+      "ReactRowA": "CompileError: Immutability at session.mounts",
+      "ReactRowB": "CompileError: Immutability at session.mounts"
+    },
+    "rowMemoCaches": {
+      "ReactRowA": false,
+      "ReactRowB": false
+    },
+    "boardMemoCacheSlots": 9
+  },
+  "blocker": "React Compiler rejects both row functions because their effects directly mutate a prop object (session.mounts++). That rejection is the evidenced reason row caches are absent."
+}

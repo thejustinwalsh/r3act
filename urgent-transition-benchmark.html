@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Urgent input during an async transition</title>
+    <style>
+      body {
+        max-width: 980px;
+        margin: 32px auto;
+        padding: 0 20px;
+        font: 16px/1.5 system-ui, sans-serif;
+        color: #172033;
+      }
+      .lede, .note {
+        color: #536078;
+      }
+      button {
+        padding: 9px 14px;
+        margin-right: 8px;
+      }
+      .arms {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin: 20px 0;
+      }
+      .arm {
+        border: 1px solid #cbd3df;
+        border-radius: 8px;
+        padding: 12px;
+        min-height: 170px;
+      }
+      .urgent {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+      .panels {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .panel {
+        background: #f4f6fa;
+        border-radius: 6px;
+        padding: 8px;
+      }
+      #status {
+        white-space: pre-wrap;
+        background: #f4f6fa;
+        padding: 12px;
+        min-height: 80px;
+      }
+      @media (max-width: 620px) {
+        .arms {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Urgent input during a multi-root async transition</h1>
+    <p class="lede">
+      React 19 with React Compiler keeps urgent input outside one suspending
+      boundary. The runtime keeps it in a separate native-event root while a
+      compiled task graph prepares two VDOM roots for one coordinated commit.
+    </p>
+    <p class="note">
+      Twenty paired behavior samples. This checks input response, keep-previous
+      behavior, keyed identity, and coordinated publication. Timing includes the
+      input event path; it is not a frame-time claim.
+    </p>
+    <button id="run">Run 20 paired transitions</button>
+    <button id="export" disabled>Download JSON</button>
+    <div class="arms">
+      <section class="arm">
+        <h2>React 19 Suspense</h2>
+        <div id="react-root"></div>
+      </section>
+      <section class="arm">
+        <h2>Compiled graph runtime</h2>
+        <div class="urgent" id="runtime-urgent"></div>
+        <div class="panels">
+          <div class="panel" id="runtime-scene"></div>
+          <div class="panel" id="runtime-hud"></div>
+        </div>
+      </section>
+    </div>
+    <pre id="status" aria-live="polite">Ready. Both sides show version 1.</pre>
+    <script
+      type="module"
+      src="/src/browser/urgent_transition_benchmark.tsx"
+    ></script>
+  </body>
+</html>

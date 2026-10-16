@@ -1,0 +1,1 @@
+../../../../src/compiled_owner_binding_test.ts

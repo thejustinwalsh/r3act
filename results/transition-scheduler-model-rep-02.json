@@ -1,0 +1,284 @@
+{
+  "schemaVersion": "transition-scheduler-model-v1",
+  "kind": "deterministic scheduling and state-machine model; not measured runtime performance",
+  "assumptions": [
+    "Independent I/O resources may all be in flight concurrently.",
+    "A derived view model starts only after all declared resource dependencies resolve.",
+    "Durations are fixed inputs; scheduler bookkeeping, JS execution, transfer, paint, and browser presentation costs are excluded.",
+    "Waterfall is an adversarial serial-discovery control, not a claim about React or any specific framework."
+  ],
+  "scenarios": [
+    {
+      "independentResources": 1,
+      "resourceDurationsMs": [
+        32
+      ],
+      "deriveDurationMs": 18,
+      "waterfallMs": 50,
+      "dagPlannedMs": 50,
+      "intervals": [
+        {
+          "id": "resource-0",
+          "startMs": 0,
+          "endMs": 32
+        },
+        {
+          "id": "derive-view-model",
+          "startMs": 32,
+          "endMs": 50
+        }
+      ]
+    },
+    {
+      "independentResources": 2,
+      "resourceDurationsMs": [
+        32,
+        45
+      ],
+      "deriveDurationMs": 18,
+      "waterfallMs": 95,
+      "dagPlannedMs": 63,
+      "intervals": [
+        {
+          "id": "resource-0",
+          "startMs": 0,
+          "endMs": 32
+        },
+        {
+          "id": "resource-1",
+          "startMs": 0,
+          "endMs": 45
+        },
+        {
+          "id": "derive-view-model",
+          "startMs": 45,
+          "endMs": 63
+        }
+      ]
+    },
+    {
+      "independentResources": 4,
+      "resourceDurationsMs": [
+        32,
+        45,
+        58,
+        34
+      ],
+      "deriveDurationMs": 18,
+      "waterfallMs": 187,
+      "dagPlannedMs": 76,
+      "intervals": [
+        {
+          "id": "resource-0",
+          "startMs": 0,
+          "endMs": 32
+        },
+        {
+          "id": "resource-1",
+          "startMs": 0,
+          "endMs": 45
+        },
+        {
+          "id": "resource-2",
+          "startMs": 0,
+          "endMs": 58
+        },
+        {
+          "id": "resource-3",
+          "startMs": 0,
+          "endMs": 34
+        },
+        {
+          "id": "derive-view-model",
+          "startMs": 58,
+          "endMs": 76
+        }
+      ]
+    },
+    {
+      "independentResources": 8,
+      "resourceDurationsMs": [
+        32,
+        45,
+        58,
+        34,
+        47,
+        60,
+        36,
+        49
+      ],
+      "deriveDurationMs": 18,
+      "waterfallMs": 379,
+      "dagPlannedMs": 78,
+      "intervals": [
+        {
+          "id": "resource-0",
+          "startMs": 0,
+          "endMs": 32
+        },
+        {
+          "id": "resource-1",
+          "startMs": 0,
+          "endMs": 45
+        },
+        {
+          "id": "resource-2",
+          "startMs": 0,
+          "endMs": 58
+        },
+        {
+          "id": "resource-3",
+          "startMs": 0,
+          "endMs": 34
+        },
+        {
+          "id": "resource-4",
+          "startMs": 0,
+          "endMs": 47
+        },
+        {
+          "id": "resource-5",
+          "startMs": 0,
+          "endMs": 60
+        },
+        {
+          "id": "resource-6",
+          "startMs": 0,
+          "endMs": 36
+        },
+        {
+          "id": "resource-7",
+          "startMs": 0,
+          "endMs": 49
+        },
+        {
+          "id": "derive-view-model",
+          "startMs": 60,
+          "endMs": 78
+        }
+      ]
+    },
+    {
+      "independentResources": 16,
+      "resourceDurationsMs": [
+        32,
+        45,
+        58,
+        34,
+        47,
+        60,
+        36,
+        49,
+        62,
+        38,
+        51,
+        64,
+        40,
+        53,
+        66,
+        42
+      ],
+      "deriveDurationMs": 18,
+      "waterfallMs": 795,
+      "dagPlannedMs": 84,
+      "intervals": [
+        {
+          "id": "resource-0",
+          "startMs": 0,
+          "endMs": 32
+        },
+        {
+          "id": "resource-1",
+          "startMs": 0,
+          "endMs": 45
+        },
+        {
+          "id": "resource-2",
+          "startMs": 0,
+          "endMs": 58
+        },
+        {
+          "id": "resource-3",
+          "startMs": 0,
+          "endMs": 34
+        },
+        {
+          "id": "resource-4",
+          "startMs": 0,
+          "endMs": 47
+        },
+        {
+          "id": "resource-5",
+          "startMs": 0,
+          "endMs": 60
+        },
+        {
+          "id": "resource-6",
+          "startMs": 0,
+          "endMs": 36
+        },
+        {
+          "id": "resource-7",
+          "startMs": 0,
+          "endMs": 49
+        },
+        {
+          "id": "resource-8",
+          "startMs": 0,
+          "endMs": 62
+        },
+        {
+          "id": "resource-9",
+          "startMs": 0,
+          "endMs": 38
+        },
+        {
+          "id": "resource-10",
+          "startMs": 0,
+          "endMs": 51
+        },
+        {
+          "id": "resource-11",
+          "startMs": 0,
+          "endMs": 64
+        },
+        {
+          "id": "resource-12",
+          "startMs": 0,
+          "endMs": 40
+        },
+        {
+          "id": "resource-13",
+          "startMs": 0,
+          "endMs": 53
+        },
+        {
+          "id": "resource-14",
+          "startMs": 0,
+          "endMs": 66
+        },
+        {
+          "id": "resource-15",
+          "startMs": 0,
+          "endMs": 42
+        },
+        {
+          "id": "derive-view-model",
+          "startMs": 66,
+          "endMs": 84
+        }
+      ]
+    }
+  ],
+  "transitionInvariants": {
+    "pendingPreservesCommittedVdom": true,
+    "pendingDoesNotRunMountOrCleanupEffects": true,
+    "supersededGenerationRejected": true,
+    "coordinatedRootsWaitForAllMembers": true,
+    "cancellationPreservesCommittedVdomAndEffects": true,
+    "independentRootsProgressSeparately": true,
+    "commitAppliesStagedEffectsOnlyAfterReadiness": true,
+    "committedVersionAfterResolution": 6,
+    "rootsInTransition": 2
+  }
+}

@@ -1,0 +1,1 @@
+../../../../src/host_lifecycle_contract_test.ts
