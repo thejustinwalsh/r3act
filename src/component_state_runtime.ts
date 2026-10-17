@@ -1,3 +1,4 @@
+import { normalizeClosedNumericExpression } from "./closed_numeric_expression.ts";
 import {
   captureCompiledSemanticRevision,
   type CompiledSemanticRevisionToken,
@@ -166,6 +167,7 @@ type MixedCandidateNumericWrite = CandidateNumericWrite & {
 type CandidateLifecycleSpec<H, Parent> = {
   baseVersion: number;
   baseVDOMVersion: number;
+  retainedDelta?: boolean;
   stores: StoreRenderTransaction;
   transitions: readonly string[];
   pendingResources: readonly AsyncResource<any>[];
@@ -435,8 +437,15 @@ const validateNumericBindingProgram = (
   }
   // Freeze descriptor identity and source shape at activation; cached VDOM eligibility
   // must not change if callers later mutate the descriptor.
+  const closedExpression = descriptor.closedExpression === undefined
+    ? null
+    : normalizeClosedNumericExpression(descriptor.closedExpression, sites.length);
   Object.freeze(descriptor.sourceSites);
-  return Object.freeze(descriptor);
+  Object.freeze(descriptor);
+  return Object.freeze({
+    ...descriptor,
+    closedExpression: closedExpression ?? undefined,
+  });
 };
 
 /** Build immutable owner metadata only when the v2 program names this exact layout. */
@@ -542,7 +551,7 @@ export function bindStatePropsAt<T>(
     return derive(values);
   }
   const binding = bindSources(sources, derive, validatedProgram);
-  const ownedBinding = numericOwner ? { ...binding, numericOwner } : binding;
+  const ownedBinding = numericOwner ? Object.assign(binding, { numericOwner }) : binding;
   active.captureBinding?.(
     ownedBinding as BoundValue<unknown>,
     sources,
@@ -602,13 +611,15 @@ export const bindStatePropAt = <T>(
   const sites = [siteId];
   // Keep the conservative writer behavior for projections that return a stable
   // mutable object. The scalar source still drives the normal binding protocol.
-  const binding: BoundValue<T> = {
-    ...bind(source, project),
-    sources,
-    read: () => project(sources[0].value),
-    ...(validatedProgram ? { numericProgram: validatedProgram } : {}),
-    ...(numericOwner ? { numericOwner } : {}),
-  };
+  const binding = validatedProgram?.closedExpression
+    ? bindSources(sources, ([value]) => project(value), validatedProgram)
+    : {
+      ...bind(source, project),
+      sources,
+      read: () => project(sources[0].value),
+      ...(validatedProgram ? { numericProgram: validatedProgram } : {}),
+    };
+  if (numericOwner) Object.assign(binding, { numericOwner });
   active.captureBinding?.(
     binding as BoundValue<unknown>,
     sources,
@@ -1131,10 +1142,96 @@ export class ComponentStateRoot<H, Parent = H> {
     );
   }
 
-  /** Prepare a store-only update to independent, leaf owner host regions. */
+  /** Prepare a closed retained-prop cut; include every joint input cell. */
+  prepareRetained(
+    cells: readonly StateCellHandle[],
+  ): NativeRootCandidate<H, Parent> | null {
+    this.#assertActive();
+    this.#assertNoPublicationBarrier("prepare retained props");
+    if (this.#terminalHostFailed || this.#codeInvalidated || !cells.length) {
+      return null;
+    }
+    const writes: Array<{
+      handle: StateCellHandle;
+      source: ScalarSource;
+      version: number;
+      value: number;
+    }> = [];
+    const sources = new Set<ScalarSource>();
+    for (const input of cells) {
+      const handle = Object.freeze({
+        owner: input.owner, site: input.site, cellIdentity: input.cellIdentity,
+      });
+      const source = this.world.scalarSourceForCell(handle);
+      const version = this.world.versionForCell(handle);
+      const cache = this.#componentCache.get(handle.owner);
+      if (
+        !source || version === null || !cache ||
+        !this.#liveOwners.has(handle.owner) ||
+        !this.#compiledPropSitesForCache(cache).has(handle.site)
+      ) return null;
+      if (sources.has(source)) continue;
+      sources.add(source);
+      const value = Object.getOwnPropertyDescriptor(source, "value")?.value;
+      if (typeof value !== "number") return null;
+      writes.push({ handle, source, version, value });
+    }
+    const delta = this.#vdom.prepareRetainedSourceDelta(
+      writes.map(({ source, value }) => [source, value] as const),
+    );
+    if (!delta || delta.readSources.some(
+      (source) => !sources.has(source),
+    )) return null;
+    const codeCurrent = () => writes.every(({ handle }) => {
+      const cache = this.#componentCache.get(handle.owner);
+      return cache !== undefined && componentCodeCurrent(cache.type);
+    });
+    const validateCells = (afterHost: boolean) => writes.every((write) => {
+      const version = this.world.versionForCell(write.handle);
+      return this.#liveOwners.has(write.handle.owner) &&
+        this.world.scalarSourceForCell(write.handle) === write.source &&
+        version !== null && (afterHost ? version >= write.version : version === write.version) &&
+        (afterHost && version > write.version || Object.is(Object.getOwnPropertyDescriptor(write.source, "value")?.value, write.value));
+    });
+    const stores = new StoreRenderTransaction(this.#rootId);
+    const handles = writes.map(({ handle }) => handle);
+    const versions = writes.map(({ version }) => version);
+    if (!validateCells(false) || !codeCurrent()) return null;
+    return this.#createCandidateLifecycle({
+      baseVersion: this.#publicationVersion,
+      baseVDOMVersion: this.#vdom.version,
+      retainedDelta: true,
+      stores,
+      transitions: [],
+      pendingResources: [],
+      blocked: false,
+      codeCurrent,
+      validatePrepared: () => this.#vdom.isRetainedSourceDeltaCurrent(delta) &&
+        validateCells(false),
+      validatePostHost: () => this.#vdom.isRetainedSourceDeltaCurrent(delta, { afterHost: true }) &&
+        validateCells(true),
+      commitHost: () => { this.#vdom.applyRetainedSourceDelta(delta); },
+      preparePublication: () => {},
+      publish: () => {
+        for (const write of writes) this.#lastSourceValues.set(write.source, write.value);
+        this.world.clearCellChangesThrough(handles, versions, handles.length);
+        this.#pendingChanges.clearNativeThrough(handles, versions, handles.length);
+        this.#publicationVersion++;
+      },
+      installSubscriptions: () => [],
+      runEffects: () => [],
+      discard: () => {},
+      releaseArtifacts: () => { writes.length = 0; handles.length = 0; versions.length = 0; },
+      effectFailureMessage: "Retained prop publication callbacks failed",
+    });
+  }
+
   #createCandidateLifecycle(
     spec: CandidateLifecycleSpec<H, Parent>,
   ): NativeRootCandidate<H, Parent> {
+    const retainedDelta = spec.retainedDelta === true;
+    let admittedVersion = spec.baseVersion;
+    let admittedVDOMVersion = spec.baseVDOMVersion;
     const candidateStores = new Set(spec.stores.stores);
     for (const store of candidateStores) {
       this.#candidateStoreHolds.set(
@@ -1169,6 +1266,10 @@ export class ComponentStateRoot<H, Parent = H> {
         pendingResources.length = 0;
         candidateStores.clear();
         if (candidateHandle) {
+          Object.defineProperties(candidateHandle, {
+            baseVersion: { value: admittedVersion, enumerable: true, configurable: true },
+            targetVersion: { value: admittedVersion + 1, enumerable: true, configurable: true },
+          });
           Object.defineProperty(candidateHandle, "pendingResources", {
             value: Object.freeze([]),
             enumerable: true,
@@ -1213,10 +1314,14 @@ export class ComponentStateRoot<H, Parent = H> {
       ]);
       return throwWithCleanup(error, errors);
     };
+    const rootVersion = () => this.#publicationVersion;
     const candidate: NativeRootCandidate<H, Parent> = {
       rootId: this.#rootId,
-      baseVersion: spec.baseVersion,
-      targetVersion: spec.baseVersion + 1,
+      get baseVersion() {
+        return retainedDelta && phase === "prepared"
+          ? rootVersion() : admittedVersion;
+      },
+      get targetVersion() { return candidate.baseVersion + 1; },
       stores: candidateStores,
       transitions: Object.freeze([...spec.transitions]),
       pendingResources: Object.freeze([...pendingResources]),
@@ -1229,8 +1334,8 @@ export class ComponentStateRoot<H, Parent = H> {
         phase === "prepared" && !released && !this.#disposed &&
         !this.#terminalHostFailed && !this.#codeInvalidated &&
         spec.codeCurrent() &&
-        this.#publicationVersion === spec.baseVersion &&
-        this.#vdom.version === spec.baseVDOMVersion &&
+        (retainedDelta || (this.#publicationVersion === spec.baseVersion &&
+          this.#vdom.version === spec.baseVDOMVersion)) &&
         spec.validatePrepared() && !this.#codeInvalidated && spec.codeCurrent(),
       commitHost: () => {
         if (phase !== "prepared") throw new Error(`Candidate is ${phase}`);
@@ -1239,6 +1344,8 @@ export class ComponentStateRoot<H, Parent = H> {
           finishUnpublished("discarded");
           throw new Error("Native root candidate is stale");
         }
+        admittedVersion = this.#publicationVersion;
+        admittedVDOMVersion = this.#vdom.version;
         this.#publicationBarrier = candidate;
         try {
           this.#vdom.beginPublication();
@@ -1262,8 +1369,8 @@ export class ComponentStateRoot<H, Parent = H> {
         phase === "host-committed" && !this.#disposed &&
         !this.#disposeRequested && !this.#terminalHostFailed &&
         !this.#codeInvalidated && spec.codeCurrent() &&
-        this.#publicationVersion === spec.baseVersion &&
-        this.#vdom.appliedVersion === spec.baseVDOMVersion + 1 &&
+        this.#publicationVersion === admittedVersion &&
+        this.#vdom.appliedVersion === admittedVDOMVersion + (retainedDelta ? 0 : 1) &&
         spec.validatePostHost() && !this.#codeInvalidated && spec.codeCurrent(),
       preparePublication: () => {
         if (phase !== "host-committed") {

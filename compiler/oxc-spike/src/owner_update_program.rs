@@ -6,6 +6,7 @@ use oxc_ast::ast::{
 };
 use oxc_parser::Parser;
 use oxc_span::SourceType;
+use serde_json::{Value, json};
 
 #[derive(Clone, Debug)]
 pub(super) struct Sink {
@@ -152,6 +153,94 @@ pub(super) fn primitive_output_expression(source: &str) -> bool {
         })
 }
 
+/** Emit an executable data proof using the same state-reference cut as the owner kernel. */
+pub(super) fn closed_numeric_expression(sink: &Sink) -> Option<String> {
+    let allocator = Allocator::default();
+    let expression = Parser::new(&allocator, &sink.expression, SourceType::tsx())
+        .parse_expression()
+        .ok()?;
+    let reference_by_span: BTreeMap<_, _> = sink.references.iter().map(|reference| {
+        ((reference.start, reference.end), reference.site_id.as_str())
+    }).collect();
+    let slot_by_site: BTreeMap<_, _> = sink.source_sites.iter().enumerate()
+        .map(|(index, site)| (site.as_str(), index)).collect();
+    let mut seen_references = 0usize;
+    let mut node_count = 0usize;
+    fn visit(
+        expression: &Expression<'_>,
+        reference_by_span: &BTreeMap<(u32, u32), &str>,
+        slot_by_site: &BTreeMap<&str, usize>,
+        seen_references: &mut usize,
+        node_count: &mut usize,
+        depth: usize,
+    ) -> Option<Value> {
+        *node_count += 1;
+        if depth > 32 || *node_count > 256 { return None; }
+        let child = |expression: &Expression<'_>, seen_references: &mut usize,
+                     node_count: &mut usize| {
+            visit(expression, reference_by_span, slot_by_site,
+                seen_references, node_count, depth + 1)
+        };
+        match expression {
+            Expression::NumericLiteral(literal) if literal.value.is_finite() =>
+                Some(json!({ "kind": "literal", "value": literal.value })),
+            Expression::StringLiteral(literal) =>
+                Some(json!({ "kind": "literal", "value": literal.value.as_str() })),
+            Expression::BooleanLiteral(literal) =>
+                Some(json!({ "kind": "literal", "value": literal.value })),
+            Expression::NullLiteral(_) => Some(json!({ "kind": "literal", "value": null })),
+            Expression::Identifier(identifier) => {
+                let site = reference_by_span.get(&(identifier.span.start, identifier.span.end))?;
+                let index = slot_by_site.get(site)?;
+                *seen_references += 1;
+                Some(json!({ "kind": "input", "index": index }))
+            }
+            Expression::ParenthesizedExpression(parenthesized) =>
+                child(&parenthesized.expression, seen_references, node_count),
+            Expression::UnaryExpression(unary) if matches!(unary.operator,
+                UnaryOperator::UnaryPlus | UnaryOperator::UnaryNegation |
+                UnaryOperator::LogicalNot | UnaryOperator::BitwiseNot) => {
+                let argument = child(&unary.argument, seen_references, node_count)?;
+                Some(json!({ "kind": "unary", "operator": unary.operator.as_str(), "argument": argument }))
+            }
+            Expression::BinaryExpression(binary) if !matches!(binary.operator,
+                BinaryOperator::In | BinaryOperator::Instanceof) => {
+                let left = child(&binary.left, seen_references, node_count)?;
+                let right = child(&binary.right, seen_references, node_count)?;
+                Some(json!({ "kind": "binary", "operator": binary.operator.as_str(), "left": left, "right": right }))
+            }
+            Expression::LogicalExpression(logical) if matches!(logical.operator,
+                LogicalOperator::Or | LogicalOperator::And | LogicalOperator::Coalesce) => {
+                let left = child(&logical.left, seen_references, node_count)?;
+                let right = child(&logical.right, seen_references, node_count)?;
+                Some(json!({ "kind": "logical", "operator": logical.operator.as_str(), "left": left, "right": right }))
+            }
+            Expression::ConditionalExpression(conditional) => {
+                let test = child(&conditional.test, seen_references, node_count)?;
+                let consequent = child(&conditional.consequent, seen_references, node_count)?;
+                let alternate = child(&conditional.alternate, seen_references, node_count)?;
+                Some(json!({ "kind": "conditional", "test": test,
+                    "consequent": consequent, "alternate": alternate }))
+            }
+            Expression::TemplateLiteral(template) => {
+                let parts = template.quasis.iter().map(|quasi|
+                    quasi.value.cooked.as_ref().map(|value| value.as_str())
+                ).collect::<Option<Vec<_>>>()?;
+                let expressions = template.expressions.iter().map(|expression|
+                    child(expression, seen_references, node_count)
+                ).collect::<Option<Vec<_>>>()?;
+                Some(json!({ "kind": "template", "parts": parts,
+                    "expressions": expressions }))
+            }
+            _ => None,
+        }
+    }
+    let value = visit(&expression, &reference_by_span, &slot_by_site,
+        &mut seen_references, &mut node_count, 0)?;
+    if seen_references != sink.references.len() { return None; }
+    serde_json::to_string(&value).ok()
+}
+
 pub(super) fn emit_owner_update_program(
     owner_program_id: &str,
     ordered_layout_site_ids: &[&str],
@@ -210,4 +299,50 @@ pub(super) fn emit_owner_update_program(
         "{{ schemaVersion: 2, programId: {owner_id}, slotCount: {}, sinkIds: [{sink_ids}], executeCut: function(changedSlots, changeCount, rowStates, stagedInputIndices, stagedSinkIds, stagedValues) {{ let stagedCount = 0; for (let changeIndex = 0; changeIndex < changeCount; changeIndex++) {{ const rowState = rowStates[changeIndex]!; switch (changedSlots[changeIndex]) {{ {switch_cases} }} }} return stagedCount; }} }}",
         ordered_layout_site_ids.len(),
     ))
+}
+
+#[cfg(test)]
+mod closed_expression_tests {
+    use super::{Sink, StateReference, closed_numeric_expression};
+    use serde_json::{Value, json};
+
+    fn sink(expression: &str, references: &[(u32, u32, &str)]) -> Sink {
+        Sink {
+            owner_program_id: "scene".into(),
+            sink_id: "output".into(),
+            source_sites: vec!["x".into(), "y".into()],
+            expression: expression.into(),
+            references: references.iter().map(|(start, end, site_id)| StateReference {
+                start: *start, end: *end, site_id: (*site_id).into(),
+            }).collect(),
+        }
+    }
+
+    #[test]
+    fn emits_closed_inputs_in_source_site_order() {
+        let actual: Value = serde_json::from_str(&closed_numeric_expression(
+            &sink("y + x", &[(0, 1, "y"), (4, 5, "x")]),
+        ).expect("closed sum")).expect("JSON expression");
+        assert_eq!(actual, json!({
+            "kind": "binary", "operator": "+",
+            "left": {"kind": "input", "index": 1},
+            "right": {"kind": "input", "index": 0},
+        }));
+    }
+
+    #[test]
+    fn emits_conditional_template_and_declines_opaque_outputs() {
+        let actual: Value = serde_json::from_str(&closed_numeric_expression(
+            &sink("x ? `v=${y}` : 0", &[(0, 1, "x"), (9, 10, "y")]),
+        ).expect("closed conditional template")).expect("JSON expression");
+        assert_eq!(actual, json!({
+            "kind": "conditional",
+            "test": {"kind": "input", "index": 0},
+            "consequent": {"kind": "template", "parts": ["v=", ""],
+                "expressions": [{"kind": "input", "index": 1}]},
+            "alternate": {"kind": "literal", "value": 0.0},
+        }));
+        assert!(closed_numeric_expression(&sink("[x]", &[(1, 2, "x")])).is_none());
+        assert!(closed_numeric_expression(&sink("x.toString()", &[(0, 1, "x")])).is_none());
+    }
 }

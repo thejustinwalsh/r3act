@@ -14,6 +14,7 @@ import {
   RootWorkQueue,
   type RootWorkSettled,
 } from "./root_work_queue.ts";
+import { type StateCellHandle } from "./owner_state_world.ts";
 
 type NativeRoot = ComponentStateRoot<any, any>;
 type Candidate = NativeRootCandidate<any, any>;
@@ -63,6 +64,19 @@ export type NativeRootWork = {
   readonly onSettled?: (resolution: RootWorkSettled) => void;
 };
 
+export type NativeRetainedRootWork = {
+  readonly id: string;
+  readonly roots: readonly {
+    readonly root: NativeRoot;
+    readonly cells: readonly StateCellHandle[];
+  }[];
+  readonly pending?: readonly string[];
+  readonly key?: string;
+  readonly validateWork?: () => boolean;
+  readonly onStaleWork?: () => "retry" | "reject";
+  readonly onSettled?: (resolution: RootWorkSettled) => void;
+};
+
 /**
  * Native owner roots wired to the overlapping publication queue. A queued
  * group prepares every root and waits for every observed resource before any
@@ -94,13 +108,48 @@ export class NativeRootWorkQueue {
   }
 
   enqueue(work: NativeRootWork): NativeRootWorkHandle {
+    return this.#enqueuePrepared(
+      work,
+      work.roots.map(({ root, tree }) => ({ root, tree })),
+      ({ root, tree }, transitions) => root.prepare(tree, {
+        transitions,
+        autoRetryResources: false,
+      }),
+    );
+  }
+
+  enqueueRetained(work: NativeRetainedRootWork): NativeRootWorkHandle {
+    return this.#enqueuePrepared(
+      work,
+      work.roots.map(({ root, cells }) => ({
+        root,
+        cells: Object.freeze([...cells]),
+      })),
+      ({ root, cells }) => root.prepareRetained(cells),
+    );
+  }
+
+  #enqueuePrepared<Entry extends { readonly root: NativeRoot }>(
+    work: NativeRootWork | NativeRetainedRootWork,
+    entries: readonly Entry[],
+    prepareCandidate: (
+      entry: Entry,
+      transitions: readonly string[],
+    ) => Candidate | null,
+  ): NativeRootWorkHandle {
     this.#assertActive();
-    const entries = work.roots.map(({ root, tree }) => ({ root, tree }));
-    const transitions = Object.freeze([...new Set(work.transitions ?? [])]);
-    const finishTransitions = work.finishTransitions === true;
+    const transitions = Object.freeze([
+      ...new Set("transitions" in work ? work.transitions ?? [] : []),
+    ]);
+    const finishTransitions = "finishTransitions" in work &&
+      work.finishTransitions === true;
     const rootById = new Map(entries.map(({ root }) => [root.rootId, root]));
     const publicationDependencies = Object.freeze(
-      (work.publicationDependencies ?? []).map(({ root, stores }) => {
+      (
+        "publicationDependencies" in work
+          ? work.publicationDependencies ?? []
+          : []
+      ).map(({ root, stores }) => {
         if (rootById.get(root.rootId) !== root) {
           throw new Error(
             `Publication dependency root is not included in work: ${root.rootId}`,
@@ -141,11 +190,13 @@ export class NativeRootWorkQueue {
           }
           const prepared: Candidate[] = [];
           try {
-            for (const { root, tree } of entries) {
-              const candidate = root.prepare(tree, {
-                transitions,
-                autoRetryResources: false,
-              });
+            for (const entry of entries) {
+              const candidate = prepareCandidate(entry, transitions);
+              if (!candidate) {
+                throw new Error(
+                  `Retained source delta is unavailable: ${entry.root.rootId}`,
+                );
+              }
               prepared.push(candidate);
               this.#rememberWorkStores(work.id, candidate);
             }

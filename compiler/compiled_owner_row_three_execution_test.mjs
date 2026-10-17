@@ -9,6 +9,7 @@ import { jsx, inspectCompiledSemanticPlan } from "../src/native_runtime_api.ts";
 import { VDOMSnapshotRoot } from "../src/vdom_snapshot_runtime.ts";
 import { createThreeNativeRoot } from "../src/three_host.ts";
 import { nativeModulePlugin } from "./vite_native_plugin.ts";
+import { compiledNumericDescriptors } from "./compiled_numeric_descriptor_test_helpers.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const cacheDirectory = path.join(projectRoot, ".cache/compiled-owner-three-proof");
@@ -152,6 +153,7 @@ try {
   await writeFile(authoredPath, authored, { flag: "wx" });
   const transformed = await plugin.transform.call(context, authored, authoredPath);
   assert.ok(transformed?.code, "ordinary authored Three TSX compiles through Rust/OXC");
+  await writeFile(emittedPath, transformed.code, { flag: "wx" });
   assert.doesNotMatch(authored, /@native-ui|@jsx|\bjsx\s*[,}]/, "authored TSX has no JSX author marker or factory call");
   assert.match(transformed.code, /schemaVersion:\s*2,\s*ownerProgramId:/, "owner-scoped v2 sink programs are emitted");
   assert.match(transformed.code, /stateLayout:\s*\{\s*schemaVersion:\s*1,\s*programId:/, "owner layout includes program ID");
@@ -168,16 +170,21 @@ try {
   const layoutEntries = [...layoutMatch[3].matchAll(/\{\s*siteId:\s*"([^"]+)",\s*slot:\s*(\d+)\s*\}/g)];
   assert.equal(layoutEntries.length, 5, "SceneComponent has exactly five numeric state layout slots");
   assert.deepEqual(layoutEntries.map((entry) => [entry[1], Number(entry[2])]), stateSites.map((site, slot) => [site, slot]));
-  const descriptorEntries = [...transformed.code.matchAll(/schemaVersion:\s*2,\s*ownerProgramId:\s*"([^"]+)",\s*sinkId:\s*"[^"]+",\s*sourceSites:\s*\[([^\]]*)\]/g)];
+  const descriptorEntries = compiledNumericDescriptors(transformed.code);
   assert.equal(descriptorEntries.length, 3, "position, rotation, and roughness emit exactly three sink descriptors");
-  assert.ok(descriptorEntries.every((entry) => entry[1] === ownerProgramId), "sink descriptors belong to this component");
-  const descriptorSites = descriptorEntries.map(([, , raw]) => [...raw.matchAll(/"([^"]+)"/g)].map((entry) => entry[1]));
+  assert.equal(descriptorEntries.filter((entry) => entry.closedExpressionKinds.length).length, 1,
+    "scalar roughness has a closed expression; position and rotation arrays keep fallback");
+  assert.ok(descriptorEntries.find((entry) =>
+    JSON.stringify(entry.sourceSites) === JSON.stringify([stateSites[4]])
+  )?.closedExpressionKinds.includes("input"), "roughness carries its identity data expression");
+  assert.ok(descriptorEntries.every((entry) => entry.ownerProgramId === ownerProgramId && entry.sinkId), "sink descriptors belong to this component");
+  const descriptorSites = descriptorEntries.map((entry) => entry.sourceSites);
+  assert.ok(descriptorSites.every(Array.isArray), "every sink has an explicit source list");
   assert.ok(descriptorSites.every((sites) => new Set(sites).size === sites.length), "every sink source list is unique");
   assert.ok(descriptorSites.some((sites) => JSON.stringify(sites) === JSON.stringify(stateSites.slice(0, 3))), "position vector source list follows layout order");
   assert.ok(descriptorSites.some((sites) => JSON.stringify(sites) === JSON.stringify([stateSites[3]])), "rotation uses its one source slot");
   assert.ok(descriptorSites.some((sites) => JSON.stringify(sites) === JSON.stringify([stateSites[4]])), "roughness uses its one source slot");
 
-  await writeFile(emittedPath, transformed.code, { flag: "wx" });
   app = await import(`${pathToFileURL(emittedPath).href}?attempt=${attemptId}`);
   const moduleSource = layoutMatch[1].slice(0, layoutMatch[1].lastIndexOf("#component:"));
   assert.equal(layoutMatch[2], inspectCompiledSemanticPlan(moduleSource)?.module_revision,

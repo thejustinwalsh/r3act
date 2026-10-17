@@ -7,6 +7,7 @@ import { PendingStateChanges } from "../src/pending_state_changes.ts";
 import { createNativeRoot, jsx, inspectCompiledSemanticPlan } from "../src/native_runtime_api.ts";
 import { MemoryVDOMHost, VDOMSnapshotRoot } from "../src/vdom_snapshot_runtime.ts";
 import { nativeModulePlugin } from "./vite_native_plugin.ts";
+import { compiledNumericDescriptors } from "./compiled_numeric_descriptor_test_helpers.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const cacheDirectory = path.join(projectRoot, ".cache/compiled-owner-proof");
@@ -214,12 +215,13 @@ try {
   assert.equal(layoutMatch[1], rowSite, "layout programId equals defineComponent's first argument");
   const layoutEntries = [...layoutMatch[3].matchAll(/\{\s*siteId:\s*"([^"]+)",\s*slot:\s*(\d+)\s*\}/g)];
   assert.deepEqual(layoutEntries.map((entry) => [entry[1], Number(entry[2])]), stateSites.map((site, slot) => [site, slot]));
-  const v2Owners = [...transformed.code.matchAll(/schemaVersion:\s*2,\s*ownerProgramId:\s*"([^"]+)",\s*sinkId:/g)].map((match) => match[1]);
-  assert.ok(v2Owners.length >= 5, "vector, repeat, and unary style sinks each have a compiled descriptor");
-  assert.ok(v2Owners.every((owner) => owner === rowSite), "each descriptor belongs to the Row component");
-  const descriptors = [...transformed.code.matchAll(/schemaVersion:\s*2,\s*ownerProgramId:\s*"([^"]+)",\s*sinkId:\s*"[^"]+",\s*sourceSites:\s*\[([^\]]*)\]/g)];
-  assert.equal(descriptors.length, v2Owners.length, "every owner descriptor contains an explicit source list");
-  const descriptorSources = descriptors.map(([, , raw]) => [...raw.matchAll(/"([^"]+)"/g)].map((match) => match[1]));
+  const descriptors = compiledNumericDescriptors(transformed.code);
+  assert.equal(descriptors.length, 5, "vector, repeat, and three unary style sinks each have a compiled descriptor");
+  assert.ok(descriptors.every((entry) => entry.ownerProgramId === rowSite), "each descriptor belongs to the Row component");
+  assert.ok(descriptors.every((entry) => entry.sinkId && entry.sourceSites), "every owner descriptor contains an explicit source list");
+  assert.equal(descriptors.filter((entry) => entry.closedExpressionKinds.length).length, descriptors.length - 1,
+    "all primitive sinks have closed expressions while the vector keeps fallback");
+  const descriptorSources = descriptors.map((entry) => entry.sourceSites);
   assert.ok(descriptorSources.every((sites) => new Set(sites).size === sites.length), "descriptor source sites are unique");
   assert.ok(descriptorSources.some((sites) => JSON.stringify(sites) === JSON.stringify(stateSites)), "vector descriptor lists sources in layout order");
   assert.match(

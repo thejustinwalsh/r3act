@@ -2055,6 +2055,32 @@ export class OwnerStateWorld {
     return this.#stateByOwner.get(owner)?.get(site)?.version ?? 0;
   }
 
+  /** Return one live committed cell's stable capability without dispatching it. */
+  cellHandle(owner: OwnerId, site: StateSiteId): StateCellHandle | null {
+    if (!this.#owners.has(owner) || this.#stagedOwners.has(owner)) return null;
+    const cell = this.#stateByOwner.get(owner)?.get(site);
+    return cell ? this.#handleForCell(owner, site, cell) : null;
+  }
+
+  #handleForCell(
+    owner: OwnerId,
+    site: StateSiteId,
+    cell: StateCell<unknown>,
+  ): StateCellHandle {
+    let handle = cell.cellHandle;
+    if (handle) return handle;
+    const cellIdentity = new CommittedCellCapability(
+      this.#identitySecret,
+      owner,
+      site,
+      cell,
+    );
+    cell.cellIdentity = cellIdentity;
+    handle = Object.freeze({ owner, site, cellIdentity });
+    cell.cellHandle = handle;
+    return handle;
+  }
+
   /** Stable scalar handle for a numeric state cell; nonnumeric sites have none. */
   scalarSource(owner: OwnerId, site: StateSiteId): ScalarSource | null {
     this.#assertOwner(owner);
@@ -2347,23 +2373,8 @@ export class OwnerStateWorld {
       cell.numericLaneSlot !== undefined && !cell.promoted) {
       this.#attachOptionalNumericLane(owner, site, cell as StateCell<unknown>);
     }
-    let cellIdentity = cell.cellIdentity;
-    if (!cellIdentity) {
-      cellIdentity = new CommittedCellCapability(
-        this.#identitySecret,
-        owner,
-        site,
-        cell as StateCell<unknown>,
-      );
-      cell.cellIdentity = cellIdentity;
-      const handle: StateCellHandle = Object.freeze({
-        owner,
-        site,
-        cellIdentity,
-      });
-      cell.cellHandle = handle;
-    }
-    const handle = cell.cellHandle;
+    const handle = this.#handleForCell(owner, site, cell as StateCell<unknown>);
+    const cellIdentity = handle.cellIdentity;
     const version = cell.version;
     // Capture both listener cuts before callbacks run. Subscription changes
     // during a notification affect the next dispatch, including public ones.
@@ -2371,9 +2382,7 @@ export class OwnerStateWorld {
     const changeListeners = this.#changeListeners.size > 0
       ? [...this.#changeListeners]
       : null;
-    if (handle) {
-      for (const listener of dirtyCellListeners) listener(handle, version);
-    }
+    for (const listener of dirtyCellListeners) listener(handle, version);
     if (changeListeners) {
       const change: StateChange = { owner, site, version, cellIdentity };
       for (const listener of changeListeners) listener(change);

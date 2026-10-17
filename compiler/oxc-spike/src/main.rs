@@ -4256,7 +4256,10 @@ fn transform_native_component_source(
                     .map(|site| serde_json::to_string(site).unwrap_or_default())
                     .collect::<Vec<_>>()
                     .join(", ");
-                format!("{{ schemaVersion: 2, ownerProgramId: {owner_program_id}, sinkId: {sink_id}, sourceSites: [{source_sites}] }}")
+                let closed_expression = owner_update_program::closed_numeric_expression(program)
+                    .map(|expression| format!("closedExpression: {expression}, "))
+                    .unwrap_or_default();
+                format!("{{ schemaVersion: 2, ownerProgramId: {owner_program_id}, sinkId: {sink_id}, {closed_expression}sourceSites: [{source_sites}] }}")
             })
             .collect::<Vec<_>>()
             .join(", ");

@@ -1,3 +1,4 @@
+import { type ClosedNumericExpression, evaluateClosedNumericExpression, normalizeClosedNumericExpression } from "./closed_numeric_expression.ts";
 import { type BindingEdge, CompiledBindings } from "./compiled_bindings.ts";
 import type { CompiledStateLayout } from "./compiled_state_layout.ts";
 
@@ -121,6 +122,7 @@ export type NumericBindingProgramDescriptorV1 = Readonly<{
   schemaVersion: 1;
   sinkId: string;
   sourceSites: readonly string[];
+  closedExpression?: ClosedNumericExpression;
 }>;
 
 /** Owner-scoped compiler proof for an authored numeric sink. */
@@ -129,6 +131,7 @@ export type NumericBindingProgramDescriptorV2 = Readonly<{
   ownerProgramId: string;
   sinkId: string;
   sourceSites: readonly string[];
+  closedExpression?: ClosedNumericExpression;
 }>;
 
 /** Compiler proof that a binding is a fixed numeric source program. */
@@ -209,6 +212,34 @@ export const bind = <T = number>(
   project,
 });
 
+type ClosedBindingCapability = {
+  expression: ClosedNumericExpression;
+  project: BoundValue["project"];
+  read: BoundValue["read"];
+  projectInputs: BoundValue["projectInputs"];
+  sources: readonly ScalarSource[];
+};
+const closedBindings = new WeakMap<object, ClosedBindingCapability>();
+
+/** Resolve only runtime-created data programs whose callbacks remain intact. */
+export const closedExpressionForBinding = (
+  binding: BoundValue,
+): ClosedNumericExpression | null => {
+  const capability = closedBindings.get(binding);
+  if (!capability) return null;
+  const data = Object.getOwnPropertyDescriptors(binding);
+  const matches = (name: string, expected: unknown) => {
+    const descriptor = data[name];
+    return descriptor ? "value" in descriptor && descriptor.value === expected
+      : expected === undefined;
+  };
+  return matches("project", capability.project) &&
+      matches("read", capability.read) &&
+      matches("projectInputs", capability.projectInputs) &&
+      matches("sources", capability.sources)
+    ? capability.expression : null;
+};
+
 /** Bind one prop to several sources; the value is read after a source batch. */
 export const bindSources = <T>(
   sources: readonly ScalarSource[],
@@ -217,6 +248,12 @@ export const bindSources = <T>(
 ): BoundValue<T> => {
   if (sources.length === 0) {
     throw new Error("A derived binding needs at least one source");
+  }
+  const expression = numericProgram?.closedExpression
+    ? normalizeClosedNumericExpression(numericProgram.closedExpression, sources.length)
+    : null;
+  if (expression) {
+    derive = (values) => evaluateClosedNumericExpression(expression, values) as T;
   }
   let read: () => T;
   if (numericProgram) {
@@ -232,15 +269,22 @@ export const bindSources = <T>(
   } else {
     read = () => derive(sources.map((source) => source.value));
   }
-  return {
+  const binding: BoundValue<T> = {
     [bindingTag]: true,
     source: sources[0],
     sources,
-    project: () => read(),
+    project: expression && sources.length === 1
+      ? (value) => evaluateClosedNumericExpression(expression, [value]) as T
+      : () => read(),
     read,
     ...(numericProgram?.schemaVersion === 2 ? { projectInputs: derive } : {}),
     ...(numericProgram ? { numericProgram } : {}),
   };
+  if (expression) closedBindings.set(binding, Object.freeze({
+    expression, project: binding.project, read: binding.read,
+    projectInputs: binding.projectInputs, sources,
+  }));
+  return binding;
 };
 
 /** A stable tuple binding for vector-like host props such as R3F position. */

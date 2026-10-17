@@ -1,5 +1,7 @@
+import { evaluateClosedNumericExpression } from "./closed_numeric_expression.ts";
 import {
   Fragment,
+  closedExpressionForBinding,
   getBoundValue,
   getKeyedOwnerRegionId,
   type NumericColumn,
@@ -85,6 +87,27 @@ type BoundPropGroup<H> = {
   ownerRowCutEpoch?: number;
   pendingPublicationToken?: object;
   pendingPublicationIndex?: number;
+  acceptedWriteGeneration?: number;
+};
+
+const retainedSourceDeltaBrand: unique symbol = Symbol();
+
+/** An opaque, projected cut over retained compiler-proven scalar writers. */
+export interface PreparedRetainedSourceDelta {
+  readonly [retainedSourceDeltaBrand]: never;
+  readonly readSources: readonly ScalarSource[];
+}
+
+type RetainedSourceDeltaRecord<H> = {
+  readonly root: object;
+  readonly structuralVersion: number;
+  readonly readSources: readonly ScalarSource[];
+  readonly readValues: readonly number[];
+  readonly groups: readonly BoundPropGroup<H>[];
+  readonly generations: readonly number[];
+  readonly sourceValues: readonly number[];
+  readonly outputs: readonly unknown[];
+  applied: boolean;
 };
 
 export type PreparedNumericRowProgramSpec = Readonly<{
@@ -977,6 +1000,10 @@ export class VDOMSnapshotRoot<H, Parent = H> {
   // Set membership gives structural detach O(1) even when thousands of rows
   // share one scalar source. Compiled CSR indexes remain dense arrays/maps.
   #groupsBySource = new Map<ScalarSource, Set<BoundPropGroup<H>>>();
+  #retainedSourceDeltas = new WeakMap<
+    PreparedRetainedSourceDelta,
+    RetainedSourceDeltaRecord<H>
+  >();
   #programSourceSlots = new Map<ScalarSource, NumericProgramSourceSlot<H>>();
   #preparedNumericRowPrograms = new WeakMap<
     PreparedNumericRowProgram,
@@ -1160,6 +1187,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       const flags = this.#pendingHistoryFlags[index];
       if (flags & 1) group.lastSourceValue = this.#pendingHistorySources[index];
       if (flags & 2) group.lastValue = this.#pendingHistoryValues[index];
+      group.acceptedWriteGeneration =
+        (group.acceptedWriteGeneration ?? 0) + 1;
     }
     this.#clearPendingHistory();
     this.#publicationToken = null;
@@ -1204,6 +1233,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
   #stageLastValue(group: BoundPropGroup<H>, value: unknown) {
     if (!this.#publicationToken) {
       group.lastValue = value;
+      group.acceptedWriteGeneration =
+        (group.acceptedWriteGeneration ?? 0) + 1;
       return;
     }
     const index = this.#stageHistoryIndex(group);
@@ -2607,6 +2638,158 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       : this.#groupsBySource.get(source);
     return !!groups &&
       (groups instanceof Set ? groups.size : groups.length) > 0;
+  }
+
+  /** Prepare only the compiler-proven retained writers reached by this cut. */
+  prepareRetainedSourceDelta(
+    updates: readonly (readonly [ScalarSource, number])[],
+  ): PreparedRetainedSourceDelta | null {
+    if (this.#publicationToken || this.#publicationFailed ||
+      this.#numericWriteInProgress || updates.length === 0) return null;
+    const structuralVersion = this.#version;
+    const seen = new Set<ScalarSource>();
+    const selected = new Set<BoundPropGroup<H>>();
+    for (const [source, value] of updates) {
+      if (seen.has(source) || typeof value !== "number" ||
+        !Object.is(source.value, value)) return null;
+      seen.add(source);
+      const slot = this.#programSourceSlots.get(source);
+      const groups = this.#groupsBySource.get(source);
+      if (!slot?.eligible || !groups?.size) return null;
+      for (const group of groups) selected.add(group);
+    }
+    const readSources: ScalarSource[] = [];
+    const readValues: number[] = [];
+    const readIndices = new Map<ScalarSource, number>();
+    const groups: BoundPropGroup<H>[] = [];
+    const generations: number[] = [];
+    const sourceValues: number[] = [];
+    const outputs: unknown[] = [];
+    for (const group of selected) {
+      const binding = getBoundValue(group.rawValue);
+      const descriptor = binding?.numericProgram;
+      if (!binding || !descriptor || group.column !== undefined ||
+        group.sources.length === 0 || group.sources.some((source) =>
+          !this.#groupsBySource.get(source)?.has(group) ||
+          !this.#programSourceSlots.get(source)?.eligible
+        )) return null;
+      const expression = closedExpressionForBinding(binding);
+      if (!expression) return null;
+      for (const source of group.sources) {
+        if (readIndices.has(source)) continue;
+        const value = source.value;
+        if (typeof value !== "number") return null;
+        readIndices.set(source, readSources.length);
+        readSources.push(source);
+        readValues.push(value);
+      }
+      const generation = group.acceptedWriteGeneration ?? 0;
+      const output = evaluateClosedNumericExpression(
+        expression, group.sources.map((source) => readValues[readIndices.get(source)!]),
+      );
+      if (!isCompiledOwnerUpdatePrimitive(output)) return null;
+      groups.push(group);
+      generations.push(generation);
+      sourceValues.push(readValues[readIndices.get(group.sources[0])!]);
+      outputs.push(output);
+    }
+    if (groups.length === 0 ||
+      readSources.some((source, index) =>
+        !Object.is(source.value, readValues[index])
+      ) || this.#publicationToken || this.#publicationFailed ||
+      this.#numericWriteInProgress) return null;
+    const token = Object.freeze({
+      readSources: Object.freeze(readSources),
+    }) as PreparedRetainedSourceDelta;
+    this.#retainedSourceDeltas.set(token, {
+      root: this,
+      structuralVersion,
+      readSources,
+      readValues,
+      groups,
+      generations,
+      sourceValues,
+      outputs,
+      applied: false,
+    });
+    if (!this.isRetainedSourceDeltaCurrent(token)) {
+      this.#retainedSourceDeltas.delete(token);
+      return null;
+    }
+    return token;
+  }
+
+  /** Validate writer lifetime and accepted overlap after unrelated prop cuts. */
+  isRetainedSourceDeltaCurrent(
+    delta: PreparedRetainedSourceDelta,
+    options?: { afterHost?: boolean },
+  ): boolean {
+    const record = this.#retainedSourceDeltas.get(delta);
+    if (!record || record.root !== this || this.#publicationFailed ||
+      this.#version !== record.structuralVersion ||
+      (!options?.afterHost && (this.#publicationToken !== null ||
+        record.applied)) ||
+      (options?.afterHost && (!this.#publicationToken || !record.applied))) {
+      return false;
+    }
+    for (let index = 0; index < record.readSources.length; index++) {
+      if (!options?.afterHost && !Object.is(
+        record.readSources[index].value,
+        record.readValues[index],
+      )) return false;
+    }
+    for (let index = 0; index < record.groups.length; index++) {
+      const group = record.groups[index];
+      if ((group.acceptedWriteGeneration ?? 0) !==
+          record.generations[index] ||
+        !this.#programSinkSlotByGroup.has(group) ||
+        !closedExpressionForBinding(group.rawValue as import("./jsx_binding_runtime.ts").BoundValue) ||
+        group.sources.some((source) =>
+          !this.#groupsBySource.get(source)?.has(group) ||
+          !this.#programSourceSlots.get(source)?.eligible
+        )) return false;
+    }
+    return true;
+  }
+
+  /** Apply a projected cut inside the Root's active host publication. */
+  applyRetainedSourceDelta(delta: PreparedRetainedSourceDelta): boolean {
+    const record = this.#retainedSourceDeltas.get(delta);
+    if (!record || !this.#publicationToken || record.applied ||
+      this.#publicationFailed || this.#version !== record.structuralVersion ||
+      record.readSources.some((source, index) =>
+        !Object.is(source.value, record.readValues[index])
+      ) || record.groups.some((group, index) =>
+        (group.acceptedWriteGeneration ?? 0) !==
+          record.generations[index] ||
+        !this.#programSinkSlotByGroup.has(group) ||
+        !closedExpressionForBinding(group.rawValue as import("./jsx_binding_runtime.ts").BoundValue) ||
+        group.sources.some((source) =>
+          !this.#groupsBySource.get(source)?.has(group) ||
+          !this.#programSourceSlots.get(source)?.eligible
+        )
+      )) throw new Error("Retained source delta is stale");
+    return this.#withNumericWriteGuard(() => {
+      let wrote = false;
+      for (let index = 0; index < record.groups.length; index++) {
+        const group = record.groups[index];
+        const next = record.outputs[index];
+        if (!sameBoundValueCanSkipWrite(
+          this.#effectiveLastValue(group),
+          next,
+          group.forceWrite,
+        )) {
+          this.#writeBoundGroup(group, next);
+          wrote = true;
+        }
+        this.#stageLastValue(group, next);
+        if (group.sources.length === 1) {
+          this.#stageLastSourceValue(group, record.sourceValues[index]);
+        }
+      }
+      record.applied = true;
+      return wrote;
+    });
   }
 
   /** Whether every retained writer for this source is a supported direct numeric program. */
