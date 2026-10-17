@@ -1,5 +1,11 @@
 # Implementation checkpoint
 
+## Comparison disposition — 17 October 2026
+
+The user clarified that Portless/the comparison is optional; no question or permission request remains pending. The upstream [Portless skill](https://github.com/vercel-labs/portless/blob/main/skills/portless/SKILL.md) was read. Bounded preflight found available Chromium but no installed Portless CLI, proxy or local CA. The optional one-pair comparison was skipped before installation, trust-store changes or any server/browser launch. See [preflight](implementation/2026-10-17-publication-comparison/preflight.md). This is an environment setup skip, not a failed runtime or a timing result.
+
+The verified source remains commit `8a7b4f6`; its 749 runtime tests, 40 Rust tests and compiled DOM/Three/build results stand. No runtime change or repeated gate was made for this clarification. Performance remains unqualified. Portless setup is no longer a blocker to implementation; the next capability remains mergeable dependency-scoped deltas under the full master-plan contract.
+
 ## Current continuation — 16 October 2026
 
 Cloned and verified clean `main` at published commit `a694d72959970eca750d2fa09c91d0b64ae5494a`; remote HEAD/main matched and MIT license was present. Checkout resolves to `/Volumes/Depot/Developer/r3act` because `~/Developer` is a symlink. Normal sandbox process startup rejects that writable root; reviewed commands used elevated execution in the authorized checkout. Node 26.9.0, Deno 2.9.7, Cargo 1.97.1 and pnpm 11.25.0 are available. Frozen pnpm installation succeeds.
@@ -8,7 +14,7 @@ The reviewed publication repair is implemented: keyed deltas replace their chang
 
 Consolidated verification: **749 Deno tests pass**, with typechecking and `--frozen` against the explicit gate-only lock. The original workspace `deno.lock` fails before testing and remains unchanged; the gate lock removes only its obsolete workspace metadata while retaining JSR resolutions/integrities. **40 Rust tests pass**, native HMR execution passes, native tooling checking passes, and a fresh production high-frequency build with Rust/OXC and React Compiler proofs passes. The build first exposed an undeclared `@babel/parser`; live package metadata now declares the exact already-transitive version 7.29.9. Compiled mixed DOM and owner-row DOM/Three fixtures pass under Node 24.18.0; the Three case covers 240 five-value batches, retained identity and resource cleanup. Node 26 strip-only failures and a stale Three test regex are retained. Every failed test/build/tool invocation is preserved in [verification](implementation/2026-10-16-publication/verification/gate-results.md); source locks distinguish repaired gates.
 
-The bounded browser performance comparison is **not run**: `$portless-dev-servers` is absent locally. A user question is pending for its path or permission to use upstream Portless. No project server/browser was launched. This source has no timing qualification, cold/memory or second-device result. Historic wins and the qualified dense FAIL remain unchanged.
+The bounded browser performance comparison is **not run**: `$portless-dev-servers` is absent locally. At that checkpoint the skill path/upstream question was unresolved; the 17 October clarification above supersedes it. No project server/browser was launched. This source has no timing qualification, cold/memory or second-device result. Historic wins and the qualified dense FAIL remain unchanged.
 
 Dependency-scoped coherence is now specified in master-plan §5 and the Three API. It is **not implemented**: complete-tree/cache candidates retain whole-root version checks. Next implement mergeable retained-prop deltas with exact read/control footprints, owner/code/writer validation and explicit transaction grouping before allowing unrelated accepted commits through; then structural/cache and resource/reveal deltas. Keep the full product finish line (async UX, resources, packaging, portability, lifecycle costs and human evidence) open.
 
