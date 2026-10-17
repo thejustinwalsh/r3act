@@ -35,11 +35,14 @@ Deno.test("staged native collection acknowledgement keeps later batches pending"
     assert(collection.apply(1, [{
       type: "insert", key: "b", value: { key: "b" }, beforeKey: null,
     }]).ok, "newer batch applied");
-    acknowledge!();
+    equal(acknowledge!(), false, "newer batches keep the native reader pending");
     const pending = reader.read();
     if (pending.status !== "available") throw new Error("newer read unavailable");
     equal(pending.fromVersion, 1, "acknowledgement advanced past captured cutoff");
     equal(pending.batches.map((batch) => batch.version), [2], "newer batch lost");
+    const finish = prepareCollectionReaderAcknowledgement(reader, pending.toVersion);
+    assert(finish, "latest cutoff could not stage");
+    equal(finish!(), true, "latest cutoff catches up without public getters");
   } finally {
     reader.detach();
   }

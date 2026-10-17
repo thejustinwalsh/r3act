@@ -80,14 +80,14 @@ export type KeyedCollectionReader<T> = Readonly<{
   detach(): void;
 }>;
 
-type ReaderAcknowledgement = (version: number) => (() => void) | null;
+type ReaderAcknowledgement = (version: number) => (() => boolean) | null;
 const readerAcknowledgements = new WeakMap<object, ReaderAcknowledgement>();
 
-/** @internal Stage exact native-reader acceptance before any group member publishes. */
+/** @internal Stage exact acceptance; the callback reports whether the reader caught up. */
 export function prepareCollectionReaderAcknowledgement(
   reader: KeyedCollectionReader<unknown>,
   version: number,
-): (() => void) | null {
+): (() => boolean) | null {
   return readerAcknowledgements.get(reader)?.(version) ?? null;
 }
 
@@ -473,6 +473,7 @@ export function createKeyedCollection<T>(
         return () => {
           reader.version = Math.max(reader.version, ackVersion);
           pruneAcknowledged();
+          return reader.version === version;
         };
       });
       return handle;

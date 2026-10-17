@@ -1,0 +1,203 @@
+
+portless - Replace port numbers with stable, named .localhost URLs. For humans and agents.
+
+Eliminates port conflicts, memorizing port numbers, and cookie/storage
+clashes by giving each dev server a stable .localhost URL.
+
+Install:
+  npm install -g portless          Global (recommended)
+  npm install -D portless          Project dev dependency
+
+Requirements:
+  Node.js 24+
+
+Usage:
+  portless                         Run dev script through proxy
+  portless                         From monorepo root: run all workspace packages
+  portless run                     Same as above
+  portless run <cmd>               Run a command through the proxy
+  portless <name> <cmd>            Run with an explicit app name
+  portless proxy start             Start the proxy (HTTPS on port 443, daemon); rarely needed since it auto-starts on first run
+  portless proxy stop              Stop the proxy
+  portless service install         Start proxy automatically when the OS starts
+  portless get <name>              Print URL for a service (for cross-service refs)
+  portless alias <name> <port>     Register a static route (e.g. for Docker)
+  portless alias --remove <name>   Remove a static route
+  portless list                    Show active routes
+  portless doctor                  Check local portless health
+  portless trust                   Add local CA to system trust store
+  portless clean                   Remove portless state, trust entry, and hosts block
+  portless prune                   Kill orphaned dev servers from crashed sessions
+  portless hosts sync              Reconcile routes with /etc/hosts (fixes Safari)
+  portless hosts clean             Remove portless entries from /etc/hosts
+
+Examples:
+  portless                            # Run dev script through proxy
+  portless                            # From monorepo root: start all apps
+  portless --script start             # Run "start" script instead of "dev"
+  portless myapp next dev             # -> https://myapp.localhost
+  portless run next dev               # -> https://<project>.localhost
+  portless run next dev               # in worktree -> https://<worktree>.<project>.localhost
+  portless service install            # Start HTTPS proxy on OS startup
+  portless service install --lan      # Persist LAN mode in the startup service
+  portless service install --wildcard # Persist wildcard routing in the startup service
+  portless get backend                # -> https://backend.localhost
+  portless doctor                     # Check proxy, routes, DNS, and CA trust
+  portless myapp --tailscale next dev # -> also https://<node>.ts.net (tailnet)
+  portless myapp --funnel next dev    # -> also https://<node>.ts.net (public)
+  portless myapp --ngrok next dev     # -> also https://<random>.ngrok.app (public)
+
+Configuration (portless.json):
+  Optional. Portless works out of the box by running the "dev" script
+  from package.json. Use portless.json to override defaults.
+
+  Override name:   { "name": "myapp" }
+  Override script: { "name": "myapp", "script": "start" }
+  Monorepo:        { "apps": { "apps/web": { "name": "myapp" } } }
+  Turborepo:       Workspace roots use Turbo when turbo.json or turbo.jsonc is readable
+                   Set { "turbo": false } to use direct spawning
+
+In package.json:
+  {
+    "scripts": {
+      "dev": "next dev"
+    }
+  }
+  Then run: portless
+  Or:       portless run
+  Or:       portless run next dev
+
+How it works:
+  1. Start the proxy once (HTTPS on port 443 by default, auto-elevates with sudo)
+  2. Run your apps - they auto-start the proxy and register automatically
+     (apps get a random port in the 4000-4999 range via PORT)
+  3. Access via https://<name>.localhost
+  4. .localhost domains auto-resolve to 127.0.0.1
+  5. Frameworks that ignore PORT (Vite, VitePlus, Astro, React Router, Angular,
+     Expo, React Native) get --port and, when needed, --host flags
+     injected automatically, including through a package script whose command
+     starts with the framework. Only server commands (dev, serve, preview,
+     start, a bare vite, or vite [root]) get them; build, optimize, test and
+     the like reject them, and an invocation portless cannot classify is left
+     alone too. Expo --localhost, --lan and --tunnel modes are preserved while
+     the assigned port is still injected.
+     Portless also leaves a script alone when it is
+     compound (&&, |, ;), ends in a # comment, ends its own option list with
+     --, is env-prefixed (NODE_ENV=production vite), delegates to another
+     script, or is invoked with runner flags before the script name
+     (bun run --bun dev); set the port in those yourself
+  6. The proxy listens only on 127.0.0.1 and ::1 unless LAN mode is enabled
+  Elevated proxy processes keep the invoking user's ~/.portless state directory.
+
+HTTP/2 + HTTPS (default):
+  HTTPS with HTTP/2 multiplexing is enabled by default (faster page loads).
+  WebSockets work over both HTTP/1.1 (Upgrade) and HTTP/2 (RFC 8441
+  extended CONNECT), so dev server HMR works through the proxy.
+  On first use, portless generates a local CA and adds it to your
+  system trust store. No browser warnings. Disable with --no-tls.
+  On WSL, portless also adds the CA to the Windows user certificate store.
+
+LAN mode:
+  Use --lan to make services accessible from other devices (phones,
+  tablets) on the same WiFi network via mDNS (.local domains).
+  Normal mode binds only to 127.0.0.1 and ::1.
+  LAN mode binds to 0.0.0.0 and ::.
+  Useful for testing React Native / Expo apps on real devices.
+  Expo keeps Metro's default LAN host behavior in this mode.
+  Auto-detected LAN IPs follow network changes automatically.
+  Stopped LAN proxies keep LAN mode for the next start via proxy.lan.
+  All proxy settings are persisted and reused on auto-start unless
+  overridden by explicit flags or env vars.
+  Use PORTLESS_LAN=0 for one start to switch back to .localhost mode.
+  If a proxy is already running with different explicit LAN/TLS/TLD settings,
+  stop it first.
+  portless proxy start --lan
+  portless proxy start --lan --https
+  portless proxy start --lan --ip 192.168.1.42
+
+Tailscale sharing:
+  Use --tailscale to share your dev server with teammates on your tailnet.
+  Each app is root-mounted on its own Tailscale HTTPS port (443, then 8443,
+  8444, etc.) so no basePath configuration is needed.
+  Use --funnel to expose your dev server to the public internet via
+  Tailscale Funnel. Requires Tailscale CLI to be installed and connected,
+  with Tailscale HTTPS certificates enabled. Funnel must also be enabled
+  on your tailnet.
+  portless myapp --tailscale next dev
+  portless myapp --funnel next dev
+
+ngrok sharing:
+  Use --ngrok to expose your dev server to the public internet with ngrok.
+  Requires the ngrok CLI to be installed and authenticated.
+  portless myapp --ngrok next dev
+
+Options:
+  run [--name <name>] <cmd>      Infer project name (or override with --name)
+                                Adds worktree prefix in git worktrees
+  --script <name>               Run a specific package.json script (default: dev)
+  -p, --port <number>           Port for the proxy (default: 443, or 80 with --no-tls)
+                                Standard ports auto-elevate with sudo on macOS/Linux
+  --no-tls                      Disable HTTPS (use plain HTTP on port 80)
+  --https                       Enable HTTPS (default, accepted for compatibility)
+  --lan                         Enable LAN mode (mDNS .local, for real device testing)
+  --ip <address>                Pin a specific LAN IP (disables auto-follow; use with --lan)
+  --cert <path>                 Use a custom TLS certificate
+  --key <path>                  Use a custom TLS private key
+  --foreground                  Run proxy in foreground (for debugging)
+  --tld <tld>                   Use a custom TLD instead of .localhost (e.g. test, dev.example.com); repeat for more
+  --wildcard                    Allow unregistered subdomains to fall back to the most specific parent route
+  --state-dir <path>            Use a custom state directory with service install
+  --app-port <number>           Use a fixed port for the app (skip auto-assignment)
+  --tailscale                   Share the app on your Tailscale network (tailnet)
+  --funnel                      Share the app publicly via Tailscale Funnel
+  --ngrok                       Share the app publicly via ngrok
+  --force                       Kill the existing process and take over its route
+  --name <name>                 Use <name> as the app name (bypasses subcommand dispatch)
+  --                            Stop flag parsing; everything after is passed to the child
+
+Environment variables:
+  PORTLESS_PORT=<number>        Override the default proxy port (e.g. in .bashrc)
+  PORTLESS_APP_PORT=<number>    Use a fixed port for the app (same as --app-port)
+  PORTLESS_HTTPS=0              Disable HTTPS (same as --no-tls)
+  PORTLESS_LAN=1                Enable LAN mode when set to 1 (set in .bashrc / .zshrc)
+  PORTLESS_LAN_IP=<address>     Pin a specific LAN IP for LAN mode
+  PORTLESS_TLD=<tld>[,<tld>]    Use one or more TLDs (e.g. localhost,test,dev.example.com)
+  PORTLESS_WILDCARD=1           Allow unregistered subdomains to fall back to the most specific parent route
+  PORTLESS_SYNC_HOSTS=0         Disable auto-sync of /etc/hosts (on by default)
+  PORTLESS_TAILSCALE=1          Share apps on your Tailscale network (same as --tailscale)
+  PORTLESS_FUNNEL=1             Share apps publicly via Tailscale Funnel (same as --funnel)
+  PORTLESS_NGROK=1              Share apps publicly via ngrok (same as --ngrok)
+  PORTLESS_STATE_DIR=<path>     Override the state directory
+  PORTLESS=0                    Run command directly without proxy
+
+Child process environment:
+  PORT                          Ephemeral port the child should listen on
+  HOST                          Usually 127.0.0.1 (omitted for Expo in LAN mode)
+  PORTLESS_URL                  Primary public URL of the app
+  PORTLESS_LAN                  Set to 1 when proxy is in LAN mode
+  PORTLESS_TAILSCALE_URL        Tailscale URL of the app (when --tailscale is active)
+  PORTLESS_NGROK_URL            ngrok URL of the app (when --ngrok is active)
+  NODE_EXTRA_CA_CERTS           Path to the portless CA (set when HTTPS is active)
+
+Safari / DNS:
+  .localhost subdomains auto-resolve in Chrome, Firefox, and Edge.
+  Safari relies on the system DNS resolver, which may not handle them.
+  Auto-syncs /etc/hosts for route hostnames by default (including .localhost,
+  custom TLDs, and LAN .local). Set PORTLESS_SYNC_HOSTS=0 to disable. If a route
+  hostname will not resolve, the command that registered it warns instead of
+  failing silently. Manual sync reconciles the managed entries with current routes,
+  removes stale entries when there are no routes, and requires a successful read
+  before writing. Every write is verified; a failed verification uses the normal
+  hosts sync failure path. To sync manually:
+    portless hosts sync
+  Clean up later with:
+    portless hosts clean
+
+Skip portless:
+  PORTLESS=0 pnpm dev           # Runs command directly without proxy
+
+Reserved names:
+  run, get, alias, hosts, list, doctor, trust, clean, prune, proxy, service are subcommands and
+  cannot be used as app names directly. Use "portless run" to infer the name,
+  or "portless --name <name>" to force any name including reserved ones.
+

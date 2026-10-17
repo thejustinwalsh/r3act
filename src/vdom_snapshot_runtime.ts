@@ -279,7 +279,10 @@ export type KeyedRegionDeltaRequest = Readonly<{
 }>;
 
 export type PreparedKeyedVDOMProgram = {
+  readonly scoped: boolean;
+  readonly structuralVersionDelta: 0 | 1;
   validate(): boolean;
+  validatePostHost(): boolean;
   commit(): void;
   discard(): void;
 };
@@ -1907,11 +1910,15 @@ export class VDOMSnapshotRoot<H, Parent = H> {
   prepareKeyedRegionDeltas(
     deltas: readonly KeyedRegionDeltaRequest[],
     regions: readonly { key: string; tree: RuntimeNode }[] = [],
+    options: { scoped?: boolean } = {},
   ): PreparedKeyedVDOMProgram | null {
+    const scoped = options.scoped === true;
     if (
       this.#compiledGraph ||
       this.#incompatibleScalarBindingGroups > 0 ||
-      (deltas.length === 0 && regions.length === 0)
+      (deltas.length === 0 && regions.length === 0) ||
+      (scoped && (deltas.length === 0 || regions.length > 0 ||
+        !deltas.some((delta) => delta.operations.length > 0)))
     ) return null;
     const baseVersion = this.#version;
     const hasLeafRegions = regions.length > 0;
@@ -1922,6 +1929,9 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       parent: MountedNode<H>;
       operations: readonly KeyedRegionDeltaOperation[];
       nodes: Map<KeyedRegionDeltaOperation, VNode>;
+      bucket: KeyedRegionBuckets<MountedNode<H>>;
+      parentVNode: VNode;
+      keyedFootprint: Map<string, MountedNode<H>>;
     };
     const preparedDeltas: PreparedDelta[] = [];
     const deltaParents = new Set<MountedNode<H>>();
@@ -1952,6 +1962,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         if (hasNonScalarBindingMetadata(name, value)) return false;
         if (compiledBindingsIn(name, value).length > 0) return false;
         const sources = boundSourcesIn(name, value);
+        if (scoped && sources.length > 0) return false;
         if (sources.length > 0) materializeProp(name, value);
       }
       return node.children.every(validateBindings);
@@ -2005,6 +2016,13 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         }
         deltaParents.add(parent);
         const bucket = parent.keyedChildren!;
+        const parentVNode = parent.vnode;
+        const keyedFootprint = new Map<string, MountedNode<H>>();
+        const captureKey = (key: string | null) => {
+          if (key === null || keyedFootprint.has(key)) return;
+          const node = bucket.get(key);
+          if (node) keyedFootprint.set(key, node);
+        };
         const operations = delta.operations.map((operation) => ({
           ...operation,
         }));
@@ -2015,6 +2033,13 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         };
         const nodes = new Map<KeyedRegionDeltaOperation, VNode>();
         for (const op of operations) {
+          if (scoped && (op.type === "insert" || op.type === "replace")) {
+            return null;
+          }
+          if (scoped) {
+            captureKey(op.key);
+            if (op.type === "move") captureKey(op.beforeKey);
+          }
           if (!op.key) return null;
           const previousRegion = touchedKeys.get(op.key);
           if (
@@ -2056,7 +2081,16 @@ export class VDOMSnapshotRoot<H, Parent = H> {
             if (op.key === op.beforeKey) continue;
           }
         }
-        preparedDeltas.push({ ...delta, root, parent, operations, nodes });
+        preparedDeltas.push({
+          ...delta,
+          root,
+          parent,
+          operations,
+          nodes,
+          bucket,
+          parentVNode,
+          keyedFootprint,
+        });
       }
 
       for (const parent of deltaParents) {
@@ -2108,7 +2142,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     } catch {
       return null;
     }
-    if (this.#version !== baseVersion) return null;
+    if (!scoped && this.#version !== baseVersion) return null;
     const leafPlan = new Map<string, VNode>();
     for (const candidate of candidateRoots) {
       if (candidate.owner.startsWith("leaf\0")) {
@@ -2122,28 +2156,62 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     if (regions.length > 0 && !preparedLeaves) return null;
     let state: "prepared" | "committed" | "discarded" = "prepared";
     let released = false;
-    const program: PreparedKeyedVDOMProgram = {
-      validate: () =>
-        state === "prepared" && this.#version === baseVersion &&
-        preparedDeltas.every(({ root, parent, parentKey, regionId }) => {
-          const entries = this.#nodesByKey.get(parentKey);
+    let committedVersion: number | null = null;
+    let committedPublicationToken: object | null = null;
+    const validateTargets = () => preparedDeltas.every(
+      ({ root, parent, parentKey, regionId, bucket, parentVNode, keyedFootprint }) => {
+        const entries = this.#nodesByKey.get(parentKey);
+        if (
+          root.hostDisposed || parent.hostDisposed || entries?.size !== 1 ||
+          !entries.has(root)
+        ) return false;
+        let found = 0;
+        for (const candidate of this.#nodesByKeyedRegion.get(regionId) ?? []) {
           if (
-            root.hostDisposed || parent.hostDisposed || entries?.size !== 1 ||
-            !entries.has(root)
-          ) return false;
-          let found = 0;
-          for (
-            const candidate of this.#nodesByKeyedRegion.get(regionId) ?? []
-          ) {
-            if (
-              isAncestor(root, candidate) && candidate === parent &&
-              candidate.keyedChildren &&
-              candidate.vnode.kind === "element" &&
-              candidate.vnode.keyedRegionId === regionId
-            ) found++;
-          }
-          return found === 1;
-        }) && (!hasLeafRegions || preparedLeaves!.validate?.() !== false),
+            isAncestor(root, candidate) && candidate === parent &&
+            candidate.keyedChildren && candidate.vnode.kind === "element" &&
+            candidate.vnode.keyedRegionId === regionId
+          ) found++;
+        }
+        if (found !== 1) return false;
+        if (!scoped) return true;
+        if (parent.vnode !== parentVNode || parent.keyedChildren !== bucket) {
+          return false;
+        }
+        for (const [key, node] of keyedFootprint) {
+          if (bucket.get(key) !== node || node.hostDisposed ||
+            node.parent !== parent) return false;
+        }
+        return true;
+      },
+    );
+    const validateScoped = () => {
+      if (!validateTargets()) return false;
+      for (const key of candidateKeys) {
+        const existing = this.#nodesByKey.get(key);
+        if (existing && [...existing].some((node) =>
+          !replacedNodes.has(node)
+        )) return false;
+      }
+      return true;
+    };
+    if (scoped && !validateScoped()) return null;
+    const changed =
+      preparedDeltas.some(({ operations }) => operations.length > 0) ||
+      hasLeafRegions;
+    const program: PreparedKeyedVDOMProgram = {
+      scoped,
+      structuralVersionDelta: changed ? 1 : 0,
+      validate: () =>
+        state === "prepared" && !this.#publicationFailed &&
+        (scoped ? validateScoped() :
+          this.#version === baseVersion && validateTargets()) &&
+        (!hasLeafRegions || preparedLeaves!.validate?.() !== false),
+      validatePostHost: () =>
+        state === "committed" && committedPublicationToken !== null &&
+        this.#publicationToken === committedPublicationToken &&
+        !this.#publicationFailed && committedVersion !== null &&
+        this.#version === committedVersion,
       commit: () => {
         if (state !== "prepared") {
           throw new Error("Prepared keyed VDOM program is no longer available");
@@ -2155,9 +2223,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         state = "committed";
         const pendingRefsBefore = new Map(this.#pendingRefs);
         const batchCountBefore = this.#partialCommitBatchCount;
-        const changed =
-          preparedDeltas.some(({ operations }) => operations.length > 0) ||
-          hasLeafRegions;
+        const versionAtApply = this.#version;
         try {
           for (const delta of preparedDeltas) {
             if (
@@ -2176,7 +2242,12 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           }
           preparedLeaves?.commit();
           this.#pruneSourceColumnCells();
-          if (changed) this.#version = baseVersion + 1;
+          if (this.#version !== versionAtApply) {
+            throw new Error("Prepared keyed VDOM changed during host application");
+          }
+          if (changed) this.#version++;
+          committedVersion = this.#version;
+          committedPublicationToken = this.#publicationToken;
           this.#partialCommitBatchCount = batchCountBefore + Number(changed);
         } catch (error) {
           this.#pendingRefs.clear();
@@ -2184,7 +2255,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
             this.#pendingRefs.set(node, ref);
           }
           this.#snapshotDirty = true;
-          this.#version = baseVersion + 1;
+          this.#version++;
           this.#partialCommitBatchCount = batchCountBefore + 1;
           const repairErrors: unknown[] = [];
           try {

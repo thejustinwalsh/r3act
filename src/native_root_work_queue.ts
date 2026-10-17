@@ -15,6 +15,7 @@ import {
   type RootWorkSettled,
 } from "./root_work_queue.ts";
 import { type StateCellHandle } from "./owner_state_world.ts";
+import type { KeyedCollection } from "./keyed_collection.ts";
 
 type NativeRoot = ComponentStateRoot<any, any>;
 type Candidate = NativeRootCandidate<any, any>;
@@ -77,6 +78,14 @@ export type NativeRetainedRootWork = {
   readonly onSettled?: (resolution: RootWorkSettled) => void;
 };
 
+/** An explicit transaction over supported pending edits in selected collections. */
+export type NativeCollectionRootWork = Omit<NativeRetainedRootWork, "roots"> & {
+  readonly roots: readonly {
+    readonly root: NativeRoot;
+    readonly collections: readonly KeyedCollection<any>[];
+  }[];
+};
+
 /**
  * Native owner roots wired to the overlapping publication queue. A queued
  * group prepares every root and waits for every observed resource before any
@@ -129,8 +138,19 @@ export class NativeRootWorkQueue {
     );
   }
 
+  enqueueCollections(work: NativeCollectionRootWork): NativeRootWorkHandle {
+    return this.#enqueuePrepared(
+      work,
+      work.roots.map(({ root, collections }) => ({
+        root,
+        collections: Object.freeze([...collections]),
+      })),
+      ({ root, collections }) => root.prepareCollections(collections),
+    );
+  }
+
   #enqueuePrepared<Entry extends { readonly root: NativeRoot }>(
-    work: NativeRootWork | NativeRetainedRootWork,
+    work: NativeRootWork | NativeRetainedRootWork | NativeCollectionRootWork,
     entries: readonly Entry[],
     prepareCandidate: (
       entry: Entry,
@@ -194,7 +214,7 @@ export class NativeRootWorkQueue {
               const candidate = prepareCandidate(entry, transitions);
               if (!candidate) {
                 throw new Error(
-                  `Retained source delta is unavailable: ${entry.root.rootId}`,
+                  `Scoped root delta is unavailable: ${entry.root.rootId}`,
                 );
               }
               prepared.push(candidate);

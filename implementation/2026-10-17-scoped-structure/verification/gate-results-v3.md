@@ -1,0 +1,7 @@
+# Consolidated correctness gate v3
+
+Source hashes were captured in `source-lock-v3.json` before this released gate. The full Deno suite exited 1 with **791 passed, 1 failed**. The exact captured failure is in `deno-src-gate-v3.log`: `accepted scoped removal revokes the owner before ref detach and cleans its effect once` in `src/component_scoped_structure_test.ts:191`. During ref detach, the test setter calls into the already-revoked owner and throws `Owner 5 is not alive`, aggregated as `VDOM ref publication encountered errors` / `Mixed collection candidate effects failed after publication`.
+
+Independent checks completed once: `pnpm check:native-tooling` exit 0; Node 24.18.0 compiled scoped collection, retained transaction, DOM owner-row and Three owner-row fixtures all passed. Their raw logs and exits are adjacent. The compiler Rust source and executable were unchanged; Cargo reused the source-identical **42 passed, 0 failed** receipt at `../2026-10-17-retained-deltas/verification/cargo-test-v1.log`.
+
+After the gate, the test-only assertion was changed to match the existing `owner_state_world_test.ts:120` contract that setters on a revoked owner throw. No runtime source changed after the v3 freeze. `source-audit-after-v3-pre-repair.json` records that expected test hash drift instead of claiming the test source remained frozen. A full Deno rerun is required after that test correction; the v3 failure remains preserved.

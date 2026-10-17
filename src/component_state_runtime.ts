@@ -167,7 +167,7 @@ type MixedCandidateNumericWrite = CandidateNumericWrite & {
 type CandidateLifecycleSpec<H, Parent> = {
   baseVersion: number;
   baseVDOMVersion: number;
-  retainedDelta?: boolean;
+  scope?: { kind: "retained" } | { kind: "keyed"; versionDelta: 0 | 1 };
   stores: StoreRenderTransaction;
   transitions: readonly string[];
   pendingResources: readonly AsyncResource<any>[];
@@ -1142,6 +1142,36 @@ export class ComponentStateRoot<H, Parent = H> {
     );
   }
 
+  /** Prepare explicit move/remove collection work without broadening its tree cut. */
+  prepareCollections(
+    collections: readonly KeyedCollection<any>[],
+  ): NativeRootCandidate<H, Parent> | null {
+    this.#assertActive();
+    this.#assertNoPublicationBarrier("prepare collections");
+    if (this.#terminalHostFailed || this.#codeInvalidated ||
+      collections.length === 0 || new Set(collections).size !== collections.length ||
+      this.#liveStoreReaders.size > 0 ||
+      this.#storeNotificationGeneration !== this.#committedStoreNotificationGeneration
+    ) return null;
+    const selected = new Set<string>();
+    for (const collection of collections) {
+      let found = false;
+      for (const [key, region] of this.#liveCollectionRegions) {
+        if (region.collection !== collection) continue;
+        found = true;
+        if (!this.#pendingCollectionRegionKeys.has(key)) return null;
+        selected.add(key);
+      }
+      if (!found) return null;
+    }
+    return this.#prepareMixedCollectionCandidate([], {
+      storeGeneration: this.#storeNotificationGeneration,
+      transitions: [],
+      selectedRegionKeys: selected,
+      scopedStructural: true,
+    });
+  }
+
   /** Prepare a closed retained-prop cut; include every joint input cell. */
   prepareRetained(
     cells: readonly StateCellHandle[],
@@ -1200,7 +1230,7 @@ export class ComponentStateRoot<H, Parent = H> {
     return this.#createCandidateLifecycle({
       baseVersion: this.#publicationVersion,
       baseVDOMVersion: this.#vdom.version,
-      retainedDelta: true,
+      scope: { kind: "retained" },
       stores,
       transitions: [],
       pendingResources: [],
@@ -1229,7 +1259,9 @@ export class ComponentStateRoot<H, Parent = H> {
   #createCandidateLifecycle(
     spec: CandidateLifecycleSpec<H, Parent>,
   ): NativeRootCandidate<H, Parent> {
-    const retainedDelta = spec.retainedDelta === true;
+    const scopedDelta = spec.scope !== undefined;
+    const appliedVDOMDelta = !spec.scope ? 1
+      : spec.scope.kind === "retained" ? 0 : spec.scope.versionDelta;
     let admittedVersion = spec.baseVersion;
     let admittedVDOMVersion = spec.baseVDOMVersion;
     const candidateStores = new Set(spec.stores.stores);
@@ -1318,7 +1350,7 @@ export class ComponentStateRoot<H, Parent = H> {
     const candidate: NativeRootCandidate<H, Parent> = {
       rootId: this.#rootId,
       get baseVersion() {
-        return retainedDelta && phase === "prepared"
+        return scopedDelta && phase === "prepared"
           ? rootVersion() : admittedVersion;
       },
       get targetVersion() { return candidate.baseVersion + 1; },
@@ -1334,7 +1366,7 @@ export class ComponentStateRoot<H, Parent = H> {
         phase === "prepared" && !released && !this.#disposed &&
         !this.#terminalHostFailed && !this.#codeInvalidated &&
         spec.codeCurrent() &&
-        (retainedDelta || (this.#publicationVersion === spec.baseVersion &&
+        (scopedDelta || (this.#publicationVersion === spec.baseVersion &&
           this.#vdom.version === spec.baseVDOMVersion)) &&
         spec.validatePrepared() && !this.#codeInvalidated && spec.codeCurrent(),
       commitHost: () => {
@@ -1370,7 +1402,7 @@ export class ComponentStateRoot<H, Parent = H> {
         !this.#disposeRequested && !this.#terminalHostFailed &&
         !this.#codeInvalidated && spec.codeCurrent() &&
         this.#publicationVersion === admittedVersion &&
-        this.#vdom.appliedVersion === admittedVDOMVersion + (retainedDelta ? 0 : 1) &&
+        this.#vdom.appliedVersion === admittedVDOMVersion + appliedVDOMDelta &&
         spec.validatePostHost() && !this.#codeInvalidated && spec.codeCurrent(),
       preparePublication: () => {
         if (phase !== "host-committed") {
@@ -3633,6 +3665,8 @@ export class ComponentStateRoot<H, Parent = H> {
     options: {
       readonly storeGeneration: number;
       readonly transitions: readonly string[];
+      readonly selectedRegionKeys?: ReadonlySet<string>;
+      readonly scopedStructural?: boolean;
     },
   ): NativeRootCandidate<H, Parent> | null {
     if (
@@ -3650,6 +3684,8 @@ export class ComponentStateRoot<H, Parent = H> {
     type RegionStage = {
       key: string;
       region: CollectionRegionCache;
+      reader: NonNullable<CollectionRegionCache["reader"]>;
+      parentCache: ComponentCache;
       ownerRegion: KeyedRegionCache;
       read: Extract<
         ReturnType<NonNullable<CollectionRegionCache["reader"]>["read"]>,
@@ -3702,6 +3738,9 @@ export class ComponentStateRoot<H, Parent = H> {
     let preparedProgram:
       | import("./vdom_snapshot_runtime.ts").PreparedKeyedVDOMProgram
       | null = null;
+    let committedProgram:
+      | import("./vdom_snapshot_runtime.ts").PreparedKeyedVDOMProgram
+      | null = null;
     let preparationFailed = false;
     let resourceWasRead = false;
     try {
@@ -3713,9 +3752,14 @@ export class ComponentStateRoot<H, Parent = H> {
 
       const storeChangePending = this.#storeNotificationGeneration !==
         this.#committedStoreNotificationGeneration;
-      const regionKeys = storeChangePending
+      if (options.scopedStructural && (
+        storeChangePending || options.transitions.length > 0 ||
+        capturedChanges.length > 0 || !options.selectedRegionKeys?.size ||
+        this.#liveStoreReaders.size > 0
+      )) throw new SparseCandidateIneligible();
+      const regionKeys = options.selectedRegionKeys ?? (storeChangePending
         ? new Set(this.#liveCollectionRegions.keys())
-        : new Set(this.#pendingCollectionRegionKeys);
+        : new Set(this.#pendingCollectionRegionKeys));
       for (const regionKey of regionKeys) {
         this.#count("collection.mixed-region-visits");
         if (this.#collectionSnapshotFallbackKeys.has(regionKey)) {
@@ -3729,7 +3773,9 @@ export class ComponentStateRoot<H, Parent = H> {
         if (
           !region || !region.reader || !parentCache || !ownerRegion ||
           ownerRegion.collection !== region || !region.parentHostKey ||
-          region.requiresOwnerRender
+          region.requiresOwnerRender ||
+          (options.scopedStructural &&
+            !this.#pendingCollectionRegionKeys.has(regionKey))
         ) {
           preparationFailed = true;
           break;
@@ -3742,6 +3788,8 @@ export class ComponentStateRoot<H, Parent = H> {
         const stage: RegionStage = {
           key: regionKey,
           region,
+          reader: region.reader,
+          parentCache,
           ownerRegion,
           read,
           rows: new Map<string, CandidateRow | null>(),
@@ -3752,6 +3800,15 @@ export class ComponentStateRoot<H, Parent = H> {
       }
       if (preparationFailed || stages.size === 0) {
         throw new SparseCandidateIneligible();
+      }
+      if (options.scopedStructural) {
+        for (const stage of stages.values()) {
+          for (const batch of stage.read.batches) {
+            if (batch.operations.some((operation) =>
+              operation.type !== "move" && operation.type !== "remove"
+            )) throw new SparseCandidateIneligible();
+          }
+        }
       }
 
       const rowFor = (stage: RegionStage, key: string): CandidateRow | null => {
@@ -3906,6 +3963,9 @@ export class ComponentStateRoot<H, Parent = H> {
             if (operation.type === "remove") {
               const previous = rowFor(stage, operation.key);
               if (!previous) throw new SparseCandidateIneligible();
+              if (options.scopedStructural &&
+                previous.cache.subtreeOwners.size !== 1
+              ) throw new SparseCandidateIneligible();
               const removeResult = appendOperation(stage, {
                 type: "remove",
                 key: previous.hostKey,
@@ -4229,6 +4289,11 @@ export class ComponentStateRoot<H, Parent = H> {
       if (resourceWasRead || preparation.hasStateWrites()) {
         throw new SparseCandidateIneligible();
       }
+      if (options.scopedStructural && (
+        leafRegions.length > 0 || leafCaches.size > 0 ||
+        numericWrites.length > 0 || renderedOwners.size > 0 ||
+        privateOwners.size > 0
+      )) throw new SparseCandidateIneligible();
       const deltas = [...stages.values()].filter((stage) =>
         stage.operations.length > 0
       ).map((stage) => ({
@@ -4239,8 +4304,12 @@ export class ComponentStateRoot<H, Parent = H> {
       preparedProgram = this.#vdom.prepareKeyedRegionDeltas(
         deltas,
         leafRegions,
+        options.scopedStructural ? { scoped: true } : undefined,
       );
       if (!preparedProgram) throw new SparseCandidateIneligible();
+      if (options.scopedStructural && !preparedProgram.scoped) {
+        throw new SparseCandidateIneligible();
+      }
       const capturedMixedValues = new Map<OwnerId, Map<string, number>>();
       const captureMixedValues = (owner: OwnerId, cache: ComponentCache) => {
         for (const site of cache.propBoundSites) {
@@ -4259,7 +4328,7 @@ export class ComponentStateRoot<H, Parent = H> {
       }
 
       const touchedCollections = [...stages.values()];
-      let collectionAcknowledgements: Array<() => void> = [];
+      let collectionAcknowledgements: Array<() => boolean> = [];
       const validateCollections = () =>
         touchedCollections.every((stage) =>
           stage.region.collection.version === stage.read.toVersion
@@ -4268,12 +4337,22 @@ export class ComponentStateRoot<H, Parent = H> {
         touchedCollections.every((stage) =>
           stage.region.collection.version >= stage.read.toVersion
         );
+      const validateScopedCache = () => !options.scopedStructural ||
+        this.#liveStoreReaders.size === 0 &&
+        touchedCollections.every((stage) =>
+          this.#liveCollectionRegions.get(stage.key) === stage.region &&
+          stage.region.reader === stage.reader &&
+          this.#componentCache.get(stage.region.parentOwner) === stage.parentCache &&
+          componentCodeCurrent(stage.parentCache.type) &&
+          stage.parentCache.keyedRegion === stage.ownerRegion
+        );
       const artifactsReleased = { value: false };
       const releaseArtifacts = () => {
         if (artifactsReleased.value) return;
         artifactsReleased.value = true;
         preparedProgram?.discard();
         preparedProgram = null;
+        committedProgram = null;
         resourceReads?.discard();
         resourceReads = null;
         for (const stage of stages.values()) {
@@ -4297,27 +4376,41 @@ export class ComponentStateRoot<H, Parent = H> {
       return this.#createCandidateLifecycle({
         baseVersion,
         baseVDOMVersion,
+        scope: options.scopedStructural
+          ? { kind: "keyed", versionDelta: preparedProgram.structuralVersionDelta }
+          : undefined,
         stores,
         transitions: options.transitions,
         pendingResources: [],
         blocked: false,
         codeCurrent: () => cacheCodeCurrent(leafCaches.values()) &&
+          validateScopedCache() &&
           touchedCollections.every((stage) =>
-            [...stage.rows.values()].every((row) => !row || componentCodeCurrent(row.cache.type))
+            [...stage.rows.values(), ...stage.previousRows.values()].every((row) =>
+              !row || componentCodeCurrent(row.cache.type)
+            )
           ),
         validatePrepared: () =>
           this.#storeNotificationGeneration === storeGenerationAtPrepare &&
           preparation.validate() && !preparation.hasStateWrites() &&
           stores.validate() && validateNumericWrites() &&
           validateCollections() &&
+          validateScopedCache() &&
           (resourceReads?.validate() ?? false) &&
-          (preparedProgram?.validate() ?? false),
+          (preparedProgram?.validate() ?? false) &&
+          preparation.validate() && stores.validate(),
         validatePostHost: () =>
           preparation.validatePublicationInputs() &&
           !preparation.hasStateWrites() &&
           stores.validatePublicationInputs() &&
           validatePostHostNumericWrites() &&
-          validatePostHostCollections() && (resourceReads?.validate() ?? false),
+          validatePostHostCollections() &&
+          validateScopedCache() &&
+          (!options.scopedStructural ||
+            committedProgram?.validatePostHost() === true) &&
+          (resourceReads?.validate() ?? false) &&
+          preparation.validatePublicationInputs() &&
+          stores.validatePublicationInputs(),
         preparePublication: () => {
           preparation.preparePublicationAfterHost();
           stores.preparePublicationAfterHost();
@@ -4351,6 +4444,7 @@ export class ComponentStateRoot<H, Parent = H> {
             }
             (item.binding as { source: ScalarSource }).source = canonical[0];
           }
+          committedProgram = preparedProgram;
           preparedProgram!.commit();
           preparedProgram = null;
           this.#applyCandidateNumericWrites(numericWrites);
@@ -4365,7 +4459,11 @@ export class ComponentStateRoot<H, Parent = H> {
         publish: () => {
           preparation.publishAccepted();
           stores.publishAccepted();
-          for (const acknowledge of collectionAcknowledgements) acknowledge();
+          for (let index = 0; index < collectionAcknowledgements.length; index++) {
+            if (collectionAcknowledgements[index]()) {
+              this.#pendingCollectionRegionKeys.delete(touchedCollections[index].key);
+            }
+          }
           collectionAcknowledgements = [];
           for (const [owner, cache] of leafCaches) {
             this.#componentCache.set(owner, cache);
@@ -4373,10 +4471,13 @@ export class ComponentStateRoot<H, Parent = H> {
           for (const stage of stages.values()) {
             for (const [key, candidate] of stage.rows) {
               if (!candidate) {
+                const previous = stage.previousRows.get(key);
+                if (options.scopedStructural && previous) {
+                  this.#retireCollectionRowAccepted(previous.owner);
+                }
                 stage.region.rows.delete(key);
                 stage.region.hostKeysByCollectionKey.delete(key);
                 stage.ownerRegion.outputsByKey.delete(key);
-                const previous = stage.previousRows.get(key);
                 if (previous) {
                   stage.ownerRegion.keysByOwner.delete(previous.owner);
                 }
@@ -4431,9 +4532,6 @@ export class ComponentStateRoot<H, Parent = H> {
                 }
               }
             }
-            if (stage.region.collection.version === stage.read.toVersion) {
-              this.#pendingCollectionRegionKeys.delete(stage.key);
-            }
             for (
               const ancestor of this.world.ownerLineage(
                 stage.region.parentOwner,
@@ -4444,7 +4542,8 @@ export class ComponentStateRoot<H, Parent = H> {
               const keyedRegion = cache.keyedRegion
                 ? { ...cache.keyedRegion, version: createKeyedOwnerVersion() }
                 : undefined;
-              if (keyedRegion?.collection !== stage.region && keyedRegion) {
+              if (!options.scopedStructural &&
+                keyedRegion?.collection !== stage.region && keyedRegion) {
                 keyedRegion.outputsByKey.clear();
                 keyedRegion.keysByOwner.clear();
               }
@@ -4507,7 +4606,9 @@ export class ComponentStateRoot<H, Parent = H> {
           // Match the full candidate lifecycle: retired owners clean up before
           // replacement effects publish any same-key external registrations.
           for (const owner of retiredOwners) {
-            this.#retireCollectionRow(owner, errors);
+            if (options.scopedStructural) {
+              errors.push(...this.#reconcileOwnerEffects(owner, new Map()));
+            } else this.#retireCollectionRow(owner, errors);
           }
           for (const [owner, cache] of leafCaches) {
             errors.push(
@@ -5096,6 +5197,25 @@ export class ComponentStateRoot<H, Parent = H> {
       ) {
         this.#count("collection.owner-membership-writes");
       }
+    }
+  }
+
+  #retireCollectionRowAccepted(owner: OwnerId) {
+    const cache = this.#componentCache.get(owner);
+    if (!cache) return;
+    const lineage = this.world.ownerLineage(owner).slice(1);
+    this.#count("owner.retired");
+    this.#forgetOwnerSourceValues(owner, cache.propBoundSites);
+    this.#componentCache.delete(owner);
+    this.#liveOwners.delete(owner);
+    this.#dropPendingForOwner(owner);
+    this.world.destroyOwner(owner);
+    for (const ancestor of lineage) {
+      const ancestorCache = this.#componentCache.get(ancestor);
+      if (
+        ancestorCache?.subtreeOwners instanceof Set &&
+        ancestorCache.subtreeOwners.delete(owner)
+      ) this.#count("collection.owner-membership-writes");
     }
   }
 
