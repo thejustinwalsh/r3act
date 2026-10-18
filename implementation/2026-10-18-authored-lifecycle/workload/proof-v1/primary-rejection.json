@@ -1,0 +1,7 @@
+{
+  "status": "REJECTED_BY_PRIMARY_FOR_MISSING_HOT_ROW_MEMO_PROVENANCE",
+  "buildProofSha256": "268216fec86ffadbee7256f1964cdd39fff1f2fd0d146b8660e1c9c6870691cd",
+  "observation": "ReactRow in the actual transformed comparator has no compiler-runtime memo call, while DetailReady/HealthReady/ReactScene have memo output. Module-level runtime/memo assertions alone do not establish the timed row is optimized.",
+  "decision": "No timing or heap authorization. Preserve this proof and the preflight-v1 exact source archive. Move counter instrumentation behind stable per-mount callbacks; require an actual ReactRow memo call in a separately source-locked proof before any comparison.",
+  "causeLimit": "Direct counter writes through props are the suspected instrumentation obstruction; the observation is emitted-code coverage, not a causal performance attribution."
+}

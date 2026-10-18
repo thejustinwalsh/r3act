@@ -2,6 +2,20 @@
 
 **Research position paper · Deno Jupyter project · 14 October 2026**
 
+## Authored scene lifecycle — 18 October 2026
+
+The repository now includes a shared authored lifecycle application: 256 stateful keyed rows, shared numeric/array Stores, declarative style/text props, local input, generic array edits and two independently settled resources. The same Native application is compiled by Rust/OXC for a complete MemoryVDOMHost fixture and for the browser. Normal runtime scheduling and existing identity/version/publication authority remain; no runtime optimization or new physical layout was introduced.
+
+Consolidated correctness passes **34/34 steps**, including **978 runtime tests**, **63 Rust tests**, **24 artifact checks**, **22 actual compiled fixtures**, **seven Three cases**, two bounded retention checks and fresh five-package consumption. All **828 correctness inputs** match the refreshed pre-execution archive. The full-scene fixture checks every row after 60 updates, generic remove/insert/move, exact local state/host identity, independent detail reveal beside waiting health,257/257 row setups/cleanups, fallback retirement and empty disposal; its callback collector quiesces after 64 schedules.
+
+The sole fixed Native-first browser timing pair passes output/order/state/lifetime checks but is **slower for Native**. Dispatch-through-synchronous-commit median/p95 are **2.6/3.9 ms Native** and **0.5/0.8 ms React** across 60 updates, at about 0.1 ms timer quantum. Mount is 11.3/6.5 ms, array edit 3.4/1.0 ms and disposal 1.5/0.7 ms. The measured mount+updates+edit+disposal subtotal is **183.3/43.3 ms**. That subtotal excludes local click, resource waiting/reveal work, RAF waits and inspection; it is not total episode CPU. Mount occurs after modules load, not cold browser/filesystem setup. Within-page quantiles from one fixed-order pair are not replicated population tails or frozen product-gate qualification.
+
+A separate untimed fresh-page pair preserves five forced-GC heap/DOM observations. After controller release, used heap remains **1,459,444/933,636 bytes Native/React above baseline**; DOM node deltas return to 0/0 and event-listener deltas are 0/+1. These whole-page readings include engine, module and application costs. They neither isolate allocations nor establish leak absence, ownership of the listener delta, a retained-memory budget or independent-device behavior. Both arms report zero application Store listeners; Native also reports zero readers, owners and pending changes.
+
+The full-plan first-pass goal remains active. Current evidence does not qualify a general realtime speed advantage, cold/memory budgets, physical input/presentation, broad async UX or independent-device behavior. General structural/resource admission and Linux/other-platform execution remain open. Human participants remain 0 and no maintenance advantage is claimed. Historic stable-binding wins, integrated dense FAIL and exhausted Recording A retain their original source/scope; physical selection stays HOLD. Apple container service startup still awaits the existing native macOS authorization.
+
+See [raw source and results](implementation/2026-10-18-authored-lifecycle/results.md).
+
 ## Pure local component forwarding — 18 October 2026
 
 Compiler-proven pure local component chains now forward props into existing closed resource/Store host programs while retaining each wrapper owner and cache. Runtime validates exact target function/site, code revision, complete inputs and writer lifetime through the existing publication transaction. Whole-tree guards, generic fallback, per-root history, exact acknowledgements and newer host-time actions remain; no parallel identity/version registry or physical layout was added.

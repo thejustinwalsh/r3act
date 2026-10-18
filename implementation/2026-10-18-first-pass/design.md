@@ -111,3 +111,7 @@ See [source and results](../2026-10-18-store-projections/results.md).
 ## Pure component composition continuation
 
 Compiler-proven local forwarding chains now preserve each wrapper owner/cache while sharing existing resource/Store publication. The [source-locked boundary](../2026-10-18-component-forwarding/results.md) passes 978 runtime tests, 63 Rust tests and 21 compiled fixtures across 33 steps. The sole 3.4/277.7 ms Native/React settlement-to-observer pair includes scheduling and ends before paint; it does not qualify CPU, tails, presentation or broad performance. General structural/resource admission, platform execution, lifecycle/async UX and independent-device gates remain open. No full-plan completion or physical selection follows.
+
+## Authored application lifecycle continuation
+
+The [256-row authored scene](../2026-10-18-authored-lifecycle/results.md) passes 34 consolidated steps,978 runtime tests,63 Rust tests and 22 compiled fixtures, including60 updates, generic array edits, independent reveal and complete lifecycle cleanup. Actual ReactRow memo output is required before measurement. The sole timing pair is slower for Native (update median/p95 2.6/3.9 versus 0.5/0.8 ms; measured subtotal 183.3/43.3 ms). Separate whole-page forced-GC observations add descriptive lifecycle evidence, not cold/memory, leak, physical-input or independent-device qualification. Full-plan scope and physical HOLD remain.
