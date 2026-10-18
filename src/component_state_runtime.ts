@@ -1015,7 +1015,7 @@ export class ComponentStateRoot<H, Parent = H> {
   #everHadNativeBoundary = false;
   #pendingResourceRetry = false;
   #pendingBoundaryRetries = new Set<OwnerId>();
-  #boundaryRevealDrainActive = false;
+  #scopedFlushActive = false;
   #boundaryPrimaries = new Map<string, BoundaryPrimary>();
   #storeNotificationGeneration = 0;
   #committedStoreNotificationGeneration = 0;
@@ -2303,7 +2303,7 @@ export class ComponentStateRoot<H, Parent = H> {
     this.#assertActive();
     // Keep capture buffers owned by the outer frame across reentrant flushes; its
     // acknowledgement schedules any newer setter version.
-    if (this.#nativeCellCutActive || this.#boundaryRevealDrainActive) {
+    if (this.#nativeCellCutActive || this.#scopedFlushActive) {
       this.#scheduled = false;
       this.#deferredFlush = true;
       return false;
@@ -2327,6 +2327,16 @@ export class ComponentStateRoot<H, Parent = H> {
       }
     };
     this.#scheduled = false;
+    const storeGenerationAtStart = this.#storeNotificationGeneration;
+    const asyncWorkPending = this.#liveResourceSubscriptions.size > 0 ||
+      this.#pendingResourceRetry || this.#pendingBoundaryRetries.size > 0;
+    const urgentPublished = asyncWorkPending && this.#pendingChanges.size > 0 &&
+      this.#pendingCollectionRegionKeys.size === 0 &&
+      this.#tryFlushUrgentRetainedCut();
+    if (this.#disposed || this.#terminalHostFailed || this.#codeInvalidated) {
+      reportFlush();
+      return urgentPublished;
+    }
     const resourceRetry = this.#pendingResourceRetry;
     this.#pendingResourceRetry = false;
     const boundaryRetries = [...this.#pendingBoundaryRetries];
@@ -2350,26 +2360,33 @@ export class ComponentStateRoot<H, Parent = H> {
     if (boundaryAborted) {
       this.#deferredFlush = false;
       reportFlush();
-      return boundaryPublished;
+      return boundaryPublished || urgentPublished;
     }
     const retryWholeTree = resourceRetry || boundaryFallback;
-    if (boundaryPublished && !retryWholeTree) {
+    if ((boundaryPublished || urgentPublished) && !retryWholeTree) {
       this.#deferredFlush = false;
-      if (this.#hasPendingWork()) this.#schedule();
+      if (urgentPublished) {
+        if (this.#pendingChanges.size > 0 ||
+          this.#pendingCollectionRegionKeys.size > 0 ||
+          this.#pendingResourceRetry || this.#pendingBoundaryRetries.size > 0 ||
+          this.#storeNotificationGeneration !== storeGenerationAtStart) {
+          this.#schedule();
+        }
+      } else if (this.#hasPendingWork()) this.#schedule();
       reportFlush();
       return true;
     }
-    if (boundaryPublished) this.#deferredFlush = false;
+    if (boundaryPublished || urgentPublished) this.#deferredFlush = false;
     const runGenericRetry = (): boolean => {
       const unprocessed = [...this.#pendingBoundaryRetries].filter((owner) =>
         capturedBoundaryOwners.has(owner)
       );
       for (const owner of unprocessed) this.#pendingBoundaryRetries.delete(owner);
-      const before = this.#publicationVersion;
+      let published = false;
       this.#deferredFlush = false;
-      this.#boundaryRevealDrainActive = true;
+      this.#scopedFlushActive = true;
       try {
-        this.#renderAndCommit(this.#tree, true);
+        published = this.#renderAndCommit(this.#tree, true);
       } catch (error) {
         if (!this.#disposed) {
           for (const owner of unprocessed) {
@@ -2382,9 +2399,8 @@ export class ComponentStateRoot<H, Parent = H> {
         }
         throw error;
       } finally {
-        this.#boundaryRevealDrainActive = false;
+        this.#scopedFlushActive = false;
       }
-      const published = this.#publicationVersion !== before;
       if (!published && !this.#disposed) {
         for (const owner of unprocessed) {
           const cache = this.#componentCache.get(owner);
@@ -2434,7 +2450,7 @@ export class ComponentStateRoot<H, Parent = H> {
     }
     const capturedChanges = this.#pendingChanges.capture();
     if (retryWholeTree) {
-      if (runGenericRetry()) this.#finishChanges(capturedChanges);
+      runGenericRetry();
       reportFlush();
       return true;
     }
@@ -2597,7 +2613,6 @@ export class ComponentStateRoot<H, Parent = H> {
       missingCollectionParent || missingStoreReaderOwner
     ) {
       this.#renderAndCommit(this.#tree, true);
-      this.#finishChanges(capturedChanges);
       reportFlush();
       return true;
     }
@@ -2632,7 +2647,6 @@ export class ComponentStateRoot<H, Parent = H> {
       this.#count("store.sparse.generic-fallbacks");
       if (this.#everReadResource || this.#everHadNativeBoundary) {
         this.#renderAndCommit(this.#tree, true);
-        this.#finishChanges(capturedChanges);
         reportFlush();
         return true;
       }
@@ -2699,12 +2713,9 @@ export class ComponentStateRoot<H, Parent = H> {
           )
           : [],
       );
-      succeeded = true;
     } finally {
       this.#preparedRenders.clear();
     }
-    if (succeeded) this.#finishChanges(capturedChanges);
-    else this.#schedule();
     reportFlush();
     return true;
   }
@@ -2713,9 +2724,7 @@ export class ComponentStateRoot<H, Parent = H> {
   update(tree: RuntimeNode) {
     this.#assertActive();
     this.#assertNoPublicationBarrier("update");
-    const captured = this.#pendingChanges.capture();
     this.#renderAndCommit(tree, true);
-    this.#finishChanges(captured);
   }
 
   render(tree: RuntimeNode) {
@@ -2834,7 +2843,7 @@ export class ComponentStateRoot<H, Parent = H> {
     let fallback = false;
     let aborted = false;
     let next = 0;
-    this.#boundaryRevealDrainActive = true;
+    this.#scopedFlushActive = true;
     try {
       while (next < targets.length) {
         if (this.#disposed || this.#disposeRequested ||
@@ -2886,11 +2895,47 @@ export class ComponentStateRoot<H, Parent = H> {
           this.#pendingBoundaryRetries.add(owner);
         }
       }
-      this.#boundaryRevealDrainActive = false;
+      this.#scopedFlushActive = false;
     }
     if (this.#disposed || this.#disposeRequested || this.#codeInvalidated ||
       this.#terminalHostFailed || this.#tree !== acceptedTree) aborted = true;
     return { published, fallback, aborted };
+  }
+
+  #tryFlushUrgentRetainedCut(): boolean {
+    const count = this.#pendingChanges.size;
+    if (count === 0 || this.#pendingCollectionRegionKeys.size > 0) return false;
+    const handles: (StateCellHandle | undefined)[] = Array(count);
+    const versions: number[] = Array(count);
+    if (this.#pendingChanges.captureNative(handles, versions) !== count) return false;
+    const complete: StateCellHandle[] = [];
+    for (let index = 0; index < count; index++) {
+      const handle = handles[index];
+      if (!handle || this.world.versionForCell(handle) !== versions[index]) {
+        return false;
+      }
+      const source = this.world.scalarSourceForCell(handle);
+      if (!source || !this.#lastSourceValues.has(source)) return false;
+      complete.push(handle);
+    }
+    const candidate = this.prepareRetained(complete);
+    if (!candidate) return false;
+    this.#scopedFlushActive = true;
+    try {
+      if (!candidate.validate()) {
+        candidate.discard();
+        return false;
+      }
+      candidate.commitHost();
+      candidate.publish();
+      candidate.runEffects();
+      return true;
+    } catch (error) {
+      const cleanup = collectCleanupErrors([() => candidate.discard()]);
+      return throwWithCleanup(error, cleanup);
+    } finally {
+      this.#scopedFlushActive = false;
+    }
   }
 
   #prepareBoundaryReveal(
@@ -3122,7 +3167,7 @@ export class ComponentStateRoot<H, Parent = H> {
     collectionRetry = 0,
     numericChanges: readonly import("./owner_state_world.ts").StateChange[] =
       [],
-  ): void {
+  ): boolean {
     try {
       const candidate = this.#prepareCandidate(
         tree,
@@ -3136,7 +3181,7 @@ export class ComponentStateRoot<H, Parent = H> {
         const pending = [...candidate.pendingResources];
         this.#syncResourceSubscriptions(pending);
         candidate.discard();
-        return;
+        return false;
       }
       if (!candidate.validate()) {
         candidate.discard();
@@ -3151,11 +3196,12 @@ export class ComponentStateRoot<H, Parent = H> {
           );
         }
         this.#schedule();
-        return;
+        return false;
       }
       candidate.commitHost();
       candidate.publish();
       candidate.runEffects();
+      return true;
     } catch (error) {
       if (error instanceof StaleCollectionCandidate && collectionRetry < 2) {
         return this.#renderAndCommit(
@@ -5866,7 +5912,7 @@ export class ComponentStateRoot<H, Parent = H> {
     if (this.#disposed || this.#scheduled) return;
     if (
       this.#publicationBarrier || this.#hostApplicationDepth > 0 ||
-      this.#directPublicationPending || this.#boundaryRevealDrainActive
+      this.#directPublicationPending || this.#scopedFlushActive
     ) {
       this.#deferredFlush = true;
       return;
@@ -5877,7 +5923,7 @@ export class ComponentStateRoot<H, Parent = H> {
       this.#scheduled = false;
       if (
         this.#publicationBarrier || this.#hostApplicationDepth > 0 ||
-        this.#directPublicationPending || this.#boundaryRevealDrainActive
+        this.#directPublicationPending || this.#scopedFlushActive
       ) {
         this.#deferredFlush = true;
         return;

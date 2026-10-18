@@ -178,3 +178,5 @@ The frozen Sol report and prior checkpoint describe the pre-fix source; this
 follow-up does not change their observations or establish comparative maintenance.
 
 Final current-source, compiler-binary, authored-fixture, new raw-result and production-asset hashes are recorded in `final-source-build-inventory.json`. It preserves separate v1–v3 gate source snapshots and does not rebind historical measurements.
+
+Ordinary flush now admits complete compiler-closed primitive prop cuts beside unrelated observed pending resources. The actual compiled Three gate exercises scalar `position-x`, retained Mesh identity and shared fallback resource disposal. Unsupported mutable values and incomplete or opaque input batches remain generic. See the [urgent slice receipt](implementation/2026-10-18-urgent-retained/verification/gate-results.md); no GPU or visual qualification follows.

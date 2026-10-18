@@ -91,6 +91,8 @@ Optional public host property descriptions report observed value and resource ow
 
 Multiple ready supported boundaries drain through fresh independent receipts in one flush, including across roots sharing resource handles. Declined targets retain generic invalidation without an immediate retry loop; unrelated pending cell/collection changes can conservatively defer the drain. Each receipt has its own acceptance and partial-failure outcome; a later failed receipt cannot undo an earlier accepted sibling. It does not broaden the closed-resource leaf shape, allow raw thenables into scoped reveal, or change the generic fallback for other boundaries.
 
+Ordinary `flush()` can also publish pending closed numeric prop inputs while an unrelated observed resource is waiting. Every pending local cell must be covered by the existing closed programs; opaque, incomplete or collection-bearing batches use the conservative route. No explicit retained candidate is needed for this bounded case. Actual authored DOM `data-level`/opacity and Three `position-x` fixtures pass in the [838-test boundary](../implementation/2026-10-18-urgent-retained/verification/gate-results.md). This does not infer arbitrary transaction groups or relax full-tree replacement checks. Direct `update(newTree)` retry across suspension remains a known gap, including committed props from the bridge.
+
 ## Diagnostics, fallback, and bridge boundary
 
 | Outcome | Examples |
