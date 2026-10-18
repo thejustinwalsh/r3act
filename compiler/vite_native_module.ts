@@ -198,7 +198,7 @@ const componentModuleFromSource = (source: string): string => {
       ].includes(name.imported)
     );
     const nativeEntry = declaration.module.includes("native_runtime_api") ||
-      ["@compiled-ui/runtime", "@compiled-ui/runtime/core"].includes(declaration.module);
+      ["@compiled-ui/runtime", "@compiled-ui/runtime/core", "@r3act/core"].includes(declaration.module);
     if (nativeEntry && (hasHook || (!declaration.declarationTypeOnly && hasRuntimeNativeApi))) {
       return declaration.module;
     }
@@ -233,6 +233,9 @@ export const nativeModuleCompilerPlugin = (
   const prebuiltBinary = options.compilerBinary
     ? path.resolve(options.compilerBinary)
     : existsSync(packagedBinary) ? packagedBinary : undefined;
+  if (!prebuiltBinary && !existsSync(manifestPath)) {
+    throw new Error(`No Rust native compiler for ${process.platform}-${process.arch}; install a matching @r3act/vite artifact or provide compilerBinary`);
+  }
   const binaryPath = prebuiltBinary ?? path.join(
     compilerRoot,
     "compiler/oxc-spike/target/debug/ui-graph-compiler-spike",
@@ -446,7 +449,7 @@ export const nativeModuleCompilerPlugin = (
           const resolved = await this.resolve?.(moduleToResolve, cleanId);
           const resolvedId = resolved?.id.split("?", 1)[0];
           const publicExternal = resolved?.external && resolvedId === moduleToResolve &&
-            ["@compiled-ui/runtime", "@compiled-ui/runtime/core"].includes(moduleToResolve);
+            ["@compiled-ui/runtime", "@compiled-ui/runtime/core", "@r3act/core"].includes(moduleToResolve);
           if (resolvedId && (/(?:^|[\\/])native_runtime_api\.(?:[cm]?[jt]sx?)$/i.test(resolvedId) || publicExternal)) {
             resolvedNativeModule = moduleToResolve;
           } else if (!this.resolve && /(?:^|[\\/])native_runtime_api\.(?:[cm]?[jt]sx?)$/i.test(moduleToResolve)) {

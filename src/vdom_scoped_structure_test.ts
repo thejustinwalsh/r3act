@@ -296,23 +296,26 @@ Deno.test("scoped removal detaches the current writer after an intervening prop 
     staleWriterAccepted = true;
   } catch { /* detached */ }
   assert(!staleWriterAccepted, "removed row retained its scalar writer");
-  same(
-    root.prepareKeyedRegionDeltas(
-      [{
-        parentKey: "left",
-        regionId: "left-rows",
-        operations: [{
-          type: "insert",
-          key: "d",
-          beforeKey: null,
-          tree: row("d"),
-        }],
+  const insert = root.prepareKeyedRegionDeltas(
+    [{
+      parentKey: "left",
+      regionId: "left-rows",
+      operations: [{
+        type: "insert",
+        key: "d",
+        beforeKey: null,
+        tree: row("d"),
       }],
-      [],
-      { scoped: true },
-    ),
-    null,
-    "scoped insertion escaped closed eligibility",
+    }],
+    [],
+    { scoped: true },
+  );
+  assert(insert, "closed primitive insertion did not prepare");
+  insert.commit();
+  same(
+    container.children[0].children[0].children.length,
+    3,
+    "closed primitive insertion did not restore row count",
   );
   same(
     root.prepareKeyedRegionDeltas([], [{

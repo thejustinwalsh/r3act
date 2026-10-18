@@ -86,6 +86,15 @@ export type NativeCollectionRootWork = Omit<NativeRetainedRootWork, "roots"> & {
   }[];
 };
 
+/** A declared joint cut over retained cells and selected collection edits. */
+export type NativeTransactionRootWork = Omit<NativeRetainedRootWork, "roots"> & {
+  readonly roots: readonly {
+    readonly root: NativeRoot;
+    readonly cells: readonly StateCellHandle[];
+    readonly collections: readonly KeyedCollection<any>[];
+  }[];
+};
+
 /**
  * Native owner roots wired to the overlapping publication queue. A queued
  * group prepares every root and waits for every observed resource before any
@@ -149,8 +158,20 @@ export class NativeRootWorkQueue {
     );
   }
 
+  enqueueTransaction(work: NativeTransactionRootWork): NativeRootWorkHandle {
+    return this.#enqueuePrepared(
+      work,
+      work.roots.map(({ root, cells, collections }) => ({
+        root,
+        cells: Object.freeze([...cells]),
+        collections: Object.freeze([...collections]),
+      })),
+      ({ root, cells, collections }) => root.prepareTransaction({ cells, collections }),
+    );
+  }
+
   #enqueuePrepared<Entry extends { readonly root: NativeRoot }>(
-    work: NativeRootWork | NativeRetainedRootWork | NativeCollectionRootWork,
+    work: NativeRootWork | NativeRetainedRootWork | NativeCollectionRootWork | NativeTransactionRootWork,
     entries: readonly Entry[],
     prepareCandidate: (
       entry: Entry,

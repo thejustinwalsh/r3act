@@ -1829,7 +1829,7 @@ fn jsx_member_root_reference<'a>(
 }
 
 fn is_native_runtime_module(module: &str) -> bool {
-    matches!(module, "@compiled-ui/runtime" | "@compiled-ui/runtime/core")
+    matches!(module, "@compiled-ui/runtime" | "@compiled-ui/runtime/core" | "@r3act/core")
         || module.contains("native_runtime_api.ts")
         || module.ends_with("native_runtime_api.js")
 }
@@ -7128,7 +7128,7 @@ export function Label() { const [label] = useState("ready"); return <span data-l
 
     #[test]
     fn compiles_public_package_runtime_imports() {
-        for module in ["@compiled-ui/runtime", "@compiled-ui/runtime/core"] {
+        for module in ["@compiled-ui/runtime", "@compiled-ui/runtime/core", "@r3act/core"] {
             let source = format!(
                 "import {{ useState }} from \"{module}\";\nexport function Counter() {{ const [count, setCount] = useState(0); return <button onClick={{() => setCount(value => value + 1)}}>{{count}}</button>; }}"
             );
@@ -7139,6 +7139,7 @@ export function Label() { const [label] = useState("ready"); return <span data-l
             assert!(code.contains(module));
         }
         assert!(!is_native_runtime_module("@compiled-ui/runtime/react"));
+        assert!(!is_native_runtime_module("@r3act/host-dom"));
         assert!(!is_native_runtime_module("react"));
     }
 

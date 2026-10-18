@@ -40,6 +40,7 @@ export {
   useStoreAt,
 };
 export { OwnerStateWorld };
+export type { StateCellHandle } from "./owner_state_world.ts";
 export { NativeRootWorkQueue } from "./native_root_work_queue.ts";
 export type {
   NativeRootWorkHandle,
@@ -56,7 +57,7 @@ export type {
   NativeTaskExecutionOptions,
   NativeTaskExecutionSnapshot,
 } from "./native_task_execution.ts";
-export type { NativeRootWork, NativeRetainedRootWork, NativeCollectionRootWork } from "./native_root_work_queue.ts";
+export type { NativeRootWork, NativeRetainedRootWork, NativeCollectionRootWork, NativeTransactionRootWork } from "./native_root_work_queue.ts";
 export type { NativeRootCandidate } from "./component_state_runtime.ts";
 export type { NativeSuspenseProps } from "./component_state_runtime.ts";
 export { AsyncResource, AsyncResourceTable } from "./async_resource_runtime.ts";

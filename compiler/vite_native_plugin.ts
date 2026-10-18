@@ -77,6 +77,7 @@ export const nativeModulePlugin = (options: NativeModulePluginOptions = {}): Plu
           ...(optimizeDeps.exclude ?? []),
           "@compiled-ui/runtime",
           "@compiled-ui/runtime/core",
+          "@r3act/core",
         ])],
       };
     },

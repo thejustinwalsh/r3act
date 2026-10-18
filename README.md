@@ -10,7 +10,7 @@ Rerereact explores how a UI runtime could work if it kept JSX, declarative compo
 
 The native application runtime replaces React; React is included for comparison benchmarks and an optional migration adapter. Three.js is one rendering target, not a dependency of every application.
 
-Our central ambition is **one application state model driving multiple renderers**: DOM interfaces, Three.js scenes, and future custom hosts. Known dependencies select affected work; explicit transactions and coordinated publication determine which outputs must become visible together. The existing prototype has shared stores, Worlds, multiple roots, and grouped publication machinery. Fine-grained dependency-scoped admission and complete cross-host consistency are unfinished.
+Our central ambition is **one application state model driving multiple renderers**: DOM interfaces, Three.js scenes, and future custom hosts. Known dependencies select affected work; explicit transactions and coordinated publication determine which managed outputs advance together. The current prototype has shared stores, Worlds, multiple roots, and an explicit joint transaction for closed primitive prop cells plus selected collection move/remove edits. Resource/reveal admission and broader structural transactions remain unfinished. Host setters can observe intermediate physical writes, so this is not cross-host visual atomicity.
 
 ### Design goals
 
@@ -29,9 +29,9 @@ Read the [paper](paper.md), [empirical appendix](empirical-appendix.md), and [re
 
 ## Current implementation and next steps
 
-The repository includes a JavaScript/TypeScript runtime, a Rust/OXC compiler prototype, Vite integration, DOM and Three hosts, shared stores, async task plans, transitions, root coordination, and examples. The compiler/publication repairs and subsequent scoped retained-prop and collection move/remove slices have passed consolidated correctness checks. The latest slice passes **792 runtime tests**, native tooling and four actual compiled execution fixtures; the unchanged compiler has a source-identical **42-test** receipt. See the [implementation checkpoint](implementation-checkpoint.md) for exact sources, failures and verification limits.
+The repository includes a JavaScript/TypeScript runtime, a Rust/OXC compiler prototype, Vite integration, DOM and Three hosts, shared stores, async task plans, transitions, root coordination, and examples. The compiler/publication repairs and subsequent scoped retained-prop and collection move/remove slices passed their recorded correctness gates. The current mixed-transaction slice has **813 runtime tests passing with zero failures**. Its fresh installed-package consumer passed with all five tarballs, TypeScript types, source maps and actual Rust/OXC compilation without Cargo. See the [implementation checkpoint](implementation-checkpoint.md), [current slice](implementation/2026-10-18-first-pass/design.md) and [package consumer receipt](implementation/2026-10-18-first-pass/verification/package-consumer-v3.log) for source and evidence limits.
 
-Scoped admission currently covers closed primitive prop bindings and explicit existing-row collection move/remove transactions. Independent supported cuts can publish through the shared queue; full-tree/cache replacements keep whole-root validation. General structural/cache changes and resource/reveal admission remain open. The latest single structural browser pair passed correctness checks, but both timing ratios were unresolved near the timer floor; it establishes no speed advantage.
+`prepareTransaction({ cells, collections })` and `NativeRootWorkQueue.enqueueTransaction` declare a joint cut over complete closed primitive binding inputs and selected existing-row collection move/remove operations. Independent supported cuts can publish through the shared queue. Whole-tree/cache replacements retain whole-root guards; authored collection insert/replace and opaque render callbacks take the generic path. General structural/cache changes and resource/reveal admission remain open. One new N=1,024 mixed browser pair passed output, identity and lifecycle checks, while native's 0.85 ms median exceeded React Compiler's 0.50 ms median (ratio 1.70). This is [one descriptive pair](implementation/2026-10-18-first-pass/benchmark/proof-v1/pair-one-shot.json), with no speed qualification or tail, heap, cold-mount replication or second-device claim. The previous local structural pair also remained unresolved near the timer floor.
 
 Then evaluate complete slices with consolidated correctness and bounded matched performance gates. Finish async UX, host/resource conformance, package installation, cold/memory costs, and maintainability evidence before making release claims. The [final master plan](final-master-plan.md) defines the full finish line; its latest execution-authority section supersedes historical freezes and per-patch measurement instructions.
 
@@ -41,6 +41,7 @@ Then evaluate complete slices with consolidated correctness and bounded matched 
 | --- | --- |
 | `src/` | Runtime, hosts, stores, scheduling, examples, and contract tests |
 | `compiler/` | Rust/OXC compiler, Vite integration, and compiler fixtures |
+| `packages/` | Private-alpha workspace manifests for one core runtime, Vite compiler, thin host packages, and React bridge |
 | `scripts/`, `notebook_cells/` | Research tooling, evidence collection, and notebook support |
 | `research.ipynb` | Deno Jupyter research notebook; charts use SVG |
 | `paper.md`, `empirical-appendix.md`, `experiment-log.md` | Findings, evidence, and experiment history |
@@ -56,21 +57,23 @@ Use the pinned versions in `package.json`, `pnpm-lock.yaml`, and the Cargo manif
 pnpm install --frozen-lockfile
 ```
 
-Follow the [research guide](RESEARCH-GUIDE.md) and [compiler tooling notes](compiler-tooling.md) for the selected example or notebook. Native TSX requires the Vite compiler plugin; importing JSX helpers alone is insufficient. See [Three host documentation](three-host-api.md) for the actual renderer extension contract.
+Follow the [research guide](RESEARCH-GUIDE.md) and [compiler tooling notes](compiler-tooling.md) for the selected example or notebook. Native TSX requires the Rust/OXC Vite plugin; importing JSX helpers alone is insufficient. Run `pnpm package:r3act` to build the five local tarballs and `pnpm check:r3act-packages` for the fresh installed-consumer gate. The current package build and consumer check passed; earlier install and executable-mode failures remain preserved in the [verification record](implementation/2026-10-18-first-pass/verification/). See [package installation and configuration](native-package-integration.md) and [Three host documentation](three-host-api.md).
 
 Project development and verification servers use Portless HTTPS. Read [AGENTS.md](AGENTS.md) before running automation. Do not launch focus-stealing browser benchmarks; implement coherent slices before measuring. Existing archived locks and absolute paths describe their original machines and must not be silently rewritten to make a new run appear equivalent.
 
-## Planned monorepo and packages
+## Private-alpha workspace packages
 
-The long-term distribution is a monorepo with packages such as:
+The checkout now has five `@r3act/*` workspace packages and a local tarball builder:
 
-- `@r3act/core`: shared runtime, state model, and public host interfaces.
-- `@r3act/vite`: mandatory compiler integration and development tooling.
-- `@r3act/dom`: DOM host integration.
-- `@r3act/three`: Three host, resource policies, and JSX types.
-- An optional React migration adapter, isolated from native applications.
+| Package | Role |
+| --- | --- |
+| `@r3act/core` | Sole runtime module graph, state/World authority, native API and JSX runtime |
+| `@r3act/vite` | Rust/OXC native TSX compiler and Vite integration |
+| `@r3act/host-dom` | Thin DOM exports from core |
+| `@r3act/host-three` | Thin Three host and JSX exports from core; Three is its peer dependency |
+| `@r3act/react-bridge` | Optional React adapter exports from core; React is its peer dependency |
 
-**These are planned names and boundaries, not published packages or a reserved npm scope.** The current checkout is still the research layout. Private packaging experiments use the historical `@compiled-ui/runtime` name; imports have not been cosmetically renamed without completing that migration.
+**These artifacts are unpublished; the namespace is unreserved.** The older private `@compiled-ui/runtime` package route and its dated evidence are preserved. The new host and bridge packages re-export core so they do not create additional World instances. See [package installation and configuration](native-package-integration.md) for tarball paths, setup, platform limits and the consumer gate.
 
 ## Origins
 

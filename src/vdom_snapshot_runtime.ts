@@ -283,8 +283,13 @@ export type PreparedKeyedVDOMProgram = {
   readonly structuralVersionDelta: 0 | 1;
   validate(): boolean;
   validatePostHost(): boolean;
+  overlapsRetainedTargets(delta: PreparedRetainedSourceDelta): boolean;
   commit(): void;
   discard(): void;
+};
+
+export type PreparedScopedKeyedRetainedProgram = PreparedKeyedVDOMProgram & {
+  readonly readSources: readonly ScalarSource[];
 };
 
 const elementKey = (element: RuntimeElement): string | null => {
@@ -334,6 +339,38 @@ const normalizeMany = (input: RuntimeNode): VNode[] => {
   };
   if (keyedRegionId === null) normalizedElementCache.set(input, normalized);
   return [normalized];
+};
+
+const isScopedHostProp = (name: string, value: unknown): boolean =>
+  name !== "ref" && name !== "style" && !/^on[A-Z]/.test(name) &&
+  (value === null || value === undefined || typeof value === "string" ||
+    typeof value === "number" || typeof value === "boolean");
+
+const snapshotScopedHostTree = (node: VNode): VNode | null => {
+  if (node.kind === "text") {
+    const copy: VText = { kind: "text", text: node.text, key: node.key };
+    return Object.freeze(copy);
+  }
+  const props: Record<string, unknown> = {};
+  for (const [name, value] of Object.entries(node.props)) {
+    if (!isScopedHostProp(name, value)) return null;
+    props[name] = value;
+  }
+  const children: VNode[] = [];
+  for (const child of node.children) {
+    const copy = snapshotScopedHostTree(child);
+    if (!copy) return null;
+    children.push(copy);
+  }
+  const copy: VElement = {
+    kind: "element",
+    tag: node.tag,
+    key: node.key,
+    props: Object.freeze(props),
+    children: Object.freeze(children),
+    keyedRegionId: node.keyedRegionId,
+  };
+  return Object.freeze(copy);
 };
 
 const mountedChildren = <H>(node: MountedNode<H>): MountedNode<H>[] =>
@@ -1931,13 +1968,15 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       nodes: Map<KeyedRegionDeltaOperation, VNode>;
       bucket: KeyedRegionBuckets<MountedNode<H>>;
       parentVNode: VNode;
-      keyedFootprint: Map<string, MountedNode<H>>;
+      keyedFootprint: Map<string, MountedNode<H> | null>;
     };
     const preparedDeltas: PreparedDelta[] = [];
     const deltaParents = new Set<MountedNode<H>>();
     const regionIds = new Set<string>();
     const touchedKeys = new Map<string, string>();
     const replacedNodes = new Set<MountedNode<H>>();
+    const replacedVNodeFootprint = new Map<MountedNode<H>, VNode>();
+    let scopedTreeEdit = false;
     const candidateKeys = new Set<string>();
     const candidateRoots: Array<{ node: VNode; owner: string }> = [];
     const isAncestor = (ancestor: MountedNode<H>, node: MountedNode<H>) => {
@@ -1953,8 +1992,23 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     const collectMounted = (node: MountedNode<H>) => {
       if (replacedNodes.has(node)) return false;
       replacedNodes.add(node);
+      if (scoped) replacedVNodeFootprint.set(node, node.vnode);
       forEachMountedChild(node, collectMounted);
       return true;
+    };
+    const isStaticMountedSubtree = (node: MountedNode<H>): boolean => {
+      if (node.scalarBindingGroups?.size ||
+        node.scalarIncompatibleBindingProps?.size) return false;
+      if (node.vnode.kind === "element") {
+        for (const [name, value] of Object.entries(node.vnode.props)) {
+          if (!isScopedHostProp(name, value)) return false;
+        }
+      }
+      let valid = true;
+      forEachMountedChild(node, (child) => {
+        if (!isStaticMountedSubtree(child)) valid = false;
+      });
+      return valid;
     };
     const validateBindings = (node: VNode): boolean => {
       if (node.kind === "text") return true;
@@ -2017,11 +2071,10 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         deltaParents.add(parent);
         const bucket = parent.keyedChildren!;
         const parentVNode = parent.vnode;
-        const keyedFootprint = new Map<string, MountedNode<H>>();
+        const keyedFootprint = new Map<string, MountedNode<H> | null>();
         const captureKey = (key: string | null) => {
           if (key === null || keyedFootprint.has(key)) return;
-          const node = bucket.get(key);
-          if (node) keyedFootprint.set(key, node);
+          keyedFootprint.set(key, bucket.get(key) ?? null);
         };
         const operations = delta.operations.map((operation) => ({
           ...operation,
@@ -2033,12 +2086,11 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         };
         const nodes = new Map<KeyedRegionDeltaOperation, VNode>();
         for (const op of operations) {
-          if (scoped && (op.type === "insert" || op.type === "replace")) {
-            return null;
-          }
           if (scoped) {
             captureKey(op.key);
-            if (op.type === "move") captureKey(op.beforeKey);
+            if (op.type === "move" || op.type === "insert") {
+              captureKey(op.beforeKey);
+            }
           }
           if (!op.key) return null;
           const previousRegion = touchedKeys.get(op.key);
@@ -2047,26 +2099,38 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           ) return null;
           touchedKeys.set(op.key, delta.regionId);
           if (op.type === "insert" || op.type === "replace") {
+            if (scoped) scopedTreeEdit = true;
             if (op.type === "insert") {
               if (
                 present(op.key) ||
                 (op.beforeKey !== null && !present(op.beforeKey))
               ) return null;
             } else if (!present(op.key)) return null;
+            if (scoped && op.type === "replace") {
+              const old = bucket.get(op.key);
+              if (!old || !isStaticMountedSubtree(old)) return null;
+              collectMounted(old);
+            }
             const candidates = normalizeMany(op.tree);
             if (candidates.length !== 1 || candidates[0].key !== op.key) {
               return null;
             }
-            validateUniqueKeys(candidates);
-            if (!validateBindings(candidates[0])) return null;
-            nodes.set(op, candidates[0]);
+            const candidate = scoped
+              ? snapshotScopedHostTree(candidates[0])
+              : candidates[0];
+            if (!candidate) return null;
+            validateUniqueKeys([candidate]);
+            if (!validateBindings(candidate)) return null;
+            nodes.set(op, candidate);
             candidateRoots.push({
-              node: candidates[0],
+              node: candidate,
               owner: `${delta.regionId}\0${op.key}`,
             });
             if (op.type === "replace") {
-              const old = bucket.get(op.key);
-              if (old) collectMounted(old);
+              if (!scoped) {
+                const old = bucket.get(op.key);
+                if (old) collectMounted(old);
+              }
             } else virtual.set(op.key, true);
           } else if (op.type === "remove") {
             if (!present(op.key)) return null;
@@ -2142,7 +2206,9 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     } catch {
       return null;
     }
-    if (!scoped && this.#version !== baseVersion) return null;
+    if ((!scoped || scopedTreeEdit) && this.#version !== baseVersion) {
+      return null;
+    }
     const leafPlan = new Map<string, VNode>();
     for (const candidate of candidateRoots) {
       if (candidate.owner.startsWith("leaf\0")) {
@@ -2179,14 +2245,19 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           return false;
         }
         for (const [key, node] of keyedFootprint) {
-          if (bucket.get(key) !== node || node.hostDisposed ||
-            node.parent !== parent) return false;
+          if (bucket.get(key) !== (node ?? undefined) ||
+            (node !== null && (node.hostDisposed || node.parent !== parent))) {
+            return false;
+          }
         }
         return true;
       },
     );
     const validateScoped = () => {
       if (!validateTargets()) return false;
+      for (const [node, vnode] of replacedVNodeFootprint) {
+        if (node.hostDisposed || node.vnode !== vnode) return false;
+      }
       for (const key of candidateKeys) {
         const existing = this.#nodesByKey.get(key);
         if (existing && [...existing].some((node) =>
@@ -2202,6 +2273,14 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     const program: PreparedKeyedVDOMProgram = {
       scoped,
       structuralVersionDelta: changed ? 1 : 0,
+      overlapsRetainedTargets: (delta) => {
+        const record = this.#retainedSourceDeltas.get(delta);
+        if (!record || record.root !== this) return true;
+        const removedHandles = new Set(
+          [...replacedNodes].map((node) => node.handle),
+        );
+        return record.groups.some((group) => removedHandles.has(group.handle));
+      },
       validate: () =>
         state === "prepared" && !this.#publicationFailed &&
         (scoped ? validateScoped() :
@@ -2291,9 +2370,58 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         candidateKeys.clear();
         candidateKeyOwners.clear();
         replacedNodes.clear();
+        replacedVNodeFootprint.clear();
         deltaParents.clear();
         regionIds.clear();
         touchedKeys.clear();
+      },
+    };
+    return program;
+  }
+
+  /** Prepare one scoped structural and retained-writer host publication. */
+  prepareScopedKeyedAndRetainedDeltas(
+    deltas: readonly KeyedRegionDeltaRequest[],
+    updates: readonly (readonly [ScalarSource, number])[],
+  ): PreparedScopedKeyedRetainedProgram | null {
+    const retained = this.prepareRetainedSourceDelta(updates);
+    if (!retained) return null;
+    const keyed = this.prepareKeyedRegionDeltas(deltas, [], { scoped: true });
+    if (!keyed || keyed.structuralVersionDelta !== 1 ||
+      keyed.overlapsRetainedTargets(retained) || !keyed.validate() ||
+      !this.#isRetainedSourceDeltaCurrent(retained, undefined, true)) {
+      keyed?.discard();
+      return null;
+    }
+    let state: "prepared" | "committed" | "discarded" = "prepared";
+    const program: PreparedScopedKeyedRetainedProgram = {
+      scoped: true,
+      structuralVersionDelta: 1,
+      readSources: retained.readSources,
+      overlapsRetainedTargets: (delta) => keyed.overlapsRetainedTargets(delta),
+      validate: () => state === "prepared" && keyed.validate() &&
+        !keyed.overlapsRetainedTargets(retained) &&
+        this.#isRetainedSourceDeltaCurrent(retained, undefined, true),
+      validatePostHost: () => state === "committed" &&
+        keyed.validatePostHost() &&
+        this.#isRetainedSourceDeltaCurrent(
+          retained,
+          { afterHost: true },
+          true,
+        ),
+      commit: () => {
+        if (state !== "prepared" || !keyed.validate() ||
+          keyed.overlapsRetainedTargets(retained)) {
+          throw new Error("Prepared scoped VDOM transaction is stale");
+        }
+        state = "committed";
+        this.#applyRetainedSourceDelta(retained, true);
+        keyed.commit();
+      },
+      discard: () => {
+        if (state === "discarded") return;
+        if (state === "prepared") state = "discarded";
+        keyed.discard();
       },
     };
     return program;
@@ -2795,9 +2923,17 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     delta: PreparedRetainedSourceDelta,
     options?: { afterHost?: boolean },
   ): boolean {
+    return this.#isRetainedSourceDeltaCurrent(delta, options, false);
+  }
+
+  #isRetainedSourceDeltaCurrent(
+    delta: PreparedRetainedSourceDelta,
+    options: { afterHost?: boolean } | undefined,
+    scoped: boolean,
+  ): boolean {
     const record = this.#retainedSourceDeltas.get(delta);
     if (!record || record.root !== this || this.#publicationFailed ||
-      this.#version !== record.structuralVersion ||
+      (!scoped && this.#version !== record.structuralVersion) ||
       (!options?.afterHost && (this.#publicationToken !== null ||
         record.applied)) ||
       (options?.afterHost && (!this.#publicationToken || !record.applied))) {
@@ -2825,9 +2961,17 @@ export class VDOMSnapshotRoot<H, Parent = H> {
 
   /** Apply a projected cut inside the Root's active host publication. */
   applyRetainedSourceDelta(delta: PreparedRetainedSourceDelta): boolean {
+    return this.#applyRetainedSourceDelta(delta, false);
+  }
+
+  #applyRetainedSourceDelta(
+    delta: PreparedRetainedSourceDelta,
+    scoped: boolean,
+  ): boolean {
     const record = this.#retainedSourceDeltas.get(delta);
     if (!record || !this.#publicationToken || record.applied ||
-      this.#publicationFailed || this.#version !== record.structuralVersion ||
+      this.#publicationFailed ||
+      (!scoped && this.#version !== record.structuralVersion) ||
       record.readSources.some((source, index) =>
         !Object.is(source.value, record.readValues[index])
       ) || record.groups.some((group, index) =>
