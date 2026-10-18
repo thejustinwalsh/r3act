@@ -1,0 +1,189 @@
+{
+  "status": "CORRECTNESS_GATES_PASS",
+  "deno": "852 passed, 0 failed; exit 0",
+  "nativeTooling": {
+    "command": [
+      "pnpm",
+      "check:native-tooling"
+    ],
+    "exitCode": 0,
+    "durationSeconds": 0.795,
+    "log": "native-tooling-v4.log"
+  },
+  "compiledFixtures": [
+    {
+      "name": "compiled-1-v4",
+      "exitCode": 0,
+      "durationSeconds": 0.34
+    },
+    {
+      "name": "compiled-2-v4",
+      "exitCode": 0,
+      "durationSeconds": 0.295
+    },
+    {
+      "name": "compiled-3-v4",
+      "exitCode": 0,
+      "durationSeconds": 0.301
+    },
+    {
+      "name": "compiled-4-v4",
+      "exitCode": 0,
+      "durationSeconds": 0.301
+    },
+    {
+      "name": "compiled-5-v4",
+      "exitCode": 0,
+      "durationSeconds": 0.275
+    },
+    {
+      "name": "compiled-6-v4",
+      "exitCode": 0,
+      "durationSeconds": 0.32
+    },
+    {
+      "name": "compiled-7-v4",
+      "exitCode": 0,
+      "durationSeconds": 0.504
+    },
+    {
+      "name": "compiled-8-v4",
+      "exitCode": 0,
+      "durationSeconds": 0.342
+    },
+    {
+      "name": "compiled-9-v4",
+      "exitCode": 0,
+      "durationSeconds": 0.342
+    },
+    {
+      "name": "compiled-10-v4",
+      "exitCode": 0,
+      "durationSeconds": 0.354
+    },
+    {
+      "name": "compiled-11-v4",
+      "exitCode": 0,
+      "durationSeconds": 0.367
+    }
+  ],
+  "threeHostNode": {
+    "command": [
+      "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+      "--experimental-transform-types",
+      "--test",
+      "compiler/three_host_capability_test.mjs"
+    ],
+    "exitCode": 0,
+    "durationSeconds": 0.222,
+    "log": "three-host-node-v4.log"
+  },
+  "gcRetentionChecks": [
+    {
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "--expose-gc",
+        "scripts/verify_direct_intent_retention.mjs"
+      ],
+      "exitCode": 0,
+      "durationSeconds": 0.19,
+      "log": "direct-intent-retention-v4.log"
+    },
+    {
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "--expose-gc",
+        "scripts/verify_native_candidate_retention.mjs"
+      ],
+      "exitCode": 0,
+      "durationSeconds": 0.188,
+      "log": "native-candidate-retention-v4.log"
+    }
+  ],
+  "gcLimitation": "Narrow forced-GC retention correctness checks; no heap/peak-memory claim.",
+  "rustReuse": {
+    "priorReceipt": "implementation/2026-10-18-urgent-retained/verification/rust-reuse-check-v1.json",
+    "checks": [
+      {
+        "path": "compiler/oxc-spike/Cargo.lock",
+        "expected": "a17f9726fff8c140b72e451361d793a3fcade85c1929dda7955ef12df487e69f",
+        "actual": "a17f9726fff8c140b72e451361d793a3fcade85c1929dda7955ef12df487e69f",
+        "match": true
+      },
+      {
+        "path": "compiler/oxc-spike/Cargo.toml",
+        "expected": "e1c76d44cc35e61828ffaadd473189334fe61f49aa5e3b28fdfaae1f58fd604c",
+        "actual": "e1c76d44cc35e61828ffaadd473189334fe61f49aa5e3b28fdfaae1f58fd604c",
+        "match": true
+      },
+      {
+        "path": "compiler/oxc-spike/src/main.rs",
+        "expected": "5fa846c4bb932037f38ba261a2b5440608f824313b9dd99212056d594913c9fd",
+        "actual": "5fa846c4bb932037f38ba261a2b5440608f824313b9dd99212056d594913c9fd",
+        "match": true
+      },
+      {
+        "path": "compiler/oxc-spike/src/owner_update_program.rs",
+        "expected": "73eddc447fb7c437de2de2ec59e9675ab5971f2ac0d4ebf13e7a35c6f7eddd3a",
+        "actual": "73eddc447fb7c437de2de2ec59e9675ab5971f2ac0d4ebf13e7a35c6f7eddd3a",
+        "match": true
+      },
+      {
+        "path": "compiler/oxc-spike/src/semantic_plan.rs",
+        "expected": "c49db801db6786c2849d1292fb8511af4eb690eb484ceac91c945eda418bc767",
+        "actual": "c49db801db6786c2849d1292fb8511af4eb690eb484ceac91c945eda418bc767",
+        "match": true
+      },
+      {
+        "path": "compiler/oxc-spike/target/debug/ui-graph-compiler-spike",
+        "expected": "5386d322771d5df1b15740c040b48abd27c993b061ccd1f1f01483843465f60b",
+        "actual": "5386d322771d5df1b15740c040b48abd27c993b061ccd1f1f01483843465f60b",
+        "match": true
+      }
+    ],
+    "reuse": true
+  },
+  "packageBuild": {
+    "command": [
+      "pnpm",
+      "package:r3act"
+    ],
+    "exitCode": 0,
+    "durationSeconds": 2.403,
+    "log": "package-build-v4.log"
+  },
+  "packageConsumer": {
+    "command": [
+      "pnpm",
+      "check:r3act-packages"
+    ],
+    "exitCode": 0,
+    "durationSeconds": 2.04,
+    "log": "package-consumer-v4.log"
+  },
+  "packageArchive": "implementation/2026-10-18-direct-intent/verification/packaging-v4",
+  "packageCachePrebuild": {
+    "liveFileCount": 417,
+    "archiveFileCount": 416,
+    "liveOnly": [
+      "consumer-verification.json"
+    ],
+    "archiveOnly": [],
+    "hashMismatches": [],
+    "matchesPackageV2Archive": false,
+    "preservedConsumerReceipt": "implementation/2026-10-18-direct-intent/verification/package-consumer-prebuild-v4.json",
+    "consumerSha256": "6358f401291c19849dfdd24c2d8a1e906638f018943dd7e25ad11eb1d9866106"
+  },
+  "notebookReuse": "prior append-only audit reused; notebook unchanged",
+  "sourceAudit": {
+    "inputCount": 724,
+    "unchanged": true,
+    "mismatches": []
+  },
+  "historicalFailures": [
+    "v1 nullable candidate capture TS18047 preserved",
+    "v2 inverted retained-label assertion preserved; corrected v3 passed"
+  ]
+}

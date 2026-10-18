@@ -104,6 +104,11 @@ const componentSite = Symbol("compiled-component-site");
 class SparseCandidateIneligible extends Error {}
 type SiteComponent<P> = ComponentType<P> & { [componentSite]: string };
 type EffectCleanup = () => void;
+type DirectTreeIntent = {
+  tree: RuntimeNode;
+  releaseStoreLease: (() => void) | null;
+  attemptedStoreGeneration: number | null;
+};
 type EffectSetup = () => void | EffectCleanup;
 type EffectRegistration = {
   owner: OwnerId;
@@ -190,6 +195,7 @@ type CandidateLifecycleSpec<H, Parent> = {
   commitHost(): void;
   preparePublication(): void;
   publish(): void;
+  accepted?(): void;
   installSubscriptions(): readonly unknown[];
   runEffects(): readonly unknown[];
   discard(): void;
@@ -941,6 +947,7 @@ export class ComponentStateRoot<H, Parent = H> {
   readonly #rootId: string;
   readonly #vdom: VDOMSnapshotRoot<H, Parent>;
   #tree: RuntimeNode = null;
+  #pendingDirectIntent: DirectTreeIntent | null = null;
   #liveOwners = new Set<OwnerId>();
   #liveEffects = new Map<string, LiveEffect>();
   #liveEffectKeysByOwner = new Map<OwnerId, Set<string>>();
@@ -1100,17 +1107,27 @@ export class ComponentStateRoot<H, Parent = H> {
       };
     }
     this.#unsubscribeRevision = subscribeCompiledSemanticRevision((change) => {
+      if (this.#pendingDirectIntent) this.#codeInvalidated = true;
       for (const cache of this.#componentCache.values()) {
         if (componentRevision(cache.type)?.sourceFile === change.sourceFile) {
           this.#codeInvalidated = true;
           break;
         }
       }
+      if (this.#codeInvalidated) {
+        const errors = collectCleanupErrors([
+          () => this.#dropPendingDirectIntent(),
+          () => this.#cancelTerminalResourceWaits(),
+        ]);
+        if (errors.length === 1) throw errors[0];
+        if (errors.length) throw new AggregateError(errors, "Revision cleanup failed");
+      }
     });
     this.#rootOwner = this.world.claimRootId(rootId);
     this.#unsubscribe = this.world.subscribeDirtyCells((handle, version) => {
       if (!this.world.isWithin(handle.owner, this.#rootOwner)) return;
       this.#pendingChanges.setCell(handle, version);
+      if (this.#pendingDirectIntent) this.#pendingResourceRetry = true;
       this.#schedule();
     });
   }
@@ -1133,7 +1150,15 @@ export class ComponentStateRoot<H, Parent = H> {
     }
     const leaseId = Symbol("root-store-dependencies");
     this.#storeDependencyLeases.set(leaseId, leasedStores);
-    this.#reconcileStoreSubscriptions();
+    try {
+      this.#reconcileStoreSubscriptions();
+    } catch (error) {
+      leasedStores.clear();
+      this.#storeDependencyLeases.delete(leaseId);
+      return throwWithCleanup(error, collectCleanupErrors([
+        () => this.#reconcileStoreSubscriptions(),
+      ]));
+    }
     let released = false;
     return () => {
       if (released) return;
@@ -1163,6 +1188,13 @@ export class ComponentStateRoot<H, Parent = H> {
     this.#assertNoPublicationBarrier("prepare");
     if (this.#terminalHostFailed) {
       throw new Error("Component root is terminal after a host commit failure");
+    }
+    if (this.#pendingDirectIntent) {
+      return this.#prepareCandidate(
+        this.#pendingDirectIntent.tree,
+        { transitions: options.transitions ?? [] },
+        true, new Set(), new Set(),
+      );
     }
     const changes = this.#pendingChanges.capture();
     if (
@@ -1200,7 +1232,7 @@ export class ComponentStateRoot<H, Parent = H> {
     if (collections.length === 0) return this.prepareRetained(cells);
     this.#assertActive();
     this.#assertNoPublicationBarrier("prepare transaction");
-    if (this.#terminalHostFailed || this.#codeInvalidated ||
+    if (this.#pendingDirectIntent || this.#terminalHostFailed || this.#codeInvalidated ||
       new Set(collections).size !== collections.length
     ) return null;
     const selected = new Set<string>();
@@ -1229,7 +1261,8 @@ export class ComponentStateRoot<H, Parent = H> {
   ): NativeRootCandidate<H, Parent> | null {
     this.#assertActive();
     this.#assertNoPublicationBarrier("prepare retained props");
-    if (this.#terminalHostFailed || this.#codeInvalidated || !cells.length) {
+    if (this.#pendingDirectIntent || this.#terminalHostFailed ||
+      this.#codeInvalidated || !cells.length) {
       return null;
     }
     const captured = this.#captureRetainedCells(cells);
@@ -1400,6 +1433,8 @@ export class ComponentStateRoot<H, Parent = H> {
       this.#terminalHostFailed = true;
       const errors = collectCleanupErrors([
         () => this.#vdom.failPublication(),
+        () => this.#dropPendingDirectIntent(),
+        () => this.#cancelTerminalResourceWaits(),
         () => spec.discard(),
         releaseStores,
         () => { this.#preparedCandidates.delete(candidate); },
@@ -1427,10 +1462,13 @@ export class ComponentStateRoot<H, Parent = H> {
       validate: () =>
         phase === "prepared" && !released && !this.#disposed &&
         !this.#terminalHostFailed && !this.#codeInvalidated &&
+        (!scopedDelta || this.#pendingDirectIntent === null) &&
         spec.codeCurrent() &&
         (scopedDelta || (this.#publicationVersion === spec.baseVersion &&
           this.#vdom.version === spec.baseVDOMVersion)) &&
-        spec.validatePrepared() && !this.#codeInvalidated && spec.codeCurrent(),
+        spec.validatePrepared() && !this.#codeInvalidated &&
+        (!scopedDelta || this.#pendingDirectIntent === null) &&
+        spec.codeCurrent(),
       commitHost: () => {
         if (phase !== "prepared") throw new Error(`Candidate is ${phase}`);
         this.#assertNoPublicationBarrier("commit another candidate");
@@ -1462,10 +1500,14 @@ export class ComponentStateRoot<H, Parent = H> {
       validatePostHost: () =>
         phase === "host-committed" && !this.#disposed &&
         !this.#disposeRequested && !this.#terminalHostFailed &&
-        !this.#codeInvalidated && spec.codeCurrent() &&
+        !this.#codeInvalidated &&
+        (!scopedDelta || this.#pendingDirectIntent === null) &&
+        spec.codeCurrent() &&
         this.#publicationVersion === admittedVersion &&
         this.#vdom.appliedVersion === admittedVDOMVersion + appliedVDOMDelta &&
-        spec.validatePostHost() && !this.#codeInvalidated && spec.codeCurrent(),
+        spec.validatePostHost() && !this.#codeInvalidated &&
+        (!scopedDelta || this.#pendingDirectIntent === null) &&
+        spec.codeCurrent(),
       preparePublication: () => {
         if (phase !== "host-committed") {
           throw new Error(`Candidate is ${phase}`);
@@ -1489,12 +1531,15 @@ export class ComponentStateRoot<H, Parent = H> {
           throw new Error(`Candidate is ${phase}`);
         }
         try {
-          if (this.#codeInvalidated || !spec.codeCurrent()) {
+          if (this.#codeInvalidated ||
+            (scopedDelta && this.#pendingDirectIntent !== null) ||
+            !spec.codeCurrent()) {
             throw new Error("Compiled module changed before publication");
           }
           spec.publish();
           this.#vdom.publishAccepted();
           phase = "published";
+          spec.accepted?.();
         } catch (error) {
           this.#terminalFailureKind = "publication";
           failUnpublished(error);
@@ -1549,6 +1594,8 @@ export class ComponentStateRoot<H, Parent = H> {
         if (wasPublished) this.#terminalFailureKind = "publication";
         const errors = collectCleanupErrors([
           () => this.#vdom.failPublication(),
+          () => this.#dropPendingDirectIntent(),
+          () => this.#cancelTerminalResourceWaits(),
           () => { if (!wasPublished) spec.discard(); },
           releaseStores,
           () => { this.#preparedCandidates.delete(candidate); },
@@ -1922,6 +1969,9 @@ export class ComponentStateRoot<H, Parent = H> {
     }
     const baseVersion = this.#publicationVersion;
     const baseVDOMVersion = this.#vdom.version;
+    const directIntentAtPrepare = this.#pendingDirectIntent;
+    let acceptedIntentLease: (() => void) | null = null;
+    let retryResourceAfterPublication = false;
     const storeGenerationAtPrepare = this.#storeNotificationGeneration;
     const capturedChanges = this.#pendingChanges.capture();
     // Direct-writer owners are reused, so recapture their source/version on every
@@ -2132,7 +2182,9 @@ export class ComponentStateRoot<H, Parent = H> {
       transitions: options.transitions ?? [],
       pendingResources: candidatePendingResources,
       blocked: boundaryState.blocked,
-      codeCurrent: () => cacheCodeCurrent(artifacts.nextCache?.values() ?? []),
+      codeCurrent: () =>
+        this.#pendingDirectIntent === directIntentAtPrepare &&
+        cacheCodeCurrent(artifacts.nextCache?.values() ?? []),
       validatePrepared: () =>
         artifacts.preparation !== null && artifacts.preparation.validate() &&
         !artifacts.preparation.hasStateWrites() &&
@@ -2149,8 +2201,16 @@ export class ComponentStateRoot<H, Parent = H> {
         validatePostHostNumericWrites() &&
         !boundaryState.blocked && validatesPostHostCollections(),
       preparePublication: () => {
+        retryResourceAfterPublication = resourceReads !== null &&
+          !resourceReads.validate();
         artifacts.preparation!.preparePublicationAfterHost();
         artifacts.stores!.preparePublicationAfterHost();
+        if (!validatesPostHostCollections() ||
+          !validatePostHostNumericWrites() ||
+          !artifacts.stores!.validatePublicationInputs() ||
+          !artifacts.preparation!.validatePublicationInputs()) {
+          throw new Error("Full candidate inputs changed before publication");
+        }
       },
       commitHost: () => {
         artifacts.preparation!.beginHostApplication();
@@ -2179,9 +2239,7 @@ export class ComponentStateRoot<H, Parent = H> {
         this.#liveOwners = new Set(artifacts.ownerIds!);
         this.#componentCache = artifacts.nextCache!;
         this.#boundaryPrimaries = nextBoundaryPrimaries;
-        if (resourceReads && !resourceReads.validate()) {
-          this.#pendingResourceRetry = true;
-        }
+        if (retryResourceAfterPublication) this.#pendingResourceRetry = true;
         resourceReads?.discard();
         resourceReads = null;
         this.#syncLastSourceValues(artifacts.nextCache!, capturedBoundValues);
@@ -2192,6 +2250,15 @@ export class ComponentStateRoot<H, Parent = H> {
         this.#pendingChanges.clearThrough(capturedChanges);
         this.#publicationVersion++;
       },
+      accepted: () => {
+        if (directIntentAtPrepare &&
+          this.#pendingDirectIntent === directIntentAtPrepare) {
+          this.#pendingDirectIntent = null;
+          acceptedIntentLease = directIntentAtPrepare.releaseStoreLease;
+          directIntentAtPrepare.releaseStoreLease = null;
+          directIntentAtPrepare.tree = null;
+        }
+      },
       installSubscriptions: () => {
         if (this.#disposed) return [];
         const errors: unknown[] = [];
@@ -2199,6 +2266,10 @@ export class ComponentStateRoot<H, Parent = H> {
           this.#syncStoreReaders(artifacts.stores!);
         } catch (error) {
           errors.push(error);
+        } finally {
+          const releaseLease = acceptedIntentLease;
+          acceptedIntentLease = null;
+          if (releaseLease) errors.push(...collectCleanupErrors([releaseLease]));
         }
         if (options.autoRetryResources !== false) {
           try {
@@ -2327,6 +2398,41 @@ export class ComponentStateRoot<H, Parent = H> {
       }
     };
     this.#scheduled = false;
+    if (this.#pendingDirectIntent) {
+      const intent = this.#pendingDirectIntent;
+      const acceptedTree = this.#tree;
+      const retryResource = this.#pendingResourceRetry;
+      const retryBoundaries = [...this.#pendingBoundaryRetries];
+      this.#pendingResourceRetry = false;
+      this.#pendingBoundaryRetries.clear();
+      this.#scopedFlushActive = true;
+      let scheduleRestoredWork = false;
+      try {
+        return this.#renderAndCommit(
+          intent.tree, true, new Set(), new Set(), 0, [], intent,
+        );
+      } catch (error) {
+        if (!this.#disposed && !this.#codeInvalidated &&
+          !this.#terminalHostFailed && this.#tree === acceptedTree) {
+          this.#pendingResourceRetry ||= retryResource;
+          for (const owner of retryBoundaries) {
+            const cache = this.#componentCache.get(owner);
+            if (cache?.nativeBoundary && cache.pendingResource) {
+              this.#pendingBoundaryRetries.add(owner);
+            }
+          }
+          scheduleRestoredWork = !this.#pendingDirectIntent;
+        }
+        throw error;
+      } finally {
+        this.#scopedFlushActive = false;
+        const shouldSchedule = scheduleRestoredWork ||
+          (this.#deferredFlush && this.#hasPendingWork());
+        this.#deferredFlush = false;
+        if (shouldSchedule) this.#schedule();
+        reportFlush();
+      }
+    }
     const storeGenerationAtStart = this.#storeNotificationGeneration;
     const asyncWorkPending = this.#liveResourceSubscriptions.size > 0 ||
       this.#pendingResourceRetry || this.#pendingBoundaryRetries.size > 0;
@@ -2724,7 +2830,18 @@ export class ComponentStateRoot<H, Parent = H> {
   update(tree: RuntimeNode) {
     this.#assertActive();
     this.#assertNoPublicationBarrier("update");
-    this.#renderAndCommit(tree, true);
+    const previous = this.#pendingDirectIntent;
+    const intent: DirectTreeIntent = {
+      tree,
+      releaseStoreLease: previous?.releaseStoreLease ?? null,
+      attemptedStoreGeneration: null,
+    };
+    if (previous) {
+      previous.releaseStoreLease = null;
+      previous.tree = null;
+    }
+    this.#pendingDirectIntent = intent;
+    this.#renderAndCommit(tree, true, new Set(), new Set(), 0, [], intent);
   }
 
   render(tree: RuntimeNode) {
@@ -2756,6 +2873,11 @@ export class ComponentStateRoot<H, Parent = H> {
     this.#disposed = true;
     this.#disposing = false;
     this.#deferredFlush = false;
+    try {
+      this.#dropPendingDirectIntent();
+    } catch (error) {
+      disposeErrors.push(error);
+    }
     for (const listener of this.#disposeListeners) {
       try {
         listener();
@@ -3167,9 +3289,37 @@ export class ComponentStateRoot<H, Parent = H> {
     collectionRetry = 0,
     numericChanges: readonly import("./owner_state_world.ts").StateChange[] =
       [],
+    directIntent: DirectTreeIntent | null = null,
   ): boolean {
+    let candidate: NativeRootCandidate<H, Parent> | null = null;
+    const storeGenerationAtAttempt = this.#storeNotificationGeneration;
+    const holdDirectFrontier = (
+      current: NativeRootCandidate<H, Parent>,
+      intent: DirectTreeIntent,
+    ) => {
+      const nextLease = current.retainStoreDependencies();
+      try {
+        if (this.#pendingDirectIntent !== intent) {
+          nextLease();
+          return;
+        }
+        this.#syncResourceSubscriptions([...current.pendingResources]);
+        if (this.#pendingDirectIntent !== intent) {
+          nextLease();
+          this.#pendingResourceRetry = true;
+          this.#schedule();
+          return;
+        }
+        const previousLease = intent.releaseStoreLease;
+        intent.releaseStoreLease = nextLease;
+        intent.attemptedStoreGeneration = storeGenerationAtAttempt;
+        previousLease?.();
+      } catch (error) {
+        return throwWithCleanup(error, collectCleanupErrors([nextLease]));
+      }
+    };
     try {
-      const candidate = this.#prepareCandidate(
+      candidate = this.#prepareCandidate(
         tree,
         {},
         forceRender,
@@ -3177,13 +3327,31 @@ export class ComponentStateRoot<H, Parent = H> {
         relevantOwners,
         numericChanges,
       );
+      if (directIntent && this.#pendingDirectIntent !== directIntent) {
+        candidate.discard();
+        return false;
+      }
       if (candidate.blocked) {
-        const pending = [...candidate.pendingResources];
-        this.#syncResourceSubscriptions(pending);
+        if (directIntent) holdDirectFrontier(candidate, directIntent);
+        else this.#syncResourceSubscriptions([...candidate.pendingResources]);
         candidate.discard();
         return false;
       }
       if (!candidate.validate()) {
+        if (directIntent && this.#pendingDirectIntent !== directIntent) {
+          candidate.discard();
+          return false;
+        }
+        if (collectionRetry >= 2 && directIntent) {
+          if (candidate.pendingResources.length === 0) {
+            throw new Error("Direct update stayed stale without a dependency wake");
+          }
+          holdDirectFrontier(candidate, directIntent);
+          if (this.#pendingDirectIntent === directIntent &&
+            this.#liveResourceSubscriptions.size === 0) {
+            throw new Error("Direct update stayed stale without a dependency wake");
+          }
+        }
         candidate.discard();
         if (collectionRetry < 2) {
           return this.#renderAndCommit(
@@ -3193,9 +3361,10 @@ export class ComponentStateRoot<H, Parent = H> {
             relevantOwners,
             collectionRetry + 1,
             numericChanges,
+            directIntent,
           );
         }
-        this.#schedule();
+        if (!directIntent) this.#schedule();
         return false;
       }
       candidate.commitHost();
@@ -3211,7 +3380,25 @@ export class ComponentStateRoot<H, Parent = H> {
           relevantOwners,
           collectionRetry + 1,
           numericChanges,
+          directIntent,
         );
+      }
+      if (candidate) {
+        const failedCandidate = candidate;
+        const cleanup = collectCleanupErrors([
+          () => failedCandidate.discard(),
+          () => {
+            if (directIntent && this.#pendingDirectIntent === directIntent) {
+              this.#dropPendingDirectIntent();
+            }
+          },
+        ]);
+        return throwWithCleanup(error, cleanup);
+      }
+      if (directIntent && this.#pendingDirectIntent === directIntent) {
+        return throwWithCleanup(error, collectCleanupErrors([
+          () => this.#dropPendingDirectIntent(),
+        ]));
       }
       throw error;
     }
@@ -5806,7 +5993,16 @@ export class ComponentStateRoot<H, Parent = H> {
       if (direct) this.#vdom.failPublication();
       this.#terminalHostFailure ??= error;
       this.#terminalHostFailed = true;
-      throw error;
+      const cleanup = collectCleanupErrors([
+        () => this.#dropPendingDirectIntent(),
+        () => this.#cancelTerminalResourceWaits(),
+      ]);
+      try {
+        return throwWithCleanup(error, cleanup);
+      } catch (failure) {
+        primaryFailure = failure;
+        throw failure;
+      }
     } finally {
       this.#hostApplicationDepth--;
       try {
@@ -5850,15 +6046,43 @@ export class ComponentStateRoot<H, Parent = H> {
     this.#terminalHostFailure ??= error;
     this.#terminalHostFailed = true;
     this.#terminalFailureKind = "publication";
+    const cleanup = collectCleanupErrors([
+      () => this.#dropPendingDirectIntent(),
+      () => this.#cancelTerminalResourceWaits(),
+    ]);
     try {
       this.#completeDeferredDispose();
     } catch (cleanupError) {
       throw new AggregateError(
-        [error, cleanupError],
+        [error, ...cleanup, cleanupError],
         "Direct publication and deferred disposal failed",
       );
     }
-    throw error;
+    return throwWithCleanup(error, cleanup);
+  }
+
+  #dropPendingDirectIntent() {
+    const intent = this.#pendingDirectIntent;
+    this.#pendingDirectIntent = null;
+    const release = intent?.releaseStoreLease;
+    if (intent) {
+      intent.releaseStoreLease = null;
+      intent.tree = null;
+    }
+    release?.();
+  }
+
+  #cancelTerminalResourceWaits() {
+    const errors = collectCleanupErrors(
+      [...this.#liveResourceSubscriptions.values()].map(({ unsubscribe }) =>
+        unsubscribe
+      ),
+    );
+    this.#liveResourceSubscriptions.clear();
+    this.#pendingResourceRetry = false;
+    this.#pendingBoundaryRetries.clear();
+    if (errors.length === 1) throw errors[0];
+    if (errors.length) throw new AggregateError(errors, "Resource wait cleanup failed");
   }
 
   #completeDeferredDispose() {
@@ -5900,6 +6124,13 @@ export class ComponentStateRoot<H, Parent = H> {
   }
 
   #hasPendingWork() {
+    if (this.#pendingDirectIntent) {
+      return this.#pendingResourceRetry ||
+        this.#pendingBoundaryRetries.size > 0 ||
+        (this.#pendingDirectIntent.attemptedStoreGeneration !== null &&
+          this.#storeNotificationGeneration !==
+            this.#pendingDirectIntent.attemptedStoreGeneration);
+    }
     return this.#pendingChanges.size > 0 ||
       this.#pendingCollectionRegionKeys.size > 0 ||
       this.#pendingResourceRetry ||
@@ -5909,7 +6140,8 @@ export class ComponentStateRoot<H, Parent = H> {
   }
 
   #schedule() {
-    if (this.#disposed || this.#scheduled) return;
+    if (this.#disposed || this.#codeInvalidated ||
+      this.#terminalHostFailed || this.#scheduled) return;
     if (
       this.#publicationBarrier || this.#hostApplicationDepth > 0 ||
       this.#directPublicationPending || this.#scopedFlushActive
@@ -5919,7 +6151,8 @@ export class ComponentStateRoot<H, Parent = H> {
     }
     this.#scheduled = true;
     this.#scheduleCommit(() => {
-      if (this.#disposed || !this.#scheduled) return;
+      if (this.#disposed || this.#codeInvalidated ||
+        this.#terminalHostFailed || !this.#scheduled) return;
       this.#scheduled = false;
       if (
         this.#publicationBarrier || this.#hostApplicationDepth > 0 ||
