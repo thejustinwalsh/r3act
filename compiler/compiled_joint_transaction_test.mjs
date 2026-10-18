@@ -26,7 +26,8 @@ export function Row({ id }) {
 }
 export function List() { return <ul>{renderCollectionAt("compiled-joint-rows", rows, row => <Row key={row.id} id={row.id} />)}</ul>; }`;
 
-const plugin = nativeModulePlugin({ root: projectRoot });
+const plugin = nativeModulePlugin({ root: projectRoot,
+  compilerBinary: path.join(projectRoot, "compiler/oxc-spike/target/debug/ui-graph-compiler-spike") });
 plugin.configResolved?.call({}, { root: projectRoot });
 const context = {
   addWatchFile() {},

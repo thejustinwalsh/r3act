@@ -38,7 +38,8 @@ export function SceneComponent() {
   </mesh>;
 }`;
 
-const plugin = nativeModulePlugin({ root: projectRoot });
+const plugin = nativeModulePlugin({ root: projectRoot,
+  compilerBinary: path.join(projectRoot, "compiler/oxc-spike/target/debug/ui-graph-compiler-spike") });
 plugin.configResolved?.call({}, { root: projectRoot });
 const context = {
   addWatchFile() {},

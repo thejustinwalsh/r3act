@@ -106,6 +106,14 @@ try {
     selected.push("LICENSE", "README.md", "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml",
       "deno.json", "deno.browser.json", "deno.native.json", "deno.lock",
       "implementation/2026-10-16-publication/verification/deno-runtime.lock");
+    for (const unit of ["resource-values", "store-values", "store-subtrees", "store-projections",
+      "joint-async-inputs", "component-forwarding", "authored-lifecycle"]) {
+      for (const name of ["design.md", "source-review.md"])
+        selected.push(`implementation/2026-10-18-${unit}/${name}`);
+    }
+    for (const name of ["contract.ts", "native_arm.tsx", "react_arm.tsx", "entry.ts",
+      "index.html", "vite.config.ts", "build-gate.mjs", "run-pairs.mjs", "README.md"])
+      selected.push(`implementation/2026-10-18-authored-lifecycle/workload/${name}`);
     for (const entry of await readdir(source)) {
       if (/^tsconfig(?:\..+)?\.json$/.test(entry) || /^vite[^/]*\.ts$/.test(entry)) selected.push(entry);
     }

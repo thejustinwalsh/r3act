@@ -68,7 +68,8 @@ export function App() {
   return <section><List key="left" side="left" /><List key="right" side="right" /></section>;
 }`;
 
-const plugin = nativeModulePlugin({ root: projectRoot });
+const plugin = nativeModulePlugin({ root: projectRoot,
+  compilerBinary: path.join(projectRoot, "compiler/oxc-spike/target/debug/ui-graph-compiler-spike") });
 plugin.configResolved?.call({}, { root: projectRoot });
 const context = {
   addWatchFile() {},

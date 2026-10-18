@@ -101,12 +101,15 @@ Cargo build. Checkout development still builds through Cargo. A supplied
 `nativeModulePlugin({ compilerBinary: "/path/to/compiler" })` remains an explicit
 caller-owned override outside the packaged manifest proof.
 
-Native execution is verified on **Darwin ARM64 only**. Linux ABI selection has
-synthetic coverage; automatic Linux selection requires positive glibc proof,
-while unknown/musl environments decline. Windows target metadata has source
-coverage only. Provide a compatible explicit executable for an unsupported
-platform; this tarball does not supply other native binaries. The manifest is
-local integrity metadata, not a publisher authenticity guarantee.
+Native build and fresh installed consumption are verified on **Darwin ARM64
+and GNU Linux ARM64**. The Linux case runs in Colima on the same Mac; it is not
+independent-device or hosted CI evidence. The [Linux delivery receipt](implementation/2026-10-18-linux-delivery/results.md)
+preserves the initial compiler-integrity failure and corrected 34-step gate.
+Automatic Linux selection requires positive glibc proof; unknown/musl environments
+decline. Linux x64 and Windows native execution remain unverified. Each build
+supplies only its build target's executable; this is not a multi-platform tarball.
+Provide a compatible explicit executable for an unsupported platform. The
+manifest is local integrity metadata, not a publisher authenticity guarantee.
 
 ### Explicit joint transactions
 

@@ -2,6 +2,18 @@
 
 **Research position paper · Deno Jupyter project · 14 October 2026**
 
+## Linux native delivery boundary — 18 October 2026
+
+Native GNU Linux ARM64 build and fresh installed-package consumption now pass in the existing Colima VM. A bounded Docker transfer route stages current source without changing shared VM mounts or waiting for Apple Container authorization. The consolidated v2 gate passes **34/34 steps**, **978 runtime tests**, **63 Rust tests**, **24 artifact checks**, **22 actual compiled fixtures**, **seven Three cases**, both retention checks and all five private-alpha packages. All 22 fixtures preserve the recorded debug compiler hash, with actual target `aarch64-unknown-linux-gnu`. The 829 gate inputs match before/after; all 838 staged host/archive inputs match. Package and fixture evidence contains 488 and 132 files respectively.
+
+The first gate remains **FAIL**: an older fixture used default checkout Cargo startup and replaced the recorded compiler mid-run, despite its behavior command exiting 0. Five fixtures now select the already captured explicit debug binary. No assertion or integrity check was weakened. Both exact source archives and failed/successful receipts remain preserved. No runtime or Rust implementation changed in this continuation.
+
+The sole approved installed Vite build pair observes **232.70/437.27 ms Native/React**, spawn to exit, with 146,935/72,007 main JavaScript bytes. All 772 before/after input rows match and timed transforms equal the reviewed output; actual React Counter uses `_c(3)`. Required untimed proof builds may prime caches. This fixed-order fresh-process observation is not cold-cache, runtime latency, equivalent-feature size, population-tail or independent-device qualification. No server/browser or timing retry ran.
+
+Linux is a VM on the same physical Mac, not x64/Windows, hosted CI or a second device. Each package still contains only its build target's native executable. Apple Container 1.5.0 and its storage remain on Depot; service startup independently awaits the existing macOS administrator authorization. Historical stable-binding wins, integrated dense FAIL, physical HOLD and the prior incomplete authored-lifecycle extra audit retain their status. Full cold/memory, async UX, presentation and independent-device finish-line requirements remain open; human participants remain 0 and no maintenance advantage is claimed. The full-plan first-pass goal stays active.
+
+See [source, failures, native artifacts and one-shot build evidence](implementation/2026-10-18-linux-delivery/results.md).
+
 ## Authored scene lifecycle — 18 October 2026
 
 The repository now includes a shared authored lifecycle application: 256 stateful keyed rows, shared numeric/array Stores, declarative style/text props, local input, generic array edits and two independently settled resources. The same Native application is compiled by Rust/OXC for a complete MemoryVDOMHost fixture and for the browser. Normal runtime scheduling and existing identity/version/publication authority remain; no runtime optimization or new physical layout was introduced.

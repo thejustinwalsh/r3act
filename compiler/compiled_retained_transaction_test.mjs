@@ -22,7 +22,8 @@ export function Scene() {
     data-conditional={position ? camera : 0} data-label={\`x=\${position}\`}
     data-health={health} />;
 }`;
-const plugin = nativeModulePlugin({ root: projectRoot });
+const plugin = nativeModulePlugin({ root: projectRoot,
+  compilerBinary: path.join(projectRoot, "compiler/oxc-spike/target/debug/ui-graph-compiler-spike") });
 plugin.configResolved?.call({}, { root: projectRoot });
 const context = {
   addWatchFile() {},
