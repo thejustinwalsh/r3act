@@ -107,3 +107,7 @@ The sole offline headless transaction-to-MutationObserver pair observed **5.1 / 
 The full-plan first-pass goal remains active. General selectors/resource/structural admission, platform execution, lifecycle-cost and independent-device qualification remain open. Apple container startup still awaits the existing native authorization to enable Depot ownership. Human participants remain zero, with no maintenance advantage claim. Historic stable-binding wins, integrated dense FAIL and exhausted Recording A keep their original source and scope; no new physical layout is selected.
 
 See [source and results](../2026-10-18-store-projections/results.md).
+
+## Pure component composition continuation
+
+Compiler-proven local forwarding chains now preserve each wrapper owner/cache while sharing existing resource/Store publication. The [source-locked boundary](../2026-10-18-component-forwarding/results.md) passes 978 runtime tests, 63 Rust tests and 21 compiled fixtures across 33 steps. The sole 3.4/277.7 ms Native/React settlement-to-observer pair includes scheduling and ends before paint; it does not qualify CPU, tails, presentation or broad performance. General structural/resource admission, platform execution, lifecycle/async UX and independent-device gates remain open. No full-plan completion or physical selection follows.

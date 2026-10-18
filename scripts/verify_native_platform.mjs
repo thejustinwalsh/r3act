@@ -67,7 +67,9 @@ const sourcePaths = async () => {
     "implementation/2026-10-18-store-projections/design.md",
     "implementation/2026-10-18-store-projections/source-review.md",
     "implementation/2026-10-18-joint-async-inputs/design.md",
-    "implementation/2026-10-18-joint-async-inputs/source-review.md"]) {
+    "implementation/2026-10-18-joint-async-inputs/source-review.md",
+    "implementation/2026-10-18-component-forwarding/design.md",
+    "implementation/2026-10-18-component-forwarding/source-review.md"]) {
     try { if ((await stat(path.join(root, relative))).isFile()) files.push(relative); }
     catch (error) { if (error?.code !== "ENOENT") throw error; }
   }
@@ -339,7 +341,8 @@ try {
     "compiled_owner_row_three_execution_test", "compiled_store_host_test", "compiled_joint_store_host_test",
     "compiled_joint_input_transaction_test", "compiled_resource_subtree_reveal_test",
     "compiled_resource_host_values_test", "compiled_store_host_values_test",
-    "compiled_store_host_subtree_test", "compiled_store_projection_test", "compiled_joint_async_inputs_test"];
+    "compiled_store_host_subtree_test", "compiled_store_projection_test", "compiled_joint_async_inputs_test",
+    "compiled_component_forwarding_test"];
   for (const [index, fixture] of fixtures.entries()) {
     const name = `compiled-${String(index + 1).padStart(2, "0")}`;
     const before = await compilerHash();

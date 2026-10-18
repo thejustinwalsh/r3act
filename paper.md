@@ -2,6 +2,18 @@
 
 **Research position paper · Deno Jupyter project · 14 October 2026**
 
+## Pure local component forwarding — 18 October 2026
+
+Compiler-proven pure local component chains now forward props into existing closed resource/Store host programs while retaining each wrapper owner and cache. Runtime validates exact target function/site, code revision, complete inputs and writer lifetime through the existing publication transaction. Whole-tree guards, generic fallback, per-root history, exact acknowledgements and newer host-time actions remain; no parallel identity/version registry or physical layout was added.
+
+Consolidated Darwin verification passes **978 runtime tests, zero failures, exit 0**, **63 Rust tests**, **24 artifact checks**, **21 actual compiled fixtures**, **seven Three cases**, two bounded retention checks and fresh five-package consumption (**488 archived files**). All **33 steps** pass and **816 correctness inputs** match their pre-execution archive. The new compiled fixture verifies three distinct wrapper/leaf owners and exact lineage, retained IDs through automatic/grouped Store updates and generic health retry, fork history, revoked setters and balanced resource cleanup.
+
+The sole offline headless pair observed **3.4 / 277.7 ms Native/React** from final resource settlement to the matching MutationObserver, at about **0.1 ms** timer quantum. Both arms preserve row state and host/text identity, prevent premature joint reveal, retire fallback once, update the live Store beside pending health, reveal health later and tear down empty. All **758 source/compiler/transform/asset hashes** match before and after. Mount was **5.4 / 4.0 ms**, disposal **0.6 / 0.2 ms**, combined JavaScript **510,883 bytes**. This single fixed-order interval includes payload construction, scheduling and observer delivery before paint. It does not qualify CPU, physical input, tails, presentation, cold/retained-memory, independent-device or general async performance; combined size is not an equivalent-feature per-arm comparison.
+
+The full-plan first-pass goal remains active. General structural/resource admission, Linux and other-platform execution, lifecycle costs, async UX and independent-device qualification remain open. Human participants remain zero, with no maintenance advantage claim. Historic stable-binding wins, integrated dense FAIL and exhausted Recording A retain their original source and scope; physical selection stays HOLD. Apple container tooling/data are on Depot, but service startup still awaits the existing macOS administrator authorization.
+
+See [source and results](implementation/2026-10-18-component-forwarding/results.md).
+
 ## Abstract
 
 This project asks whether compiler-known dependencies can reduce repeated UI

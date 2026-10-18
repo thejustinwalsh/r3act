@@ -1,5 +1,9 @@
 import { normalizeClosedNumericExpression } from "./closed_numeric_expression.ts";
 import {
+  type ClosedComponentForwardProgram,
+  normalizeClosedComponentForwardProgram,
+} from "./closed_component_forward_program.ts";
+import {
   type ClosedStoreHostProgram,
   closedStoreHostInputs,
   closedStoreHostInputPaths,
@@ -374,6 +378,7 @@ export const defineComponent = <P extends Record<string, unknown>>(
     readonly ownerUpdateProgram?: CompiledOwnerUpdateProgram;
     readonly closedResourceHostProgram?: ClosedResourceHostProgram;
     readonly closedStoreHostProgram?: ClosedStoreHostProgram;
+    readonly closedComponentForwardProgram?: ClosedComponentForwardProgram;
   },
 ): ComponentType<P> => {
   if (siteId.length === 0) {
@@ -429,8 +434,15 @@ export const defineComponent = <P extends Record<string, unknown>>(
       (!closedStoreHostProgram || closedStoreHostProgram.componentProgramId !== siteId)) {
       throw new Error("Closed Store host program must match its component revision");
     }
+    const closedComponentForwardProgram = metadata?.closedComponentForwardProgram === undefined
+      ? undefined : normalizeClosedComponentForwardProgram(metadata.closedComponentForwardProgram);
+    if (metadata?.closedComponentForwardProgram !== undefined &&
+      (!closedComponentForwardProgram || closedComponentForwardProgram.componentProgramId !== siteId)) {
+      throw new Error("Closed component forward program must match its component revision");
+    }
     const revisions = [stateLayout?.moduleRevision,
-      closedResourceHostProgram?.moduleRevision, closedStoreHostProgram?.moduleRevision]
+      closedResourceHostProgram?.moduleRevision, closedStoreHostProgram?.moduleRevision,
+      closedComponentForwardProgram?.moduleRevision]
       .filter((value): value is string => value !== undefined);
     const expectedRevision = revisions[0];
     if (revisions.some((revision) => revision !== expectedRevision)) {
@@ -450,6 +462,7 @@ export const defineComponent = <P extends Record<string, unknown>>(
         ...(stateLayout ? { stateLayout } : {}),
         ...(closedResourceHostProgram ? { closedResourceHostProgram } : {}),
         ...(closedStoreHostProgram ? { closedStoreHostProgram } : {}),
+        ...(closedComponentForwardProgram ? { closedComponentForwardProgram } : {}),
       }),
     });
   }
@@ -465,6 +478,7 @@ type ComponentMetadata = {
   readonly stateLayout?: CompiledStateLayout;
   readonly closedResourceHostProgram?: ClosedResourceHostProgram;
   readonly closedStoreHostProgram?: ClosedStoreHostProgram;
+  readonly closedComponentForwardProgram?: ClosedComponentForwardProgram;
 };
 
 const componentRevision = (component: unknown) =>
@@ -507,6 +521,15 @@ const closedStoreHostProgramFor = (
     ? (component as SiteComponent<unknown> & {
       [componentMetadata]?: ComponentMetadata;
     })[componentMetadata]?.closedStoreHostProgram
+    : undefined;
+
+const closedComponentForwardProgramFor = (
+  component: unknown,
+): ClosedComponentForwardProgram | undefined =>
+  typeof component === "function" && componentCodeCurrent(component)
+    ? (component as SiteComponent<unknown> & {
+      [componentMetadata]?: ComponentMetadata;
+    })[componentMetadata]?.closedComponentForwardProgram
     : undefined;
 
 const validateNumericBindingProgram = (
@@ -3443,31 +3466,84 @@ export class ComponentStateRoot<H, Parent = H> {
     const child = Object.getOwnPropertyDescriptor(boundaryCache.props, "children")?.value;
     if (!child || Array.isArray(child) || typeof child !== "object" ||
       !Object.isFrozen(child)) return null;
-    const childType = Object.getOwnPropertyDescriptor(child, "type")?.value;
-    const childProps = Object.getOwnPropertyDescriptor(child, "props")?.value;
-    if (typeof childType !== "function" || !childProps ||
-      typeof childProps !== "object" || !Object.isFrozen(childProps)) return null;
+    type RevealStep = {
+      node: RuntimeElement;
+      type: ComponentType<Record<string, unknown>>;
+      props: Record<string, unknown>;
+      descriptors: Record<string, PropertyDescriptor>;
+      siteId: string;
+      ownerKey: string;
+      hostKeyScope: string;
+      revision: CompiledSemanticRevisionToken;
+      forward?: ClosedComponentForwardProgram;
+    };
+    const steps: RevealStep[] = [];
+    const visited = new Set<Function>();
+    let projected: RuntimeElement = child as RuntimeElement;
+    for (;;) {
+      const type = Object.getOwnPropertyDescriptor(projected, "type")?.value;
+      const props = Object.getOwnPropertyDescriptor(projected, "props")?.value;
+      if (typeof type !== "function" || visited.has(type) ||
+        !props || typeof props !== "object" || !Object.isFrozen(props)) return null;
+      visited.add(type);
+      const siteId = (type as SiteComponent<unknown>)[componentSite];
+      const revision = componentRevision(type);
+      if (!siteId || !revision || !isCompiledSemanticRevisionCurrent(revision)) return null;
+      if (steps.length && (revision.sourceFile !== steps[0].revision.sourceFile ||
+        revision.moduleRevision !== steps[0].revision.moduleRevision)) return null;
+      const descriptors = Object.getOwnPropertyDescriptors(props);
+      if (Reflect.ownKeys(descriptors).some((key) => typeof key !== "string") ||
+        Object.values(descriptors).some((descriptor) => !("value" in descriptor)) ||
+        descriptors.ref?.value != null) return null;
+      const authoredKey = descriptors.key?.value;
+      if (authoredKey != null && typeof authoredKey !== "string") return null;
+      const ownerKey = authoredKey ?? `@slot:${siteId}:0`;
+      const hostKeyScope = steps.length
+        ? ownerKey : `${boundaryOwner}\u0000${ownerKey}`;
+      const forward = closedComponentForwardProgramFor(type);
+      steps.push({ node: projected,
+        type: type as ComponentType<Record<string, unknown>>, props, descriptors,
+        siteId, ownerKey, hostKeyScope, revision,
+        ...(forward ? { forward } : {}) });
+      if (!forward) break;
+      if (steps.length > 8 ||
+        forward.childComponent === type ||
+        (forward.childComponent as SiteComponent<unknown>)[componentSite] !==
+          forward.childComponentProgramId ||
+        !componentCodeCurrent(forward.childComponent)) return null;
+      const nextRevision = componentRevision(forward.childComponent);
+      if (!nextRevision || nextRevision.sourceFile !== revision.sourceFile ||
+        nextRevision.moduleRevision !== revision.moduleRevision) return null;
+      const nextProps: Record<string, unknown> = {};
+      for (const [name, expression] of forward.props) {
+        if (expression.kind === "prop") {
+          const source = descriptors[expression.name];
+          if (!source || !("value" in source)) return null;
+          nextProps[name] = source.value;
+        } else nextProps[name] = expression.value;
+      }
+      nextProps.key = forward.key ?? `${hostKeyScope}:0`;
+      projected = Object.freeze({
+        type: forward.childComponent as RuntimeElement["type"],
+        props: Object.freeze(nextProps),
+      });
+    }
+    const leaf = steps.at(-1)!;
+    const childType = leaf.type;
+    const childProps = leaf.props;
+    const descriptors = leaf.descriptors;
     const legacyResourceProgram = closedResourceHostProgramFor(childType);
     const legacySource = legacyResourceProgram
-      ? Object.getOwnPropertyDescriptor(childProps, legacyResourceProgram.resourceProp)?.value
+      ? descriptors[legacyResourceProgram.resourceProp]?.value
       : undefined;
     const resourceProgram = legacySource === resource ? legacyResourceProgram : undefined;
     const storeProgram = closedStoreHostProgramFor(childType);
     if (!resourceProgram && !storeProgram) return null;
     const hostKey = (resourceProgram ?? storeProgram)!.host.key;
-    const revision = componentRevision(childType);
-    if (!revision) return null;
-    const descriptors = Object.getOwnPropertyDescriptors(childProps);
-    if (Object.values(descriptors).some((descriptor) => !("value" in descriptor))) {
-      return null;
-    }
     const source = resourceProgram ? descriptors[resourceProgram.resourceProp]?.value : undefined;
-    if (resourceProgram && source !== resource || descriptors.ref?.value != null) return null;
-    const siteId = getComponentSiteId(childType);
-    const authoredKey = descriptors.key?.value;
-    if (authoredKey != null && typeof authoredKey !== "string") return null;
-    const childKey = authoredKey ?? `@slot:${siteId}:0`;
-    if (this.world.findOwner(boundaryOwner, siteId, childKey) !== undefined) {
+    if (resourceProgram && source !== resource) return null;
+    const first = steps[0];
+    if (this.world.findOwner(boundaryOwner, first.siteId, first.ownerKey) !== undefined) {
       return null;
     }
     const oldOutput = boundaryCache.expandedResult;
@@ -3519,7 +3595,17 @@ export class ComponentStateRoot<H, Parent = H> {
     const acceptedReaders = new Map<string, Set<AnyAsyncStore>>();
     let preparedProgram: ReturnType<VDOMSnapshotRoot<H, Parent>["prepareKeyedRegionDeltas"]> = null;
     try {
-      const childOwner = preparation.resolveOwner(boundaryOwner, siteId, childKey);
+      const preparedOwners: OwnerId[] = [];
+      let parentOwner = boundaryOwner;
+      for (const step of steps) {
+        if (preparation.findOwner(parentOwner, step.siteId, step.ownerKey) !== undefined) {
+          throw new SparseCandidateIneligible();
+        }
+        const owner = preparation.resolveOwner(parentOwner, step.siteId, step.ownerKey);
+        preparedOwners.push(owner);
+        parentOwner = owner;
+      }
+      const childOwner = preparedOwners.at(-1)!;
       let generated: RuntimeElement | null = null;
       if (!resourceProgram && storeProgram) {
         const values: number[] = [];
@@ -3566,22 +3652,24 @@ export class ComponentStateRoot<H, Parent = H> {
         reads.discard();
         return null;
       }
-      const componentProps: Record<string, unknown> = {};
-      for (const [name, descriptor] of Object.entries(descriptors)) {
-        if (name !== "key" && name !== "ref") {
-          componentProps[name] = descriptor.value;
+      const preparedCaches = new Map<OwnerId, ComponentCache>();
+      for (let index = 0; index < steps.length; index++) {
+        const step = steps[index];
+        const componentProps: Record<string, unknown> = {};
+        for (const [name, descriptor] of Object.entries(step.descriptors)) {
+          if (name !== "key" && name !== "ref") componentProps[name] = descriptor.value;
         }
+        preparedCaches.set(preparedOwners[index], {
+          type: step.type,
+          hostKeyScope: step.hostKeyScope,
+          props: componentProps,
+          result: steps[index + 1]?.node ?? generated,
+          expandedResult: generated,
+          subtreeOwners: new Set(preparedOwners.slice(index)),
+          ownEffects: new Map(),
+          propBoundSites: new Set(),
+        });
       }
-      const childCache: ComponentCache = {
-        type: childType,
-        hostKeyScope: `${boundaryOwner}\u0000${childKey}`,
-        props: componentProps,
-        result: generated,
-        expandedResult: generated,
-        subtreeOwners: new Set([childOwner]),
-        ownEffects: new Map(),
-        propBoundSites: new Set(),
-      };
       preparedProgram = this.#vdom.prepareScopedHostSubtreeReplacements(
         [{ key: hostKey, tree: generated }],
       );
@@ -3591,13 +3679,33 @@ export class ComponentStateRoot<H, Parent = H> {
         reads.discard();
         return null;
       }
+      const forwardingCurrent = () => steps.every((step, index) => {
+        if (Object.getOwnPropertyDescriptor(step.node, "type")?.value !== step.type ||
+          Object.getOwnPropertyDescriptor(step.node, "props")?.value !== step.props ||
+          !isCompiledSemanticRevisionCurrent(step.revision) ||
+          (step.forward !== undefined &&
+            (closedComponentForwardProgramFor(step.type) !== step.forward ||
+              (step.forward.childComponent as SiteComponent<unknown>)[componentSite] !==
+                step.forward.childComponentProgramId ||
+              step.forward.childComponent !== steps[index + 1]?.type))) return false;
+        const now = Object.getOwnPropertyDescriptors(step.props);
+        const names = Reflect.ownKeys(now);
+        return names.length === Reflect.ownKeys(step.descriptors).length &&
+          names.every((name) => {
+            const original = step.descriptors[name as string];
+            const actual = now[name as string];
+            return original && actual && "value" in original && "value" in actual &&
+              Object.is(actual.value, original.value);
+          });
+      });
       const current = () =>
-        Object.getOwnPropertyDescriptor(child, "type")?.value === childType &&
-        Object.getOwnPropertyDescriptor(child, "props")?.value === childProps &&
+        Object.getOwnPropertyDescriptor(child, "type")?.value === steps[0].type &&
+        Object.getOwnPropertyDescriptor(child, "props")?.value === steps[0].props &&
+        forwardingCurrent() &&
         Object.getOwnPropertyDescriptor(oldOutput, "type")?.value === oldTag &&
         Object.getOwnPropertyDescriptor(oldOutput, "props")?.value === oldOutputProps &&
         closedResourceStatus(resource)?.status === "fulfilled" &&
-        !this.#codeInvalidated && isCompiledSemanticRevisionCurrent(revision) &&
+        !this.#codeInvalidated &&
         this.#componentCache.get(boundaryOwner) === boundaryCache &&
         this.#liveOwners.has(boundaryOwner) && this.world.isAlive(boundaryOwner) &&
         [...fallbackCaches].every(([owner, { cache, revision }]) =>
@@ -3608,13 +3716,13 @@ export class ComponentStateRoot<H, Parent = H> {
         ) && retiredEffects.every(([key, effect]) => this.#liveEffects.get(key) === effect) &&
         !this.#boundaryPrimaries.has(String(boundaryOwner)) &&
         boundaryCache.pendingResource === resource &&
-        this.world.findOwner(boundaryOwner, siteId, childKey) === undefined &&
+        this.world.findOwner(boundaryOwner, first.siteId, first.ownerKey) === undefined &&
         [...pendingReaders].every(([id, membership]) =>
           this.#liveStoreReaders.get(id) === membership) &&
         preparation.validatePublicationInputs();
       const sourceCurrent = () =>
         (resourceProgram ? Object.getOwnPropertyDescriptor(childProps, resourceProgram.resourceProp)?.value === source : true) &&
-        (storeProgram ? closedStoreHostInputs(storeProgram).every((input) =>
+        (!resourceProgram && storeProgram ? closedStoreHostInputs(storeProgram).every((input) =>
           Object.getOwnPropertyDescriptor(childProps, input.storeProp)?.value ===
             descriptors[input.storeProp]?.value) : true);
       const candidate = this.#createCandidateLifecycle({
@@ -3654,14 +3762,14 @@ export class ComponentStateRoot<H, Parent = H> {
           for (const owner of retired) this.#retireOwnerAccepted(owner);
           for (const [key] of retiredEffects) this.#liveEffects.delete(key);
           for (const owner of retired) this.#liveEffectKeysByOwner.delete(owner);
-          this.#componentCache.set(childOwner, childCache);
+          for (const [owner, cache] of preparedCaches) this.#componentCache.set(owner, cache);
           this.#componentCache.set(boundaryOwner, {
             ...boundaryCache,
             expandedResult: generated,
-            subtreeOwners: new Set([boundaryOwner, childOwner]),
+            subtreeOwners: new Set([boundaryOwner, ...preparedOwners]),
             pendingResource: undefined,
           });
-          this.#liveOwners.add(childOwner);
+          for (const owner of preparedOwners) this.#liveOwners.add(owner);
           for (const readerId of pendingReaders.keys()) this.#liveStoreReaders.delete(readerId);
           for (const [readerId, membership] of acceptedReaders) {
             this.#liveStoreReaders.set(readerId, membership);
@@ -3672,7 +3780,7 @@ export class ComponentStateRoot<H, Parent = H> {
             const cache = this.#componentCache.get(ancestor);
             if (!cache) continue;
             const subtreeOwners = cache.subtreeOwners as Set<OwnerId>;
-            subtreeOwners.add(childOwner);
+            for (const owner of preparedOwners) subtreeOwners.add(owner);
             this.#componentCache.set(ancestor, {
               ...cache,
               result: null,
@@ -3711,6 +3819,9 @@ export class ComponentStateRoot<H, Parent = H> {
         releaseArtifacts: () => {
           preparedProgram?.discard();
           preparedProgram = null;
+          preparedCaches.clear();
+          preparedOwners.length = 0;
+          steps.length = 0;
           fallbackCaches.clear();
           pendingReaders.clear();
           acceptedReaders.clear();

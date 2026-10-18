@@ -232,6 +232,8 @@ struct NativeComponentMetadata {
     closed_resource_host_program: Option<serde_json::Value>,
     #[serde(rename = "closedStoreHostProgram", skip_serializing_if = "Option::is_none")]
     closed_store_host_program: Option<serde_json::Value>,
+    #[serde(rename = "closedComponentForwardProgram", skip_serializing_if = "Option::is_none")]
+    closed_component_forward_program: Option<serde_json::Value>,
     #[serde(default)]
     collection_sites: Vec<NativeCollectionSiteMetadata>,
     numeric_sinks: Vec<NativeNumericSinkMetadata>,
@@ -3707,6 +3709,9 @@ fn compile_native_component_module(
     closed_store_collector.visit_program(&parsed.program);
     let closed_store_programs = closed_store_collector.programs;
     let closed_store_tuple_spans = closed_store_collector.tuple_spans;
+    let closed_forward_programs = closed_component_forward_programs(
+        &parsed.program, &state_plan.components, &semantic, source, revision,
+        &closed_resource_programs, &closed_store_programs);
     let import_span = state_plan
         .hook_import
         .clone()
@@ -4074,6 +4079,7 @@ fn compile_native_component_module(
         &component_state_layouts,
         &closed_resource_programs,
         &closed_store_programs,
+        &closed_forward_programs,
         &closed_store_tuple_spans,
     )?;
     let components = state_plan
@@ -4131,6 +4137,9 @@ fn compile_native_component_module(
             closed_store_host_program: closed_store_programs
                 .get(&component.component_site_id)
                 .cloned(),
+            closed_component_forward_program: closed_forward_programs
+                .get(&component.component_site_id)
+                .map(|edge| edge.program.clone()),
             store_sites: component
                 .store_sites
                 .iter()
@@ -4951,6 +4960,221 @@ impl<'a> Visit<'a> for ClosedResourceHostCollector<'_, 'a> {
     }
 }
 
+struct ClosedForwardEdge {
+    program: serde_json::Value,
+    child_name: String,
+    child_site: String,
+}
+
+fn closed_forward_prop_name(name: &str) -> bool {
+    name.bytes().next().is_some_and(|byte|
+        byte.is_ascii_alphabetic() || byte == b'_' || byte == b'$') &&
+        name.bytes().all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'$') &&
+        !matches!(name, "key" | "ref" | "children" | "__proto__" | "constructor" | "prototype")
+}
+
+fn closed_forward_raw_jsx_string(raw: &str, value: &str) -> bool {
+    !raw.chars().chain(value.chars()).any(|ch| matches!(ch, '&' | '\n' | '\r' | '\t'))
+}
+
+fn closed_forward_literal(expression: &Expression<'_>) -> Option<serde_json::Value> {
+    match expression {
+        Expression::ParenthesizedExpression(value) => closed_forward_literal(&value.expression),
+        Expression::UnaryExpression(value) if matches!(value.operator,
+            UnaryOperator::UnaryPlus | UnaryOperator::UnaryNegation) => {
+            let Expression::NumericLiteral(number) = &value.argument else { return None; };
+            let value = if value.operator == UnaryOperator::UnaryNegation {
+                -number.value
+            } else { number.value };
+            value.is_finite().then(|| serde_json::json!(value))
+        }
+        _ => closed_resource_literal(expression),
+    }
+}
+
+fn closed_component_forward_edge<'a>(
+    node: &Function<'a>, component: &ComponentStateSiteIr, semantic: &Semantic<'a>,
+    symbols: &BTreeMap<SymbolId, (String, String)>, source: &str, revision: &str,
+) -> Option<ClosedForwardEdge> {
+    if node.r#async || node.generator || node.params.items.len() > 1 ||
+        node.params.rest.is_some() || !component.state_sites.is_empty() ||
+        !component.effect_sites.is_empty() || !component.store_sites.is_empty() ||
+        !component.collection_sites.is_empty() { return None; }
+    let own_symbol = node.id.as_ref()?.symbol_id.get()?;
+    if symbols.get(&own_symbol)?.0 != component.name { return None; }
+    let mut props_symbol = None;
+    let mut destructured = BTreeMap::<SymbolId, String>::new();
+    if let Some(parameter) = node.params.items.first() {
+        if parameter.optional || parameter.initializer.is_some() { return None; }
+        match &parameter.pattern {
+            BindingPattern::BindingIdentifier(identifier) => props_symbol = identifier.symbol_id.get(),
+            BindingPattern::ObjectPattern(pattern) if pattern.rest.is_none() => {
+                for property in &pattern.properties {
+                    let BindingPattern::BindingIdentifier(local) = &property.value else { return None; };
+                    if property.computed { return None; }
+                    let name = type_property_name(&property.key)?;
+                    if !closed_forward_prop_name(name) { return None; }
+                    destructured.insert(local.symbol_id.get()?, name.to_owned());
+                }
+            }
+            _ => return None,
+        }
+    }
+    let body = node.body.as_ref()?;
+    if !body.directives.is_empty() || body.statements.len() != 1 { return None; }
+    let Statement::ReturnStatement(statement) = &body.statements[0] else { return None; };
+    let mut output = statement.argument.as_ref()?;
+    while let Expression::ParenthesizedExpression(parenthesized) = output {
+        output = &parenthesized.expression;
+    }
+    let Expression::JSXElement(element) = output else { return None; };
+    if !element.children.is_empty() || element.opening_element.attributes.len() > 33 { return None; }
+    let JSXElementName::IdentifierReference(target) = &element.opening_element.name else { return None; };
+    let child_symbol = reference_symbol(target, semantic)?;
+    let (child_name, child_site) = symbols.get(&child_symbol)?;
+    if child_site == &component.component_site_id { return None; }
+    let mut key = None;
+    let mut seen = BTreeSet::new();
+    let mut props = Vec::new();
+    for attribute in &element.opening_element.attributes {
+        let JSXAttributeItem::Attribute(attribute) = attribute else { return None; };
+        let JSXAttributeName::Identifier(name) = &attribute.name else { return None; };
+        let name = name.name.as_str();
+        if name == "key" {
+            if key.is_some() { return None; }
+            let Some(JSXAttributeValue::StringLiteral(value)) = attribute.value.as_ref() else { return None; };
+            if value.value.is_empty() || !closed_forward_raw_jsx_string(
+                &slice(source, span(value.span.start, value.span.end)), value.value.as_str()) { return None; }
+            key = Some(value.value.to_string());
+            continue;
+        }
+        if props.len() == 32 || !closed_forward_prop_name(name) ||
+            !seen.insert(name.to_owned()) { return None; }
+        let expression = match attribute.value.as_ref()? {
+            JSXAttributeValue::StringLiteral(value) if closed_forward_raw_jsx_string(
+                &slice(source, span(value.span.start, value.span.end)), value.value.as_str()) =>
+                serde_json::json!({"kind":"literal","value":value.value.as_str()}),
+            JSXAttributeValue::ExpressionContainer(container) => {
+                let mut expression = container.expression.as_expression()?;
+                while let Expression::ParenthesizedExpression(parenthesized) = expression {
+                    expression = &parenthesized.expression;
+                }
+                if let Expression::StaticMemberExpression(member) = expression {
+                    let Expression::Identifier(object) = &member.object else { return None; };
+                    if props_symbol.is_none() || reference_symbol(object, semantic) != props_symbol ||
+                        !closed_forward_prop_name(member.property.name.as_str()) { return None; }
+                    serde_json::json!({"kind":"prop","name":member.property.name.as_str()})
+                } else if let Expression::Identifier(identifier) = expression {
+                    let source = destructured.get(&reference_symbol(identifier, semantic)?)?;
+                    serde_json::json!({"kind":"prop","name":source})
+                } else {
+                    serde_json::json!({"kind":"literal","value":closed_forward_literal(expression)?})
+                }
+            }
+            _ => return None,
+        };
+        props.push(serde_json::json!([name, expression]));
+    }
+    Some(ClosedForwardEdge {
+        program: serde_json::json!({
+            "schemaVersion": 1,
+            "componentProgramId": component.component_site_id,
+            "moduleRevision": revision,
+            "childComponentProgramId": child_site,
+            "key": key,
+            "props": props,
+        }),
+        child_name: child_name.clone(), child_site: child_site.clone(),
+    })
+}
+
+fn closed_component_forward_programs<'a>(
+    program: &oxc_ast::ast::Program<'a>, components: &[ComponentStateSiteIr],
+    semantic: &Semantic<'a>, source: &str, revision: &str,
+    closed_resources: &BTreeMap<String, serde_json::Value>,
+    closed_stores: &BTreeMap<String, serde_json::Value>,
+) -> BTreeMap<String, ClosedForwardEdge> {
+    struct Symbols<'s, 'a> {
+        semantic: &'s Semantic<'a>,
+        components: &'s [ComponentStateSiteIr],
+        names: BTreeMap<SymbolId, (String, String)>,
+        direct_eval: bool,
+    }
+    impl<'a> Visit<'a> for Symbols<'_, 'a> {
+        fn visit_function(&mut self, node: &Function<'a>, flags: ScopeFlags) {
+            if let Some(component) = self.components.iter().find(|component|
+                component.declaration.start == node.span.start &&
+                component.declaration.end == node.span.end)
+                && let Some(symbol) = node.id.as_ref().and_then(|id| id.symbol_id.get())
+                && self.semantic.scoping().symbol_scope_id(symbol) ==
+                    self.semantic.scoping().root_scope_id()
+                && self.semantic.scoping().symbol_declarations(symbol).count() == 1
+                && self.semantic.scoping().get_resolved_references(symbol).all(|reference|
+                    !reference.is_write())
+            {
+                self.names.insert(symbol,
+                    (component.name.clone(), component.component_site_id.clone()));
+            }
+            walk::walk_function(self, node, flags);
+        }
+        fn visit_call_expression(&mut self, node: &CallExpression<'a>) {
+            let mut callee = &node.callee;
+            while let Expression::ParenthesizedExpression(parenthesized) = callee {
+                callee = &parenthesized.expression;
+            }
+            if matches!(callee, Expression::Identifier(identifier) if identifier.name == "eval") {
+                self.direct_eval = true;
+            }
+            walk::walk_call_expression(self, node);
+        }
+    }
+    let mut symbols = Symbols { semantic, components, names: BTreeMap::new(), direct_eval: false };
+    symbols.visit_program(program);
+    if symbols.direct_eval { return BTreeMap::new(); }
+    struct Edges<'s, 'a> {
+        semantic: &'s Semantic<'a>,
+        components: &'s [ComponentStateSiteIr],
+        names: &'s BTreeMap<SymbolId, (String, String)>,
+        source: &'s str,
+        revision: &'s str,
+        edges: BTreeMap<String, ClosedForwardEdge>,
+    }
+    impl<'a> Visit<'a> for Edges<'_, 'a> {
+        fn visit_function(&mut self, node: &Function<'a>, flags: ScopeFlags) {
+            if let Some(component) = self.components.iter().find(|component|
+                component.declaration.start == node.span.start &&
+                component.declaration.end == node.span.end)
+                && let Some(edge) = closed_component_forward_edge(node, component,
+                    self.semantic, self.names, self.source, self.revision)
+            {
+                self.edges.insert(component.component_site_id.clone(), edge);
+            }
+            walk::walk_function(self, node, flags);
+        }
+    }
+    let mut collector = Edges { semantic, components, names: &symbols.names, source, revision,
+        edges: BTreeMap::new() };
+    collector.visit_program(program);
+    fn reaches_closed_leaf(site: &str, edges: &BTreeMap<String, ClosedForwardEdge>,
+        resources: &BTreeMap<String, serde_json::Value>,
+        stores: &BTreeMap<String, serde_json::Value>,
+        visited: &mut BTreeSet<String>, depth: usize) -> bool {
+        if resources.contains_key(site) || stores.contains_key(site) { return true; }
+        if depth == 8 || !visited.insert(site.to_owned()) { return false; }
+        let result = edges.get(site).is_some_and(|edge| reaches_closed_leaf(
+            &edge.child_site, edges, resources, stores, visited, depth + 1));
+        visited.remove(site);
+        result
+    }
+    let edges = collector.edges;
+    edges.iter().filter(|(site, _)| reaches_closed_leaf(site, &edges,
+        closed_resources, closed_stores, &mut BTreeSet::new(), 0))
+        .map(|(site, edge)| (site.clone(), ClosedForwardEdge {
+            program: edge.program.clone(), child_name: edge.child_name.clone(),
+            child_site: edge.child_site.clone(),
+        })).collect()
+}
+
 fn transform_native_component_source(
     path: &str,
     source: &str,
@@ -4969,6 +5193,7 @@ fn transform_native_component_source(
     state_layouts: &BTreeMap<String, Vec<NativeStateLayoutSlotMetadata>>,
     closed_resource_programs: &BTreeMap<String, serde_json::Value>,
     closed_store_programs: &BTreeMap<String, serde_json::Value>,
+    closed_forward_programs: &BTreeMap<String, ClosedForwardEdge>,
     closed_store_tuple_spans: &BTreeMap<String, Vec<SourceSpan>>,
 ) -> Result<(String, Vec<NativeModuleEdit>), String> {
     let import_span = plan
@@ -5096,12 +5321,23 @@ fn transform_native_component_source(
             .get(&component.component_site_id)
             .map(|program| format!(", closedStoreHostProgram: {program}"))
             .unwrap_or_default();
+        let closed_forward_option = closed_forward_programs
+            .get(&component.component_site_id)
+            .map(|edge| {
+                let mut program = edge.program.to_string();
+                program.pop();
+                program.push_str(",\"childComponent\":");
+                program.push_str(&edge.child_name);
+                program.push('}');
+                format!(", closedComponentForwardProgram: {program}")
+            })
+            .unwrap_or_default();
         let owner_kernel_option = owner_kernel_indices
             .get(&component.component_site_id)
             .map(|index| format!(", ownerUpdateProgram: {}[{index}]", aliases[9]))
             .unwrap_or_default();
         registrations.push_str(&format!(
-            "\n{}({}, {}, {{ propOnlySites: [{}]{}{}{}{}{} }});",
+            "\n{}({}, {}, {{ propOnlySites: [{}]{}{}{}{}{}{} }});",
             aliases[0],
             site,
             component.name,
@@ -5115,6 +5351,7 @@ fn transform_native_component_source(
             owner_kernel_option,
             closed_resource_option,
             closed_store_option,
+            closed_forward_option,
         ));
         for state in &component.state_sites {
             let site = serde_json::to_string(&state.site_id).map_err(|error| error.to_string())?;
@@ -8247,6 +8484,145 @@ export function ExistingTree(props) { const x = use(props.store); return <div ke
         assert!(response.error.is_none(), "{:?}", response.error);
         assert!(response.plan.unwrap().components.as_ref().unwrap()[0]
             .closed_store_host_program.is_none());
+    }
+
+    #[test]
+    fn emits_bounded_component_forwarding_with_symbol_provenance_and_function_refs() {
+        let response = compile_state("native-component-forwarding.tsx",
+            include_str!("../../fixtures/native-component-forwarding.tsx"));
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let plan = response.plan.unwrap();
+        let revision = plan.module_revision.clone();
+        let code = plan.component_module.as_ref().unwrap();
+        let components = plan.components.as_ref().unwrap();
+        for (name, child, key, props) in [
+            ("DomOuter", "DomMiddle", "dom-middle", ["secondary", "motion", "primary"]),
+            ("DomMiddle", "Dom", "dom-leaf", ["second", "position", "first"]),
+            ("ThreeOuter", "ThreeMiddle", "three-middle", ["secondary", "motion", "primary"]),
+            ("ThreeMiddle", "Three", "three-leaf", ["second", "position", "first"]),
+        ] {
+            let component = components.iter().find(|item| item.name == name).unwrap();
+            let child_component = components.iter().find(|item| item.name == child).unwrap();
+            let forward = component.closed_component_forward_program.as_ref().unwrap();
+            assert_eq!(forward["schemaVersion"], 1);
+            assert_eq!(forward["componentProgramId"], component.component_site_id);
+            assert_eq!(forward["moduleRevision"], revision);
+            assert_eq!(forward["childComponentProgramId"], child_component.component_site_id);
+            assert_eq!(forward["key"], key);
+            assert_eq!(forward["props"].as_array().unwrap().len(), 3);
+            assert!(forward.get("childComponent").is_none(),
+                "serializable plan must not contain a function ref");
+            for (index, source) in props.iter().enumerate() {
+                assert_eq!(forward["props"][index][1],
+                    serde_json::json!({"kind":"prop","name":source}));
+            }
+            assert!(code.contains(&format!("\"childComponent\":{child}")));
+        }
+        for name in ["Dom", "Three", "OpaqueTraced", "HealthDom", "HealthThree"] {
+            assert!(components.iter().find(|item| item.name == name).unwrap()
+                .closed_component_forward_program.is_none(), "{name} unexpectedly closed");
+        }
+        assert_eq!(components.iter().find(|item| item.name == "Dom").unwrap()
+            .closed_store_host_program.as_ref().unwrap()["schemaVersion"], 5);
+        assert_eq!(components.iter().find(|item| item.name == "Three").unwrap()
+            .closed_store_host_program.as_ref().unwrap()["schemaVersion"], 5);
+        assert_eq!(code.matches("closedComponentForwardProgram:").count(), 4);
+        let source = "import { use } from \"native_runtime_api.ts\"; function Leaf(props) { const x = use(props.store); return <output key=\"leaf\" data-value={x}/>; } function LiteralWrapper({ source }) { return <Leaf store={source} flag={true} zero={0} minus={-2} empty={null} label=\"ok\"/>; }";
+        let response = compile_state("forward-literals.tsx", source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let wrapper = response.plan.unwrap().components.unwrap().into_iter()
+            .find(|item| item.name == "LiteralWrapper").unwrap();
+        let program = wrapper.closed_component_forward_program.unwrap();
+        assert!(program["key"].is_null());
+        assert_eq!(program["props"], serde_json::json!([
+            ["store", {"kind":"prop","name":"source"}],
+            ["flag", {"kind":"literal","value":true}],
+            ["zero", {"kind":"literal","value":0.0}],
+            ["minus", {"kind":"literal","value":-2.0}],
+            ["empty", {"kind":"literal","value":null}],
+            ["label", {"kind":"literal","value":"ok"}],
+        ]));
+    }
+
+    #[test]
+    fn component_forwarding_rejects_opaque_bindings_and_overdeep_chains() {
+        let prefix = "import { use } from \"native_runtime_api.ts\"; function Leaf(props) { const x = use(props.store); return <output key=\"leaf\" data-value={x}/>; }";
+        for (count, accepted) in [(32, true), (33, false)] {
+            let fields = (0..count - 1).map(|index| format!(" field{index}={{1}}"))
+                .collect::<String>();
+            let source = format!("{prefix} function Wrapper(props) {{ return <Leaf store={{props.store}}{fields}/>; }}");
+            let response = compile_state(&format!("forward-{count}-props.tsx"), &source);
+            assert!(response.error.is_none(), "{count}: {:?}", response.error);
+            let wrapper = response.plan.unwrap().components.unwrap().into_iter()
+                .find(|item| item.name == "Wrapper").unwrap();
+            assert_eq!(wrapper.closed_component_forward_program.is_some(), accepted,
+                "{count} forwarded props");
+        }
+        for (name, attributes) in [
+            ("key-entity", "key=\"a&amp;b\" store={props.store}"),
+            ("key-newline", "key=\"a\nb\" store={props.store}"),
+            ("key-return", "key=\"a\rb\" store={props.store}"),
+            ("key-tab", "key=\"a\tb\" store={props.store}"),
+            ("prop-entity", "store={props.store} label=\"a&amp;b\""),
+            ("prop-newline", "store={props.store} label=\"a\nb\""),
+            ("prop-return", "store={props.store} label=\"a\rb\""),
+            ("prop-tab", "store={props.store} label=\"a\tb\""),
+        ] {
+            let source = format!("{prefix} function Wrapper(props) {{ return <Leaf {attributes}/>; }}");
+            let response = compile_state(&format!("forward-{name}.tsx"), &source);
+            assert!(response.error.is_none(), "{name}: {:?}", response.error);
+            let wrapper = response.plan.unwrap().components.unwrap().into_iter()
+                .find(|item| item.name == "Wrapper").unwrap();
+            assert!(wrapper.closed_component_forward_program.is_none(),
+                "{name} unexpectedly closed");
+        }
+        for (name, wrapper, suffix) in [
+            ("callback", "function Wrapper(props) { return <Leaf key=\"w\" store={helper(props.store)}/>; }", ""),
+            ("spread", "function Wrapper(props) { return <Leaf key=\"w\" {...props}/>; }", ""),
+            ("ref", "function Wrapper(props) { return <Leaf key=\"w\" ref={props.ref} store={props.store}/>; }", ""),
+            ("children", "function Wrapper(props) { return <Leaf key=\"w\" store={props.store}>child</Leaf>; }", ""),
+            ("branch", "function Wrapper(props) { if (props.flag) return <Leaf key=\"w\" store={props.store}/>; return <Leaf key=\"w\" store={props.store}/>; }", ""),
+            ("effect", "function Wrapper(props) { log(props); return <Leaf key=\"w\" store={props.store}/>; }", ""),
+            ("shadow", "function Wrapper(Leaf) { return <Leaf key=\"w\" store={1}/>; }", ""),
+            ("reassigned", "function Wrapper(props) { return <Leaf key=\"w\" store={props.store}/>; }", "Leaf = replacement;"),
+            ("destructuring-write", "function Wrapper(props) { return <Leaf key=\"w\" store={props.store}/>; }", "({ Leaf } = replacement);"),
+            ("increment-write", "function Wrapper(props) { return <Leaf key=\"w\" store={props.store}/>; }", "++Leaf;"),
+            ("eval", "function Wrapper(props) { return <Leaf key=\"w\" store={props.store}/>; }", "function unrelated() { eval('0'); }"),
+        ] {
+            let source = format!("{prefix} {wrapper} {suffix}");
+            let response = compile_state(&format!("forward-{name}.tsx"), &source);
+            assert!(response.error.is_none(), "{name}: {:?}", response.error);
+            let wrapper = response.plan.unwrap().components.unwrap().into_iter()
+                .find(|item| item.name == "Wrapper").unwrap();
+            assert!(wrapper.closed_component_forward_program.is_none(),
+                "{name} unexpectedly closed");
+        }
+        for (name, before, wrapper) in [
+            ("imported", "import { Leaf } from './foreign.tsx';", "function Wrapper(props) { return <Leaf key=\"w\" store={props.store}/>; }"),
+            ("qualified", "const foreign = { Leaf };", "function Wrapper(props) { return <foreign.Leaf key=\"w\" store={props.store}/>; }"),
+        ] {
+            let source = format!("import {{ use }} from \"native_runtime_api.ts\"; {before} function LeafLocal(props) {{ const x = use(props.store); return <output key=\"leaf\" data-value={{x}}/>; }} {wrapper}");
+            let response = compile_state(&format!("forward-{name}.tsx"), &source);
+            assert!(response.error.is_none(), "{name}: {:?}", response.error);
+            assert!(response.plan.unwrap().components.unwrap().into_iter()
+                .find(|item| item.name == "Wrapper").unwrap()
+                .closed_component_forward_program.is_none(), "{name} unexpectedly closed");
+        }
+        let cycle = "import { use } from \"native_runtime_api.ts\"; function A(props) { return <B key=\"b\" x={props.x}/>; } function B(props) { return <A key=\"a\" x={props.x}/>; }";
+        let response = compile_state("forward-cycle.tsx", cycle);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        assert!(response.plan.unwrap().components.unwrap().iter().all(|component|
+            component.closed_component_forward_program.is_none()));
+        let chain = (0..9).map(|index| format!("function Wrap{index}(props) {{ return <{} key=\"w{index}\" store={{props.store}}/>; }}",
+            if index == 8 { "Leaf".to_owned() } else { format!("Wrap{}", index + 1) }))
+            .collect::<Vec<_>>().join(" ");
+        let response = compile_state("forward-depth.tsx", &format!("{prefix} {chain}"));
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let components = response.plan.unwrap().components.unwrap();
+        assert!(components.iter().find(|item| item.name == "Wrap0").unwrap()
+            .closed_component_forward_program.is_none());
+        assert!(components.iter().find(|item| item.name == "Wrap1").unwrap()
+            .closed_component_forward_program.is_some());
     }
 
     #[test]

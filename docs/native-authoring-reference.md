@@ -167,11 +167,26 @@ function App() {
 }
 ```
 
-Scoped initial reveal requires the direct closed component as the boundary's primary child and an eligible accepted fallback with the same logical root key. Every resource needed by that output must be fulfilled; an unrelated boundary may remain pending. An opaque wrapper around the primary uses generic preparation. Legacy single-resource programs retain their primitive/string behavior.
+Scoped initial reveal requires a closed component, directly or through the proven forwarding subset below, as the boundary's primary child and an eligible accepted fallback with the same logical root key. Every resource needed by that output must be fulfilled; an unrelated boundary may remain pending. An opaque wrapper around the primary uses generic preparation. Legacy single-resource programs retain their primitive/string behavior.
 
 A Store read before suspension transfers its exact accepted reader history to the revealed owner in the same publication. A Store first discovered after suspension is captured before host work; a newer host-time action survives even before its first subscription attaches. Later selected Store updates retain the fixed host/text tree while validating all joint Store/resource inputs. Dependencies select affected consumers; explicit transaction APIs declare which outputs must agree. Field paths do not infer transaction groups. Whole-tree candidates retain their existing guards, and arbitrary host writes cannot be rolled back.
 
 The [source contract](../implementation/2026-10-18-joint-async-inputs/design.md) and [actual compiled fixture](../compiler/compiled_joint_async_inputs_test.mjs) identify this finite subset. The [consolidated gate](../implementation/2026-10-18-joint-async-inputs/verification/results.md) passes 968 runtime tests, 61 Rust tests and actual compiled DOM/Three/fork execution. Automatic queued-scheduling regressions and an untimed repaired-build browser replay cover later live updates and teardown; the sole matched comparison timed out and supplies no performance result.
+
+### Pure local component forwarding
+
+The compiler may follow up to eight module-local wrapper components into a closed resource/Store host program. Each wrapper is a synchronous named function with one direct JSX return of another local named component. Its props forward direct own fields or destructured parameter names, or finite primitive literals. A literal nonempty string key is optional; an absent key follows ordinary native slot/key identity. Each wrapper retains its own owner and accepted cache, and leaf hook readers belong to the leaf owner.
+
+```tsx
+type JointInputs = { sample: typeof sample; position: typeof position };
+function Forward({ sample, position }: JointInputs) {
+  return <Joint sample={sample} position={position} />;
+}
+```
+
+The example assumes Joint and the domain handles from the preceding section. Up to 32 unique forwarded props are supported. Spread, refs, children, callbacks, hooks, effects, branches, defaults, imported/qualified/shadowed/reassigned targets and cycles decline this proof. Direct eval conservatively disables forwarding. Raw JSX attribute strings with entities or line/tab whitespace decline; expression string literals retain JavaScript decoding. Unproven wrappers still render through generic reconciliation.
+
+The emitted target function/site and module revision must match at admission. Stale code, removed owners, changed source inputs or revoked writers invalidate the scoped candidate. No authored wrapper is invoked during closed preparation. The [source contract](../implementation/2026-10-18-component-forwarding/design.md) and [actual compiled DOM/Three/fork fixture](../compiler/compiled_component_forwarding_test.mjs) define this subset. Consolidated Darwin verification passes 978 runtime tests, 63 Rust tests and all 21 compiled fixtures, including exact wrapper owner lineage, grouped updates, generic retry and cleanup. These correctness results do not establish a performance advantage.
 
 ## Diagnostics, fallback, and bridge boundary
 
