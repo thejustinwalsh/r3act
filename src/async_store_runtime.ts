@@ -187,6 +187,7 @@ export class StoreRenderSnapshot<S, A = StoreAction<S, S>> {
     readonly state: S,
     readonly version: number,
     private readonly rootEpoch: object,
+    /** Legacy name for canonical callback-free capture, including selected record paths. */
     readonly closedNumeric = false,
   ) {}
 
@@ -368,14 +369,19 @@ export class AsyncStore<S, A = StoreAction<S, S>> implements StoreSource<S> {
     );
   }
 
-  /** Capture a direct numeric read without invoking a source or reducer callback. */
-  _beginClosedNumericRender(rootId: string): StoreRenderSnapshot<S, A> | null {
+  /** Capture canonical Store state and selected values before registering a root. */
+  _beginClosedProjectionRender(
+    rootId: string,
+    paths: readonly (readonly string[])[],
+  ): { snapshot: StoreRenderSnapshot<S, A>; values: readonly number[] } | null {
     try {
       const entries = this.#entries;
       if (!canonicalClosedNumericStore.call(this)) {
         return null;
       }
 
+      const version = this.#rootVersions.get(rootId) ?? 0;
+      let rootEpoch = this.#rootEpochs.get(rootId);
       let state = this.#baseState;
       for (const entry of entries) {
         const transitionId = entry.priority.kind === "transition"
@@ -388,18 +394,22 @@ export class AsyncStore<S, A = StoreAction<S, S>> implements StoreSource<S> {
         if (transitionId !== null && (pending || open)) return null;
         state = entry.state;
       }
-      if (typeof state !== "number" || !Number.isFinite(state)) return null;
+      const values = captureClosedProjectionValues(state, paths);
+      if (!values || !canonicalClosedNumericStore.call(this)) return null;
       this.#knownRoots.add(rootId);
-      let rootEpoch = this.#rootEpochs.get(rootId);
       if (!rootEpoch) this.#rootEpochs.set(rootId, rootEpoch = {});
-      return new StoreRenderSnapshot(
-        this, rootId, {}, state, this.#rootVersions.get(rootId) ?? 0,
-        rootEpoch, true,
-      );
+      return { snapshot: new StoreRenderSnapshot(
+        this, rootId, {}, state, version, rootEpoch, true,
+      ), values };
     } catch (error) {
       if (error instanceof TypeError) return null;
       throw error;
     }
+  }
+
+  /** Legacy direct numeric capture uses the same canonical projection path. */
+  _beginClosedNumericRender(rootId: string): StoreRenderSnapshot<S, A> | null {
+    return canonicalBeginClosedProjectionRender.call(this, rootId, closedDirectProjectionPaths)?.snapshot ?? null;
   }
 
   _isClosedNumericCanonical(): boolean {
@@ -1007,7 +1017,7 @@ const closedNumericPrototypeDescriptors = new Map(
   ]),
 );
 const canonicalClosedNumericStore = AsyncStore.prototype._isClosedNumericCanonical;
-const canonicalBeginClosedNumericRender = AsyncStore.prototype._beginClosedNumericRender;
+const canonicalBeginClosedProjectionRender = AsyncStore.prototype._beginClosedProjectionRender;
 const canonicalValidateRender = AsyncStore.prototype._validateRender;
 const canonicalValidateRenderLineage = AsyncStore.prototype._validateRenderLineage;
 const canonicalPrepareReaderValues = AsyncStore.prototype._prepareReaderValues;
@@ -1038,6 +1048,88 @@ export type StoreRenderObservation = Readonly<{
   source: StoreSource<unknown>;
   value: unknown;
 }>;
+
+const ownedStoreRecords = new WeakSet<object>();
+
+/** Copy one plain data record into immutable runtime-owned Store state. */
+export function storeRecord<T extends object>(input: T): Readonly<T> {
+  if (Array.isArray(input)) throw new TypeError("Store record cannot be an array");
+  const prototype = Object.getPrototypeOf(input);
+  if (prototype !== Object.prototype && prototype !== null) {
+    throw new TypeError("Store record requires a plain prototype");
+  }
+  const descriptors = Object.getOwnPropertyDescriptors(input) as unknown as
+    Record<PropertyKey, PropertyDescriptor>;
+  const copy = Object.create(prototype) as T;
+  for (const key of Reflect.ownKeys(descriptors)) {
+    if (typeof key !== "string" || key === "__proto__" ||
+      key === "constructor" || key === "prototype") {
+      throw new TypeError("Store record has an unsafe property");
+    }
+    const descriptor = descriptors[key];
+    if (!descriptor || !("value" in descriptor)) {
+      throw new TypeError("Store record requires own data properties");
+    }
+    Object.defineProperty(copy, key, {
+      value: descriptor.value,
+      enumerable: descriptor.enumerable,
+      writable: false,
+      configurable: false,
+    });
+  }
+  Object.freeze(copy);
+  ownedStoreRecords.add(copy);
+  return copy;
+}
+
+const closedPathSegment = (value: unknown): value is string =>
+  typeof value === "string" && /^[A-Za-z_$][\w$]*$/.test(value) &&
+  value !== "__proto__" && value !== "constructor" && value !== "prototype";
+const closedDirectProjectionPaths = Object.freeze([Object.freeze([] as string[])]);
+
+const closedDataArray = (value: unknown, maximum: number): unknown[] | null => {
+  if (!Array.isArray(value)) return null;
+  const descriptors = Object.getOwnPropertyDescriptors(value) as unknown as Record<string, PropertyDescriptor>;
+  const length = descriptors.length?.value;
+  if (typeof length !== "number" || !Number.isSafeInteger(length) || length < 0 || length > maximum ||
+    Reflect.ownKeys(value).length !== length + 1 ||
+    Object.keys(descriptors).length !== length + 1) return null;
+  const result: unknown[] = [];
+  for (let index = 0; index < length; index++) {
+    const descriptor = descriptors[index];
+    if (!descriptor || !("value" in descriptor)) return null;
+    result.push(descriptor.value);
+  }
+  return result;
+};
+
+const captureClosedProjectionValues = (
+  state: unknown,
+  paths: readonly (readonly string[])[],
+): readonly number[] | null => {
+  try {
+    const selectedPaths = closedDataArray(paths, 32);
+    if (!selectedPaths || selectedPaths.length < 1) return null;
+    const values: number[] = [];
+    for (const rawPath of selectedPaths) {
+      const path = closedDataArray(rawPath, 8);
+      if (!path) return null;
+      let value = state;
+      for (const segment of path) {
+        if (!closedPathSegment(segment) || typeof value !== "object" ||
+          value === null || !ownedStoreRecords.has(value)) return null;
+        const descriptor = Object.getOwnPropertyDescriptor(value, segment);
+        if (!descriptor || !("value" in descriptor)) return null;
+        value = descriptor.value;
+      }
+      if (typeof value !== "number" || !Number.isFinite(value)) return null;
+      values.push(value);
+    }
+    return Object.freeze(values);
+  } catch {
+    return null;
+  }
+};
 
 type CheckpointState = {
   cursor: number;
@@ -1316,55 +1408,59 @@ export class StoreRenderTransaction {
     }
     map.delete(key);
   }
-  /** Stage one direct Store numeric read without invoking authored read logic. */
-  readClosedNumeric(
+
+  /** Stage selected numeric paths while recording the actual whole-state observation. */
+  readClosedProjections(
     store: AnyAsyncStore,
     readerId: string,
-  ): number | null {
+    paths: readonly (readonly string[])[],
+  ): readonly number[] | null {
     if (this.#closed || this.#preparedPublication) {
       throw new Error("Cannot read a closed or prepared store transaction");
     }
     if (!readerId) throw new Error("A store reader requires a site ID");
     const cached = this.#values.get(readerId);
-    if (cached) {
-      return this.#snapshots.get(store)?.closedNumeric === true &&
-          cached.source === store && typeof cached.value === "number" &&
-          Number.isFinite(cached.value)
-        ? cached.value
-        : null;
-    }
+    if (cached && cached.source !== store) return null;
     let snapshot = this.#snapshots.get(store);
+    let values: readonly number[] | null;
     if (!snapshot) {
-      snapshot = canonicalBeginClosedNumericRender.call(
-        store,
-        this.rootId,
-      ) ?? undefined;
-      if (!snapshot) return null;
-      if (store.mutationEpoch > this.#startedEpoch) {
-        this.#discoveredAfterMutation = true;
-      }
+      const captured = canonicalBeginClosedProjectionRender.call(store, this.rootId, paths);
+      if (!captured) return null;
+      snapshot = captured.snapshot;
+      values = captured.values;
+    } else {
+      values = captureClosedProjectionValues(snapshot.state, paths);
+    }
+    if (!snapshot.closedNumeric || !canonicalClosedNumericStore.call(store)) return null;
+    if (!values) return null;
+    if (!this.#snapshots.has(store)) {
+      if (store.mutationEpoch > this.#startedEpoch) this.#discoveredAfterMutation = true;
       this.#snapshots.set(store, snapshot);
       this.#states.set(store, snapshot.state);
     }
-    if (
-      !snapshot.closedNumeric ||
-      !canonicalClosedNumericStore.call(store) ||
-      typeof snapshot.state !== "number" || !Number.isFinite(snapshot.state)
-    ) return null;
-
-    this.#setJournaled(this.#readers, readerId, new Set([store]));
-    let pending = this.#pending.get(store);
-    if (!pending) {
-      pending = new Map();
-      this.#setJournaled(this.#pending, store, pending);
+    if (!cached) {
+      this.#setJournaled(this.#readers, readerId, new Set([store]));
+      let pending = this.#pending.get(store);
+      if (!pending) {
+        pending = new Map();
+        this.#setJournaled(this.#pending, store, pending);
+      }
+      this.#setJournaled(pending, readerId, new Map());
+      this.#setJournaled(this.#values, readerId, {
+        source: store,
+        value: snapshot.state,
+      });
+      this.#recordBranchChange(readerId);
     }
-    this.#setJournaled(pending, readerId, new Map());
-    this.#setJournaled(this.#values, readerId, {
-      source: store,
-      value: snapshot.state,
-    });
-    this.#recordBranchChange(readerId);
-    return snapshot.state;
+    return values;
+  }
+
+  /** Compatibility wrapper for one direct numeric Store state. */
+  readClosedNumeric(
+    store: AnyAsyncStore,
+    readerId: string,
+  ): number | null {
+    return this.readClosedProjections(store, readerId, closedDirectProjectionPaths)?.[0] ?? null;
   }
   read<T>(source: StoreSource<T>, readerId: string): T {
     if (this.#closed || this.#preparedPublication) {

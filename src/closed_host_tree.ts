@@ -20,8 +20,10 @@ export const normalizeClosedHostTree = (
   input: unknown,
   inputCount: number,
   allowAggregates: boolean,
+  maximumInputs = 8,
 ): ClosedHostTreeNode | null => {
-  if (!Number.isSafeInteger(inputCount) || inputCount < 1 || inputCount > 8) return null;
+  if (!Number.isSafeInteger(maximumInputs) || maximumInputs < 1 || maximumInputs > 32 ||
+    !Number.isSafeInteger(inputCount) || inputCount < 1 || inputCount > maximumInputs) return null;
   const active = new Set<object>();
   const keys = new Set<string>();
   let nodes = 0;

@@ -1,0 +1,5 @@
+The exact-command.sh invocation ran once and created benchmark/proof-v1/build-proof.json with status BUILD_CAPTURED_PENDING_PRIMARY_REVIEW, embedded Vite exitCode 0, all assertions true, all source input hashes matching, and compiler before/after hashes equal. The post-command capture wrapper then exited 1 because zsh reserves the variable name `status`:
+
+capture-execution.sh:6: read-only variable: status
+
+No build retry was made. The wrapper's exit 1 is not the build result. The build-gate Node process exit is recovered as 0 from its success status: build-gate.mjs sets process.exitCode only when proof.status differs from BUILD_CAPTURED_PENDING_PRIMARY_REVIEW, and this proof has the success status. Vite's own exitCode 0 is directly recorded in build-proof.json. Outer tool call returned exit_code 1 for the capture wrapper.

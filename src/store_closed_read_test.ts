@@ -1,6 +1,7 @@
 import {
   AsyncStore,
   createAsyncStore,
+  storeRecord,
   StoreRenderTransaction,
 } from "./async_store_runtime.ts";
 
@@ -79,11 +80,13 @@ Deno.test("closed numeric cut declines noncanonical Stores and nonfinite values"
     configurable: true,
   });
   equal(transaction.readClosedNumeric(shadowed, "shadowed"), null, "own read override");
-  equal(transaction.readClosedNumeric(createAsyncStore(Infinity), "infinite"), null, "nonfinite");
+  const nonfinite = createAsyncStore(Infinity);
+  equal(transaction.readClosedNumeric(nonfinite, "infinite"), null, "nonfinite");
   const proxy = new Proxy(createAsyncStore(4), {});
   equal(transaction.readClosedNumeric(proxy, "proxy"), null, "proxy");
   equal(transaction.readers.size, 0, "declined stores staged readers");
   transaction.discard();
+  equal(nonfinite.diagnostics().roots, 0, "nonfinite numeric capture registered a root");
 });
 
 Deno.test("closed numeric cut rejects Store prototype replacement before admission or publication", () => {
@@ -125,4 +128,143 @@ Deno.test("closed numeric cut rejects Store prototype replacement before admissi
     Object.defineProperty(AsyncStore.prototype, "_publishPreparedReaderValues", publication);
     prepared.discard();
   }
+});
+
+Deno.test("closed projections retain whole Store observations across sites and fork histories", () => {
+  type PositionState = Readonly<{ position: Readonly<{ x: number; y: number }>; camera: number }>;
+  const state: PositionState = storeRecord({ position: storeRecord({ x: 2, y: 3 }), camera: 7 });
+  const store = createAsyncStore(state);
+  const fork = new StoreRenderTransaction("fork");
+  equal(fork.readClosedProjections(store, "fork-site", [["position", "x"]])?.[0], 2, "fork projection");
+  fork.preparePublication();
+  fork.publishAccepted();
+  const root = new StoreRenderTransaction("root");
+  equal(root.readClosedProjections(store, "x-site", [["position", "x"], ["position", "y"]])?.join(","), "2,3", "joint projection");
+  equal(root.readClosedProjections(store, "camera-site", [["camera"]])?.[0], 7, "second site");
+  equal(root.getObservation("x-site")?.value, state, "projection replaced whole-state history");
+  equal(root.getObservation("camera-site")?.value, state, "sites did not share pinned state");
+  equal(root.readers.size, 2, "distinct reader sites were collapsed");
+  root.preparePublication();
+  root.publishAccepted();
+  equal(store.diagnostics().readers, 3, "fork or root reader history was lost");
+  const next = storeRecord({ position: storeRecord({ x: 9, y: 10 }), camera: 11 });
+  store.dispatch(next);
+  const updated = new StoreRenderTransaction("root");
+  equal(updated.readClosedProjections(store, "x-site", [["position", "x"]])?.[0], 9, "new action");
+  equal(updated.getObservation("x-site")?.value, next, "new state observation");
+  updated.discard();
+  equal(store._readerValuesFor("fork", "fork-site").size, 0, "fork reader history changed");
+});
+
+Deno.test("closed projections reject unsafe records without calling getters", () => {
+  let getterCalls = 0;
+  const accessor = Object.freeze(Object.defineProperty({}, "x", {
+    configurable: true,
+    get() { getterCalls++; return 1; },
+  }));
+  const unrelatedAccessor = Object.freeze(Object.defineProperties({ x: 1 }, {
+    hidden: { configurable: true, get() { getterCalls++; return 2; } },
+  }));
+  const values: Array<[unknown, readonly (readonly string[])[]]> = [
+    [storeRecord({ position: accessor }), [["position", "x"]]],
+    [storeRecord({ position: unrelatedAccessor }), [["position", "x"]]],
+    [{ position: Object.freeze({ x: 1 }) }, [["position", "x"]]],
+    [storeRecord({ position: { x: 1 } }), [["position", "x"]]],
+    [storeRecord({ position: Object.freeze([1]) }), [["position", "length"]]],
+    [storeRecord({ position: Object.freeze(Object.create({ x: 1 })) }), [["position", "x"]]],
+    [storeRecord({ position: storeRecord({ x: Infinity }) }), [["position", "x"]]],
+  ];
+  for (const [value, paths] of values) {
+    const store = createAsyncStore(value);
+    const cut = new StoreRenderTransaction("root");
+    equal(cut.readClosedProjections(store, "reader", paths), null, "unsafe shape");
+    equal(cut.readers.size, 0, "unsafe reader staged");
+    cut.discard();
+    equal(store.diagnostics().roots, 0, "declined shape registered a root");
+  }
+  equal(getterCalls, 0, "authored getter ran");
+  const store = createAsyncStore(storeRecord({ x: 1 }));
+  const accessorPath = ["x"];
+  Object.defineProperty(accessorPath, "0", { get() { getterCalls++; return "x"; } });
+  const accessorCut = new StoreRenderTransaction("root");
+  equal(accessorCut.readClosedProjections(store, "reader", [accessorPath]), null, "path getter");
+  accessorCut.discard();
+  equal(store.diagnostics().roots, 0, "declined path registered a root");
+  equal(getterCalls, 0, "path getter ran");
+  for (const paths of [[], [["x", "y", "z", "a", "b", "c", "d", "e", "f"]],
+    Array.from({ length: 33 }, () => ["x"]), [["__proto__"]]]) {
+    const cut = new StoreRenderTransaction("root");
+    equal(cut.readClosedProjections(store, "reader", paths), null, "path bound");
+    cut.discard();
+    equal(store.diagnostics().roots, 0, "declined path bound registered a root");
+  }
+});
+
+Deno.test("path descriptor traps cannot publish a stale closed projection", () => {
+  let store: AsyncStore<Readonly<{ x: number }>>;
+  let mutated = false;
+  const path = new Proxy(["x"], {
+    getOwnPropertyDescriptor(object, name) {
+      if (!mutated) {
+        mutated = true;
+        store.dispatch(storeRecord({ x: 2 }));
+      }
+      return Reflect.getOwnPropertyDescriptor(object, name);
+    },
+  });
+  store = createAsyncStore<Readonly<{ x: number }>>(storeRecord({ x: 1 }));
+  const cut = new StoreRenderTransaction("root");
+  equal(cut.readClosedProjections(store, "reader", [path])?.[0], 1, "captured old value");
+  equal(cut.validate(), false, "proxy mutation passed final live validation");
+  cut.discard();
+});
+
+Deno.test("storeRecord copies once and requires explicit ownership at each selected level", () => {
+  const authored = { x: 3, nested: { y: 4 } };
+  const owned = storeRecord(authored);
+  equal(owned === authored, false, "constructor returned authored object");
+  equal(Object.isFrozen(owned), true, "owned record is mutable");
+  authored.x = 9;
+  equal(owned.x, 3, "authored alias changed owned value");
+  const outer = createAsyncStore(owned);
+  const direct = new StoreRenderTransaction("root");
+  equal(direct.readClosedProjections(outer, "x", [["x"]])?.[0], 3, "owned direct field");
+  equal(direct.readClosedProjections(outer, "nested", [["nested", "y"]]), null,
+    "unowned nested record entered closed capture");
+  direct.discard();
+  const nested = storeRecord({ y: 4 });
+  const complete = createAsyncStore(storeRecord({ nested }));
+  const cut = new StoreRenderTransaction("root");
+  equal(cut.readClosedProjections(complete, "nested", [["nested", "y"]])?.[0], 4,
+    "owned nested field");
+  cut.discard();
+});
+
+Deno.test("storeRecord rejects unsafe descriptors and frozen Proxy wrappers decline without get traps", () => {
+  let getterCalls = 0;
+  const accessor = Object.defineProperty({}, "x", {
+    get() { getterCalls++; return 1; },
+  });
+  for (const input of [accessor, [], Object.create({ x: 1 }),
+    { [Symbol("hidden")]: 1 }, Object.defineProperty({}, "constructor", { value: 1 })]) {
+    let rejected = false;
+    try { storeRecord(input); } catch (error) { rejected = error instanceof TypeError; }
+    equal(rejected, true, "unsafe constructor input accepted");
+  }
+  equal(getterCalls, 0, "constructor called getter");
+  let proxyGets = 0;
+  const owned = storeRecord({ x: 1 });
+  const proxy = new Proxy(owned, {
+    get(target, key, receiver) {
+      proxyGets++;
+      return Reflect.get(target, key, receiver);
+    },
+  });
+  const store = createAsyncStore(proxy);
+  const cut = new StoreRenderTransaction("root");
+  equal(cut.readClosedProjections(store, "reader", [["x"]]), null,
+    "Proxy wrapper gained owned provenance");
+  cut.discard();
+  equal(proxyGets, 0, "closed capture invoked Proxy get trap");
+  equal(store.diagnostics().roots, 0, "declined Proxy registered a root");
 });

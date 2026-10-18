@@ -145,9 +145,19 @@ try {
   identityRoot.dispose();
   record.checks.push("DOM, Three and React package routes re-export one core runtime graph");
 
-  const appSource = `import { useState, use, createStore, createNativeRoot } from "@r3act/core";
+  const appSource = `import { useState, use, createStore, createNativeRoot, storeRecord } from "@r3act/core";
 import type { VDOMHost } from "@r3act/host-dom";
 export const label = createStore("ready");
+export const scene = createStore(storeRecord({ position: storeRecord({ x: 1 }) }));
+export function Projected(props: { store: typeof scene }) {
+  const value = use(props.store);
+  return <output key="projection" data-level={value.position.x}>{value.position.x}</output>;
+}
+export const mountProjected = (host: VDOMHost<any>, container: any) => {
+  const root = createNativeRoot(host, container, { scheduleCommit() {} });
+  root.render(<Projected store={scene} />);
+  return root;
+};
 export function Counter() {
   const [count, setCount] = useState(0);
   const text = use(label);
@@ -208,6 +218,24 @@ export const invalid = <icosahedronGeometry args={[1, "bad"]} />;
   mounted.dispose();
   assert.equal(runtimeContainer.children.length, 0);
   record.checks.push("installed Rust/OXC plugin compiles and runs state/store TSX without Cargo");
+  const projectedContainer = { children: [] };
+  const projected = app.mountProjected(host, projectedContainer);
+  const projectedOutput = projectedContainer.children[0];
+  const queue = new core.NativeRootWorkQueue();
+  try {
+    assert.equal(text(projectedOutput), "1");
+    app.scene.dispatch(core.storeRecord({ position: core.storeRecord({ x: 7 }) }));
+    assert.equal(queue.enqueueStores({ id: "installed-projection", roots: [
+      { root: projected, stores: [app.scene] },
+    ] }).status, "committed");
+    assert.equal(projectedContainer.children[0], projectedOutput);
+    assert.equal(projectedOutput.props["data-level"], 7);
+    assert.equal(text(projectedOutput), "7");
+  } finally { queue.dispose(); projected.dispose(); }
+  assert.equal(projectedContainer.children.length, 0);
+  assert.equal(app.scene.diagnostics().roots, 0);
+  record.checks.push("installed storeRecord provenance and compiled scoped projections share the core runtime");
+
   record.status = "PASS";
 } catch (error) {
   record.status = "FAIL";

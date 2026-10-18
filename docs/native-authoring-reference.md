@@ -118,6 +118,28 @@ export function Scene(props: { position: typeof position; camera: typeof camera 
 
 Scoped updates retain existing containers, hosts and text nodes. They validate exact child order, owner/code/read versions and prop/text writer identity; topology changes, component children and absent boolean/null text use generic preparation. Independent accepted cuts may intervene when those footprints remain valid. Selected caches merge into the current view; full replacements retain whole-root guards. A partial host failure preserves old managed accepted history and quarantines the domain, while physical writes may already have occurred. Resource ownership and declared transaction groups keep their existing contracts. See the [finite Store program](../src/closed_store_host_program.ts) and [actual compiled subtree fixture](../compiler/compiled_store_host_subtree_test.mjs).
 
+### Structured Store projections
+
+Schema 5 supports static numeric field paths from direct Store reads in the same fixed host trees. Construct every record traversed by a closed path with `storeRecord`:
+
+```tsx
+import { createStore, storeRecord, use } from "@r3act/core";
+
+const scene = createStore(storeRecord({
+  position: storeRecord({ x: 1, y: 2 }),
+  camera: storeRecord({ x: 3 }),
+}));
+
+function Scene(props: { scene: typeof scene }) {
+  const value = use(props.scene);
+  return <group key="scene"><mesh key="mesh" position={[value.position.x, value.position.y, 0]} /><group key="outline" position={[value.position.x + value.camera.x, 0, 0]} /></group>;
+}
+```
+
+`storeRecord` shallow-copies own data properties into a fresh frozen ordinary record. It rejects accessors, symbols, arrays, custom prototypes and unsafe prototype field names. It preserves property enumerability and does not freeze or copy descendants; selected nested records need their own construction. Construct records in ordinary application/domain code. Reflection on a constructor argument can invoke Proxy traps there; the resulting owned copy has ordinary data reads. A Proxy wrapped around that copy does not inherit ownership. Ordinary frozen objects, mutable objects and opaque selectors retain generic rendering, preserving their authored read behavior.
+
+The compiler permits one to eight lexical Store reads and at most 32 numeric paths in total, each at most eight static identifier segments. A direct numeric Store can join a projected input. Optional/computed access, callbacks and unused inputs do not qualify. Paths must end in finite numbers; expression, style, tuple and tree limits remain. `use(store)` still returns the whole state unchanged. Whole-state observations and existing Store versions govern conflicts: paths are not independent field versions, and selecting a Store still requires complete accepted-reader coverage. Explicit transactions select the outputs that must publish together; arbitrary selector functions are not inferred as pure. See the [compiled fixture](../compiler/compiled_store_projection_test.mjs) and [source contract](../implementation/2026-10-18-store-projections/design.md).
+
 Ordinary `flush()` can publish changed eligible Store outputs beside an observed pending resource, then leaves unrelated notifications for conservative retry. An opaque additional consumer of the selected Store makes that cut ineligible. Selected roots retain separate accepted histories; disjoint supported cuts merge against current caches, while overlapping targets and stale code invalidate preparation. Whole-tree guards remain. The [Store-host consolidated gate](../implementation/2026-10-18-store-host/verification/gate-results.md) passes 870 runtime tests and actual compiled DOM/Three execution; the sole bounded Store comparison was slower for Native (1.7/0.5 ms).
 
 Multiple ready supported boundaries drain through fresh independent receipts in one flush, including across roots sharing resource handles. Declined targets retain generic invalidation without an immediate retry loop; unrelated pending cell/collection changes can conservatively defer the drain. Each receipt has its own acceptance and partial-failure outcome; a later failed receipt cannot undo an earlier accepted sibling. The finite subtree subset above governs each reveal; raw thenables and unsupported boundaries retain generic rendering.

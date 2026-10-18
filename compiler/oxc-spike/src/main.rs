@@ -4356,10 +4356,9 @@ fn closed_host_style_name(name: &str) -> bool {
         byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-')
 }
 
-fn closed_host_aggregate_expression(
-    expression: &Expression<'_>, tag: &str, name: &str,
-    value_sites: &BTreeMap<SymbolId, String>, source_sites: &[String],
-    semantic: &Semantic<'_>, source: &str,
+fn closed_host_aggregate_expression<'a>(
+    expression: &Expression<'a>, tag: &str, name: &str,
+    read: &mut dyn FnMut(&Expression<'a>) -> Option<serde_json::Value>,
 ) -> Option<serde_json::Value> {
     let mut expression = expression;
     while let Expression::ParenthesizedExpression(parenthesized) = expression {
@@ -4368,9 +4367,8 @@ fn closed_host_aggregate_expression(
     if matches!(tag, "mesh" | "group") && matches!(name, "position" | "rotation" | "scale") {
         let Expression::ArrayExpression(array) = expression else { return None; };
         if array.elements.len() != 3 { return None; }
-        let items = array.elements.iter().map(|item| closed_store_host_expression(
-            item.as_expression()?, value_sites, source_sites, semantic, source,
-        )).collect::<Option<Vec<_>>>()?;
+        let items = array.elements.iter().map(|item| read(item.as_expression()?))
+            .collect::<Option<Vec<_>>>()?;
         return Some(serde_json::json!({"kind":"tuple","items":items}));
     }
     if matches!(tag, "div" | "span" | "output") && name == "style" {
@@ -4388,8 +4386,7 @@ fn closed_host_aggregate_expression(
                 _ => return None,
             };
             if !closed_host_style_name(key) || !seen.insert(key.to_owned()) { return None; }
-            let value = closed_store_host_expression(&property.value, value_sites,
-                source_sites, semantic, source)?;
+            let value = read(&property.value)?;
             entries.push(serde_json::json!([key, value]));
         }
         return Some(serde_json::json!({"kind":"style","entries":entries}));
@@ -4397,9 +4394,8 @@ fn closed_host_aggregate_expression(
     None
 }
 
-fn closed_subtree_host(
-    element: &JSXElement<'_>, value_sites: &BTreeMap<SymbolId, String>,
-    source_sites: &[String], semantic: &Semantic<'_>, source: &str,
+fn closed_subtree_host<'a>(
+    element: &JSXElement<'a>, read: &mut dyn FnMut(&Expression<'a>) -> Option<serde_json::Value>,
     keys: &mut BTreeSet<String>, count: &mut usize, depth: usize,
     has_aggregate: &mut bool, tuple_spans: &mut Vec<SourceSpan>,
 ) -> Option<serde_json::Value> {
@@ -4429,8 +4425,7 @@ fn closed_subtree_host(
             let expression = if aggregate {
                 let JSXAttributeValue::ExpressionContainer(container) = attribute.value.as_ref()? else { return None; };
                 let expression = closed_host_aggregate_expression(
-                    container.expression.as_expression()?, tag, name, value_sites,
-                    source_sites, semantic, source)?;
+                    container.expression.as_expression()?, tag, name, read)?;
                 if expression.get("kind").and_then(serde_json::Value::as_str) == Some("tuple") {
                     let expression_span = container.expression.as_expression()?.span();
                     tuple_spans.push(span(expression_span.start, expression_span.end));
@@ -4441,8 +4436,8 @@ fn closed_subtree_host(
                 match attribute.value.as_ref()? {
                     JSXAttributeValue::StringLiteral(value) if !value.value.chars().any(|ch| matches!(ch, '&' | '\n' | '\r' | '\t')) =>
                         serde_json::json!({"kind":"literal","value":value.value.as_str()}),
-                    JSXAttributeValue::ExpressionContainer(container) => closed_store_host_expression(
-                        container.expression.as_expression()?, value_sites, source_sites, semantic, source)?,
+                    JSXAttributeValue::ExpressionContainer(container) =>
+                        read(container.expression.as_expression()?)?,
                     _ => return None,
                 }
             };
@@ -4456,15 +4451,14 @@ fn closed_subtree_host(
     for child in &element.children {
         match child {
             JSXChild::Element(nested) => {
-                let host = closed_subtree_host(nested, value_sites, source_sites,
-                    semantic, source, keys, count, depth + 1, has_aggregate, tuple_spans)?;
+                let host = closed_subtree_host(nested, read, keys, count, depth + 1,
+                    has_aggregate, tuple_spans)?;
                 children.push(serde_json::json!({"kind":"host","host":host}));
             }
             JSXChild::ExpressionContainer(container) => {
                 *count += 1;
                 if *count > 256 { return None; }
-                let expression = closed_store_host_expression(container.expression.as_expression()?,
-                    value_sites, source_sites, semantic, source)?;
+                let expression = read(container.expression.as_expression()?)?;
                 children.push(serde_json::json!({"kind":"text","expression":expression}));
             }
             _ => return None,
@@ -4473,9 +4467,9 @@ fn closed_subtree_host(
     Some(serde_json::json!({"tag":tag,"key":key,"props":props,"children":children}))
 }
 
-fn closed_resource_subtree_program(
-    node: &Function<'_>, component: &ComponentStateSiteIr,
-    semantic: &Semantic<'_>, source: &str, revision: &str,
+fn closed_resource_subtree_program<'a>(
+    node: &Function<'a>, component: &ComponentStateSiteIr,
+    semantic: &Semantic<'a>, source: &str, revision: &str,
 ) -> Option<serde_json::Value> {
     if node.r#async || node.generator || node.params.items.len() != 1 || node.params.rest.is_some() ||
         !component.state_sites.is_empty() || !component.effect_sites.is_empty() ||
@@ -4530,8 +4524,10 @@ fn closed_resource_subtree_program(
     let mut value_sites = BTreeMap::new();
     value_sites.insert(value_symbol, component.store_sites[0].site_id.clone());
     let source_sites = [component.store_sites[0].site_id.clone()];
-    let host = closed_subtree_host(element, &value_sites, &source_sites,
-        semantic, source, &mut keys, &mut count, 0, &mut has_aggregate,
+    let mut read = |expression: &Expression<'a>| closed_store_host_expression(expression, &value_sites,
+        &source_sites, semantic, source);
+    let host = closed_subtree_host(element, &mut read,
+        &mut keys, &mut count, 0, &mut has_aggregate,
         &mut Vec::new())?;
     Some(serde_json::json!({
         "schemaVersion": if has_aggregate { 3 } else { 2 },
@@ -4560,9 +4556,9 @@ fn closed_store_host_property_name(tag: &str, name: &str) -> bool {
     }
 }
 
-fn closed_store_host_expression(
-    expression: &Expression<'_>, value_sites: &BTreeMap<SymbolId, String>,
-    source_sites: &[String], semantic: &Semantic<'_>, source: &str,
+fn closed_store_host_expression<'a>(
+    expression: &Expression<'a>, value_sites: &BTreeMap<SymbolId, String>,
+    source_sites: &[String], semantic: &Semantic<'a>, source: &str,
 ) -> Option<serde_json::Value> {
     let expression_span = expression.span();
     let mut references = Vec::new();
@@ -4590,9 +4586,153 @@ fn closed_store_host_expression(
     serde_json::from_str(&encoded).ok()
 }
 
-fn closed_store_host_program(
-    node: &Function<'_>, component: &ComponentStateSiteIr,
-    semantic: &Semantic<'_>, source: &str, revision: &str,
+struct StoreProjectionProof<'s, 'a> {
+    semantic: &'s Semantic<'a>,
+    bindings: BTreeMap<SymbolId, usize>,
+    paths: Vec<Vec<Vec<String>>>,
+    slots: Vec<(usize, usize)>,
+    member_seen: bool,
+}
+
+impl<'s, 'a> StoreProjectionProof<'s, 'a> {
+    fn input(&mut self, symbol: SymbolId, path: Vec<String>) -> Option<serde_json::Value> {
+        let input = *self.bindings.get(&symbol)?;
+        if !path.is_empty() { self.member_seen = true; }
+        let paths = &mut self.paths[input];
+        let path_index = if let Some(index) = paths.iter().position(|prior| *prior == path) {
+            index
+        } else {
+            if paths.len() == 32 || self.slots.len() == 32 { return None; }
+            paths.push(path);
+            paths.len() - 1
+        };
+        let slot = if let Some(index) = self.slots.iter().position(|entry| *entry == (input, path_index)) {
+            index
+        } else {
+            self.slots.push((input, path_index));
+            self.slots.len() - 1
+        };
+        Some(serde_json::json!({"kind":"input","index":slot}))
+    }
+
+    fn expression(&mut self, expression: &Expression<'a>) -> Option<serde_json::Value> {
+        let mut nodes = 0;
+        self.visit(expression, &mut nodes, 0)
+    }
+
+    fn visit(&mut self, expression: &Expression<'a>, nodes: &mut usize,
+        depth: usize) -> Option<serde_json::Value> {
+        *nodes += 1;
+        if depth > 32 || *nodes > 256 { return None; }
+        match expression {
+            Expression::NumericLiteral(value) if value.value.is_finite() =>
+                Some(serde_json::json!({"kind":"literal","value":value.value})),
+            Expression::StringLiteral(value) =>
+                Some(serde_json::json!({"kind":"literal","value":value.value.as_str()})),
+            Expression::BooleanLiteral(value) =>
+                Some(serde_json::json!({"kind":"literal","value":value.value})),
+            Expression::NullLiteral(_) => Some(serde_json::json!({"kind":"literal","value":null})),
+            Expression::Identifier(identifier) =>
+                self.input(reference_symbol(identifier, self.semantic)?, Vec::new()),
+            Expression::StaticMemberExpression(_) => {
+                let mut current = expression;
+                let mut path = Vec::new();
+                while let Expression::StaticMemberExpression(member) = current {
+                    let field = member.property.name.as_str();
+                    if matches!(field, "__proto__" | "prototype" | "constructor") ||
+                        !field.bytes().next().is_some_and(|byte|
+                            byte.is_ascii_alphabetic() || byte == b'_' || byte == b'$') ||
+                        !field.bytes().all(|byte|
+                            byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'$') {
+                        return None;
+                    }
+                    path.push(field.to_owned());
+                    current = &member.object;
+                }
+                if path.len() > 8 { return None; }
+                let Expression::Identifier(identifier) = current else { return None; };
+                path.reverse();
+                self.input(reference_symbol(identifier, self.semantic)?, path)
+            }
+            Expression::ParenthesizedExpression(value) =>
+                self.visit(&value.expression, nodes, depth + 1),
+            Expression::UnaryExpression(value) if matches!(value.operator,
+                UnaryOperator::UnaryPlus | UnaryOperator::UnaryNegation |
+                UnaryOperator::LogicalNot | UnaryOperator::BitwiseNot) => {
+                let argument = self.visit(&value.argument, nodes, depth + 1)?;
+                Some(serde_json::json!({"kind":"unary","operator":value.operator.as_str(),"argument":argument}))
+            }
+            Expression::BinaryExpression(value) if !matches!(value.operator,
+                oxc_ast::ast::BinaryOperator::In | oxc_ast::ast::BinaryOperator::Instanceof) => {
+                let left = self.visit(&value.left, nodes, depth + 1)?;
+                let right = self.visit(&value.right, nodes, depth + 1)?;
+                Some(serde_json::json!({"kind":"binary","operator":value.operator.as_str(),"left":left,"right":right}))
+            }
+            Expression::LogicalExpression(value) if matches!(value.operator,
+                oxc_ast::ast::LogicalOperator::Or | oxc_ast::ast::LogicalOperator::And |
+                oxc_ast::ast::LogicalOperator::Coalesce) => {
+                let left = self.visit(&value.left, nodes, depth + 1)?;
+                let right = self.visit(&value.right, nodes, depth + 1)?;
+                Some(serde_json::json!({"kind":"logical","operator":value.operator.as_str(),"left":left,"right":right}))
+            }
+            Expression::ConditionalExpression(value) => {
+                let test = self.visit(&value.test, nodes, depth + 1)?;
+                let consequent = self.visit(&value.consequent, nodes, depth + 1)?;
+                let alternate = self.visit(&value.alternate, nodes, depth + 1)?;
+                Some(serde_json::json!({"kind":"conditional","test":test,
+                    "consequent":consequent,"alternate":alternate}))
+            }
+            Expression::TemplateLiteral(value) => {
+                let parts = value.quasis.iter().map(|quasi| quasi.value.cooked.as_ref()
+                    .map(|value| value.as_str())).collect::<Option<Vec<_>>>()?;
+                let mut expressions = Vec::with_capacity(value.expressions.len());
+                for expression in &value.expressions {
+                    expressions.push(self.visit(expression, nodes, depth + 1)?);
+                }
+                Some(serde_json::json!({"kind":"template","parts":parts,
+                    "expressions":expressions}))
+            }
+            _ => None,
+        }
+    }
+
+    fn finish(mut self, host: &mut serde_json::Value,
+        inputs: &mut [serde_json::Value]) -> Option<()> {
+        if !self.member_seen || self.paths.iter().any(Vec::is_empty) { return None; }
+        let mut offsets = Vec::with_capacity(inputs.len());
+        let mut offset = 0;
+        for (index, paths) in self.paths.drain(..).enumerate() {
+            offsets.push(offset);
+            offset += paths.len();
+            inputs[index]["paths"] = serde_json::json!(paths);
+        }
+        fn remap(value: &mut serde_json::Value, slots: &[(usize, usize)], offsets: &[usize]) {
+            if value.get("kind").and_then(serde_json::Value::as_str) == Some("input") {
+                let index = value["index"].as_u64().unwrap() as usize;
+                let (input, path) = slots[index];
+                value["index"] = serde_json::json!(offsets[input] + path);
+            } else if let Some(values) = value.as_array_mut() {
+                for child in values { remap(child, slots, offsets); }
+            } else if let Some(values) = value.as_object_mut() {
+                for child in values.values_mut() { remap(child, slots, offsets); }
+            }
+        }
+        remap(host, &self.slots, &offsets);
+        Some(())
+    }
+}
+
+fn closed_store_host_program<'a>(
+    node: &Function<'a>, component: &ComponentStateSiteIr,
+    semantic: &Semantic<'a>, source: &str, revision: &str,
+) -> Option<(serde_json::Value, Vec<SourceSpan>)> {
+    closed_store_host_program_inner(node, component, semantic, source, revision, false)
+        .or_else(|| closed_store_host_program_inner(node, component, semantic, source, revision, true))
+}
+
+fn closed_store_host_program_inner<'a>(
+    node: &Function<'a>, component: &ComponentStateSiteIr,
+    semantic: &Semantic<'a>, source: &str, revision: &str, projected: bool,
 ) -> Option<(serde_json::Value, Vec<SourceSpan>)> {
     let input_count = component.store_sites.len();
     if node.r#async || node.generator || node.params.items.len() != 1 ||
@@ -4619,6 +4759,7 @@ fn closed_store_host_program(
     let body = node.body.as_ref()?;
     if !body.directives.is_empty() || body.statements.len() != input_count + 1 { return None; }
     let mut value_sites = BTreeMap::new();
+    let mut projected_bindings = BTreeMap::new();
     let mut source_sites = Vec::new();
     let mut inputs = Vec::<serde_json::Value>::new();
     let mut used_destructured = BTreeSet::new();
@@ -4651,6 +4792,7 @@ fn closed_store_host_program(
             !store_prop.bytes().all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'$') { return None; }
         source_sites.push(store_site.site_id.clone());
         value_sites.insert(value_symbol, store_site.site_id.clone());
+        projected_bindings.insert(value_symbol, index);
         inputs.push(serde_json::json!({
             "storeUseSiteId": store_site.site_id, "storeProp": store_prop,
         }));
@@ -4662,13 +4804,34 @@ fn closed_store_host_program(
         return_expression = &parenthesized.expression;
     }
     let Expression::JSXElement(element) = return_expression else { return None; };
+    if projected {
+        let mut proof = StoreProjectionProof { semantic, bindings: projected_bindings,
+            paths: vec![Vec::new(); input_count], slots: Vec::new(), member_seen: false };
+        let mut keys = BTreeSet::new();
+        let mut count = 0;
+        let mut aggregate = false;
+        let mut tuple_spans = Vec::new();
+        let mut read = |expression: &Expression<'a>| proof.expression(expression);
+        let mut host = closed_subtree_host(element, &mut read, &mut keys, &mut count,
+            0, &mut aggregate, &mut tuple_spans)?;
+        proof.finish(&mut host, &mut inputs)?;
+        return Some((serde_json::json!({
+            "schemaVersion": 5,
+            "componentProgramId": component.component_site_id,
+            "moduleRevision": revision,
+            "inputs": inputs,
+            "host": host,
+        }), tuple_spans));
+    }
     if !element.children.is_empty() {
         let mut keys = BTreeSet::new();
         let mut count = 0;
         let mut has_aggregate = false;
         let mut tuple_spans = Vec::new();
-        let host = closed_subtree_host(element, &value_sites, &source_sites,
-            semantic, source, &mut keys, &mut count, 0, &mut has_aggregate,
+        let mut read = |expression: &Expression<'a>| closed_store_host_expression(expression, &value_sites,
+            &source_sites, semantic, source);
+        let host = closed_subtree_host(element, &mut read,
+            &mut keys, &mut count, 0, &mut has_aggregate,
             &mut tuple_spans)?;
         return Some((serde_json::json!({
             "schemaVersion": 4,
@@ -4705,8 +4868,10 @@ fn closed_store_host_program(
             let JSXAttributeValue::ExpressionContainer(container) = attribute.value.as_ref()? else { return None; };
             let expression = container.expression.as_expression()?;
             let program = if aggregate {
+                let mut read = |expression: &Expression<'a>| closed_store_host_expression(expression,
+                    &value_sites, &source_sites, semantic, source);
                 let program = closed_host_aggregate_expression(expression, tag, name,
-                    &value_sites, &source_sites, semantic, source)?;
+                    &mut read)?;
                 has_aggregate = true;
                 if program.get("kind").and_then(serde_json::Value::as_str) == Some("tuple") {
                     let expression_span = expression.span();
@@ -7932,6 +8097,79 @@ export function Generic(props) { const x = use(props.store); return <mesh key="g
         assert!(code.contains("position={__nativeStabilizeHostTuple_([x, 0, 1])}"), "{code}");
         assert!(code.contains("scale={__nativeStabilizeHostTuple_([x, y, 1])}"), "{code}");
         assert!(code.contains("position={props.position}"), "{code}");
+    }
+
+    #[test]
+    fn emits_bounded_structured_store_projection_paths_in_lexical_input_order() {
+        let source = r#"import { use } from "native_runtime_api.ts";
+export function Projected(props) {
+  const position = use(props.position);
+  const camera = use(props.camera);
+  return <group key="root"><mesh key="mesh" position={[camera.eye.y, position.x, position.y]} rotation={[position.x + camera.eye.x, 0, 0]}/><output key="label" style={{opacity: camera.zoom / 10}}>{`${position.x}:${camera.eye.y}`}</output></group>;
+}
+export function Scalar(props) { const x = use(props.store); return <div key="scalar" data-x={x}/>; }
+export function ExistingTree(props) { const x = use(props.store); return <div key="tree"><span key="leaf">{x}</span></div>; }"#;
+        let response = compile_state("structured-projection.tsx", source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let plan = response.plan.unwrap();
+        let components = plan.components.as_ref().unwrap();
+        let projected = components.iter().find(|item| item.name == "Projected").unwrap();
+        let program = projected.closed_store_host_program.as_ref().unwrap();
+        assert_eq!(program["schemaVersion"], 5);
+        assert_eq!(program["inputs"][0]["paths"], serde_json::json!([["x"], ["y"]]));
+        assert_eq!(program["inputs"][1]["paths"],
+            serde_json::json!([["eye", "y"], ["eye", "x"], ["zoom"]]));
+        assert_eq!(program["host"]["children"][0]["host"]["props"][0][1]["items"][0],
+            serde_json::json!({"kind":"input","index":2}));
+        assert_eq!(program["host"]["children"][0]["host"]["props"][0][1]["items"][1],
+            serde_json::json!({"kind":"input","index":0}));
+        assert_eq!(components.iter().find(|item| item.name == "Scalar").unwrap()
+            .closed_store_host_program.as_ref().unwrap()["schemaVersion"], 1);
+        assert_eq!(components.iter().find(|item| item.name == "ExistingTree").unwrap()
+            .closed_store_host_program.as_ref().unwrap()["schemaVersion"], 4);
+        assert!(plan.component_module.unwrap().contains("stabilizeHostTuple as"));
+    }
+
+    #[test]
+    fn structured_store_projection_declines_hidden_or_unsafe_reads_and_exceeded_bounds() {
+        for expression in [
+            "value[position]", "value?.position", "value.position?.x",
+            "value.__proto__", "value.constructor", "value.prototype",
+            "value.position + callback(() => value.other)",
+            "value.position + props.other", "value.position + other",
+            "value.a.b.c.d.e.f.g.h.i",
+        ] {
+            let source = format!("import {{ use }} from \"native_runtime_api.ts\"; export function Candidate(props) {{ const value = use(props.store); return <output key=\"out\" data-value={{{expression}}}/>; }}");
+            let response = compile_state("rejected-projection.tsx", &source);
+            assert!(response.error.is_none(), "{expression}: {:?}", response.error);
+            assert!(response.plan.unwrap().components.as_ref().unwrap()[0]
+                .closed_store_host_program.is_none(), "{expression} unexpectedly closed");
+        }
+        let unused = "import { use } from \"native_runtime_api.ts\"; export function Candidate(props) { const x = use(props.first); const y = use(props.second); return <output key=\"out\" data-x={x.value}/>; }";
+        let response = compile_state("unused-projection.tsx", unused);
+        assert!(response.error.is_none());
+        assert!(response.plan.unwrap().components.as_ref().unwrap()[0]
+            .closed_store_host_program.is_none());
+        for count in [32, 33] {
+            let expression = (0..count).map(|index| format!("value.field{index}"))
+                .collect::<Vec<_>>().join(" + ");
+            let source = format!("import {{ use }} from \"native_runtime_api.ts\"; export function Candidate(props) {{ const value = use(props.store); return <output key=\"out\" data-value={{{expression}}}/>; }}");
+            let response = compile_state(&format!("projection-{count}.tsx"), &source);
+            assert!(response.error.is_none(), "{count}: {:?}", response.error);
+            assert_eq!(response.plan.unwrap().components.as_ref().unwrap()[0]
+                .closed_store_host_program.as_ref().map(|value| value["schemaVersion"].as_u64()),
+                if count == 32 { Some(Some(5)) } else { None }, "{count}");
+        }
+        for depth in [8, 9] {
+            let path = (0..depth).map(|index| format!("field{index}"))
+                .collect::<Vec<_>>().join(".");
+            let source = format!("import {{ use }} from \"native_runtime_api.ts\"; export function Candidate(props) {{ const value = use(props.store); return <output key=\"out\" data-value={{value.{path}}}/>; }}");
+            let response = compile_state(&format!("projection-depth-{depth}.tsx"), &source);
+            assert!(response.error.is_none(), "{depth}: {:?}", response.error);
+            assert_eq!(response.plan.unwrap().components.as_ref().unwrap()[0]
+                .closed_store_host_program.as_ref().map(|value| value["schemaVersion"].as_u64()),
+                if depth == 8 { Some(Some(5)) } else { None }, "{depth}");
+        }
     }
 
     #[test]

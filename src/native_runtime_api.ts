@@ -70,6 +70,7 @@ export type {
 export {
   createAsyncStore as createStore,
   createStoreSelector,
+  storeRecord,
   storeDependencies,
 } from "./async_store_runtime.ts";
 export type { StoreSource } from "./async_store_runtime.ts";

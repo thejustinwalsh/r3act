@@ -2,6 +2,7 @@ import { normalizeClosedNumericExpression } from "./closed_numeric_expression.ts
 import {
   type ClosedStoreHostProgram,
   closedStoreHostInputs,
+  closedStoreHostInputPaths,
   evaluateClosedStoreHostProgram,
   evaluateClosedStoreHostTree,
   normalizeClosedStoreHostProgram,
@@ -1432,16 +1433,18 @@ export class ComponentStateRoot<H, Parent = H> {
         const inputMembership = this.#liveStoreReaders.get(inputId);
         if (!store || !inputMembership || inputMembership.size !== 1 ||
           !inputMembership.has(store)) throw new SparseCandidateIneligible();
-        const value = stores.readClosedNumeric(store, inputId);
-        if (value === null) throw new SparseCandidateIneligible();
+        const projections = stores.readClosedProjections(
+          store, inputId, closedStoreHostInputPaths(input),
+        );
+        if (!projections) throw new SparseCandidateIneligible();
         inputs.push({ id: inputId, prop: input.storeProp, store, membership: inputMembership });
-        values.push(value);
+        values.push(...projections);
         covered.add(inputId);
         if (selectedStores.has(store)) seen.add(store);
       }
-      const output = program.schemaVersion === 4
+      const output = program.schemaVersion === 4 || program.schemaVersion === 5
         ? null : evaluateClosedStoreHostProgram(program, values);
-      if (program.schemaVersion === 4) {
+      if (program.schemaVersion === 4 || program.schemaVersion === 5) {
         const next = evaluateClosedStoreHostTree(program, values);
         if (!next) throw new SparseCandidateIneligible();
         const previous = cache.expandedResult;

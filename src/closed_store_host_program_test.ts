@@ -1,5 +1,7 @@
 import {
+  closedStoreHostInputPaths,
   closedStoreHostInputs,
+  closedStoreHostValueCount,
   evaluateClosedStoreHostProgram,
   evaluateClosedStoreHostTree,
   normalizeClosedStoreHostProgram,
@@ -49,6 +51,69 @@ const subtreeData = (): any => ({
       }]], children: [] } },
     ] } },
   ] },
+});
+
+Deno.test("Store schema 5 freezes lexical paths and flattens expression inputs", () => {
+  const raw = subtreeData();
+  raw.schemaVersion = 5;
+  raw.inputs[0].paths = [["position", "x"], ["position", "y"]];
+  raw.inputs[1].paths = [[]];
+  raw.host.children[0].host.children[0].expression.expressions[1].index = 2;
+  const program = normalizeClosedStoreHostProgram(raw)!;
+  equal(program.schemaVersion, 5);
+  equal(closedStoreHostValueCount(program), 3);
+  const paths = closedStoreHostInputPaths(closedStoreHostInputs(program)[0]);
+  equal(paths[0].join("."), "position.x");
+  equal(paths[1].join("."), "position.y");
+  equal(Object.isFrozen(paths), true);
+  equal(Object.isFrozen(paths[0]), true);
+  raw.inputs[0].paths[0][1] = "z";
+  equal(paths[0][1], "x");
+  equal(evaluateClosedStoreHostTree(program, [2, 3, 4])?.props.children[0].props.children,
+    "x=2 / 4");
+  equal(evaluateClosedStoreHostTree(program, [2, 3]), null);
+  const legacy = normalizeClosedStoreHostProgram(subtreeData())!;
+  equal(closedStoreHostInputPaths(closedStoreHostInputs(legacy)[0])[0].length, 0);
+  equal(closedStoreHostValueCount(legacy), 2);
+});
+
+Deno.test("Store schema 5 enforces path, count and descriptor limits", () => {
+  const source = () => {
+    const raw = subtreeData();
+    raw.schemaVersion = 5;
+    raw.inputs[0].paths = [["position", "x"]];
+    raw.inputs[1].paths = [[]];
+    return raw;
+  };
+  const duplicate = source();
+  duplicate.inputs[0].paths.push(["position", "x"]);
+  equal(normalizeClosedStoreHostProgram(duplicate), null);
+  const empty = source();
+  empty.inputs[0].paths = [[]];
+  equal(normalizeClosedStoreHostProgram(empty), null);
+  const unsafe = source();
+  unsafe.inputs[0].paths = [["__proto__"]];
+  equal(normalizeClosedStoreHostProgram(unsafe), null);
+  for (const depth of [9]) {
+    const overdeep = source();
+    overdeep.inputs[0].paths = [Array.from({ length: depth }, () => "x")];
+    equal(normalizeClosedStoreHostProgram(overdeep), null);
+  }
+  const overcount = source();
+  overcount.inputs[0].paths = Array.from({ length: 32 }, (_, index) => [`p${index}`]);
+  equal(normalizeClosedStoreHostProgram(overcount), null);
+  const thirtyTwo = source();
+  thirtyTwo.inputs[0].paths = Array.from({ length: 31 }, (_, index) => [`p${index}`]);
+  thirtyTwo.host.props[0][1].entries[0][1].index = 31;
+  const bounded = normalizeClosedStoreHostProgram(thirtyTwo);
+  equal(closedStoreHostValueCount(bounded!), 32);
+  equal(evaluateClosedStoreHostTree(bounded!, Array.from({ length: 32 }, (_, index) => index))?.props.style["--offset"], 31);
+  const accessor = source();
+  Object.defineProperty(accessor.inputs[0].paths[0], "0", { get() { throw new Error("getter"); } });
+  equal(normalizeClosedStoreHostProgram(accessor), null);
+  const highIndex = source();
+  highIndex.host.props[0][1].entries[0][1].index = 3;
+  equal(normalizeClosedStoreHostProgram(highIndex), null);
 });
 
 Deno.test("Store schema 4 snapshots nested styles, text and tuples over joint inputs", () => {
