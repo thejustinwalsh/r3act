@@ -91,7 +91,7 @@ escape hatches for custom semantics.
 
 The target contract uses dependencies to select consumers and explicit transactions to group outputs. For example, position can update a mesh and its outline together while an unrelated health resource remains pending. A consumer reading position and camera must validate both inputs. Sharing a parent or a store alone does not make every branch wait together.
 
-Explicit `prepareRetained(cells)` / `enqueueRetained` transactions support closed primitive prop deltas with complete input coverage, owner/code identity and live writer validation. `prepareCollections(collections)` / `enqueueCollections` support existing-row moves and single-owner row removals over selected collection identities; Store/resource/Suspense work and insert/replace remain outside that scoped subset. Each API declines unsupported work rather than broadening the transaction. Full-tree/cache replacement candidates still validate whole-root bases to preserve intervening commits. General structural/cache and resource/reveal admission remain required work; ordinary declarative props and generic reconciliation remain available.
+Explicit `prepareRetained(cells)` / `enqueueRetained` transactions support closed primitive prop deltas with complete input coverage, owner/code identity and live writer validation. `prepareCollections(collections)` / `enqueueCollections` support existing-row moves and single-owner row removals. `prepareTransaction({ cells, collections })` / `enqueueTransaction` combine those selected closed prop writes and collection edits in one accepted publication; selected cells cannot belong to an owner removed by the same cut. Static intrinsic VDOM insert/replace can be prepared separately, while authored collection row callbacks still use the generic fallback. These cuts do not evaluate or advance unrelated Store/resource/Suspense work; such work can remain pending while an eligible cut publishes. Selected Store-dependent rows retain the generic fallback. Full-tree/cache replacement candidates keep whole-root validation. A separate bounded reveal path admits one compiler-proven closed resource leaf from an accepted initial fallback beside an unrelated pending sibling; it requires a direct canonical `AsyncResource`. Broader resource/reveal shapes remain generic. See the [authoring subset](docs/native-authoring-reference.md#closed-resource-host-leaf) and [verification](implementation/2026-10-18-host-reveal/verification/gate-results.md).
 
 A Three transaction must finish its required writes before the application calls `renderer.render`. Custom property setters can observe intermediate writes, and a thrown setter may leave partial physical mutations. Accepted native history stays old and the affected root requires disposal/remount. DOM and Three roots can share state and native publication coordination; visually atomic presentation across those renderers or a React island is not established.
 
@@ -117,6 +117,22 @@ Factories return Object3D, BufferGeometry or Material. Custom writers own their
 value validation and removal/reset behavior. Registration does not require
 private reconciler access or a kernel edit. The exact compiled extension fixture
 is `compiler/three_host_extension_execution_test.mjs`.
+
+`describePropertyWrite(handle, name, next)` exposes the host's observed value
+policy: `scalar`, `copy`, `borrow-call`, `retain`, or `unknown`. The description
+separately names the actual `targetResource` and `valueResource`, when present,
+with `owned`, `borrowed`, or `shared-owned` lifetime. For example, an opacity
+write on an owned material identifies that material as the target; a mesh's
+default geometry is a shared-owned value. The host still owns all disposal and
+attachment behavior. Descriptions may read host properties and do not certify
+callback purity, no-throw writes, cut admission, or a reusable scratch buffer.
+Generic writes and current VDOM validation are unchanged.
+
+Custom `propertyWriters` can declare a matching `propertyCapabilities` value
+policy. Without that explicit declaration the observed policy is `unknown`.
+Extensions must keep a `copy` tuple independent of the caller's array after the
+write, while `retain` may keep that same array reference. A declaration does not
+alter the custom writer or enable a fast path.
 
 Refs expose raw Three instances after native publication, before effects;
 unchanged refs stay attached. Callback cleanup and object.current are supported.

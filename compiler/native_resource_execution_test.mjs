@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {mkdir,writeFile} from 'node:fs/promises';
+import {mkdir,mkdtemp,writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {transformWithOxc} from 'vite';
@@ -45,22 +45,32 @@ export function Warm(){return <Suspense fallback={<p>warm waiting</p>}><WarmA/><
 export function Candidate(){return <Suspense fallback={<p>candidate fallback</p>}><Child key="candidate" name="candidate"/></Suspense>;}
 `;
 
-const plugin=nativeModuleCompilerPlugin({root:directory});
+const plugin=nativeModuleCompilerPlugin({
+ root:directory,
+ compilerBinary:path.join(directory,'compiler/oxc-spike/target/debug/ui-graph-compiler-spike'),
+});
 const context={addWatchFile(){},error(message){throw new Error(String(message))}};
 const roots=[];
+let tempDirectory;
 const flush=async()=>{for(let i=0;i<5;i++)await new Promise(resolve=>setTimeout(resolve,0));};
 const locate=(node,predicate)=>predicate(node)?node:node.children.map(child=>locate(child,predicate)).find(Boolean);
 const by=(container,key,value)=>locate(container,node=>node.props[key]===value);
 const text=node=>(node.text??'')+node.children.map(text).join('');
 try{
- const transformed=await plugin.transform.call(context,authored,path.join(directory,'.cache/native-resource-execution.tsx'));
+ const cacheDirectory=path.join(directory,'.cache');
+ await mkdir(cacheDirectory,{recursive:true});
+ tempDirectory=await mkdtemp(path.join(cacheDirectory,'native-resource-execution-'));
+ const sourcePath=path.join(tempDirectory,'native-resource-execution.tsx');
+ const transformedPath=path.join(tempDirectory,'native-resource-execution.transformed.tsx');
+ const filename=path.join(tempDirectory,'native-resource-execution.mjs');
+ await writeFile(sourcePath,authored,{flag:'wx'});
+ const transformed=await plugin.transform.call(context,authored,sourcePath);
  assert.ok(transformed?.code,'Native TSX compiler did not transform the resource fixture');
+ await writeFile(transformedPath,transformed.code,{flag:'wx'});
  assert.ok(transformed.code.includes('__nativeBoundarySite'),'Compiler did not inject lexical Suspense identities');
  assert.ok(transformed.code.includes('useAt'),'Compiler did not lower promise reads');
  assert.ok(transformed.code.includes('useStoreAt'),'Compiler did not lower the nested store read');
- const emitted=await transformWithOxc(transformed.code,'.cache/native-resource-execution.tsx',{lang:'tsx',jsx:{runtime:'classic'}});
- await mkdir('.cache',{recursive:true});
- const filename=path.join(directory,'.cache/native-resource-execution.mjs');
+ const emitted=await transformWithOxc(transformed.code,sourcePath,{lang:'tsx',jsx:{runtime:'classic',pragma:'jsx',pragmaFrag:'Fragment'}});
  await writeFile(filename,emitted.code);
  const app=await import(pathToFileURL(filename).href+'?test='+Date.now());
  const host=new MemoryVDOMHost(),container=host.createContainer(),world=createWorld();
@@ -125,6 +135,7 @@ try{
  assert.equal(app.activeEffects,2,'Disposing a separate pending root changed live root effects');
  root.dispose();assert.equal(app.activeEffects,0,'Root disposal did not clean up active effects');
  console.log('PASS compiled native resource execution: authored TSX/use(store)/use(promise)/nested use, lexical Suspense sites, sibling fallback/reveal, per-boundary Child identity/state/effects, retained input drafts, local rejection/replacement, candidate discard, and disposal cleanup.');
+ console.log(`Evidence artifacts: ${tempDirectory}`);
 }finally{
  for(const root of roots)root.dispose();
  await plugin.closeBundle();

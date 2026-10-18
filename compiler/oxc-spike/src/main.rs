@@ -228,6 +228,8 @@ struct NativeComponentMetadata {
     state_sites: Vec<NativeStateSiteMetadata>,
     effect_sites: Vec<NativeEffectSiteMetadata>,
     store_sites: Vec<NativeStoreSiteMetadata>,
+    #[serde(rename = "closedResourceHostProgram", skip_serializing_if = "Option::is_none")]
+    closed_resource_host_program: Option<serde_json::Value>,
     #[serde(default)]
     collection_sites: Vec<NativeCollectionSiteMetadata>,
     numeric_sinks: Vec<NativeNumericSinkMetadata>,
@@ -3683,6 +3685,14 @@ fn compile_native_component_module(
         ));
     }
     let state_plan = collector.into_plan();
+    let mut closed_resource_collector = ClosedResourceHostCollector {
+        components: &state_plan.components,
+        semantic: &semantic,
+        revision,
+        programs: BTreeMap::new(),
+    };
+    closed_resource_collector.visit_program(&parsed.program);
+    let closed_resource_programs = closed_resource_collector.programs;
     let import_span = state_plan
         .hook_import
         .clone()
@@ -4048,6 +4058,7 @@ fn compile_native_component_module(
         &numeric_programs,
         &component_prop_sites,
         &component_state_layouts,
+        &closed_resource_programs,
     )?;
     let components = state_plan
         .components
@@ -4098,6 +4109,9 @@ fn compile_native_component_module(
                     site_id: effect.site_id.clone(),
                 })
                 .collect(),
+            closed_resource_host_program: closed_resource_programs
+                .get(&component.component_site_id)
+                .cloned(),
             store_sites: component
                 .store_sites
                 .iter()
@@ -4186,6 +4200,137 @@ fn emit_primitive_owner_cut_kernels(
     )
 }
 
+fn closed_resource_literal(expression: &Expression<'_>) -> Option<serde_json::Value> {
+    match expression {
+        Expression::StringLiteral(value) => Some(serde_json::json!(value.value.as_str())),
+        Expression::NumericLiteral(value) if value.value.is_finite() => Some(serde_json::json!(value.value)),
+        Expression::BooleanLiteral(value) => Some(serde_json::json!(value.value)),
+        Expression::NullLiteral(_) => Some(serde_json::Value::Null),
+        _ => None,
+    }
+}
+
+fn closed_resource_host_program(
+    node: &Function<'_>,
+    component: &ComponentStateSiteIr,
+    semantic: &Semantic<'_>,
+    revision: &str,
+) -> Option<serde_json::Value> {
+    if node.r#async || node.generator || node.params.items.len() != 1 || node.params.rest.is_some()
+        || component.state_sites.len() != 0 || component.effect_sites.len() != 0
+        || component.collection_sites.len() != 0 || component.store_sites.len() != 1
+        || component.store_sites[0].hook_name != "use"
+    {
+        return None;
+    }
+    let parameter = &node.params.items[0];
+    if parameter.optional || parameter.initializer.is_some() { return None; }
+    let (props_symbol, destructured) = match &parameter.pattern {
+        BindingPattern::BindingIdentifier(identifier) => (identifier.symbol_id.get(), None),
+        BindingPattern::ObjectPattern(pattern) if pattern.rest.is_none() && pattern.properties.len() == 1 => {
+            let property = &pattern.properties[0];
+            let BindingPattern::BindingIdentifier(local) = &property.value else { return None; };
+            if property.computed { return None; }
+            (None, Some((type_property_name(&property.key)?.to_owned(), local.symbol_id.get()?)))
+        }
+        _ => return None,
+    };
+    let body = node.body.as_ref()?;
+    if !body.directives.is_empty() || body.statements.len() != 2 { return None; }
+    let declaration = match body.statements.first()?.as_declaration()? {
+        Declaration::VariableDeclaration(declaration)
+            if declaration.kind == oxc_ast::ast::VariableDeclarationKind::Const && declaration.declarations.len() == 1 => declaration,
+        _ => return None,
+    };
+    let declarator = &declaration.declarations[0];
+    let BindingPattern::BindingIdentifier(value_binding) = &declarator.id else { return None; };
+    let value_symbol = value_binding.symbol_id.get()?;
+    let Expression::CallExpression(call) = declarator.init.as_ref()? else { return None; };
+    if call.arguments.len() != 1 || component.store_sites[0].call.start != call.span.start
+        || component.store_sites[0].call.end != call.span.end { return None; }
+    let resource_argument = call.arguments.first()?.as_expression()?;
+    let resource_prop = if let Expression::StaticMemberExpression(member) = resource_argument {
+        let Expression::Identifier(object) = &member.object else { return None; };
+        if reference_symbol(object, semantic) != props_symbol || props_symbol.is_none() { return None; }
+        member.property.name.to_string()
+    } else if let Expression::Identifier(identifier) = resource_argument {
+        let (name, symbol) = destructured.as_ref()?;
+        if reference_symbol(identifier, semantic) != Some(*symbol) { return None; }
+        name.clone()
+    } else { return None; };
+    if !resource_prop.bytes().next().is_some_and(|byte| byte.is_ascii_alphabetic() || byte == b'_' || byte == b'$')
+        || !resource_prop.bytes().all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'$') { return None; }
+    let Statement::ReturnStatement(return_statement) = body.statements.get(1)? else { return None; };
+    let mut return_expression = return_statement.argument.as_ref()?;
+    while let Expression::ParenthesizedExpression(parenthesized) = return_expression {
+        return_expression = &parenthesized.expression;
+    }
+    let Expression::JSXElement(element) = return_expression else { return None; };
+    let JSXElementName::Identifier(tag) = &element.opening_element.name else { return None; };
+    if tag.name != "div" || element.opening_element.attributes.len() > 33 { return None; }
+    let mut key = None;
+    let mut props = Vec::<serde_json::Value>::new();
+    let mut seen = BTreeSet::new();
+    for attribute in &element.opening_element.attributes {
+        let JSXAttributeItem::Attribute(attribute) = attribute else { return None; };
+        let JSXAttributeName::Identifier(name) = &attribute.name else { return None; };
+        let name = name.name.as_str();
+        if name == "key" {
+            if key.is_some() { return None; }
+            let Some(JSXAttributeValue::StringLiteral(value)) = attribute.value.as_ref() else { return None; };
+            if value.value.is_empty() || value.value.chars().any(|ch| matches!(ch, '&' | '\n' | '\r' | '\t')) { return None; }
+            key = Some(value.value.to_string());
+        } else {
+            if !name.starts_with("data-") || name.len() < 6 || !name.as_bytes()[5].is_ascii_lowercase() || !name[6..].bytes().all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-') || !seen.insert(name.to_owned()) { return None; }
+            let literal = match attribute.value.as_ref()? {
+                JSXAttributeValue::StringLiteral(value) if !value.value.chars().any(|ch| matches!(ch, '&' | '\n' | '\r' | '\t')) => serde_json::json!(value.value.as_str()),
+                JSXAttributeValue::ExpressionContainer(container) => closed_resource_literal(container.expression.as_expression()?)?,
+                _ => return None,
+            };
+            props.push(serde_json::json!([name, literal]));
+        }
+    }
+    let key = key?;
+    let mut child_count = 0;
+    for child in &element.children {
+        match child {
+            JSXChild::ExpressionContainer(container) => {
+                let Expression::Identifier(identifier) = container.expression.as_expression()? else { return None; };
+                if reference_symbol(identifier, semantic) != Some(value_symbol) { return None; }
+                child_count += 1;
+            }
+            _ => return None,
+        }
+    }
+    if child_count != 1 { return None; }
+    Some(serde_json::json!({
+        "schemaVersion": 1,
+        "componentProgramId": component.component_site_id,
+        "moduleRevision": revision,
+        "resourceUseSiteId": component.store_sites[0].site_id,
+        "resourceProp": resource_prop,
+        "host": { "tag": "div", "key": key, "props": props, "child": "resource-value" }
+    }))
+}
+
+struct ClosedResourceHostCollector<'p, 'a> {
+    components: &'p [ComponentStateSiteIr],
+    semantic: &'p Semantic<'a>,
+    revision: &'p str,
+    programs: BTreeMap<String, serde_json::Value>,
+}
+
+impl<'a> Visit<'a> for ClosedResourceHostCollector<'_, 'a> {
+    fn visit_function(&mut self, node: &Function<'a>, flags: ScopeFlags) {
+        if let Some(component) = self.components.iter().find(|component| component.declaration.start == node.span.start && component.declaration.end == node.span.end)
+            && let Some(program) = closed_resource_host_program(node, component, self.semantic, self.revision)
+        {
+            self.programs.insert(component.component_site_id.clone(), program);
+        }
+        walk::walk_function(self, node, flags);
+    }
+}
+
 fn transform_native_component_source(
     path: &str,
     source: &str,
@@ -4202,6 +4347,7 @@ fn transform_native_component_source(
     numeric_programs: &[Sink],
     prop_sites: &BTreeMap<String, BTreeSet<String>>,
     state_layouts: &BTreeMap<String, Vec<NativeStateLayoutSlotMetadata>>,
+    closed_resource_programs: &BTreeMap<String, serde_json::Value>,
 ) -> Result<(String, Vec<NativeModuleEdit>), String> {
     let import_span = plan
         .hook_import
@@ -4299,12 +4445,16 @@ fn transform_native_component_source(
                 )
             })
             .unwrap_or_default();
+        let closed_resource_option = closed_resource_programs
+            .get(&component.component_site_id)
+            .map(|program| format!(", closedResourceHostProgram: {program}"))
+            .unwrap_or_default();
         let owner_kernel_option = owner_kernel_indices
             .get(&component.component_site_id)
             .map(|index| format!(", ownerUpdateProgram: {}[{index}]", aliases[9]))
             .unwrap_or_default();
         registrations.push_str(&format!(
-            "\n{}({}, {}, {{ propOnlySites: [{}]{}{}{} }});",
+            "\n{}({}, {}, {{ propOnlySites: [{}]{}{}{}{} }});",
             aliases[0],
             site,
             component.name,
@@ -4316,6 +4466,7 @@ fn transform_native_component_source(
             },
             state_layout_option,
             owner_kernel_option,
+            closed_resource_option,
         ));
         for state in &component.state_sites {
             let site = serde_json::to_string(&state.site_id).map_err(|error| error.to_string())?;
@@ -7141,6 +7292,39 @@ export function Label() { const [label] = useState("ready"); return <span data-l
         assert!(!is_native_runtime_module("@compiled-ui/runtime/react"));
         assert!(!is_native_runtime_module("@r3act/host-dom"));
         assert!(!is_native_runtime_module("react"));
+    }
+
+    #[test]
+    fn emits_closed_resource_host_program_only_for_single_use_literal_leaf() {
+        let source = include_str!("../../fixtures/native-closed-resource-host.tsx");
+        let response = compile_state("native-closed-resource-host.tsx", source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let plan = response.plan.unwrap();
+        let revision = plan.module_revision.clone();
+        let components = plan.components.unwrap();
+        for (name, key, prop) in [
+            ("Ready", "b-primary", "resource"),
+            ("Destructured", "b-other", "resource"),
+        ] {
+            let component = components.iter().find(|component| component.name == name).unwrap();
+            let program = component.closed_resource_host_program.as_ref().unwrap();
+            assert_eq!(program["schemaVersion"], 1);
+            assert_eq!(program["componentProgramId"], component.component_site_id);
+            assert_eq!(program["moduleRevision"], revision);
+            assert_eq!(program["resourceUseSiteId"], component.store_sites[0].site_id);
+            assert_eq!(program["resourceProp"], prop);
+            assert_eq!(program["host"], serde_json::json!({
+                "tag": "div", "key": key, "props": [["data-b", if name == "Ready" { "primary" } else { "other" }]],
+                "child": "resource-value"
+            }));
+        }
+        for component in components.iter().filter(|component| component.name != "Ready" && component.name != "Destructured") {
+            assert!(component.closed_resource_host_program.is_none(), "{} unexpectedly closed", component.name);
+        }
+        let code = plan.component_module.unwrap();
+        assert_eq!(code.matches("closedResourceHostProgram:").count(), 2);
+        assert!(code.contains("closedResourceHostProgram: {"));
+        assert!(code.contains("\"moduleRevision\":"));
     }
 
     #[test]

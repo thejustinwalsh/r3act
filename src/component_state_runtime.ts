@@ -1,5 +1,10 @@
 import { normalizeClosedNumericExpression } from "./closed_numeric_expression.ts";
 import {
+  type ClosedResourceHostProgram,
+  evaluateClosedResourceHostProgram,
+  normalizeClosedResourceHostProgram,
+} from "./closed_resource_host_program.ts";
+import {
   captureCompiledSemanticRevision,
   type CompiledSemanticRevisionToken,
   isCompiledSemanticRevisionCurrent,
@@ -148,6 +153,7 @@ type ComponentCache = {
   ownEffects: Map<string, EffectRegistration>;
   propBoundSites: ReadonlySet<string>;
   nativeBoundary?: boolean;
+  pendingResource?: AsyncResource<any>;
   invalidatedByCollection?: boolean;
   /** A sparse keyed host commit changed a descendant output in this snapshot. */
   invalidatedBySparseStore?: boolean;
@@ -313,6 +319,7 @@ export const defineComponent = <P extends Record<string, unknown>>(
     readonly hostLeafOutput?: boolean;
     readonly stateLayout?: CompiledStateLayout;
     readonly ownerUpdateProgram?: CompiledOwnerUpdateProgram;
+    readonly closedResourceHostProgram?: ClosedResourceHostProgram;
   },
 ): ComponentType<P> => {
   if (siteId.length === 0) {
@@ -320,13 +327,7 @@ export const defineComponent = <P extends Record<string, unknown>>(
   }
   Object.defineProperty(render, componentSite, { value: siteId });
   const moduleEnd = siteId.lastIndexOf("#component:");
-  const revision = moduleEnd < 0 ? undefined : captureCompiledSemanticRevision(
-    siteId.slice(0, moduleEnd), metadata?.stateLayout?.moduleRevision,
-  );
-  if (moduleEnd >= 0 && metadata?.stateLayout?.moduleRevision && !revision) {
-    throw new Error("Compiled state layout has no matching module revision");
-  }
-  if (metadata || revision) {
+  if (metadata || moduleEnd >= 0) {
     const propOnlySites = [...(metadata?.propOnlySites ?? [])];
     if (propOnlySites.some((site) => typeof site !== "string" || !site)) {
       throw new Error(
@@ -361,12 +362,32 @@ export const defineComponent = <P extends Record<string, unknown>>(
       }
       associateCompiledOwnerUpdateProgram(stateLayout, program);
     }
+    const closedResourceHostProgram = metadata?.closedResourceHostProgram === undefined
+      ? undefined
+      : normalizeClosedResourceHostProgram(metadata.closedResourceHostProgram);
+    if (metadata?.closedResourceHostProgram !== undefined &&
+      (!closedResourceHostProgram || closedResourceHostProgram.componentProgramId !== siteId)) {
+      throw new Error("Closed resource host program must match its component revision");
+    }
+    const expectedRevision = stateLayout?.moduleRevision ??
+      closedResourceHostProgram?.moduleRevision;
+    if (stateLayout && closedResourceHostProgram &&
+      stateLayout.moduleRevision !== closedResourceHostProgram.moduleRevision) {
+      throw new Error("Compiled component programs disagree on module revision");
+    }
+    const revision = moduleEnd < 0 ? undefined : captureCompiledSemanticRevision(
+      siteId.slice(0, moduleEnd), expectedRevision,
+    );
+    if (expectedRevision && !revision) {
+      throw new Error("Compiled component program has no matching module revision");
+    }
     Object.defineProperty(render, componentMetadata, {
       value: Object.freeze({
         propOnlySites: Object.freeze(propOnlySites),
         hostLeafOutput: metadata?.hostLeafOutput === true,
         ...(revision ? { revision } : {}),
         ...(stateLayout ? { stateLayout } : {}),
+        ...(closedResourceHostProgram ? { closedResourceHostProgram } : {}),
       }),
     });
   }
@@ -380,6 +401,7 @@ type ComponentMetadata = {
   readonly propOnlySites: readonly string[];
   readonly hostLeafOutput?: boolean;
   readonly stateLayout?: CompiledStateLayout;
+  readonly closedResourceHostProgram?: ClosedResourceHostProgram;
 };
 
 const componentRevision = (component: unknown) =>
@@ -404,6 +426,15 @@ const compiledStateLayoutFor = (
     ? (component as SiteComponent<unknown> & {
       [componentMetadata]?: ComponentMetadata;
     })[componentMetadata]?.stateLayout
+    : undefined;
+
+const closedResourceHostProgramFor = (
+  component: unknown,
+): ClosedResourceHostProgram | undefined =>
+  typeof component === "function" && componentCodeCurrent(component)
+    ? (component as SiteComponent<unknown> & {
+      [componentMetadata]?: ComponentMetadata;
+    })[componentMetadata]?.closedResourceHostProgram
     : undefined;
 
 const validateNumericBindingProgram = (
@@ -972,7 +1003,10 @@ export class ComponentStateRoot<H, Parent = H> {
   #liveStoreSubscriptions = new Map<AnyAsyncStore, () => void>();
   #liveStoreReaders = new Map<string, Set<AnyAsyncStore>>();
   readonly #resourceTable: AsyncResourceTable;
-  #liveResourceSubscriptions = new Map<AsyncResource<any>, () => void>();
+  #liveResourceSubscriptions = new Map<AsyncResource<any>, {
+    unsubscribe: () => void;
+    boundary: OwnerId | null;
+  }>();
   // Resource reads are transaction-scoped; until owner footprints are cached, a
   // store-driven candidate rebuilds the tree after any resource read.
   #everReadResource = false;
@@ -980,6 +1014,7 @@ export class ComponentStateRoot<H, Parent = H> {
   // candidate may safely skip native-boundary expansion.
   #everHadNativeBoundary = false;
   #pendingResourceRetry = false;
+  #pendingBoundaryRetries = new Set<OwnerId>();
   #boundaryPrimaries = new Map<string, BoundaryPrimary>();
   #storeNotificationGeneration = 0;
   #committedStoreNotificationGeneration = 0;
@@ -2293,17 +2328,39 @@ export class ComponentStateRoot<H, Parent = H> {
     this.#scheduled = false;
     const resourceRetry = this.#pendingResourceRetry;
     this.#pendingResourceRetry = false;
+    const boundaryRetries = [...this.#pendingBoundaryRetries];
+    this.#pendingBoundaryRetries.clear();
+    if (!resourceRetry && boundaryRetries.length === 1) {
+      let reveal: NativeRootCandidate<H, Parent> | null;
+      try {
+        reveal = this.#prepareBoundaryReveal(boundaryRetries[0]);
+      } catch (error) {
+        this.#pendingResourceRetry = true;
+        throw error;
+      }
+      if (reveal) {
+        if (reveal.validate()) {
+          reveal.commitHost();
+          reveal.publish();
+          reveal.runEffects();
+          reportFlush();
+          return true;
+        }
+        reveal.discard();
+      }
+    }
+    const retryWholeTree = resourceRetry || boundaryRetries.length > 0;
     const storeGeneration = this.#storeNotificationGeneration;
     const storeChangePending =
       storeGeneration !== this.#committedStoreNotificationGeneration;
     if (
       this.#pendingChanges.size === 0 && !storeChangePending &&
-      this.#pendingCollectionRegionKeys.size === 0 && !resourceRetry
+      this.#pendingCollectionRegionKeys.size === 0 && !retryWholeTree
     ) {
       return false;
     }
     if (
-      resourceRetry && this.#pendingChanges.size === 0 && !storeChangePending &&
+      retryWholeTree && this.#pendingChanges.size === 0 && !storeChangePending &&
       this.#pendingCollectionRegionKeys.size === 0
     ) {
       this.#renderAndCommit(this.#tree, true);
@@ -2312,7 +2369,7 @@ export class ComponentStateRoot<H, Parent = H> {
     }
     this.#activeCounters = this.#profileCounter ? new Map() : undefined;
     if (
-      !resourceRetry && !storeChangePending &&
+      !retryWholeTree && !storeChangePending &&
       this.#pendingCollectionRegionKeys.size === 0 &&
       this.#pendingChanges.size > 0 &&
       this.#tryFlushNativeCellCut()
@@ -2321,7 +2378,7 @@ export class ComponentStateRoot<H, Parent = H> {
       return true;
     }
     const capturedChanges = this.#pendingChanges.capture();
-    if (resourceRetry) {
+    if (retryWholeTree) {
       this.#renderAndCommit(this.#tree, true);
       this.#finishChanges(capturedChanges);
       reportFlush();
@@ -2676,10 +2733,11 @@ export class ComponentStateRoot<H, Parent = H> {
     this.#liveStoreSubscriptions.clear();
     for (const stores of this.#storeDependencyLeases.values()) stores.clear();
     this.#storeDependencyLeases.clear();
-    for (const unsubscribe of this.#liveResourceSubscriptions.values()) {
-      unsubscribe();
+    for (const subscription of this.#liveResourceSubscriptions.values()) {
+      subscription.unsubscribe();
     }
     this.#liveResourceSubscriptions.clear();
+    this.#pendingBoundaryRetries.clear();
     this.#boundaryPrimaries.clear();
     for (const [readerId, stores] of this.#liveStoreReaders) {
       for (const store of stores) store.forgetReader(this.#rootId, readerId);
@@ -2711,6 +2769,215 @@ export class ComponentStateRoot<H, Parent = H> {
         effectErrors,
         "Component effect cleanup failed during dispose",
       );
+    }
+  }
+
+  #prepareBoundaryReveal(
+    boundaryOwner: OwnerId,
+  ): NativeRootCandidate<H, Parent> | null {
+    const boundaryCache = this.#componentCache.get(boundaryOwner);
+    if (!boundaryCache?.nativeBoundary || !boundaryCache.pendingResource ||
+      !this.#liveOwners.has(boundaryOwner) || !this.world.isAlive(boundaryOwner) ||
+      this.#boundaryPrimaries.has(String(boundaryOwner))) return null;
+    const resource = boundaryCache.pendingResource;
+    if (Object.getPrototypeOf(resource) !== AsyncResource.prototype ||
+      Object.hasOwn(resource, "read") || Object.hasOwn(resource, "status") ||
+      Object.hasOwn(resource, "version") ||
+      resource.status.status !== "fulfilled") return null;
+    const child = Object.getOwnPropertyDescriptor(boundaryCache.props, "children")?.value;
+    if (!child || Array.isArray(child) || typeof child !== "object" ||
+      typeof child.type !== "function" || !child.props ||
+      typeof child.props !== "object" || !Object.isFrozen(child) ||
+      !Object.isFrozen(child.props)) return null;
+    const childType = child.type;
+    const program = closedResourceHostProgramFor(childType);
+    if (!program) return null;
+    const revision = componentRevision(childType);
+    if (!revision) return null;
+    const descriptors = Object.getOwnPropertyDescriptors(child.props);
+    if (Object.values(descriptors).some((descriptor) => !("value" in descriptor))) {
+      return null;
+    }
+    const source = descriptors[program.resourceProp]?.value;
+    if (source !== resource || descriptors.ref?.value != null) return null;
+    const siteId = getComponentSiteId(childType);
+    const authoredKey = descriptors.key?.value;
+    if (authoredKey != null && typeof authoredKey !== "string") return null;
+    const childKey = authoredKey ?? `@slot:${siteId}:0`;
+    if (this.world.findOwner(boundaryOwner, siteId, childKey) !== undefined) {
+      return null;
+    }
+    const oldOutput = boundaryCache.expandedResult;
+    if (!oldOutput || Array.isArray(oldOutput) ||
+      typeof oldOutput !== "object" || oldOutput.type !== program.host.tag ||
+      Object.getOwnPropertyDescriptor(oldOutput.props, "key")?.value !==
+        program.host.key) return null;
+    if (boundaryCache.subtreeOwners.size !== 1 ||
+      !boundaryCache.subtreeOwners.has(boundaryOwner) ||
+      boundaryCache.ownEffects.size !== 0 ||
+      boundaryCache.propBoundSites.size !== 0) return null;
+    const oldProps = Object.getOwnPropertyDescriptors(oldOutput.props);
+    if (Object.values(oldProps).some((descriptor) => !('value' in descriptor)) ||
+      Object.entries(oldProps).some(([name, descriptor]) => {
+        const value = descriptor.value;
+        return name === "children"
+          ? value !== null && value !== undefined &&
+            typeof value !== "string" && typeof value !== "number"
+          : name !== "key" &&
+            (!/^data-[a-z][a-z0-9-]*$/.test(name) ||
+              !(value === null || typeof value === "string" ||
+                typeof value === "boolean" ||
+                (typeof value === "number" && Number.isFinite(value))));
+      })) return null;
+    for (const readerId of this.#liveStoreReaders.keys()) {
+      if (readerId.startsWith(`\u0000suspense-pending:${boundaryOwner}:`)) {
+        return null;
+      }
+    }
+    const baseVersion = this.#publicationVersion;
+    const baseVDOMVersion = this.#vdom.version;
+    const preparation = this.world.beginPreparation();
+    const stores = new StoreRenderTransaction(this.#rootId);
+    let reads: ResourceReadSet | null = new ResourceReadSet(this.#resourceTable);
+    let preparedProgram: ReturnType<VDOMSnapshotRoot<H, Parent>["prepareKeyedRegionDeltas"]> = null;
+    try {
+      const value = reads.read(resource);
+      const generated = evaluateClosedResourceHostProgram(program, value);
+      if (!generated) {
+        preparation.discard();
+        stores.discard();
+        reads.discard();
+        return null;
+      }
+      const childOwner = preparation.resolveOwner(boundaryOwner, siteId, childKey);
+      const componentProps: Record<string, unknown> = {};
+      for (const [name, descriptor] of Object.entries(descriptors)) {
+        if (name !== "key" && name !== "ref") {
+          componentProps[name] = descriptor.value;
+        }
+      }
+      const childCache: ComponentCache = {
+        type: childType,
+        hostKeyScope: `${boundaryOwner}\u0000${childKey}`,
+        props: componentProps,
+        result: generated,
+        expandedResult: generated,
+        subtreeOwners: new Set([childOwner]),
+        ownEffects: new Map(),
+        propBoundSites: new Set(),
+      };
+      preparedProgram = this.#vdom.prepareKeyedRegionDeltas(
+        [],
+        [{ key: program.host.key, tree: generated }],
+      );
+      if (!preparedProgram) {
+        preparation.discard();
+        stores.discard();
+        reads.discard();
+        return null;
+      }
+      const current = () =>
+        !this.#codeInvalidated && isCompiledSemanticRevisionCurrent(revision) &&
+        Object.getPrototypeOf(resource) === AsyncResource.prototype &&
+        !Object.hasOwn(resource, "read") && !Object.hasOwn(resource, "status") &&
+        !Object.hasOwn(resource, "version") &&
+        this.#componentCache.get(boundaryOwner) === boundaryCache &&
+        this.#liveOwners.has(boundaryOwner) && this.world.isAlive(boundaryOwner) &&
+        !this.#boundaryPrimaries.has(String(boundaryOwner)) &&
+        boundaryCache.pendingResource === resource &&
+        this.world.findOwner(boundaryOwner, siteId, childKey) === undefined;
+      const sourceCurrent = () =>
+        Object.getOwnPropertyDescriptor(child.props, program.resourceProp)?.value === source;
+      const candidate = this.#createCandidateLifecycle({
+        baseVersion,
+        baseVDOMVersion,
+        stores,
+        transitions: [],
+        pendingResources: [],
+        blocked: false,
+        codeCurrent: current,
+        validatePrepared: () =>
+          preparation.validate() && !preparation.hasStateWrites() &&
+          stores.validate() && (reads?.validate() ?? false) &&
+          (preparedProgram?.validate() ?? false) && sourceCurrent() && current() &&
+          preparation.validate() && stores.validate() &&
+          (reads?.validate() ?? false) &&
+          (preparedProgram?.validate() ?? false),
+        validatePostHost: () =>
+          preparation.validatePublicationInputs() && !preparation.hasStateWrites() &&
+          stores.validatePublicationInputs() && (reads?.validate() ?? false) &&
+          (preparedProgram?.validatePostHost() ?? false) && sourceCurrent() && current() &&
+          preparation.validatePublicationInputs() &&
+          stores.validatePublicationInputs() && (reads?.validate() ?? false) &&
+          (preparedProgram?.validatePostHost() ?? false),
+        preparePublication: () => {
+          preparation.preparePublicationAfterHost();
+          stores.preparePublicationAfterHost();
+        },
+        commitHost: () => {
+          preparation.beginHostApplication();
+          preparedProgram!.commit();
+        },
+        publish: () => {
+          preparation.publishAccepted();
+          stores.publishAccepted();
+          this.#componentCache.set(childOwner, childCache);
+          this.#componentCache.set(boundaryOwner, {
+            ...boundaryCache,
+            expandedResult: generated,
+            subtreeOwners: new Set([boundaryOwner, childOwner]),
+            pendingResource: undefined,
+          });
+          this.#liveOwners.add(childOwner);
+          this.#boundaryPrimaries.set(String(boundaryOwner), { tree: child });
+          for (const ancestor of this.world.ownerLineage(boundaryOwner).slice(1)) {
+            const cache = this.#componentCache.get(ancestor);
+            if (!cache) continue;
+            const subtreeOwners = cache.subtreeOwners as Set<OwnerId>;
+            subtreeOwners.add(childOwner);
+            this.#componentCache.set(ancestor, {
+              ...cache,
+              result: null,
+              expandedResult: null,
+              subtreeOwners,
+              invalidatedByCollection: true,
+            });
+          }
+          reads?.discard();
+          reads = null;
+          this.#publicationVersion++;
+        },
+        installSubscriptions: () => [],
+        runEffects: () => {
+          const errors: unknown[] = [];
+          try { preparation.notifyPublished(); } catch (error) { errors.push(error); }
+          try { stores.notifyPublished(); } catch (error) { errors.push(error); }
+          try { this.#vdom.flushRefs(); } catch (error) { errors.push(error); }
+          return errors;
+        },
+        discard: () => {
+          preparedProgram?.discard();
+          preparation.discard();
+          stores.discard();
+          reads?.discard();
+          reads = null;
+        },
+        releaseArtifacts: () => {
+          preparedProgram = null;
+          reads?.discard();
+          reads = null;
+        },
+        effectFailureMessage: "Boundary reveal effects failed",
+      });
+      return candidate;
+    } catch (error) {
+      const cleanup = collectCleanupErrors([
+        () => preparedProgram?.discard(),
+        () => preparation.discard(),
+        () => stores.discard(),
+        () => reads?.discard(),
+      ]);
+      return throwWithCleanup(error, cleanup);
     }
   }
 
@@ -5457,6 +5724,7 @@ export class ComponentStateRoot<H, Parent = H> {
     return this.#pendingChanges.size > 0 ||
       this.#pendingCollectionRegionKeys.size > 0 ||
       this.#pendingResourceRetry ||
+      this.#pendingBoundaryRetries.size > 0 ||
       this.#storeNotificationGeneration !==
         this.#committedStoreNotificationGeneration;
   }
@@ -5556,22 +5824,38 @@ export class ComponentStateRoot<H, Parent = H> {
     const wanted = new Set(
       resources.filter((resource) => resource.status.status === "pending"),
     );
-    for (const [resource, unsubscribe] of this.#liveResourceSubscriptions) {
+    for (const [resource, subscription] of this.#liveResourceSubscriptions) {
       if (wanted.has(resource)) continue;
-      unsubscribe();
+      subscription.unsubscribe();
       this.#liveResourceSubscriptions.delete(resource);
     }
     for (const resource of wanted) {
-      if (this.#liveResourceSubscriptions.has(resource)) continue;
+      let boundary: OwnerId | null = null;
+      for (const [owner, cache] of this.#componentCache) {
+        if (!cache.nativeBoundary || cache.pendingResource !== resource) continue;
+        if (boundary !== null) {
+          boundary = null;
+          break;
+        }
+        boundary = owner;
+      }
+      const existing = this.#liveResourceSubscriptions.get(resource);
+      if (existing) {
+        existing.boundary = boundary;
+        continue;
+      }
       const unsubscribe = resource.subscribe(() => {
-        this.#liveResourceSubscriptions.get(resource)?.();
+        const subscription = this.#liveResourceSubscriptions.get(resource);
+        subscription?.unsubscribe();
         this.#liveResourceSubscriptions.delete(resource);
         if (!this.#disposed) {
-          this.#pendingResourceRetry = true;
+          if (subscription?.boundary !== null && subscription?.boundary !== undefined) {
+            this.#pendingBoundaryRetries.add(subscription.boundary);
+          } else this.#pendingResourceRetry = true;
           this.#schedule();
         }
       });
-      this.#liveResourceSubscriptions.set(resource, unsubscribe);
+      this.#liveResourceSubscriptions.set(resource, { unsubscribe, boundary });
     }
   }
 
@@ -6460,17 +6744,23 @@ export class ComponentStateRoot<H, Parent = H> {
         expansionJournal?.undo(() => boundaryState.visited.delete(boundaryKey));
       }
       const branchJournal = expansionJournal ?? new ExpansionJournal();
-      const recordBoundaryOutput = (output: RuntimeNode): RuntimeNode => {
+      const recordBoundaryOutput = (
+        output: RuntimeNode,
+        pendingResource?: AsyncResource<any>,
+      ): RuntimeNode => {
         const cache: ComponentCache = {
           type: Suspense,
           hostKeyScope: identityKey,
           props: { ...props },
           result: props.children ?? null,
           expandedResult: output,
-          subtreeOwners: new Set([boundaryOwner]),
+          subtreeOwners: new Set(
+            subtreeOwnersByOwner.get(boundaryOwner) ?? [boundaryOwner],
+          ),
           ownEffects: new Map(),
           propBoundSites: new Set(),
           nativeBoundary: true,
+          ...(pendingResource ? { pendingResource } : {}),
         };
         if (expansionJournal) {
           expansionJournal.set(nextComponentCache, boundaryOwner, cache);
@@ -6635,7 +6925,10 @@ export class ComponentStateRoot<H, Parent = H> {
           protectedBranch,
           boundaryOwner,
         );
-        return recordBoundaryOutput(expandedFallback);
+        return recordBoundaryOutput(
+          expandedFallback,
+          isPendingResource(error) ? error.resource : undefined,
+        );
       } finally {
         ownerPath.pop();
         if (!expansionJournal) branchJournal.clear();

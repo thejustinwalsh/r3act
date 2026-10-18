@@ -1,6 +1,16 @@
 import * as THREE from "three";
 import type { Intersection } from "three";
-import { createThreePropertyWriterResolver } from "./three_property_writer.ts";
+import {
+  createThreePropertyWriterResolver,
+  describeThreePropertyWrite,
+} from "./three_property_writer.ts";
+import {
+  declaredHostValuePolicy,
+  type HostPropertyCapability,
+  type HostResourceDescription,
+  type HostResourceOwnership,
+  type HostValuePolicy,
+} from "./host_property_contract.ts";
 export type { ThreeIntrinsicElements, ThreeHostInstance, ThreeRef } from "./three_intrinsic_types.ts";
 import {
   createNativeRoot,
@@ -68,6 +78,11 @@ export interface ThreeHostDiagnostics {
 
 export interface ThreeHost extends VDOMHost<ThreeHandle, ThreeParent> {
   readonly diagnostics: ThreeHostDiagnostics;
+  describePropertyWrite(
+    handle: ThreeHandle,
+    name: string,
+    next: unknown,
+  ): HostPropertyCapability;
   dispatchPointerEvent(
     target: THREE.Object3D | ThreeObjectHandle,
     type: string,
@@ -84,6 +99,7 @@ export interface ThreeHost extends VDOMHost<ThreeHandle, ThreeParent> {
 export interface ThreeHostOptions {
   readonly registry?: ThreeHostFactoryRegistry;
   readonly propertyWriters?: ThreeHostPropertyRegistry;
+  readonly propertyCapabilities?: Readonly<Record<string, HostValuePolicy>>;
   readonly namespace?: object;
 }
 
@@ -292,16 +308,22 @@ export function createThreeHost(options: ThreeHostOptions = {}): ThreeHost {
   const customFactories = { ...options.registry };
   const namespace = options.namespace ?? THREE;
   const constructorCache = new Map<string, ThreeConstructorResolution | null>();
-  const propertyWriters = {
+  const propertyWriters: Partial<Record<string, ThreePropertyWriter>> = {
     ...threeHostPropertyRegistry,
     ...options.propertyWriters,
   };
+  const propertyCapabilities = { ...options.propertyCapabilities };
   const propertyResolvers = new WeakMap<ThreeHandle, ReturnType<typeof createThreePropertyWriterResolver>>();
-const writeGenericProp = (handle: ThreeHandle, name: string, value: unknown) => {
+const genericPropertyRoot = (handle: ThreeHandle, name: string): object => {
   let instance: object = handle.kind === "object" ? handle.object : handle.resource;
-  // Legacy mesh aliases coexist with generic instance fields and nested paths.
   if (!(name in instance) && !name.includes("-") && handle.kind === "object" &&
-    "material" in instance && name in materialFor(handle)) instance = materialFor(handle);
+    "material" in instance && name in materialFor(handle)) {
+    instance = materialFor(handle);
+  }
+  return instance;
+};
+const writeGenericProp = (handle: ThreeHandle, name: string, value: unknown) => {
+  const instance = genericPropertyRoot(handle, name);
   let resolver = propertyResolvers.get(handle);
   if (!resolver) propertyResolvers.set(handle, resolver = createThreePropertyWriterResolver());
   const writer = resolver.resolve(instance, name);
@@ -332,6 +354,21 @@ const writeGenericProp = (handle: ThreeHandle, name: string, value: unknown) => 
   let hostDisposed = false;
   const fallbackGeometry = new THREE.BufferGeometry();
   const fallbackMaterial = new THREE.MeshBasicMaterial();
+
+  const describeResource = (
+    object: unknown,
+    handle: ThreeHandle,
+  ): HostResourceDescription | null => {
+    if (!(object instanceof THREE.BufferGeometry ||
+      object instanceof THREE.Material)) return null;
+    const ownership: HostResourceOwnership = object === fallbackGeometry ||
+      object === fallbackMaterial
+      ? "shared-owned"
+      : handle.kind === "resource" && handle.resource === object
+      ? (handle.owned ? "owned" : "borrowed")
+      : liveResources.has(object) ? "owned" : "borrowed";
+    return Object.freeze({ object, ownership });
+  };
 
   const ownResource = <T extends THREE.BufferGeometry | THREE.Material>(
     resource: T,
@@ -595,6 +632,48 @@ const writeGenericProp = (handle: ThreeHandle, name: string, value: unknown) => 
       const writer = propertyWriters[name];
       if (writer) writer(handle, value, previous);
       else writeGenericProp(handle, name, value);
+    },
+    describePropertyWrite(handle, name, next): HostPropertyCapability {
+      if (hostDisposed || !handle.live) {
+        throw new Error("Three host handle is disposed.");
+      }
+      if (eventTypeForProp(name)) {
+        return Object.freeze({
+          valuePolicy: handle.kind === "object" && typeof next === "function"
+            ? "retain"
+            : "unknown",
+          targetResource: null,
+          valueResource: null,
+          mayThrow: true,
+        });
+      }
+      if (handle.kind === "object" && name.startsWith("material-")) {
+        const property = name.slice("material-".length);
+        const material = (handle.object as THREE.Mesh).material;
+        if (material === fallbackMaterial &&
+          !(property.split("-")[0] in material)) {
+          return Object.freeze({
+            valuePolicy: "unknown",
+            targetResource: null,
+            valueResource: describeResource(next, handle),
+            mayThrow: true,
+          });
+        }
+      }
+      const custom = propertyWriters[name];
+      const observation = custom
+        ? null
+        : describeThreePropertyWrite(genericPropertyRoot(handle, name), name, next);
+      return Object.freeze({
+        valuePolicy: custom
+          ? declaredHostValuePolicy(propertyCapabilities[name])
+          : observation!.valuePolicy,
+        targetResource: observation
+          ? describeResource(observation.target, handle)
+          : null,
+        valueResource: describeResource(next, handle),
+        mayThrow: true,
+      });
     },
     place(parent, handle, before) {
       if (!handle.live) {

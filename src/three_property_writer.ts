@@ -1,4 +1,5 @@
 /** Generic, lazily resolved property writers for Three-style host objects. */
+import type { HostValuePolicy } from "./host_property_contract.ts";
 
 export type ThreePropertyWriter = {
   /** Property spelling supplied by the caller (for example `position-x`). */
@@ -59,6 +60,35 @@ const compatibleObjects = (target: Record<string, any>, value: unknown) => {
   return threeObjectFlags.some((flag) =>
     target[flag] === true && value[flag] === true
   );
+};
+
+const assertCompatibleNumericArray = (
+  current: Record<string, any>,
+  value: readonly unknown[],
+  property: string,
+) => {
+  const length = current.isVector2
+    ? 2
+    : current.isVector3
+    ? 3
+    : current.isVector4 || current.isQuaternion
+    ? 4
+    : current.isMatrix3
+    ? 9
+    : current.isMatrix4
+    ? 16
+    : 3;
+  const valid = current.isEuler === true
+    ? (value.length === 3 || value.length === 4) &&
+      value.slice(0, 3).every((item) => typeof item === "number") &&
+      (value[3] === undefined || typeof value[3] === "string")
+    : value.length === length &&
+      value.every((item) => typeof item === "number");
+  if (!valid) {
+    throw new Error(
+      `Three property ${JSON.stringify(property)} requires a compatible numeric array`,
+    );
+  }
 };
 
 const resolveProperty = (
@@ -153,30 +183,7 @@ const writeResolved = (
       return;
     }
     if (Array.isArray(value)) {
-      const length = current.isVector2
-        ? 2
-        : current.isVector3
-        ? 3
-        : current.isVector4 || current.isQuaternion
-        ? 4
-        : current.isMatrix3
-        ? 9
-        : current.isMatrix4
-        ? 16
-        : 3;
-      const validArray = current.isEuler === true
-        ? (value.length === 3 || value.length === 4) &&
-          value.slice(0, 3).every((item) => typeof item === "number") &&
-          (value[3] === undefined || typeof value[3] === "string")
-        : value.length === length &&
-          value.every((item) => typeof item === "number");
-      if (!validArray) {
-        throw new Error(
-          `Three property ${
-            JSON.stringify(property)
-          } requires a compatible numeric array`,
-        );
-      }
+      assertCompatibleNumericArray(current, value, property);
       if (typeof current.fromArray === "function") {
         current.fromArray(value);
         return;
@@ -210,6 +217,51 @@ const writeResolved = (
 
   // Ordinary user data remains assignable. Never call arbitrary `set` or `copy`.
   record[key] = value;
+};
+
+/** Describe the current generic write branch; later writes still re-resolve it. */
+export const describeThreePropertyWrite = (
+  root: object,
+  property: string,
+  value: unknown,
+): { target: object; valuePolicy: HostValuePolicy | "unknown" } => {
+  assertSafeProperty(property);
+  const { target, key } = resolveProperty(root, property, property.split("-"));
+  const current = (target as Record<string, any>)[key];
+  const result = (valuePolicy: HostValuePolicy | "unknown") => ({
+    target,
+    valuePolicy,
+  });
+  if (typeof current === "function" || value == null) return result("unknown");
+  if (Object.is(current, value)) {
+    return result(isObject(value) ? "unknown" : "scalar");
+  }
+  if (isObject(current) && current.isColor === true &&
+    typeof current.set === "function") {
+    if (isObject(value) && compatibleObjects(current, value) &&
+      typeof current.copy === "function") return result("copy");
+    return result(typeof value === "string" || typeof value === "number"
+      ? "copy"
+      : "unknown");
+  }
+  if (isObject(current) && isThreeObject(current)) {
+    if (isObject(value) && compatibleObjects(current, value) &&
+      typeof current.copy === "function") return result("copy");
+    if (typeof value === "number" && typeof current.setScalar === "function") {
+      return result("copy");
+    }
+    if (Array.isArray(value)) {
+      assertCompatibleNumericArray(current, value, property);
+      return result(typeof current.fromArray === "function" ||
+          typeof current.set === "function"
+        ? "copy"
+        : "unknown");
+    }
+    return result("unknown");
+  }
+  return result(typeof value === "object" || typeof value === "function"
+    ? "retain"
+    : "scalar");
 };
 
 /**

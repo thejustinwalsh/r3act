@@ -1,5 +1,7 @@
 # Compiler Tooling Decision Note
 
+For the current native TSX syntax, diagnostics, and generic fallback boundaries, see the [native authoring reference](docs/native-authoring-reference.md). The [native package integration guide](native-package-integration.md) covers the current private-alpha tarballs and Vite setup. The dated milestone notes below remain historical.
+
 **Status:** OXC is the preferred long-term frontend/codegen direction; the narrow OXC-to-plan vertical slice runs; production suitability and comparative performance remain to validate  
 **Updated:** 2026-10-12
 

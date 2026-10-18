@@ -1,4 +1,5 @@
 import { evaluateClosedNumericExpression } from "./closed_numeric_expression.ts";
+import type { HostPropertyCapability } from "./host_property_contract.ts";
 import {
   Fragment,
   closedExpressionForBinding,
@@ -212,6 +213,12 @@ export interface VDOMHost<H, Parent = H> {
   createText(text: string): H;
   setText(node: H, text: string): void;
   setProp(node: H, name: string, value: unknown, previous: unknown): void;
+  /** Optional observation; generic writes and host lifetime remain authoritative. */
+  describePropertyWrite?(
+    node: H,
+    name: string,
+    next: unknown,
+  ): HostPropertyCapability;
   /** Optional property-level style writer used by compiled bindings. */
   setStyleProp?(node: H, name: string, value: unknown, previous: unknown): void;
   /**
