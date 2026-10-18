@@ -62,6 +62,31 @@ try {
   const installedBinary = path.join(installed("vite"), report.compilerBinary.path);
   assert.ok(((await stat(installedBinary)).mode & 0o111) !== 0,
     "the installed Rust/OXC compiler must retain an executable mode");
+  const artifactManifest = JSON.parse(await readFile(
+    path.join(installed("vite"), "dist/compiler/bin/manifest.json"), "utf8"));
+  assert.equal(artifactManifest.schemaVersion, 1);
+  assert.equal(artifactManifest.protocolVersion, 1);
+  assert.equal(artifactManifest.artifacts.length, 1);
+  const artifact = artifactManifest.artifacts[0];
+  assert.equal(artifact.target, report.compilerBinary.rustTarget);
+  assert.equal(artifact.platform, process.platform);
+  assert.equal(artifact.arch, process.arch);
+  assert.equal(artifact.sha256, hash(await readFile(installedBinary)));
+  assert.equal(artifact.sha256, report.compilerBinary.sha256);
+  assert.equal(artifact.bytes, (await stat(installedBinary)).size);
+  assert.equal(path.resolve(installed("vite"), "dist/compiler/bin", artifact.file), installedBinary);
+  const infoResult = spawnSync(installedBinary, ["--compiler-info"], {
+    encoding: "utf8", timeout: 5_000, maxBuffer: 64 * 1024,
+  });
+  assert.equal(infoResult.status, 0, `installed compiler info: ${infoResult.error ?? infoResult.stderr}`);
+  const compilerInfo = JSON.parse(infoResult.stdout);
+  assert.equal(compilerInfo.schemaVersion, 1);
+  assert.equal(compilerInfo.protocolVersion, artifactManifest.protocolVersion);
+  for (const field of ["target", "platform", "arch"]) {
+    assert.equal(compilerInfo[field], artifact[field], `installed compiler ${field}`);
+  }
+  record.compilerArtifact = { ...artifact, info: compilerInfo };
+  record.checks.push("installed target manifest, executable bytes/hash and native protocol info agree");
 
   for (const name of ["core", "vite"]) {
     const packageRoot = installed(name);

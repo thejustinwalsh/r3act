@@ -1,0 +1,13 @@
+# Pre-gate compiler artifact source review
+
+Status: source integrated; consolidated correctness and setup/build comparison pending. Source basis is c6a1af9. No runtime storage or publication mechanism changes.
+
+Rust reports a six-field schema/protocol/target/OS/CPU/version object from a sole `--compiler-info` argument. Cargo's build script embeds TARGET; normal native lowering and serve behavior retain their existing path. Unsupported target labels fail explicitly. The added mode does not introduce timestamps, machine paths or a semantic revision authority.
+
+Both builders use one shared helper for exact native target selection, explicit Cargo output path, source snapshot, compiler-info validation, binary copying/chmod and manifest creation. The helper hashes Rust/Cargo inputs before and after the build. Existing target-labelled CLI command names and source maps remain. Historical specialized package-build scripts and archived manifests are untouched. A cross-target configuration is never relabelled as the host binary.
+
+Vite resolves a packaged compiler only through the bounded manifest, validates all artifact sizes/hashes and paths, selects exactly one compatible target and verifies executable protocol info before serving. An installed bin directory without a manifest fails instead of falling through to Cargo. Development checkout Cargo and the explicit caller-owned binary override retain their meaning. Linux automatic selection requires a positive glibc report; absent libc proof declines. This does not establish multi-platform binary support or publisher authenticity.
+
+Review corrected object narrowing for Node diagnostic reports and made short executable probes terminate with SIGKILL on timeout. Plugin startup is deferred and checks closure after asynchronous artifact validation, preventing a service from starting after shutdown. Source fixture covers absence/malformed data, hashes/sizes, duplicate/ambiguous targets, traversal/symlink escape, synthetic Linux ABI choices, mismatched/malformed/nonzero executable info and shutdown during the info query. Fake executable probes exercise agreement and lifecycle on the current machine; they do not execute Linux or Windows binaries.
+
+The fresh installed consumer now checks the target manifest, executable mode, actual bytes/hash and compiler info against the build report, in addition to source maps, types, shared graph, authored execution and empty teardown with Cargo blocked. Luna will preserve prebuild caches, failures, actual command outcomes and exact source/binary closures. Benchmark source remains separate and cannot run until the primary reviews its setup proof and issues a hash-bound one-shot authorization.

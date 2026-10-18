@@ -6224,7 +6224,48 @@ impl<'a> Visit<'a> for Collector<'_, 'a> {
     }
 }
 
+fn compiler_target_platform_arch(target: &str) -> Result<(&'static str, &'static str), String> {
+    let platform = if target.ends_with("-apple-darwin") {
+        "darwin"
+    } else if target.contains("-linux-") {
+        "linux"
+    } else if target.contains("-windows-") {
+        "win32"
+    } else {
+        return Err(format!("unsupported compiler target platform: {target}"));
+    };
+    let arch = if target.starts_with("aarch64-") {
+        "arm64"
+    } else if target.starts_with("x86_64-") {
+        "x64"
+    } else if target.starts_with("i686-") || target.starts_with("i586-") {
+        "ia32"
+    } else {
+        return Err(format!("unsupported compiler target architecture: {target}"));
+    };
+    Ok((platform, arch))
+}
+
+fn compiler_info(target: &str) -> Result<serde_json::Value, String> {
+    let (platform, arch) = compiler_target_platform_arch(target)?;
+    Ok(serde_json::json!({
+        "schemaVersion": 1,
+        "protocolVersion": 1,
+        "target": target,
+        "platform": platform,
+        "arch": arch,
+        "version": env!("CARGO_PKG_VERSION"),
+    }))
+}
+
 fn run() -> Result<(), String> {
+    if env::args().nth(1).as_deref() == Some("--compiler-info") {
+        if env::args().len() != 2 {
+            return Err("usage: ui-graph-compiler-spike --compiler-info".to_owned());
+        }
+        println!("{}", compiler_info(env!("R3ACT_COMPILER_TARGET"))?);
+        return Ok(());
+    }
     if env::args().any(|argument| argument == "--serve-native") {
         return serve_native();
     }
@@ -6528,6 +6569,27 @@ fn main() {
 #[cfg(test)]
 mod native_module_tests {
     use super::*;
+
+    #[test]
+    fn compiler_info_reports_embedded_target_and_bounded_node_labels() {
+        let embedded = env!("R3ACT_COMPILER_TARGET");
+        let info = compiler_info(embedded).unwrap();
+        assert_eq!(info["schemaVersion"], 1);
+        assert_eq!(info["protocolVersion"], 1);
+        assert_eq!(info["target"], embedded);
+        assert_eq!(info["version"], env!("CARGO_PKG_VERSION"));
+        assert_eq!(info.as_object().unwrap().len(), 6);
+        for (target, platform, arch) in [
+            ("aarch64-apple-darwin", "darwin", "arm64"),
+            ("x86_64-unknown-linux-gnu", "linux", "x64"),
+            ("i686-unknown-linux-musl", "linux", "ia32"),
+            ("x86_64-pc-windows-msvc", "win32", "x64"),
+        ] {
+            assert_eq!(compiler_target_platform_arch(target).unwrap(), (platform, arch));
+        }
+        assert!(compiler_info("aarch64-apple-ios").is_err());
+        assert!(compiler_info("wasm32-unknown-unknown").is_err());
+    }
 
     fn compile(path: &str, source: &str) -> NativeModuleResponse {
         compile_native_module(NativeModuleRequest {

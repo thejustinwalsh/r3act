@@ -86,16 +86,31 @@ and [research guide](RESEARCH-GUIDE.md). Native module edits invalidate their
 revision and trigger a conservative full-page reload; state-preserving HMR is
 not promised.
 
-The `@r3act/vite` tarball installs on other platforms, but its bundled
-executable targets only the build machine's OS and CPU. Its CLI name includes
-that target, such as `r3act-compiler-darwin-arm64`. On another target, provide a
-compatible executable with `nativeModulePlugin({ compilerBinary: "/path/to/compiler" })`.
-The package does not supply cross-platform Rust binaries or perform a consumer
-Cargo build.
+The `@r3act/vite` JavaScript package remains installable on other platforms.
+Each build currently includes one native executable at
+`dist/compiler/bin/<Rust-target>/ui-graph-compiler-spike` (with `.exe` on Windows)
+and a `manifest.json` identifying its target, OS/CPU, bytes and SHA-256. Its CLI
+name retains the OS/CPU label, such as `r3act-compiler-darwin-arm64`;
+`--compiler-info` returns schema/protocol version, actual Cargo target, OS/CPU
+and crate version. Both active package builders use the same artifact helper.
+
+Before service startup, Vite checks the manifest, compatible target, confined
+file path, size/hash and executable info. Missing, malformed, ambiguous or
+incompatible installed artifacts fail clearly. They never trigger a consumer
+Cargo build. Checkout development still builds through Cargo. A supplied
+`nativeModulePlugin({ compilerBinary: "/path/to/compiler" })` remains an explicit
+caller-owned override outside the packaged manifest proof.
+
+Native execution is verified on **Darwin ARM64 only**. Linux ABI selection has
+synthetic coverage; automatic Linux selection requires positive glibc proof,
+while unknown/musl environments decline. Windows target metadata has source
+coverage only. Provide a compatible explicit executable for an unsupported
+platform; this tarball does not supply other native binaries. The manifest is
+local integrity metadata, not a publisher authenticity guarantee.
 
 ### Explicit joint transactions
 
-`ComponentStateRoot.prepareTransaction({ cells, collections })` names one
+`ComponentStateRoot.prepareTransaction({ cells, collections, stores })` names one
 candidate over the complete joint closed primitive input-cell set and selected
 keyed collections. `NativeRootWorkQueue.enqueueTransaction` submits the same
 shape across roots. The scoped collection portion supports existing-row
@@ -106,7 +121,7 @@ intrinsic host-tree handling does not prove arbitrary callback purity. The
 declared group coordinates managed accepted state, but custom host setters may
 observe intermediate writes and no cross-host visual atomicity is claimed.
 
-The current mixed slice has a passing 813-test runtime correctness gate. The
+The initial mixed slice has a passing 813-test runtime correctness gate. The
 fresh installed consumer passed with all five tarballs, hash-checked source
 maps, TSX types, one shared runtime graph and actual Rust/OXC compilation
 without Cargo ([consumer v3 log](implementation/2026-10-18-first-pass/verification/package-consumer-v3.log),
@@ -120,6 +135,22 @@ passed output, identity and lifecycle checks; native measured 0.85 ms median
 against React Compiler's 0.50 ms for 64 selected setters and one row move.
 That ratio is descriptive from one pair, not a performance qualification.
 Cold/memory, tail replication, other platforms and a second device remain open.
+
+### Artifact verification and setup-cost boundary
+
+The [compiler-artifact gate](implementation/2026-10-18-compiler-artifacts/verification/gate-results.md)
+passes 904 runtime tests, 47 Rust tests, fifteen compiled fixtures and 24 artifact
+checks, including shutdown during an info query. Fresh current and legacy
+installed consumers pass with Cargo blocked; archived outputs contain 437 and
+207 files respectively. The original fixture-context failure remains preserved.
+Historical tracked cache paths are restored; fresh artifacts live under this
+slice's verification directory.
+
+The sole native-first fresh-process Vite build pair observed 213.18/313.64 ms
+Native/React, with 135,717/72,007 JavaScript bytes. Untimed proof builds and hash
+reads may prime caches. This is one setup/build observation, with no cold-cache,
+runtime-latency, equivalent-feature bundle-size or multi-platform qualification.
+See [raw evidence and remaining obligations](implementation/2026-10-18-compiler-artifacts/results.md).
 
 ## Historical `@compiled-ui/runtime` private integration — 12 October 2026
 

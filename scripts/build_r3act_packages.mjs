@@ -1,8 +1,9 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmod, copyFile, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildNativeCompilerArtifact } from "./native_compiler_artifact.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const base = path.join(root, ".cache/r3act-package-build");
@@ -82,12 +83,9 @@ await mkdir(path.join(unified, "sources/src"), { recursive: true });
 await writeFile(path.join(unified, "sources/src/native_jsx_types.d.ts"), jsxTypes);
 sourceHashes.set("src/native_jsx_types.d.ts", hash(jsxTypes));
 
-run("cargo", ["build", "--locked", "--release", "--manifest-path", "compiler/oxc-spike/Cargo.toml", "--bin", "ui-graph-compiler-spike"]);
-const binaryName = `ui-graph-compiler-spike${process.platform === "win32" ? ".exe" : ""}`;
-const binaryRelative = `dist/compiler/bin/${process.platform}-${process.arch}/${binaryName}`;
-const cargoTarget = process.env.CARGO_TARGET_DIR
-  ? path.resolve(root, process.env.CARGO_TARGET_DIR)
-  : path.join(root, "compiler/oxc-spike/target");
+const { rustTarget, compilerInfo, rustSource, artifact: compilerArtifact } =
+  await buildNativeCompilerArtifact({ root, binRoot: path.join(base, "vite/dist/compiler/bin") });
+const binaryRelative = `dist/compiler/bin/${compilerArtifact.file}`;
 const packageStages = new Map();
 for (const name of names) {
   const stage = path.join(base, name);
@@ -105,7 +103,7 @@ for (const name of names) {
   await writeFile(path.join(stage, "package.json"), JSON.stringify(manifest, null, 2) + "\n");
   await copyFile(path.join(root, "LICENSE"), path.join(stage, "LICENSE"));
   const platformNote = name === "vite"
-    ? `\nThe bundled Rust/OXC compiler and the r3act-compiler-${process.platform}-${process.arch} executable target ${process.platform}-${process.arch}. On another platform, supply a compatible executable through nativeModulePlugin({ compilerBinary: "/path/to/compiler" }). This tarball does not provide other platform binaries.\n`
+    ? `\nThe bundled Rust/OXC compiler and the r3act-compiler-${process.platform}-${process.arch} executable target ${rustTarget} (${process.platform}-${process.arch}). On another platform, supply a compatible executable through nativeModulePlugin({ compilerBinary: "/path/to/compiler" }). This tarball does not provide other platform binaries.\n`
     : "";
   await writeFile(path.join(stage, "README.md"),
     `# @r3act/${name}\n\nPrivate alpha installation artifact. This package is unpublished and its namespace is not reserved. See the repository README and final master plan for the supported native TSX subset and evidence limits.\n${platformNote}`);
@@ -115,11 +113,6 @@ for (const [name, section] of [["core", "src"], ["vite", "compiler"]]) {
   await copyTree(path.join(unifiedDist, section), path.join(stage, "dist", section));
   await copyTree(path.join(unified, "sources", section), path.join(stage, "sources", section));
 }
-const viteBinary = path.join(packageStages.get("vite"), binaryRelative);
-await mkdir(path.dirname(viteBinary), { recursive: true });
-await copyFile(path.join(cargoTarget, "release", binaryName), viteBinary);
-await chmod(viteBinary, 0o755);
-
 const wrappers = {
   "host-dom": { "index": "@r3act/core/dom" },
   "host-three": {
@@ -164,6 +157,8 @@ for (const name of names) {
     files,
   };
 }
-report.compilerBinary = { target: `${process.platform}-${process.arch}`, path: binaryRelative, bytes: (await stat(viteBinary)).size };
+report.compilerBinary = { target: `${process.platform}-${process.arch}`, path: binaryRelative,
+  rustTarget, compilerInfo, sha256: compilerArtifact.sha256, bytes: compilerArtifact.bytes,
+  manifest: "dist/compiler/bin/manifest.json", rustSource };
 report.sourceHashes = Object.fromEntries([...sourceHashes].sort(([a], [b]) => a.localeCompare(b)));
 await writeFile(path.join(base, "report.json"), JSON.stringify(report, null, 2) + "\n");

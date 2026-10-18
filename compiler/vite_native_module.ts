@@ -5,6 +5,10 @@ import process from "node:process";
 import { existsSync } from "node:fs";
 import MagicString from "magic-string";
 import type { Plugin, ViteDevServer } from "vite";
+import {
+  resolvePackagedNativeCompiler,
+  verifyPackagedNativeCompiler,
+} from "./native_compiler_artifact.ts";
 
 type NativePlan = {
   schema_version: number;
@@ -228,15 +232,10 @@ export const nativeModuleCompilerPlugin = (
   let sourceRoot = path.resolve(options.root ?? defaultRoot);
   const compilerRoot = path.resolve(options.compilerRoot ?? options.root ?? defaultRoot);
   const manifestPath = path.join(compilerRoot, "compiler/oxc-spike/Cargo.toml");
-  const packagedBinary = path.join(moduleDir, "bin", `${process.platform}-${process.arch}`,
-    `ui-graph-compiler-spike${process.platform === "win32" ? ".exe" : ""}`);
-  const prebuiltBinary = options.compilerBinary
-    ? path.resolve(options.compilerBinary)
-    : existsSync(packagedBinary) ? packagedBinary : undefined;
-  if (!prebuiltBinary && !existsSync(manifestPath)) {
-    throw new Error(`No Rust native compiler for ${process.platform}-${process.arch}; install a matching @r3act/vite artifact or provide compilerBinary`);
-  }
-  const binaryPath = prebuiltBinary ?? path.join(
+  const binDirectory = path.join(moduleDir, "bin");
+  const explicitBinary = options.compilerBinary
+    ? path.resolve(options.compilerBinary) : undefined;
+  const devBinaryPath = path.join(
     compilerRoot,
     "compiler/oxc-spike/target/debug/ui-graph-compiler-spike",
   );
@@ -331,18 +330,32 @@ export const nativeModuleCompilerPlugin = (
     if (startup) return startup;
     outputBuffer = "";
     stderrBuffer = "";
-    if (prebuiltBinary) {
-      startup = new Promise((resolve, reject) => {
-        const child = spawn(binaryPath, ["--serve-native"], {
-          cwd: sourceRoot,
-          stdio: ["pipe", "pipe", "pipe"],
+    if (explicitBinary || existsSync(binDirectory) || !existsSync(manifestPath)) {
+      startup = (async () => {
+        const packaged = explicitBinary ? undefined
+          : await resolvePackagedNativeCompiler(binDirectory);
+        if (!explicitBinary && !packaged) {
+          throw new Error(`No Rust native compiler for ${process.platform}-${process.arch}; install a matching @r3act/vite artifact or provide compilerBinary`);
+        }
+        if (packaged) {
+          await verifyPackagedNativeCompiler(packaged.binaryPath, packaged.artifact);
+        }
+        if (stopped) throw new Error("Native module compiler plugin is closed");
+        const executable = explicitBinary ?? packaged!.binaryPath;
+        return await new Promise<ChildProcessWithoutNullStreams>((resolve, reject) => {
+          const child = spawn(executable, ["--serve-native"], {
+            cwd: sourceRoot,
+            stdio: ["pipe", "pipe", "pipe"],
+          });
+          attachCompiler(child);
+          child.once("error", (error) => {
+            reject(new Error(`Unable to start Rust native compiler: ${error.message}`));
+          });
+          child.once("spawn", () => resolve(child));
         });
-        attachCompiler(child);
-        child.once("error", (error) => {
-          startup = undefined;
-          reject(new Error(`Unable to start Rust native compiler: ${error.message}`));
-        });
-        child.once("spawn", () => resolve(child));
+      })().catch((error) => {
+        startup = undefined;
+        throw error;
       });
       return startup;
     }
@@ -381,7 +394,7 @@ export const nativeModuleCompilerPlugin = (
           );
           return;
         }
-        const child = spawn(binaryPath, ["--serve-native"], {
+        const child = spawn(devBinaryPath, ["--serve-native"], {
           cwd: compilerRoot,
           stdio: ["pipe", "pipe", "pipe"],
         });

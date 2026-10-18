@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "status": "BUILD_CAPTURED_PENDING_PRIMARY_REVIEW",
+  "node": "v24.18.0",
+  "nodeExecutable": "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+  "steps": [
+    {
+      "label": "install-lock",
+      "command": "pnpm",
+      "args": [
+        "install",
+        "--lockfile-only",
+        "--ignore-scripts"
+      ],
+      "exit": 0,
+      "signal": null,
+      "error": null
+    },
+    {
+      "label": "install-frozen",
+      "command": "pnpm",
+      "args": [
+        "install",
+        "--frozen-lockfile",
+        "--ignore-scripts"
+      ],
+      "exit": 0,
+      "signal": null,
+      "error": null
+    },
+    {
+      "label": "compiler-info",
+      "command": "ui-graph-compiler-spike",
+      "args": [
+        "--compiler-info"
+      ],
+      "exit": 0,
+      "signal": null,
+      "error": null
+    },
+    {
+      "label": "review-native",
+      "command": "node",
+      "args": [
+        "/Volumes/Depot/Developer/r3act/implementation/2026-10-18-compiler-artifacts/benchmark/proof-v1/consumer/build-arm.mjs",
+        "native",
+        "/Volumes/Depot/Developer/r3act/implementation/2026-10-18-compiler-artifacts/benchmark/proof-v1/review/native"
+      ],
+      "exit": 0,
+      "signal": null,
+      "error": null
+    },
+    {
+      "label": "review-react",
+      "command": "node",
+      "args": [
+        "/Volumes/Depot/Developer/r3act/implementation/2026-10-18-compiler-artifacts/benchmark/proof-v1/consumer/build-arm.mjs",
+        "react",
+        "/Volumes/Depot/Developer/r3act/implementation/2026-10-18-compiler-artifacts/benchmark/proof-v1/review/react"
+      ],
+      "exit": 0,
+      "signal": null,
+      "error": null
+    }
+  ],
+  "errors": []
+}
