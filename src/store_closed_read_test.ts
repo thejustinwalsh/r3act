@@ -268,3 +268,145 @@ Deno.test("storeRecord rejects unsafe descriptors and frozen Proxy wrappers decl
   equal(proxyGets, 0, "closed capture invoked Proxy get trap");
   equal(store.diagnostics().roots, 0, "declined Proxy registered a root");
 });
+
+Deno.test("closed reader retirement publishes with replacement history and leaves forks intact", () => {
+  const store = createAsyncStore(1);
+  const fork = new StoreRenderTransaction("fork");
+  equal(fork.read(store.select((value) => value), "old"), 1, "fork initial read");
+  fork.preparePublication();
+  fork.publishAccepted();
+  const initial = new StoreRenderTransaction("root");
+  equal(initial.readClosedNumeric(store, "old"), 1, "root initial read");
+  initial.preparePublication();
+  initial.publishAccepted();
+
+  const next = new StoreRenderTransaction("root");
+  equal(next.readClosedNumeric(store, "new"), 1, "replacement read");
+  equal(next.retireClosedReaders(new Map([["old", new Set([store])]])), true,
+    "captured closed Store could not retire old reader");
+  equal(store.diagnostics().readers, 2, "retirement escaped preparation");
+  next.preparePublication();
+  equal(store.diagnostics().readers, 2, "preparation changed accepted readers");
+  next.publishAccepted();
+  equal(store.diagnostics().readers, 2, "replacement and retirement were not atomic");
+  equal(store._readerValuesFor("root", "old").size, 0, "old root history remains");
+  equal(store._readerValuesFor("fork", "old").size, 1, "fork history changed");
+});
+
+Deno.test("closed reader retirement declines uncaptured Stores without changing history", () => {
+  const store = createAsyncStore(1);
+  const initial = new StoreRenderTransaction("root");
+  initial.readClosedNumeric(store, "old");
+  initial.preparePublication();
+  initial.publishAccepted();
+  const declined = new StoreRenderTransaction("root");
+  equal(declined.retireClosedReaders(new Map([["old", new Set([store])]])), false,
+    "uncaptured Store retired a reader");
+  declined.discard();
+  equal(store.diagnostics().readers, 1, "declined retirement changed history");
+});
+
+Deno.test("closed reader retirement rolls back with a candidate savepoint", () => {
+  const store = createAsyncStore(1);
+  const initial = new StoreRenderTransaction("root");
+  initial.readClosedNumeric(store, "old");
+  initial.preparePublication();
+  initial.publishAccepted();
+  const next = new StoreRenderTransaction("root");
+  next.readClosedNumeric(store, "new");
+  const checkpoint = next.checkpoint();
+  equal(next.retireClosedReaders(new Map([["old", new Set([store])]])), true,
+    "retirement failed");
+  next.rollbackTo(checkpoint);
+  next.releaseCheckpoint(checkpoint);
+  next.preparePublication();
+  next.publishAccepted();
+  equal(store.diagnostics().readers, 2, "rollback retained retirement");
+});
+
+Deno.test("closed reader retirement preserves a replacement observation at the same site", () => {
+  const store = createAsyncStore(1);
+  const initial = new StoreRenderTransaction("root");
+  initial.readClosedNumeric(store, "site");
+  initial.preparePublication();
+  initial.publishAccepted();
+  const next = new StoreRenderTransaction("root");
+  next.readClosedNumeric(store, "site");
+  equal(next.retireClosedReaders(new Map([["site", new Set([store])]])), true,
+    "same-site replacement declined");
+  next.preparePublication();
+  next.publishAccepted();
+  equal(store.diagnostics().readers, 1, "same-site replacement was deleted");
+});
+
+Deno.test("closed reader retirement fails preparation after a callback changes the exact cut", () => {
+  const closed = createAsyncStore(1);
+  class CallbackStore extends AsyncStore<number> {
+    override _prepareReaderValues(
+      rootId: string,
+      pending: ReadonlyMap<string, ReadonlyMap<object, unknown> | null>,
+    ) {
+      closed.dispatch(2);
+      return super._prepareReaderValues(rootId, pending);
+    }
+  }
+  const callbackStore = new CallbackStore(2);
+  const initial = new StoreRenderTransaction("root");
+  initial.readClosedNumeric(closed, "old");
+  initial.preparePublication();
+  initial.publishAccepted();
+  const next = new StoreRenderTransaction("root");
+  next.readClosedNumeric(closed, "new");
+  next.read(callbackStore, "callback");
+  equal(next.retireClosedReaders(new Map([["old", new Set([closed])]])), true,
+    "captured Store could not stage retirement");
+  let rejected = false;
+  try { next.preparePublication(); } catch { rejected = true; }
+  equal(rejected, true, "callback changed a closed Store but preparation succeeded");
+  equal(closed.diagnostics().readers, 1, "failed preparation retired old history");
+  equal(closed.getStateForRoot("root"), 2, "newer action was lost");
+  next.discard();
+});
+
+Deno.test("closed reader retirement declines a stale captured lineage", () => {
+  const store = createAsyncStore(1);
+  const initial = new StoreRenderTransaction("root");
+  initial.readClosedNumeric(store, "old");
+  initial.preparePublication();
+  initial.publishAccepted();
+  const next = new StoreRenderTransaction("root");
+  next.readClosedNumeric(store, "new");
+  store.detachRoot("root");
+  equal(next.retireClosedReaders(new Map([["old", new Set([store])]])), false,
+    "stale Store lineage staged retirement");
+  next.discard();
+});
+
+Deno.test("closed reader retirement declines a replaced Store prototype", () => {
+  const store = createAsyncStore(1);
+  const transaction = new StoreRenderTransaction("root");
+  transaction.readClosedNumeric(store, "new");
+  const descriptor = Object.getOwnPropertyDescriptor(AsyncStore.prototype, "read")!;
+  try {
+    Object.defineProperty(AsyncStore.prototype, "read", {
+      ...descriptor,
+      value: () => 9,
+    });
+    equal(transaction.retireClosedReaders(new Map([["old", new Set([store])]])), false,
+      "replaced prototype staged retirement");
+  } finally {
+    Object.defineProperty(AsyncStore.prototype, "read", descriptor);
+    transaction.discard();
+  }
+});
+
+Deno.test("published closed transaction detects a newer action from captured snapshots", () => {
+  const store = createAsyncStore(1);
+  const transaction = new StoreRenderTransaction("root");
+  transaction.readClosedNumeric(store, "reader");
+  transaction.preparePublication();
+  transaction.publishAccepted();
+  equal(transaction.closedInputsChanged(), false, "unchanged accepted cut was marked stale");
+  store.dispatch(2);
+  equal(transaction.closedInputsChanged(), true, "newer action escaped captured cut check");
+});

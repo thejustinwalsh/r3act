@@ -33,6 +33,8 @@ import {
   ResourceRejection,
 } from "./async_resource_runtime.ts";
 import { closedResourceStatus, ResourceReadSet } from "./resource_read_set.ts";
+import { captureClosedProjectionValues } from "./owned_store_record.ts";
+import { snapshotScopedHostProp } from "./scoped_host_values.ts";
 import { PendingStateChanges } from "./pending_state_changes.ts";
 import type {
   CompiledOwnerUpdateProgram,
@@ -109,6 +111,33 @@ const throwWithCleanup = (error: unknown, errors: readonly unknown[]): never => 
     throw new AggregateError([error, ...errors], "Publication and cleanup failed");
   }
   throw error;
+};
+
+const sameClosedHostOutput = (
+  tag: string, name: string, previous: unknown, next: unknown,
+): boolean => {
+  if (Object.is(previous, next)) return true;
+  try {
+    const oldValue = snapshotScopedHostProp(tag, name, previous);
+    const newValue = snapshotScopedHostProp(tag, name, next);
+    if (!oldValue.accepted || !newValue.accepted) return false;
+    const old = oldValue.value, proposed = newValue.value;
+    if (Object.is(old, proposed)) return true;
+    if (Array.isArray(old) && Array.isArray(proposed)) {
+      return old.length === proposed.length &&
+        old.every((value, index) => Object.is(value, proposed[index]));
+    }
+    if (old && proposed && typeof old === "object" && typeof proposed === "object") {
+      const keys = Object.keys(old);
+      return keys.length === Object.keys(proposed).length &&
+        keys.every((key) => Object.hasOwn(proposed, key) &&
+          Object.is((old as Record<string, unknown>)[key],
+            (proposed as Record<string, unknown>)[key]));
+    }
+    return false;
+  } catch {
+    return false;
+  }
 };
 
 const componentSite = Symbol("compiled-component-site");
@@ -469,6 +498,15 @@ const closedResourceHostProgramFor = (
     ? (component as SiteComponent<unknown> & {
       [componentMetadata]?: ComponentMetadata;
     })[componentMetadata]?.closedResourceHostProgram
+    : undefined;
+
+const closedStoreHostProgramFor = (
+  component: unknown,
+): ClosedStoreHostProgram | undefined =>
+  typeof component === "function" && componentCodeCurrent(component)
+    ? (component as SiteComponent<unknown> & {
+      [componentMetadata]?: ComponentMetadata;
+    })[componentMetadata]?.closedStoreHostProgram
     : undefined;
 
 const validateNumericBindingProgram = (
@@ -1297,12 +1335,13 @@ export class ComponentStateRoot<H, Parent = H> {
   ): ClosedStoreOutputCut {
     if (new Set(selected).size !== selected.length) throw new SparseCandidateIneligible();
     const selectedStores = new Set(selected);
-    type Input = { id: string; prop: string; store: AnyAsyncStore; membership: Set<AnyAsyncStore> };
+    type Input = { id: string; prop: string; source: unknown; membership?: Set<AnyAsyncStore> };
     type Owner = { cache: ComponentCache; inputs: Input[]; next: RuntimeElement };
     const owners = new Map<OwnerId, Owner>();
     const covered = new Set<string>();
     const seen = new Set<AnyAsyncStore>();
     const regions: StorePropDelta[] = [];
+    const resources = new ResourceReadSet(this.#resourceTable);
     let outputChanged = false;
     const ownValue = (object: object, name: string) => {
       const descriptor = Object.getOwnPropertyDescriptor(object, name);
@@ -1346,7 +1385,7 @@ export class ComponentStateRoot<H, Parent = H> {
           if (!prior || !proposedValue || !("value" in prior) ||
             !("value" in proposedValue)) return false;
           props.push([name, proposedValue.value as ClosedHostOutputValue]);
-          changed ||= !Object.is(prior.value, proposedValue.value);
+          changed ||= !sameClosedHostOutput(shape.tag, name, prior.value, proposedValue.value);
         }
         const childrenFor = (
           descriptors: Record<string, PropertyDescriptor>,
@@ -1401,92 +1440,111 @@ export class ComponentStateRoot<H, Parent = H> {
     const current = () => [...owners].every(([owner, { cache, inputs }]) =>
       this.#liveOwners.has(owner) && this.world.isAlive(owner) &&
       this.#componentCache.get(owner) === cache && componentCodeCurrent(cache.type) &&
-      inputs.every(({ id, prop, store, membership }) =>
-        this.#liveStoreReaders.get(id) === membership && membership.size === 1 &&
-        membership.has(store) && ownValue(cache.props, prop) === store
+      inputs.every(({ id, prop, source, membership }) =>
+        ownValue(cache.props, prop) === source &&
+        (membership === undefined ||
+          (this.#liveStoreReaders.get(id) === membership && membership.size === 1 &&
+            membership.has(source as AnyAsyncStore)))
       ) && [...this.#liveStoreReaders.keys()].every((id) =>
         !id.startsWith(`${owner}\u0000`) || covered.has(id)
       )
     ) && [...this.#liveStoreReaders].every(([id, membership]) =>
       ![...membership].some((store) => selectedStores.has(store)) || covered.has(id)
-    );
-    for (const [id, membership] of this.#liveStoreReaders) {
-      if (![...membership].some((store) => selectedStores.has(store))) continue;
-      const split = id.indexOf("\u0000");
-      const owner = Number(id.slice(0, split));
-      if (split <= 0 || !Number.isSafeInteger(owner)) throw new SparseCandidateIneligible();
-      if (owners.has(owner)) continue;
-      const cache = this.#componentCache.get(owner);
-      const program = typeof cache?.type === "function"
-        ? (cache.type as SiteComponent<unknown> & { [componentMetadata]?: ComponentMetadata })[componentMetadata]?.closedStoreHostProgram
-        : undefined;
-      if (!cache || !program || cache.subtreeOwners.size !== 1 ||
-        cache.ownEffects.size !== 0 || cache.propBoundSites.size !== 0 ||
-        cache.keyedRegion || cache.nativeBoundary || !componentCodeCurrent(cache.type)) {
-        throw new SparseCandidateIneligible();
-      }
-      const inputs: Input[] = [];
-      const values: number[] = [];
-      for (const input of closedStoreHostInputs(program)) {
-        const inputId = `${owner}\u0000${input.storeUseSiteId}`;
-        const store = ownValue(cache.props, input.storeProp) as AnyAsyncStore;
-        const inputMembership = this.#liveStoreReaders.get(inputId);
-        if (!store || !inputMembership || inputMembership.size !== 1 ||
-          !inputMembership.has(store)) throw new SparseCandidateIneligible();
-        const projections = stores.readClosedProjections(
-          store, inputId, closedStoreHostInputPaths(input),
-        );
-        if (!projections) throw new SparseCandidateIneligible();
-        inputs.push({ id: inputId, prop: input.storeProp, store, membership: inputMembership });
-        values.push(...projections);
-        covered.add(inputId);
-        if (selectedStores.has(store)) seen.add(store);
-      }
-      const output = program.schemaVersion === 4 || program.schemaVersion === 5
-        ? null : evaluateClosedStoreHostProgram(program, values);
-      if (program.schemaVersion === 4 || program.schemaVersion === 5) {
-        const next = evaluateClosedStoreHostTree(program, values);
-        if (!next) throw new SparseCandidateIneligible();
-        const previous = cache.expandedResult;
-        const staged = treeRegions(program.host, previous, next);
-        if (!staged) throw new SparseCandidateIneligible();
-        outputChanged ||= staged.changed;
-        owners.set(owner, { cache, inputs, next });
-        regions.push(...staged.regions);
-        continue;
-      }
-      const previous = cache.expandedResult;
-      if (!output || !previous || Array.isArray(previous) || typeof previous !== "object" ||
-        previous.type !== program.host.tag || previous.props.key !== program.host.key ||
-        (previous.props.children !== undefined && previous.props.children !== null && previous.props.children !== false)) {
-        throw new SparseCandidateIneligible();
-      }
-      outputChanged ||= output.some(([name, value]) => !Object.is(previous.props[name], value));
-      const next = Object.freeze({ type: program.host.tag,
-        props: Object.freeze(Object.fromEntries([["key", program.host.key], ...output])) });
-      owners.set(owner, { cache, inputs, next });
-      regions.push({ key: program.host.key, tag: program.host.tag, props: output });
-    }
-    if (seen.size !== selectedStores.size || (requireOutputChange && !outputChanged) ||
-      !current() || !stores.validate()) throw new SparseCandidateIneligible();
-    const ownerIds = new Set(owners.keys());
-    return {
-      owners: ownerIds, regions, current,
-      publish: () => {
-        for (const [owner, { next }] of owners) {
-          const cache = this.#componentCache.get(owner)!;
-          this.#componentCache.set(owner, { ...cache, result: next, expandedResult: next });
-          this.#refreshDirectKeyedRegionOutput(owner);
-          for (const ancestor of this.world.ownerLineage(owner).slice(1)) {
-            const live = this.#componentCache.get(ancestor);
-            if (live) this.#componentCache.set(ancestor, {
-              ...live, expandedResult: null, invalidatedBySparseStore: true,
-            });
-          }
+    ) && resources.validate();
+    try {
+      for (const [id, membership] of this.#liveStoreReaders) {
+        if (![...membership].some((store) => selectedStores.has(store))) continue;
+        const split = id.indexOf("\u0000");
+        const owner = Number(id.slice(0, split));
+        if (split <= 0 || !Number.isSafeInteger(owner)) throw new SparseCandidateIneligible();
+        if (owners.has(owner)) continue;
+        const cache = this.#componentCache.get(owner);
+        const program = typeof cache?.type === "function"
+          ? (cache.type as SiteComponent<unknown> & { [componentMetadata]?: ComponentMetadata })[componentMetadata]?.closedStoreHostProgram
+          : undefined;
+        if (!cache || !program || cache.subtreeOwners.size !== 1 ||
+          cache.ownEffects.size !== 0 || cache.propBoundSites.size !== 0 ||
+          cache.keyedRegion || cache.nativeBoundary || !componentCodeCurrent(cache.type)) {
+          throw new SparseCandidateIneligible();
         }
-      },
-      release: () => { owners.clear(); ownerIds.clear(); covered.clear(); regions.length = 0; },
-    };
+        const inputs: Input[] = [];
+        const values: number[] = [];
+        for (const input of closedStoreHostInputs(program)) {
+          const inputId = `${owner}\u0000${input.storeUseSiteId}`;
+          const store = ownValue(cache.props, input.storeProp);
+          const inputMembership = this.#liveStoreReaders.get(inputId);
+          const paths = closedStoreHostInputPaths(input);
+          let projections: readonly number[] | null;
+          if (store instanceof AsyncStore) {
+            if (!inputMembership || inputMembership.size !== 1 ||
+              !inputMembership.has(store)) throw new SparseCandidateIneligible();
+            projections = stores.readClosedProjections(store, inputId, paths);
+            if (selectedStores.has(store)) seen.add(store);
+          } else {
+            if (inputMembership || !(store instanceof AsyncResource)) {
+              throw new SparseCandidateIneligible();
+            }
+            const status = resources.readClosed(store);
+            projections = status ? captureClosedProjectionValues(status.value, paths) : null;
+          }
+          if (!projections) throw new SparseCandidateIneligible();
+          inputs.push({ id: inputId, prop: input.storeProp, source: store,
+            ...(inputMembership ? { membership: inputMembership } : {}) });
+          values.push(...projections);
+          if (inputMembership) covered.add(inputId);
+        }
+        const output = program.schemaVersion === 4 || program.schemaVersion === 5
+          ? null : evaluateClosedStoreHostProgram(program, values);
+        if (program.schemaVersion === 4 || program.schemaVersion === 5) {
+          const next = evaluateClosedStoreHostTree(program, values);
+          if (!next) throw new SparseCandidateIneligible();
+          const previous = cache.expandedResult;
+          const staged = treeRegions(program.host, previous, next);
+          if (!staged) throw new SparseCandidateIneligible();
+          outputChanged ||= staged.changed;
+          owners.set(owner, { cache, inputs, next });
+          regions.push(...staged.regions);
+          continue;
+        }
+        const previous = cache.expandedResult;
+        if (!output || !previous || Array.isArray(previous) || typeof previous !== "object" ||
+          previous.type !== program.host.tag || previous.props.key !== program.host.key ||
+          (previous.props.children !== undefined && previous.props.children !== null && previous.props.children !== false)) {
+          throw new SparseCandidateIneligible();
+        }
+        outputChanged ||= output.some(([name, value]) =>
+          !sameClosedHostOutput(program.host.tag, name, previous.props[name], value));
+        const next = Object.freeze({ type: program.host.tag,
+          props: Object.freeze(Object.fromEntries([["key", program.host.key], ...output])) });
+        owners.set(owner, { cache, inputs, next });
+        regions.push({ key: program.host.key, tag: program.host.tag, props: output });
+      }
+      if (seen.size !== selectedStores.size || (requireOutputChange && !outputChanged) ||
+        !current() || !stores.validate()) throw new SparseCandidateIneligible();
+      const ownerIds = new Set(owners.keys());
+      return {
+        owners: ownerIds, regions, current,
+        publish: () => {
+          for (const [owner, { next }] of owners) {
+            const cache = this.#componentCache.get(owner)!;
+            this.#componentCache.set(owner, { ...cache, result: next, expandedResult: next });
+            this.#refreshDirectKeyedRegionOutput(owner);
+            for (const ancestor of this.world.ownerLineage(owner).slice(1)) {
+              const live = this.#componentCache.get(ancestor);
+              if (live) this.#componentCache.set(ancestor, {
+                ...live, expandedResult: null, invalidatedBySparseStore: true,
+              });
+            }
+          }
+        },
+        release: () => {
+          resources.discard(); owners.clear(); ownerIds.clear(); covered.clear(); regions.length = 0;
+        },
+      };
+    } catch (error) {
+      resources.discard();
+      throw error;
+    }
   }
 
   #prepareClosedStoreCandidate(
@@ -3331,6 +3389,27 @@ export class ComponentStateRoot<H, Parent = H> {
     let published = false;
     this.#scopedFlushActive = true;
     try {
+      const selected = [...this.#liveStoreSubscriptions.keys()];
+      const capturedGeneration = this.#storeNotificationGeneration;
+      const complete = selected.length
+        ? this.#prepareClosedStoreCandidate(selected, false) : null;
+      if (complete) {
+        try {
+          if (complete.validate()) {
+            complete.commitHost();
+            complete.publish();
+            if (this.#liveStoreSubscriptions.size === selected.length &&
+              selected.every((store) => this.#liveStoreSubscriptions.has(store))) {
+              this.#committedStoreNotificationGeneration = capturedGeneration;
+            }
+            complete.runEffects();
+            return true;
+          }
+          complete.discard();
+        } catch (error) {
+          return throwWithCleanup(error, collectCleanupErrors([() => complete.discard()]));
+        }
+      }
       for (const store of [...this.#liveStoreSubscriptions.keys()]) {
         if (this.#disposed || this.#disposeRequested || this.#terminalHostFailed ||
           this.#codeInvalidated || this.#tree !== acceptedTree) break;
@@ -3368,16 +3447,22 @@ export class ComponentStateRoot<H, Parent = H> {
     const childProps = Object.getOwnPropertyDescriptor(child, "props")?.value;
     if (typeof childType !== "function" || !childProps ||
       typeof childProps !== "object" || !Object.isFrozen(childProps)) return null;
-    const program = closedResourceHostProgramFor(childType);
-    if (!program) return null;
+    const legacyResourceProgram = closedResourceHostProgramFor(childType);
+    const legacySource = legacyResourceProgram
+      ? Object.getOwnPropertyDescriptor(childProps, legacyResourceProgram.resourceProp)?.value
+      : undefined;
+    const resourceProgram = legacySource === resource ? legacyResourceProgram : undefined;
+    const storeProgram = closedStoreHostProgramFor(childType);
+    if (!resourceProgram && !storeProgram) return null;
+    const hostKey = (resourceProgram ?? storeProgram)!.host.key;
     const revision = componentRevision(childType);
     if (!revision) return null;
     const descriptors = Object.getOwnPropertyDescriptors(childProps);
     if (Object.values(descriptors).some((descriptor) => !("value" in descriptor))) {
       return null;
     }
-    const source = descriptors[program.resourceProp]?.value;
-    if (source !== resource || descriptors.ref?.value != null) return null;
+    const source = resourceProgram ? descriptors[resourceProgram.resourceProp]?.value : undefined;
+    if (resourceProgram && source !== resource || descriptors.ref?.value != null) return null;
     const siteId = getComponentSiteId(childType);
     const authoredKey = descriptors.key?.value;
     if (authoredKey != null && typeof authoredKey !== "string") return null;
@@ -3393,8 +3478,7 @@ export class ComponentStateRoot<H, Parent = H> {
     }
     const oldOutputProps = Object.getOwnPropertyDescriptor(oldOutput, "props")?.value;
     if (!oldOutputProps || typeof oldOutputProps !== "object" ||
-      Object.getOwnPropertyDescriptor(oldOutputProps, "key")?.value !==
-        program.host.key) return null;
+      Object.getOwnPropertyDescriptor(oldOutputProps, "key")?.value !== hostKey) return null;
     if (!boundaryCache.subtreeOwners.has(boundaryOwner) ||
       boundaryCache.ownEffects.size !== 0 ||
       boundaryCache.propBoundSites.size !== 0) return null;
@@ -3420,27 +3504,68 @@ export class ComponentStateRoot<H, Parent = H> {
     const retiredEffects = [...this.#liveEffects].filter(([, effect]) =>
       fallbackCaches.has(effect.owner)
     );
-    for (const readerId of this.#liveStoreReaders.keys()) {
-      if (readerId.startsWith(`\u0000suspense-pending:${boundaryOwner}:`)) {
-        return null;
-      }
+    const pendingPrefix = `\u0000suspense-pending:${boundaryOwner}:`;
+    const pendingReaders = new Map<string, Set<AnyAsyncStore>>();
+    for (const [readerId, membership] of this.#liveStoreReaders) {
+      if (readerId.startsWith(pendingPrefix)) pendingReaders.set(readerId, membership);
     }
+    if (pendingReaders.size && resourceProgram) return null;
+    if (pendingReaders.size && !storeProgram) return null;
     const baseVersion = this.#publicationVersion;
     const baseVDOMVersion = this.#vdom.version;
     const preparation = this.world.beginPreparation();
     const stores = new StoreRenderTransaction(this.#rootId);
     let reads: ResourceReadSet | null = new ResourceReadSet(this.#resourceTable);
+    const acceptedReaders = new Map<string, Set<AnyAsyncStore>>();
     let preparedProgram: ReturnType<VDOMSnapshotRoot<H, Parent>["prepareKeyedRegionDeltas"]> = null;
     try {
-      const status = reads.readClosed(resource);
-      const generated = status && evaluateClosedResourceHostProgram(program, status.value);
+      const childOwner = preparation.resolveOwner(boundaryOwner, siteId, childKey);
+      let generated: RuntimeElement | null = null;
+      if (!resourceProgram && storeProgram) {
+        const values: number[] = [];
+        const consumedPending = new Set<string>();
+        for (const input of closedStoreHostInputs(storeProgram)) {
+          const value = descriptors[input.storeProp]?.value;
+          const paths = closedStoreHostInputPaths(input);
+          const readerId = `${childOwner}\u0000${input.storeUseSiteId}`;
+          if (value instanceof AsyncStore) {
+            const captured = stores.readClosedProjections(value, readerId, paths);
+            if (!captured) throw new SparseCandidateIneligible();
+            values.push(...captured);
+            acceptedReaders.set(readerId, new Set([value]));
+            for (const [pendingId, membership] of pendingReaders) {
+              const oldId = pendingId.slice(pendingPrefix.length);
+              if (!oldId.endsWith(`\u0000${input.storeUseSiteId}`)) continue;
+              if (membership.size !== 1 || !membership.has(value) ||
+                consumedPending.has(pendingId)) {
+                throw new SparseCandidateIneligible();
+              }
+              consumedPending.add(pendingId);
+            }
+          } else if (value instanceof AsyncResource) {
+            if (pendingReaders.size && [...pendingReaders.keys()].some((id) =>
+              id.endsWith(`\u0000${input.storeUseSiteId}`))) {
+              throw new SparseCandidateIneligible();
+            }
+            const status = reads.readClosed(value);
+            const captured = status ? captureClosedProjectionValues(status.value, paths) : null;
+            if (!captured) throw new SparseCandidateIneligible();
+            values.push(...captured);
+          } else throw new SparseCandidateIneligible();
+        }
+        if (consumedPending.size !== pendingReaders.size ||
+          !stores.retireClosedReaders(pendingReaders)) throw new SparseCandidateIneligible();
+        generated = evaluateClosedStoreHostTree(storeProgram, values);
+      } else if (resourceProgram) {
+        const status = reads.readClosed(resource);
+        generated = status && evaluateClosedResourceHostProgram(resourceProgram, status.value);
+      }
       if (!generated) {
         preparation.discard();
         stores.discard();
         reads.discard();
         return null;
       }
-      const childOwner = preparation.resolveOwner(boundaryOwner, siteId, childKey);
       const componentProps: Record<string, unknown> = {};
       for (const [name, descriptor] of Object.entries(descriptors)) {
         if (name !== "key" && name !== "ref") {
@@ -3458,7 +3583,7 @@ export class ComponentStateRoot<H, Parent = H> {
         propBoundSites: new Set(),
       };
       preparedProgram = this.#vdom.prepareScopedHostSubtreeReplacements(
-        [{ key: program.host.key, tree: generated }],
+        [{ key: hostKey, tree: generated }],
       );
       if (!preparedProgram) {
         preparation.discard();
@@ -3484,9 +3609,14 @@ export class ComponentStateRoot<H, Parent = H> {
         !this.#boundaryPrimaries.has(String(boundaryOwner)) &&
         boundaryCache.pendingResource === resource &&
         this.world.findOwner(boundaryOwner, siteId, childKey) === undefined &&
+        [...pendingReaders].every(([id, membership]) =>
+          this.#liveStoreReaders.get(id) === membership) &&
         preparation.validatePublicationInputs();
       const sourceCurrent = () =>
-        Object.getOwnPropertyDescriptor(childProps, program.resourceProp)?.value === source;
+        (resourceProgram ? Object.getOwnPropertyDescriptor(childProps, resourceProgram.resourceProp)?.value === source : true) &&
+        (storeProgram ? closedStoreHostInputs(storeProgram).every((input) =>
+          Object.getOwnPropertyDescriptor(childProps, input.storeProp)?.value ===
+            descriptors[input.storeProp]?.value) : true);
       const candidate = this.#createCandidateLifecycle({
         baseVersion,
         baseVDOMVersion,
@@ -3532,6 +3662,10 @@ export class ComponentStateRoot<H, Parent = H> {
             pendingResource: undefined,
           });
           this.#liveOwners.add(childOwner);
+          for (const readerId of pendingReaders.keys()) this.#liveStoreReaders.delete(readerId);
+          for (const [readerId, membership] of acceptedReaders) {
+            this.#liveStoreReaders.set(readerId, membership);
+          }
           this.#boundaryPrimaries.set(String(boundaryOwner), { tree: child });
           this.#refreshDirectKeyedRegionOutput(boundaryOwner);
           for (const ancestor of this.world.ownerLineage(boundaryOwner).slice(1)) {
@@ -3551,7 +3685,14 @@ export class ComponentStateRoot<H, Parent = H> {
           reads = null;
           this.#publicationVersion++;
         },
-        installSubscriptions: () => [],
+        installSubscriptions: () => {
+          if (acceptedReaders.size) this.#reconcileStoreSubscriptions();
+          if (stores.closedInputsChanged()) {
+            this.#storeNotificationGeneration++;
+            this.#schedule();
+          }
+          return [];
+        },
         runEffects: () => {
           const errors: unknown[] = [];
           try { preparation.notifyPublished(); } catch (error) { errors.push(error); }
@@ -3571,6 +3712,8 @@ export class ComponentStateRoot<H, Parent = H> {
           preparedProgram?.discard();
           preparedProgram = null;
           fallbackCaches.clear();
+          pendingReaders.clear();
+          acceptedReaders.clear();
           retired.length = 0;
           retiredEffects.length = 0;
           reads?.discard();
@@ -3586,6 +3729,7 @@ export class ComponentStateRoot<H, Parent = H> {
         () => stores.discard(),
         () => reads?.discard(),
       ]);
+      if (error instanceof SparseCandidateIneligible && cleanup.length === 0) return null;
       return throwWithCleanup(error, cleanup);
     }
   }

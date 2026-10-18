@@ -1,0 +1,9 @@
+# Native-only hang diagnostic
+
+One bounded native-only diagnostic ran against the frozen `proof-v2` assets. The page and local JS bundle loaded successfully at the authorized HTTPS `.localhost` origin; both served asset hashes matched the proof. Chromium 153.0.8010.12 ran headless with GPU disabled and no server/network. The diagnostic attached CDP, started `window.__jointAsyncInputsPair.run('native')` without awaiting it, and paused JS 1.5 seconds later. The full raw paused event is in `diagnostic.json`; `dom-snapshot.json` preserves the browser DOM snapshot.
+
+At the pause, the visible DOM showed health fallback still pending, joint output already changed to `data-value="12"` with `translateX(12px)` and opacity 0.6, and the row still at local state 1. The native promise had not settled and had no error. The 11-frame stack was `_isClosedNumericCanonical` → `validatePublicationInputs` → `#x` → `preparePublicationAfterHost` → candidate `preparePublication` → `publish` → root `#je` → `flush`. This places the sampled execution in Store publication validation after the host reflects the live Store update; the subsequent health resolution and teardown had not run at that snapshot. It is one sampled stack, not proof of an infinite loop or a timing measurement.
+
+CDP captured six page scripts, including bundle script ID 4; its URL field was empty. The bundle is the proof-locked `index-Dv6jjelK.js`. No runtime errors or failed/blocked requests were recorded. No benchmark timing, timer quantum, or result hash was collected. The diagnostic resumed only to clean up and closed the owned browser within 4.2 seconds total. The post-cleanup process check found no remaining `Google Chrome for Testing`/`chromium-1243` processes.
+
+Exact diagnostic command, raw process output, exit record, page/stack evidence and cleanup check are preserved in this directory. The pair record and source locks were not changed.

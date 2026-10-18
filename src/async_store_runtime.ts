@@ -1,3 +1,6 @@
+import { captureClosedProjectionValues } from "./owned_store_record.ts";
+export { storeRecord } from "./owned_store_record.ts";
+
 /**
  * A host-independent store with React-like update ordering.
  *
@@ -115,10 +118,11 @@ export type StoreChange = {
 };
 
 type StoreNotificationBatch = Map<string, StorePriority>;
+type PendingReaderValues = ReadonlyMap<object, unknown> | null;
 type PreparedReaderValues = {
   readonly rootReaders: Map<string, Map<object, unknown>>;
   readonly isNewRoot: boolean;
-  readonly entries: Map<string, Map<object, unknown>>;
+  readonly entries: Map<string, Map<object, unknown> | null>;
 };
 
 type StoreEntry<S, A> = {
@@ -817,14 +821,14 @@ export class AsyncStore<S, A = StoreAction<S, S>> implements StoreSource<S> {
 
   _prepareReaderValues(
     rootId: string,
-    pending: ReadonlyMap<string, ReadonlyMap<object, unknown>>,
+    pending: ReadonlyMap<string, PendingReaderValues>,
   ): PreparedReaderValues {
     if (!this.#knownRoots.has(rootId)) {
       throw new Error(`Store reader root is no longer live: ${rootId}`);
     }
-    const prepared = new Map<string, Map<object, unknown>>();
+    const prepared = new Map<string, Map<object, unknown> | null>();
     for (const [readerId, values] of pending) {
-      prepared.set(readerId, new Map(values));
+      prepared.set(readerId, values === null ? null : new Map(values));
     }
     const existing = this.#readerValues.get(rootId);
     return {
@@ -842,7 +846,8 @@ export class AsyncStore<S, A = StoreAction<S, S>> implements StoreSource<S> {
       this.#readerValues.set(rootId, prepared.rootReaders);
     }
     for (const [readerId, values] of prepared.entries) {
-      prepared.rootReaders.set(readerId, values);
+      if (values === null) prepared.rootReaders.delete(readerId);
+      else prepared.rootReaders.set(readerId, values);
     }
   }
 
@@ -1049,87 +1054,7 @@ export type StoreRenderObservation = Readonly<{
   value: unknown;
 }>;
 
-const ownedStoreRecords = new WeakSet<object>();
-
-/** Copy one plain data record into immutable runtime-owned Store state. */
-export function storeRecord<T extends object>(input: T): Readonly<T> {
-  if (Array.isArray(input)) throw new TypeError("Store record cannot be an array");
-  const prototype = Object.getPrototypeOf(input);
-  if (prototype !== Object.prototype && prototype !== null) {
-    throw new TypeError("Store record requires a plain prototype");
-  }
-  const descriptors = Object.getOwnPropertyDescriptors(input) as unknown as
-    Record<PropertyKey, PropertyDescriptor>;
-  const copy = Object.create(prototype) as T;
-  for (const key of Reflect.ownKeys(descriptors)) {
-    if (typeof key !== "string" || key === "__proto__" ||
-      key === "constructor" || key === "prototype") {
-      throw new TypeError("Store record has an unsafe property");
-    }
-    const descriptor = descriptors[key];
-    if (!descriptor || !("value" in descriptor)) {
-      throw new TypeError("Store record requires own data properties");
-    }
-    Object.defineProperty(copy, key, {
-      value: descriptor.value,
-      enumerable: descriptor.enumerable,
-      writable: false,
-      configurable: false,
-    });
-  }
-  Object.freeze(copy);
-  ownedStoreRecords.add(copy);
-  return copy;
-}
-
-const closedPathSegment = (value: unknown): value is string =>
-  typeof value === "string" && /^[A-Za-z_$][\w$]*$/.test(value) &&
-  value !== "__proto__" && value !== "constructor" && value !== "prototype";
 const closedDirectProjectionPaths = Object.freeze([Object.freeze([] as string[])]);
-
-const closedDataArray = (value: unknown, maximum: number): unknown[] | null => {
-  if (!Array.isArray(value)) return null;
-  const descriptors = Object.getOwnPropertyDescriptors(value) as unknown as Record<string, PropertyDescriptor>;
-  const length = descriptors.length?.value;
-  if (typeof length !== "number" || !Number.isSafeInteger(length) || length < 0 || length > maximum ||
-    Reflect.ownKeys(value).length !== length + 1 ||
-    Object.keys(descriptors).length !== length + 1) return null;
-  const result: unknown[] = [];
-  for (let index = 0; index < length; index++) {
-    const descriptor = descriptors[index];
-    if (!descriptor || !("value" in descriptor)) return null;
-    result.push(descriptor.value);
-  }
-  return result;
-};
-
-const captureClosedProjectionValues = (
-  state: unknown,
-  paths: readonly (readonly string[])[],
-): readonly number[] | null => {
-  try {
-    const selectedPaths = closedDataArray(paths, 32);
-    if (!selectedPaths || selectedPaths.length < 1) return null;
-    const values: number[] = [];
-    for (const rawPath of selectedPaths) {
-      const path = closedDataArray(rawPath, 8);
-      if (!path) return null;
-      let value = state;
-      for (const segment of path) {
-        if (!closedPathSegment(segment) || typeof value !== "object" ||
-          value === null || !ownedStoreRecords.has(value)) return null;
-        const descriptor = Object.getOwnPropertyDescriptor(value, segment);
-        if (!descriptor || !("value" in descriptor)) return null;
-        value = descriptor.value;
-      }
-      if (typeof value !== "number" || !Number.isFinite(value)) return null;
-      values.push(value);
-    }
-    return Object.freeze(values);
-  } catch {
-    return null;
-  }
-};
 
 type CheckpointState = {
   cursor: number;
@@ -1182,7 +1107,7 @@ export class StoreRenderTransaction {
   #snapshots = new Map<AnyAsyncStore, StoreRenderSnapshot<any, any>>();
   #states = new Map<object, unknown>();
   #readers = new Map<string, ReadonlySet<AnyAsyncStore>>();
-  #pending = new Map<AnyAsyncStore, Map<string, Map<object, unknown>>>();
+  #pending = new Map<AnyAsyncStore, Map<string, PendingReaderValues>>();
   #values = new Map<string, { source: StoreSource<unknown>; value: unknown }>();
   #closed = false;
   #preparedPublication?: Map<
@@ -1215,6 +1140,15 @@ export class StoreRenderTransaction {
   /** Current branch's successfully completed reader observations. */
   get observations(): ReadonlyMap<string, StoreRenderObservation> {
     return new Map(this.#values);
+  }
+
+  /** Detect a newer action or revoked closed Store capture after publication. */
+  closedInputsChanged(): boolean {
+    if (!this.#closed) return true;
+    for (const snapshot of this.#snapshots.values()) {
+      if (!snapshot.closedNumeric || !snapshot.validate()) return true;
+    }
+    return false;
   }
 
   /** Create an O(1) savepoint for branch-local reader state. */
@@ -1378,6 +1312,35 @@ export class StoreRenderTransaction {
     }
   }
 
+  /** Stage exact accepted reader retirement with this transaction's observations. */
+  retireClosedReaders(
+    readers: ReadonlyMap<string, ReadonlySet<AnyAsyncStore>>,
+  ): boolean {
+    if (this.#closed || this.#preparedPublication) {
+      throw new Error("Cannot retire readers in a closed store transaction");
+    }
+    for (const [readerId, stores] of readers) {
+      if (!readerId) return false;
+      for (const store of stores) {
+        const snapshot = this.#snapshots.get(store);
+        if (!snapshot?.closedNumeric ||
+          !canonicalClosedNumericStore.call(store) ||
+          !snapshot.validatePublicationInputs()) return false;
+      }
+    }
+    for (const [readerId, stores] of readers) {
+      for (const store of stores) {
+        let pending = this.#pending.get(store);
+        if (!pending) {
+          pending = new Map();
+          this.#setJournaled(this.#pending, store, pending);
+        }
+        if (!pending.has(readerId)) this.#setJournaled(pending, readerId, null);
+      }
+    }
+    return true;
+  }
+
   #pinStore(store: AnyAsyncStore) {
     if (this.#snapshots.has(store)) return;
     if (store.mutationEpoch > this.#startedEpoch) {
@@ -1523,7 +1486,7 @@ export class StoreRenderTransaction {
     if (!this.validate()) {
       throw new Error(`Store render transaction for ${this.rootId} is stale`);
     }
-    this.#stagePublication();
+    this.#stagePublication(false);
   }
   /** Stage an older accepted read cut after newer actions reached the store log. */
   preparePublicationAfterHost(): void {
@@ -1532,9 +1495,9 @@ export class StoreRenderTransaction {
     if (!this.validatePublicationInputs()) {
       throw new Error(`Store publication inputs for ${this.rootId} are stale`);
     }
-    this.#stagePublication();
+    this.#stagePublication(true);
   }
-  #stagePublication(): void {
+  #stagePublication(afterHost: boolean): void {
     const prepared = new Map<AnyAsyncStore, PreparedReaderValues>();
     for (const [store, pending] of this.#pending) {
       prepared.set(
@@ -1543,6 +1506,13 @@ export class StoreRenderTransaction {
           ? canonicalPrepareReaderValues.call(store, this.rootId, pending)
           : store._prepareReaderValues(this.rootId, pending),
       );
+    }
+    const valid = afterHost ? this.validatePublicationInputs() : this.validate();
+    const closedValid = [...this.#snapshots.values()].every((snapshot) =>
+      !snapshot.closedNumeric || snapshot.validatePublicationInputs()
+    );
+    if (!valid || !closedValid) {
+      throw new Error(`Store publication inputs for ${this.rootId} changed during preparation`);
     }
     this.#preparedPublication = prepared;
   }

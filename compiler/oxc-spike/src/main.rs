@@ -8173,6 +8173,83 @@ export function ExistingTree(props) { const x = use(props.store); return <div ke
     }
 
     #[test]
+    fn joint_resource_and_store_fields_share_ordered_lexical_provenance() {
+        let response = compile_state("native-joint-async-inputs.tsx",
+            include_str!("../../fixtures/native-joint-async-inputs.tsx"));
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let plan = response.plan.unwrap();
+        let revision = plan.module_revision.clone();
+        let code = plan.component_module.as_ref().unwrap();
+        let components = plan.components.as_ref().unwrap();
+        for (direct, destructured, paths, first_index) in [
+            ("Dom", "DomDestructured", serde_json::json!([
+                [["sample", "y"], ["sample", "x"]],
+                [["vector", "x"], ["vector", "y"]],
+                [["sample", "x"], ["sample", "y"]],
+            ]), 4),
+            ("Three", "ThreeDestructured", serde_json::json!([
+                [["sample", "y"], ["sample", "x"]],
+                [["vector", "x"]],
+                [["sample", "x"]],
+            ]), 3),
+        ] {
+            let owner = components.iter().find(|item| item.name == direct).unwrap();
+            let other = components.iter().find(|item| item.name == destructured).unwrap();
+            let program = owner.closed_store_host_program.as_ref().unwrap();
+            let other_program = other.closed_store_host_program.as_ref().unwrap();
+            assert_eq!(program["schemaVersion"], 5);
+            assert_eq!(program["componentProgramId"], owner.component_site_id);
+            assert_eq!(program["moduleRevision"], revision);
+            assert_eq!(program["host"], other_program["host"]);
+            assert_eq!(program["inputs"].as_array().unwrap().len(), 3);
+            assert_eq!(program["inputs"].as_array().unwrap().iter().map(|input|
+                input["storeProp"].as_str().unwrap()).collect::<Vec<_>>(),
+                ["second", "position", "first"]);
+            assert_eq!(program["inputs"].as_array().unwrap().iter().map(|input|
+                input["paths"].clone()).collect::<Vec<_>>(),
+                paths.as_array().unwrap().clone());
+            for (index, input) in program["inputs"].as_array().unwrap().iter().enumerate() {
+                assert_eq!(input.as_object().unwrap().len(), 3,
+                    "compiler must not infer a source kind from an authored name");
+                assert_eq!(input["storeUseSiteId"], owner.store_sites[index].site_id);
+                assert_eq!(other_program["inputs"][index]["storeUseSiteId"],
+                    other.store_sites[index].site_id);
+                assert_eq!(input["storeProp"], other_program["inputs"][index]["storeProp"]);
+            }
+            let expression = &program["host"]["children"][0]["host"]["props"][0][1];
+            let first = if direct == "Dom" { &expression["left"]["left"] }
+                else { &expression["items"][0] };
+            assert_eq!(first, &serde_json::json!({"kind":"input","index":first_index}));
+            assert!(owner.closed_resource_host_program.is_none());
+        }
+        assert!(code.contains("stabilizeHostTuple as __nativeStabilizeHostTuple_"));
+        assert!(code.contains("position={__nativeStabilizeHostTuple_([a.sample.x, p.vector.x, b.sample.y])}"));
+        assert!(code.contains("position={__nativeStabilizeHostTuple_([p.vector.x + a.sample.x, b.sample.x, 0])}"));
+        assert_eq!(code.matches("__nativeStabilizeHostTuple_(").count(), 4);
+    }
+
+    #[test]
+    fn joint_projection_declines_hidden_callback_optional_and_getter_shapes() {
+        for expression in [
+            "resource.sample[x] + state.vector.x", "resource?.sample.x + state.vector.x",
+            "resource.sample?.x + state.vector.x",
+            "resource.sample.x + callback(() => state.vector.x)",
+            "resource.sample.x + props.hidden", "resource.sample.x + other",
+        ] {
+            let source = format!("import {{ use }} from \"native_runtime_api.ts\"; export function Candidate(props) {{ const resource = use(props.resource); const state = use(props.store); return <output key=\"out\" data-value={{{expression}}}/>; }}");
+            let response = compile_state("joint-unsafe.tsx", &source);
+            assert!(response.error.is_none(), "{expression}: {:?}", response.error);
+            assert!(response.plan.unwrap().components.as_ref().unwrap()[0]
+                .closed_store_host_program.is_none(), "{expression} unexpectedly closed");
+        }
+        let source = "import { use } from \"native_runtime_api.ts\"; export function Candidate(props) { const resource = use(props.resource); const state = use(props.store); return <output key=\"out\" style={{ get opacity() { return resource.sample.x + state.vector.x; } }}/>; }";
+        let response = compile_state("joint-getter.tsx", source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        assert!(response.plan.unwrap().components.as_ref().unwrap()[0]
+            .closed_store_host_program.is_none());
+    }
+
+    #[test]
     fn structured_store_styles_keep_the_resource_field_limit_and_need_no_tuple_helper() {
         for (count, accepted) in [(32, true), (33, false)] {
             let entries = (0..count).map(|index| format!("\"--field-{index}\": x"))

@@ -146,6 +146,33 @@ Multiple ready supported boundaries drain through fresh independent receipts in 
 
 Ordinary `flush()` can also publish pending closed numeric prop inputs while an unrelated observed resource is waiting. Every pending local cell must be covered by the existing closed programs; opaque, incomplete or collection-bearing batches use the conservative route. No explicit retained candidate is needed for this bounded case. Actual authored DOM `data-level`/opacity and Three `position-x` fixtures pass in the [838-test boundary](../implementation/2026-10-18-urgent-retained/verification/gate-results.md). This does not infer arbitrary transaction groups or relax full-tree replacement checks. Direct `update(newTree)` retains the latest desired tree and observed Store leases if its full candidate blocks; accepted UI stays separate. Resource, Store and new World actions wake retries. An older prepared full replacement becomes stale when a newer request appears; a later accepted full replacement supersedes its captured request. Scoped deltas decline while this whole-tree intent is pending. Three stale attempts without an actual resource wake report an error instead of silently waiting forever. HMR, disposal and terminal failure cancel the request; postpublication effect errors do not undo acceptance. Calls during host/publication callbacks still obey the existing barrier. The [direct-intent gate](../implementation/2026-10-18-direct-intent/verification/gate-results.md) includes actual compiled Root execution, not a new React DOM bridge run.
 
+### Joint Store and resource inputs
+
+The fixed host-tree program also accepts a mixture of direct canonical `AsyncResource` and Store props in the same one-to-eight lexical `use(...)` sequence. Runtime capture determines the input kind. A resource can supply a finite number directly or numeric fields through `storeRecord` values, with the same total path, expression and tree limits as structured Stores. Construct resource payload records in provider/domain code, before resolving the resource. Raw Promises, arbitrary thenables, subclasses, overridden resource behavior and unowned object projections retain generic rendering.
+
+```tsx
+import { AsyncResource, createStore, storeRecord, Suspense, use } from "@r3act/core";
+
+const position = createStore(storeRecord({ x: 1 }));
+const sample = new AsyncResource(Promise.resolve(storeRecord({ x: 3 })));
+
+function Joint(props: { sample: typeof sample; position: typeof position }) {
+  const a = use(props.sample);
+  const b = use(props.position);
+  return <output key="joint" data-value={a.x + b.x}>{a.x + b.x}</output>;
+}
+
+function App() {
+  return <Suspense fallback={<output key="joint">loading</output>}><Joint sample={sample} position={position} /></Suspense>;
+}
+```
+
+Scoped initial reveal requires the direct closed component as the boundary's primary child and an eligible accepted fallback with the same logical root key. Every resource needed by that output must be fulfilled; an unrelated boundary may remain pending. An opaque wrapper around the primary uses generic preparation. Legacy single-resource programs retain their primitive/string behavior.
+
+A Store read before suspension transfers its exact accepted reader history to the revealed owner in the same publication. A Store first discovered after suspension is captured before host work; a newer host-time action survives even before its first subscription attaches. Later selected Store updates retain the fixed host/text tree while validating all joint Store/resource inputs. Dependencies select affected consumers; explicit transaction APIs declare which outputs must agree. Field paths do not infer transaction groups. Whole-tree candidates retain their existing guards, and arbitrary host writes cannot be rolled back.
+
+The [source contract](../implementation/2026-10-18-joint-async-inputs/design.md) and [actual compiled fixture](../compiler/compiled_joint_async_inputs_test.mjs) identify this finite subset. The [consolidated gate](../implementation/2026-10-18-joint-async-inputs/verification/results.md) passes 968 runtime tests, 61 Rust tests and actual compiled DOM/Three/fork execution. Automatic queued-scheduling regressions and an untimed repaired-build browser replay cover later live updates and teardown; the sole matched comparison timed out and supplies no performance result.
+
 ## Diagnostics, fallback, and bridge boundary
 
 | Outcome | Examples |
