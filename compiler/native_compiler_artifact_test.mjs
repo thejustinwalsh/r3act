@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import { chmod, copyFile, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -123,12 +124,41 @@ try {
     await rejects(() => verifyPackagedNativeCompiler(candidate.binaryPath, candidate.artifact),
       `executable info ${label} rejects`);
   }
-  const startup = await fixture();
+  if (process.platform !== "darwin" && process.platform !== "linux") {
+    throw new Error("Native compiler lifecycle fixture supports POSIX Darwin/Linux only");
+  }
+  const targetDir = process.env.CARGO_TARGET_DIR
+    ? path.resolve(root, process.env.CARGO_TARGET_DIR)
+    : path.join(root, "compiler", "oxc-spike", "target");
+  const debugBinary = path.join(targetDir, ...(process.env.CARGO_BUILD_TARGET
+    ? [process.env.CARGO_BUILD_TARGET] : []), "debug", "ui-graph-compiler-spike");
+  const identity = spawnSync(debugBinary, ["--compiler-info"], {
+    encoding: "utf8", timeout: 3000, killSignal: "SIGKILL", maxBuffer: 8192,
+  });
+  assert.equal(identity.error, undefined, "debug compiler info query failed");
+  assert.equal(identity.signal, null, "debug compiler info query timed out");
+  assert.equal(identity.status, 0, "debug compiler info query failed");
+  const nativeInfo = JSON.parse(identity.stdout.trim());
+  assert.deepEqual(Object.keys(nativeInfo).sort(),
+    ["arch", "platform", "protocolVersion", "schemaVersion", "target", "version"]);
+  assert.equal(nativeInfo.schemaVersion, 1);
+  assert.equal(nativeInfo.protocolVersion, 1);
+  assert.match(nativeInfo.target, /^[A-Za-z0-9][A-Za-z0-9._-]*$/);
+  assert.equal(nativeInfo.platform, process.platform);
+  assert.equal(nativeInfo.arch, process.arch);
+  assert.equal(typeof nativeInfo.version, "string");
+  assert.notEqual(nativeInfo.version, "");
+  if (process.platform === "linux" &&
+    typeof process.report?.getReport()?.header?.glibcVersionRuntime !== "string") {
+    throw new Error("Native Linux lifecycle fixture requires positive glibc proof");
+  }
+  const startup = await fixture(nativeInfo, { target: nativeInfo.target,
+    platform: nativeInfo.platform, arch: nativeInfo.arch });
   const infoStarted = path.join(directory, "info-started");
   const serviceStarted = path.join(directory, "service-started");
   const delayedScript = `#!${process.execPath}\nimport { writeFileSync } from "node:fs";\n` +
     `if (process.argv[2] === "--compiler-info") { writeFileSync(${JSON.stringify(infoStarted)}, "started"); ` +
-    `setTimeout(() => process.stdout.write(${JSON.stringify(JSON.stringify(info) + "\n")}), 200); } ` +
+    `setTimeout(() => process.stdout.write(${JSON.stringify(JSON.stringify(nativeInfo) + "\n")}), 200); } ` +
     `else { writeFileSync(${JSON.stringify(serviceStarted)}, "started"); }\n`;
   await writeFile(startup.binary, delayedScript);
   startup.artifact.sha256 = sha(delayedScript);
@@ -140,7 +170,7 @@ try {
   const copiedModule = path.join(startup.bin, "..", "vite_native_module.ts");
   await mkdir(path.join(path.dirname(copiedModule), "bin"));
   await writeFile(path.join(path.dirname(copiedModule), "bin", "manifest.json"), JSON.stringify(startup.manifest));
-  await mkdir(path.join(path.dirname(copiedModule), "bin", info.target));
+  await mkdir(path.join(path.dirname(copiedModule), "bin", nativeInfo.target));
   const copiedBinary = path.join(path.dirname(copiedModule), "bin", startup.artifact.file);
   await copyFile(startup.binary, copiedBinary);
   await chmod(copiedBinary, 0o755);
