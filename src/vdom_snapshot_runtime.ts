@@ -107,6 +107,8 @@ export type StorePropDelta = Readonly<{
   key: string;
   tag: string;
   props: readonly (readonly [string, ClosedHostOutputValue])[];
+  children?: readonly (Readonly<{ kind: "host"; key: string; tag: string }> |
+    Readonly<{ kind: "text"; text: string }>)[];
 }>;
 
 const storePropDeltaBrand: unique symbol = Symbol();
@@ -124,8 +126,20 @@ type StorePropDeltaRecord<H> = {
     bucket: KeyedRegionBuckets<MountedNode<H>> | undefined;
     writes: readonly (readonly [string, ClosedHostOutputValue, ClosedHostOutputValue])[];
     next: VElement;
+    children?: readonly MountedNode<H>[];
+    childVNodes?: readonly VNode[];
+    nextChildVNodes?: readonly VNode[];
+  }[];
+  readonly texts: readonly {
+    node: MountedNode<H>;
+    vnode: VText;
+    next: VText;
+    handle: H;
+    parent: MountedNode<H>;
+    index: number;
   }[];
   readonly writer: VDOMHost<H>["setProp"];
+  readonly textWriter: VDOMHost<H>["setText"] | null;
   applied: boolean;
   publicationToken: object | null;
   appliedVersion: number | null;
@@ -277,6 +291,19 @@ const hostPropWriter = <H, Parent>(host: VDOMHost<H, Parent>) => {
     if (descriptor) {
       return typeof descriptor.value === "function"
         ? descriptor.value as VDOMHost<H, Parent>["setProp"]
+        : null;
+    }
+    target = Object.getPrototypeOf(target);
+  }
+  return null;
+};
+const hostTextWriter = <H, Parent>(host: VDOMHost<H, Parent>) => {
+  let target: object | null = host;
+  while (target) {
+    const descriptor = Object.getOwnPropertyDescriptor(target, "setText");
+    if (descriptor) {
+      return typeof descriptor.value === "function"
+        ? descriptor.value as VDOMHost<H, Parent>["setText"]
         : null;
     }
     target = Object.getPrototypeOf(target);
@@ -3367,9 +3394,10 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     if (!writer) return null;
     const seen = new Set<string>();
     const targets: StorePropDeltaRecord<H>["targets"][number][] = [];
+    const texts: StorePropDeltaRecord<H>["texts"][number][] = [];
     for (const region of regions) {
       if (!region.key || !region.tag || seen.has(region.key) ||
-        region.props.length === 0) return null;
+        (region.children === undefined && region.props.length === 0)) return null;
       seen.add(region.key);
       const matches = this.#nodesByKey.get(region.key);
       if (matches?.size !== 1) return null;
@@ -3377,9 +3405,32 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       const vnode = node.vnode;
       if (node.hostDisposed || vnode.kind !== "element" ||
         vnode.key !== region.key || vnode.tag !== region.tag ||
-        vnode.keyedRegionId !== null || node.children.length !== 0 ||
+        vnode.keyedRegionId !== null ||
+        (region.children === undefined && node.children.length !== 0) ||
         node.keyedChildren || node.scalarBindingGroups?.size ||
         node.scalarIncompatibleBindingProps?.size) return null;
+      if (region.children !== undefined) {
+        if (node.children.length !== region.children.length ||
+          vnode.children.length !== region.children.length) return null;
+        for (let index = 0; index < region.children.length; index++) {
+          const description = region.children[index];
+          const child = node.children[index];
+          const childVNode = vnode.children[index];
+          if (!child || child.hostDisposed || child.parent !== node ||
+            child.parentIndex !== index || child.vnode.kind !== childVNode.kind) return null;
+          if (description.kind === "host") {
+            if (child.vnode.kind !== "element" || childVNode.kind !== "element" ||
+              child.vnode.key !== description.key || child.vnode.tag !== description.tag ||
+              childVNode.key !== description.key || childVNode.tag !== description.tag) return null;
+          } else {
+            if (typeof description.text !== "string" || child.vnode.kind !== "text" ||
+              childVNode.kind !== "text") return null;
+            texts.push({ node: child, vnode: child.vnode,
+              next: { ...child.vnode, text: description.text },
+              handle: child.handle, parent: node, index });
+          }
+        }
+      }
       let descriptors: Record<string, PropertyDescriptor>;
       try { descriptors = Object.getOwnPropertyDescriptors(vnode.props); }
       catch { return null; }
@@ -3422,17 +3473,46 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         writes.push([name, next, previous]);
       }
       const parent = node.parent;
+      const next = { ...vnode, props: Object.freeze(nextProps) };
       targets.push({
         node, vnode, handle: node.handle, parent,
         parentIndex: node.parentIndex,
         bucket: parent?.keyedChildren,
         writes,
-        next: { ...vnode, props: Object.freeze(nextProps) },
+        next,
+        ...(region.children === undefined ? {} : {
+          children: [...node.children], childVNodes: node.children.map((child) => child.vnode),
+        }),
       });
     }
+    const byNode = new Map(targets.map((target) => [target.node, target] as const));
+    const textByNode = new Map(texts.map((target) => [target.node, target] as const));
+    for (const target of targets) {
+      if (!target.children) continue;
+      for (const child of target.children) {
+        if (child.vnode.kind === "element" && !byNode.has(child)) return null;
+      }
+    }
+    const completed = new Map<MountedNode<H>, VElement>();
+    const nextVNode = (target: StorePropDeltaRecord<H>["targets"][number]): VElement => {
+      const existing = completed.get(target.node);
+      if (existing) return existing;
+      const next = !target.children ? target.next : cloneMountedElementVNode(target.next, { children: target.children.map((child) =>
+        child.vnode.kind === "text" ? textByNode.get(child)!.next :
+          nextVNode(byNode.get(child)!)) });
+      completed.set(target.node, next);
+      return next;
+    };
+    for (const target of targets) nextVNode(target);
+    for (const target of targets) target.next = completed.get(target.node)!;
+    for (const target of targets) {
+      if (target.children) target.nextChildVNodes = target.next.children;
+    }
+    const textWriter = texts.length ? hostTextWriter(this.host) : null;
+    if (texts.length && !textWriter) return null;
     const token = Object.freeze({}) as PreparedStorePropDelta;
     this.#storePropDeltas.set(token, {
-      targets, writer, applied: false, publicationToken: null,
+      targets, texts, writer, textWriter, applied: false, publicationToken: null,
       appliedVersion: null,
     });
     if (!this.isStorePropDeltaCurrent(token)) return null;
@@ -3455,6 +3535,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     const record = this.#storePropDeltas.get(token);
     if (!record || this.#publicationFailed || this.#compiledGraph !== null ||
       hostPropWriter(this.host) !== record.writer ||
+      (record.texts.length > 0 && hostTextWriter(this.host) !== record.textWriter) ||
       this.#numericWriteInProgress) {
       return false;
     }
@@ -3478,6 +3559,24 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           (bucket ? bucket.get(vnode.key!) !== node :
             parent.children[target.parentIndex] !== node)) return false;
       } else if (this.#mounted[target.parentIndex] !== node) return false;
+      if (target.children) {
+        if (node.keyedChildren || node.children.length !== target.children.length) return false;
+        for (let index = 0; index < target.children.length; index++) {
+          const child = target.children[index];
+          if (node.children[index] !== child || child.hostDisposed ||
+            child.parent !== node || child.parentIndex !== index ||
+            child.vnode !== (afterHost
+              ? target.nextChildVNodes?.[index]
+              : target.childVNodes?.[index])) return false;
+        }
+      }
+    }
+    for (const target of record.texts) {
+      if (target.node.hostDisposed || target.node.handle !== target.handle ||
+        target.parent.hostDisposed || target.node.parent !== target.parent ||
+        target.parent.children[target.index] !== target.node ||
+        target.node.parentIndex !== target.index ||
+        target.node.vnode !== (afterHost ? target.next : target.vnode)) return false;
     }
     return true;
   }
@@ -3485,28 +3584,10 @@ export class VDOMSnapshotRoot<H, Parent = H> {
   /** Apply a prepared primitive cut inside the shared active publication. */
   applyStorePropDelta(token: PreparedStorePropDelta): void {
     const record = this.#storePropDeltas.get(token);
-    if (!record || !this.#publicationToken || record.applied ||
-      this.#publicationFailed || this.#compiledGraph !== null ||
-      hostPropWriter(this.host) !== record.writer ||
-      this.#numericWriteInProgress) {
+    if (!record || !this.#isStorePropDeltaCurrent(token, false, true)) {
       throw new Error("Prepared Store prop delta is stale");
     }
     record.applied = true;
-    for (const target of record.targets) {
-      const { node, vnode, parent, bucket } = target;
-      if (node.hostDisposed || node.handle !== target.handle ||
-        node.vnode !== vnode || node.parent !== parent ||
-        node.scalarBindingGroups?.size ||
-        node.scalarIncompatibleBindingProps?.size ||
-        this.#nodesByKey.get(target.vnode.key!)?.size !== 1 ||
-        !this.#nodesByKey.get(target.vnode.key!)?.has(node) ||
-        (parent ? parent.hostDisposed || parent.keyedChildren !== bucket ||
-          (bucket ? bucket.get(vnode.key!) !== node :
-            parent.children[target.parentIndex] !== node) :
-          this.#mounted[target.parentIndex] !== node)) {
-        throw new Error("Prepared Store prop delta target is stale");
-      }
-    }
     const versionAtApply = this.#version;
     for (const target of record.targets) {
       this.#acceptedJournal?.capture(target.node);
@@ -3516,11 +3597,19 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         }
       }
     }
+    for (const target of record.texts) {
+      this.#acceptedJournal?.capture(target.node);
+      if (target.vnode.text !== target.next.text) {
+        record.textWriter!.call(this.host, target.handle, target.next.text);
+      }
+    }
     if (this.#version !== versionAtApply ||
-      record.targets.some((target) => target.node.vnode !== target.vnode)) {
+      record.targets.some((target) => target.node.vnode !== target.vnode) ||
+      record.texts.some((target) => target.node.vnode !== target.vnode)) {
       throw new Error("Prepared Store prop delta changed during host application");
     }
     for (const target of record.targets) target.node.vnode = target.next;
+    for (const target of record.texts) target.node.vnode = target.next;
     this.#snapshotDirty = true;
     record.publicationToken = this.#publicationToken;
     record.appliedVersion = this.#version;

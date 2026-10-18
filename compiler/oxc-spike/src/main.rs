@@ -4397,10 +4397,11 @@ fn closed_host_aggregate_expression(
     None
 }
 
-fn closed_resource_subtree_host(
-    element: &JSXElement<'_>, value_symbol: SymbolId, site_id: &str,
-    semantic: &Semantic<'_>, source: &str, keys: &mut BTreeSet<String>,
-    count: &mut usize, depth: usize, has_aggregate: &mut bool,
+fn closed_subtree_host(
+    element: &JSXElement<'_>, value_sites: &BTreeMap<SymbolId, String>,
+    source_sites: &[String], semantic: &Semantic<'_>, source: &str,
+    keys: &mut BTreeSet<String>, count: &mut usize, depth: usize,
+    has_aggregate: &mut bool, tuple_spans: &mut Vec<SourceSpan>,
 ) -> Option<serde_json::Value> {
     *count += 1;
     if *count > 256 || depth > 32 || element.opening_element.attributes.len() > 33 { return None; }
@@ -4410,9 +4411,6 @@ fn closed_resource_subtree_host(
     let mut key = None;
     let mut props = Vec::<serde_json::Value>::new();
     let mut seen = BTreeSet::new();
-    let mut value_sites = BTreeMap::new();
-    value_sites.insert(value_symbol, site_id.to_owned());
-    let source_sites = [site_id.to_owned()];
     for attribute in &element.opening_element.attributes {
         let JSXAttributeItem::Attribute(attribute) = attribute else { return None; };
         let JSXAttributeName::Identifier(name) = &attribute.name else { return None; };
@@ -4431,8 +4429,12 @@ fn closed_resource_subtree_host(
             let expression = if aggregate {
                 let JSXAttributeValue::ExpressionContainer(container) = attribute.value.as_ref()? else { return None; };
                 let expression = closed_host_aggregate_expression(
-                    container.expression.as_expression()?, tag, name, &value_sites,
-                    &source_sites, semantic, source)?;
+                    container.expression.as_expression()?, tag, name, value_sites,
+                    source_sites, semantic, source)?;
+                if expression.get("kind").and_then(serde_json::Value::as_str) == Some("tuple") {
+                    let expression_span = container.expression.as_expression()?.span();
+                    tuple_spans.push(span(expression_span.start, expression_span.end));
+                }
                 *has_aggregate = true;
                 expression
             } else {
@@ -4440,7 +4442,7 @@ fn closed_resource_subtree_host(
                     JSXAttributeValue::StringLiteral(value) if !value.value.chars().any(|ch| matches!(ch, '&' | '\n' | '\r' | '\t')) =>
                         serde_json::json!({"kind":"literal","value":value.value.as_str()}),
                     JSXAttributeValue::ExpressionContainer(container) => closed_store_host_expression(
-                        container.expression.as_expression()?, &value_sites, &source_sites, semantic, source)?,
+                        container.expression.as_expression()?, value_sites, source_sites, semantic, source)?,
                     _ => return None,
                 }
             };
@@ -4454,15 +4456,15 @@ fn closed_resource_subtree_host(
     for child in &element.children {
         match child {
             JSXChild::Element(nested) => {
-                let host = closed_resource_subtree_host(nested, value_symbol, site_id,
-                    semantic, source, keys, count, depth + 1, has_aggregate)?;
+                let host = closed_subtree_host(nested, value_sites, source_sites,
+                    semantic, source, keys, count, depth + 1, has_aggregate, tuple_spans)?;
                 children.push(serde_json::json!({"kind":"host","host":host}));
             }
             JSXChild::ExpressionContainer(container) => {
                 *count += 1;
                 if *count > 256 { return None; }
                 let expression = closed_store_host_expression(container.expression.as_expression()?,
-                    &value_sites, &source_sites, semantic, source)?;
+                    value_sites, source_sites, semantic, source)?;
                 children.push(serde_json::json!({"kind":"text","expression":expression}));
             }
             _ => return None,
@@ -4525,9 +4527,12 @@ fn closed_resource_subtree_program(
     let mut keys = BTreeSet::new();
     let mut count = 0;
     let mut has_aggregate = false;
-    let host = closed_resource_subtree_host(element, value_symbol,
-        &component.store_sites[0].site_id, semantic, source, &mut keys, &mut count, 0,
-        &mut has_aggregate)?;
+    let mut value_sites = BTreeMap::new();
+    value_sites.insert(value_symbol, component.store_sites[0].site_id.clone());
+    let source_sites = [component.store_sites[0].site_id.clone()];
+    let host = closed_subtree_host(element, &value_sites, &source_sites,
+        semantic, source, &mut keys, &mut count, 0, &mut has_aggregate,
+        &mut Vec::new())?;
     Some(serde_json::json!({
         "schemaVersion": if has_aggregate { 3 } else { 2 },
         "componentProgramId": component.component_site_id,
@@ -4657,6 +4662,22 @@ fn closed_store_host_program(
         return_expression = &parenthesized.expression;
     }
     let Expression::JSXElement(element) = return_expression else { return None; };
+    if !element.children.is_empty() {
+        let mut keys = BTreeSet::new();
+        let mut count = 0;
+        let mut has_aggregate = false;
+        let mut tuple_spans = Vec::new();
+        let host = closed_subtree_host(element, &value_sites, &source_sites,
+            semantic, source, &mut keys, &mut count, 0, &mut has_aggregate,
+            &mut tuple_spans)?;
+        return Some((serde_json::json!({
+            "schemaVersion": 4,
+            "componentProgramId": component.component_site_id,
+            "moduleRevision": revision,
+            "inputs": inputs,
+            "host": host,
+        }), tuple_spans));
+    }
     let JSXElementName::Identifier(tag) = &element.opening_element.name else { return None; };
     let tag = tag.name.as_str();
     if !matches!(tag, "mesh" | "group" | "div" | "span" | "output") ||
@@ -8054,6 +8075,112 @@ export function Generic(props) { const x = use(props.store); return <mesh key="g
         let code = plan.component_module.unwrap();
         assert_eq!(code.matches("closedStoreHostProgram:").count(), 4);
         assert!(code.contains("closedStoreHostProgram: {"));
+    }
+
+    #[test]
+    fn emits_fixed_store_subtrees_with_ordered_inputs_and_nested_tuple_provenance() {
+        let response = compile_state("native-store-subtree.tsx",
+            include_str!("../../fixtures/native-store-subtree.tsx"));
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let plan = response.plan.unwrap();
+        let revision = plan.module_revision.clone();
+        let code = plan.component_module.as_ref().unwrap();
+        let components = plan.components.as_ref().unwrap();
+        let dom = components.iter().find(|component| component.name == "DomTree").unwrap();
+        let dom_program = dom.closed_store_host_program.as_ref().unwrap();
+        assert_eq!(dom_program["schemaVersion"], 4);
+        assert_eq!(dom_program["componentProgramId"], dom.component_site_id);
+        assert_eq!(dom_program["moduleRevision"], revision);
+        assert_eq!(dom_program["inputs"], serde_json::json!([
+            {"storeUseSiteId": dom.store_sites[0].site_id, "storeProp": "left"},
+            {"storeUseSiteId": dom.store_sites[1].site_id, "storeProp": "right"},
+        ]));
+        assert_eq!(dom_program["host"]["tag"], "div");
+        assert_eq!(dom_program["host"]["key"], "dom-root");
+        assert_eq!(dom_program["host"]["props"], serde_json::json!([]));
+        assert_eq!(dom_program["host"]["children"][0]["kind"], "host");
+        assert_eq!(dom_program["host"]["children"][0]["host"]["children"][0]["kind"], "text");
+        assert_eq!(dom_program["host"]["children"][0]["host"]["props"][0][1]["entries"][1][1],
+            serde_json::json!({"kind":"binary","operator":"+",
+                "left":{"kind":"input","index":1},
+                "right":{"kind":"literal","value":1.0}}));
+        assert_eq!(dom_program["host"]["children"][1]["host"]["children"][0]["expression"],
+            serde_json::json!({"kind":"binary","operator":"+",
+                "left":{"kind":"input","index":0},"right":{"kind":"input","index":1}}));
+        let three = components.iter().find(|component| component.name == "ThreeTree").unwrap();
+        let three_program = three.closed_store_host_program.as_ref().unwrap();
+        assert_eq!(three_program["schemaVersion"], 4);
+        assert_eq!(three_program["moduleRevision"], revision);
+        assert_eq!(three_program["inputs"], serde_json::json!([
+            {"storeUseSiteId": three.store_sites[0].site_id, "storeProp": "position"},
+            {"storeUseSiteId": three.store_sites[1].site_id, "storeProp": "angle"},
+        ]));
+        assert_eq!(three_program["host"]["children"][0]["host"]["props"][0][1]["kind"], "tuple");
+        assert_eq!(three_program["host"]["children"][0]["host"]["props"][0][1]["items"][1],
+            serde_json::json!({"kind":"input","index":1}));
+        assert_eq!(three_program["host"]["children"][1]["host"]["props"][0][1]["kind"], "tuple");
+        for component in components.iter().filter(|component| !matches!(component.name.as_str(),
+            "DomTree" | "ThreeTree")) {
+            assert!(component.closed_store_host_program.is_none(), "{} unexpectedly closed", component.name);
+        }
+        assert_eq!(code.matches("closedStoreHostProgram:").count(), 2);
+        assert!(code.contains("stabilizeHostTuple as __nativeStabilizeHostTuple"), "{code}");
+        assert_eq!(code.matches("__nativeStabilizeHostTuple(").count(), 3, "{code}");
+        assert!(code.contains("position={__nativeStabilizeHostTuple([x, y, 1])}"), "{code}");
+        assert!(code.contains("rotation={__nativeStabilizeHostTuple([0, y, 0])}"), "{code}");
+        assert!(code.contains("scale={__nativeStabilizeHostTuple([x, 1, 1])}"), "{code}");
+        assert!(code.contains("position={[x, helper(), 1]}"), "{code}");
+    }
+
+    #[test]
+    fn fixed_store_subtree_declines_unsafe_whole_proofs_without_tuple_helper() {
+        for (name, child) in [
+            ("event", "<mesh key=\"child\" position={[x, 0, 1]} onClick={() => x}/>"),
+            ("ref", "<mesh key=\"child\" position={[x, 0, 1]} ref={props.ref}/>"),
+            ("spread", "<mesh key=\"child\" position={[x, 0, 1]} {...props}/>"),
+            ("capture", "<mesh key=\"child\" position={[x, other, 1]}/>"),
+            ("getter", "<div key=\"child\" style={{ get opacity() { return x; } }}/>"),
+            ("fragment", "<><mesh key=\"child\" position={[x, 0, 1]}/></>"),
+            ("component", "<Other key=\"child\" value={x}/>"),
+            ("duplicate", "<mesh key=\"root\" position={[x, 0, 1]}/>"),
+            ("text-call", "<span key=\"child\">{helper(x)}</span>"),
+        ] {
+            let source = format!("import {{ use }} from \"native_runtime_api.ts\"; export function Candidate(props) {{ const x = use(props.store); return <group key=\"root\">{child}</group>; }}");
+            let response = compile_state(&format!("store-subtree-{name}.tsx"), &source);
+            assert!(response.error.is_none(), "{name}: {:?}", response.error);
+            let plan = response.plan.unwrap();
+            assert!(plan.components.as_ref().unwrap()[0].closed_store_host_program.is_none(),
+                "{name} unexpectedly closed");
+            assert!(!plan.component_module.unwrap().contains("stabilizeHostTuple as"),
+                "{name} unexpectedly imported tuple helper");
+        }
+    }
+
+    #[test]
+    fn fixed_store_subtree_enforces_tree_depth_and_total_node_bounds() {
+        for (name, depth, accepted) in [("depth-32", 32, true), ("depth-33", 33, false)] {
+            let open = (0..depth).map(|index| format!("<div key=\"deep-{index}\">"))
+                .collect::<String>();
+            let child = format!("{open}{{x}}{}", "</div>".repeat(depth));
+            let source = format!("import {{ use }} from \"native_runtime_api.ts\"; export function Candidate(props) {{ const x = use(props.store); return <div key=\"root\">{child}</div>; }}");
+            let response = compile_state(&format!("store-subtree-{name}.tsx"), &source);
+            assert!(response.error.is_none(), "{name}: {:?}", response.error);
+            let component = response.plan.unwrap().components.unwrap().remove(0);
+            assert_eq!(component.closed_store_host_program.as_ref().map(|program|
+                program["schemaVersion"].as_u64()),
+                if accepted { Some(Some(4)) } else { None }, "{name}");
+        }
+        for (name, child_count, accepted) in [("nodes-256", 255, true), ("nodes-257", 256, false)] {
+            let child = (0..child_count).map(|index| format!("<span key=\"child-{index}\"/>"))
+                .collect::<String>();
+            let source = format!("import {{ use }} from \"native_runtime_api.ts\"; export function Candidate(props) {{ const x = use(props.store); return <div key=\"root\">{child}</div>; }}");
+            let response = compile_state(&format!("store-subtree-{name}.tsx"), &source);
+            assert!(response.error.is_none(), "{name}: {:?}", response.error);
+            let component = response.plan.unwrap().components.unwrap().remove(0);
+            assert_eq!(component.closed_store_host_program.as_ref().map(|program|
+                program["schemaVersion"].as_u64()),
+                if accepted { Some(Some(4)) } else { None }, "{name}");
+        }
     }
 
     #[test]

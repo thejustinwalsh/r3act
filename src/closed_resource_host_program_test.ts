@@ -116,6 +116,16 @@ Deno.test("closed resource subtree declines unsafe shape, getters and nonprimiti
   equal(evaluateClosedResourceHostProgram(program, true), null, "true text child declined");
 });
 
+Deno.test("resource schema 2 retains its existing primitive text behavior through shared trees", () => {
+  const program = normalizeClosedResourceHostProgram(subtreeDescriptor())!;
+  const text = evaluateClosedResourceHostProgram(program, "ready")!;
+  equal(text.props.children[0].props.children, "ready", "string text");
+  const absent = evaluateClosedResourceHostProgram(program, null)!;
+  equal(absent.props.children[0].props.children, null, "legacy null text");
+  const falseChild = evaluateClosedResourceHostProgram(program, false)!;
+  equal(falseChild.props.children[0].props.children, false, "legacy false text");
+});
+
 const valueDescriptor = (): any => ({
   schemaVersion: 3,
   componentProgramId: "example.tsx#component:Values",

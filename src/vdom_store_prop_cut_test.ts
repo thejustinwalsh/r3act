@@ -253,3 +253,118 @@ Deno.test("structured Store cut rejects replaced writer after preparation", () =
     "replaced structured host writer remained current");
   root.dispose();
 });
+
+Deno.test("Store subtree cut retains nested hosts and accepted text history", () => {
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  root.commit(jsx("section", {}, jsx("div", { key: "outer" },
+    jsx("span", { key: "inner", style: { opacity: 0.1 } }, "1"))));
+  const outer = container.children[0].children[0];
+  const inner = outer.children[0];
+  const textNode = inner.children[0];
+  const retained = root.snapshot;
+  const before = JSON.stringify(retained);
+  const cut = root.prepareStorePropDelta([
+    { key: "outer", tag: "div", props: [],
+      children: [{ kind: "host", key: "inner", tag: "span" }] },
+    { key: "inner", tag: "span", props: [["style", { opacity: 0.2 }]],
+      children: [{ kind: "text", text: "2" }] },
+  ]);
+  assert(cut, "fixed subtree declined");
+  root.beginPublication();
+  root.applyStorePropDelta(cut);
+  assert(JSON.stringify(root.snapshot) === before,
+    "subtree host work changed accepted snapshot before publication");
+  assert(root.isStorePropDeltaCurrent(cut, { afterHost: true }),
+    "accepted subtree footprint changed after host application");
+  root.publishAccepted();
+  assert(outer.children[0] === inner && inner.children[0] === textNode,
+    "subtree handles changed");
+  assert(inner.props.style && textNode.text === "2", "subtree values were not applied");
+  assert(JSON.stringify(retained) === before, "retained accepted image was mutated");
+  root.dispose();
+});
+
+Deno.test("Store subtree cut declines changed child order and text writer", () => {
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  root.commit(jsx("div", { key: "outer" }, [
+    jsx("span", { key: "a" }, "a"), jsx("span", { key: "b" }, "b"),
+  ]));
+  const regions = [{ key: "outer", tag: "div", props: [], children: [
+    { kind: "host" as const, key: "a", tag: "span" },
+    { kind: "host" as const, key: "b", tag: "span" },
+  ] }, { key: "a", tag: "span", props: [], children: [{ kind: "text" as const, text: "A" }] },
+  { key: "b", tag: "span", props: [], children: [{ kind: "text" as const, text: "B" }] }];
+  const cut = root.prepareStorePropDelta(regions);
+  assert(cut, "ordered child footprint declined");
+  host.setText = () => {};
+  assert(!root.isStorePropDeltaCurrent(cut), "changed text writer stayed current");
+  delete (host as { setText?: unknown }).setText;
+  root.commit(jsx("div", { key: "outer" }, [
+    jsx("span", { key: "b" }, "b"), jsx("span", { key: "a" }, "a"),
+  ]));
+  assert(!root.isStorePropDeltaCurrent(cut), "reordered children stayed current");
+  root.dispose();
+});
+
+Deno.test("Store subtree footprint survives an unrelated accepted sibling cut", () => {
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  root.commit(jsx("section", {}, [
+    jsx("div", { key: "outer" }, jsx("span", { key: "inner" }, "1")),
+    jsx("output", { key: "other", "data-x": 1 }),
+  ]));
+  const subtree = root.prepareStorePropDelta([
+    { key: "outer", tag: "div", props: [],
+      children: [{ kind: "host", key: "inner", tag: "span" }] },
+    { key: "inner", tag: "span", props: [],
+      children: [{ kind: "text", text: "2" }] },
+  ]);
+  const sibling = root.prepareStorePropDelta([
+    { key: "other", tag: "output", props: [["data-x", 2]] },
+  ]);
+  assert(subtree && sibling, "independent cuts did not prepare");
+  accept(root, sibling);
+  assert(root.isStorePropDeltaCurrent(subtree),
+    "unrelated sibling acceptance invalidated fixed subtree");
+  accept(root, subtree);
+  assert(container.children[0].children[0].children[0].children[0].text === "2",
+    "fixed subtree did not publish after intervening acceptance");
+  root.dispose();
+});
+
+Deno.test("throwing second subtree text write keeps old accepted image", () => {
+  class FailingTextHost extends MemoryVDOMHost {
+    writes = 0;
+    fail = false;
+    readonly error = new Error("second text failed");
+    override setText(node: ReturnType<MemoryVDOMHost["createContainer"]>, text: string) {
+      super.setText(node, text);
+      if (this.fail && ++this.writes === 2) throw this.error;
+    }
+  }
+  const host = new FailingTextHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  root.commit(jsx("div", { key: "outer" }, ["1", "2"]));
+  const before = JSON.stringify(root.snapshot);
+  const cut = root.prepareStorePropDelta([{ key: "outer", tag: "div", props: [],
+    children: [{ kind: "text", text: "3" }, { kind: "text", text: "4" }] }]);
+  assert(cut, "text failure setup declined");
+  host.fail = true;
+  root.beginPublication();
+  let error: unknown;
+  try { root.applyStorePropDelta(cut); } catch (caught) { error = caught; }
+  assert(error === host.error,
+    "original second-text error was masked");
+  assert(JSON.stringify(root.snapshot) === before, "failed text work advanced accepted data");
+  root.failPublication();
+  assert(root.prepareStorePropDelta([{ key: "outer", tag: "div", props: [], children: [] }]) === null,
+    "partial text failure admitted another cut");
+  host.fail = false;
+  root.dispose();
+});

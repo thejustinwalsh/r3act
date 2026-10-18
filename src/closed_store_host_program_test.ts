@@ -1,6 +1,7 @@
 import {
   closedStoreHostInputs,
   evaluateClosedStoreHostProgram,
+  evaluateClosedStoreHostTree,
   normalizeClosedStoreHostProgram,
 } from "./closed_store_host_program.ts";
 
@@ -21,6 +22,101 @@ const data = (): any => ({
       left: { kind: "input", index: 0 },
       right: { kind: "literal", value: 2 } }]],
   },
+});
+
+const subtreeData = (): any => ({
+  schemaVersion: 4,
+  componentProgramId: "module#component:Subtree",
+  moduleRevision: "revision",
+  inputs: [
+    { storeUseSiteId: "site:0", storeProp: "position" },
+    { storeUseSiteId: "site:1", storeProp: "camera" },
+  ],
+  host: { tag: "div", key: "root", props: [["style", { kind: "style", entries: [
+    ["--offset", { kind: "input", index: 0 }],
+  ] }]], children: [
+    { kind: "host", host: { tag: "span", key: "label", props: [], children: [
+      { kind: "text", expression: { kind: "template", parts: ["x=", " / ", ""], expressions: [
+        { kind: "input", index: 0 }, { kind: "input", index: 1 },
+      ] } },
+    ] } },
+    { kind: "host", host: { tag: "group", key: "scene", props: [], children: [
+      { kind: "host", host: { tag: "mesh", key: "mesh", props: [["position", {
+        kind: "tuple", items: [
+          { kind: "input", index: 0 }, { kind: "input", index: 1 },
+          { kind: "literal", value: 0 },
+        ],
+      }]], children: [] } },
+    ] } },
+  ] },
+});
+
+Deno.test("Store schema 4 snapshots nested styles, text and tuples over joint inputs", () => {
+  const raw = subtreeData();
+  const program = normalizeClosedStoreHostProgram(raw)!;
+  equal(program.schemaVersion, 4);
+  if (program.schemaVersion !== 4) throw new Error("Expected Store schema 4");
+  equal(closedStoreHostInputs(program).length, 2);
+  raw.host.children[0].host.key = "changed";
+  raw.host.children[1].host.children[0].host.props[0][1].items[2].value = 100;
+  const first = evaluateClosedStoreHostTree(program, [2, 3])!;
+  const second = evaluateClosedStoreHostTree(program, [4, 5])!;
+  equal(first.props.style["--offset"], 2);
+  equal(first.props.children[0].props.key, "label");
+  equal(first.props.children[0].props.children, "x=2 / 3");
+  equal(first.props.children[1].props.children.props.position[2], 0);
+  equal(first.props.style === second.props.style, false);
+  equal(first.props.children[1].props.children.props.position ===
+    second.props.children[1].props.children.props.position, false);
+  equal(Object.isFrozen(program.host), true);
+  equal(Object.isFrozen(program.host.children), true);
+  equal(evaluateClosedStoreHostProgram(program, [2, 3]), null);
+  equal(evaluateClosedStoreHostTree(program, [2]), null);
+  equal(evaluateClosedStoreHostTree(program, [2, Infinity]), null);
+});
+
+Deno.test("Store schema 4 declines absent text nodes and unsafe descriptors", () => {
+  const absent = subtreeData();
+  absent.host.children[0].host.children[0].expression = { kind: "literal", value: null };
+  equal(evaluateClosedStoreHostTree(normalizeClosedStoreHostProgram(absent)!, [1, 2]), null);
+  absent.host.children[0].host.children[0].expression = { kind: "literal", value: false };
+  equal(evaluateClosedStoreHostTree(normalizeClosedStoreHostProgram(absent)!, [1, 2]), null);
+  const duplicate = subtreeData();
+  duplicate.host.children[1].host.children[0].host.key = "label";
+  equal(normalizeClosedStoreHostProgram(duplicate), null);
+  const accessor = subtreeData();
+  Object.defineProperty(accessor.host.children[0], "host", { get() { throw new Error("unsafe"); } });
+  equal(normalizeClosedStoreHostProgram(accessor), null);
+  const cycle = subtreeData();
+  cycle.host.children[0].host.children.push({ kind: "host", host: cycle.host });
+  equal(normalizeClosedStoreHostProgram(cycle), null);
+  const callback = subtreeData();
+  callback.host.children[0].host.props.push(["onClick", { kind: "literal", value: 1 }]);
+  equal(normalizeClosedStoreHostProgram(callback), null);
+  const extra = subtreeData();
+  extra.host.children[0].host.children[0].callback = () => {};
+  equal(normalizeClosedStoreHostProgram(extra), null);
+  const props = subtreeData();
+  props.host.children[0].host.props = Array.from({ length: 33 }, (_, i) =>
+    [`data-p${i}`, { kind: "literal", value: i }]);
+  equal(normalizeClosedStoreHostProgram(props), null);
+  const style = subtreeData();
+  style.host.props[0][1].entries = Array.from({ length: 33 }, (_, i) =>
+    [`--p${i}`, { kind: "literal", value: i }]);
+  equal(normalizeClosedStoreHostProgram(style), null);
+  const nodes = subtreeData();
+  nodes.host.children = Array.from({ length: 256 }, (_, i) => ({ kind: "text", expression: {
+    kind: "literal", value: String(i),
+  } }));
+  equal(normalizeClosedStoreHostProgram(nodes), null);
+  const depth = subtreeData();
+  let cursor = depth.host.children[1].host;
+  for (let index = 0; index < 33; index++) {
+    const next = { tag: "group", key: `deep:${index}`, props: [], children: [] as any[] };
+    cursor.children = [{ kind: "host", host: next }];
+    cursor = next;
+  }
+  equal(normalizeClosedStoreHostProgram(depth), null);
 });
 
 Deno.test("closed Store leaf snapshots data and evaluates scalar writes without source access", () => {
@@ -99,6 +195,10 @@ Deno.test("joint Store host program snapshots ordered inputs and evaluates compl
   if (!one) throw new Error("Expected schema-1 program");
   equal(closedStoreHostInputs(one)[0].storeProp, "position");
   equal(evaluateClosedStoreHostProgram(one, [3])?.[0][1], 6);
+  const tree = evaluateClosedStoreHostTree(one, [3]);
+  equal(tree?.type, "mesh");
+  equal(tree?.props.key, "m");
+  equal(tree?.props["position-x"], 6);
 });
 
 Deno.test("joint Store host program rejects duplicate sites, getters, wrong indexes and oversized footprints", () => {
@@ -148,6 +248,7 @@ Deno.test("Store schema 3 evaluates fresh stable triples and one to eight direct
   equal((next[0][1] as readonly number[])[0], 4);
   equal(first[0][1] === next[0][1], false);
   equal(Object.isFrozen(first[0][1]), true);
+  equal(evaluateClosedStoreHostTree(program, [1, 2])?.props.position[1], 2);
   equal(evaluateClosedStoreHostProgram(program, [1]), null);
   const one = structuredData();
   one.inputs.pop();

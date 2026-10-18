@@ -1,22 +1,11 @@
-import { type ClosedNumericExpression, evaluateClosedNumericExpression, normalizeClosedNumericExpression } from "./closed_numeric_expression.ts";
-import { jsx, type RuntimeElement, type RuntimeNode } from "./jsx_binding_runtime.ts";
+import { jsx, type RuntimeElement } from "./jsx_binding_runtime.ts";
 import {
-  closedDataArray, closedDataRecord, evaluateClosedHostValue, exactClosedFields,
-  isClosedHostPrimitive, normalizeClosedHostValue,
-  type ClosedHostPrimitive, type ClosedHostTag, type ClosedHostValue,
+  closedDataArray, closedDataRecord, exactClosedFields, isClosedHostPrimitive,
+  type ClosedHostPrimitive,
 } from "./closed_host_value.ts";
+import { evaluateClosedHostTree, normalizeClosedHostTree, type ClosedHostTreeNode } from "./closed_host_tree.ts";
 
 type Primitive = ClosedHostPrimitive;
-type ResourceHostTag = ClosedHostTag;
-type ResourceHostValue = ClosedHostValue;
-type ResourceHostChild = Readonly<{ kind: "host"; host: ResourceHostNode }> |
-  Readonly<{ kind: "text"; expression: ClosedNumericExpression }>;
-type ResourceHostNode = Readonly<{
-  tag: ResourceHostTag;
-  key: string;
-  props: readonly (readonly [string, ResourceHostValue])[];
-  children: readonly ResourceHostChild[];
-}>;
 type ProgramBase = Readonly<{
   componentProgramId: string;
   moduleRevision: string;
@@ -35,62 +24,12 @@ export type ClosedResourceHostProgram =
       child: "resource-value";
     }>;
   }>)
-  | (ProgramBase & Readonly<{ schemaVersion: 2 | 3; host: ResourceHostNode }>);
+  | (ProgramBase & Readonly<{ schemaVersion: 2 | 3; host: ClosedHostTreeNode }>);
 
 const record = closedDataRecord;
 const exact = exactClosedFields;
 const primitive = isClosedHostPrimitive;
 const tupleArray = closedDataArray;
-
-const normalizeHost = (input: unknown, schemaVersion: 2 | 3): ResourceHostNode | null => {
-  const active = new Set<object>();
-  const keys = new Set<string>();
-  let nodes = 0;
-  const visit = (raw: unknown, depth: number): ResourceHostNode | null => {
-    if (depth > 32 || ++nodes > 256 || typeof raw !== "object" || raw === null || active.has(raw)) return null;
-    active.add(raw);
-    try {
-      const host = record(raw);
-      if (!host || !exact(host, ["tag", "key", "props", "children"]) ||
-        !["div", "span", "output", "group", "mesh"].includes(host.tag as string) ||
-        typeof host.key !== "string" || host.key.length === 0 || keys.has(host.key)) return null;
-      const tag = host.tag as ResourceHostTag;
-      keys.add(host.key);
-      const rawProps = tupleArray(host.props);
-      const rawChildren = tupleArray(host.children, 256);
-      if (!rawProps || !rawChildren) return null;
-      const props: (readonly [string, ResourceHostValue])[] = [];
-      const seen = new Set<string>();
-      for (const rawPair of rawProps) {
-        const pair = tupleArray(rawPair, 2);
-        if (!pair || pair.length !== 2 || typeof pair[0] !== "string" || seen.has(pair[0])) return null;
-        const expression = normalizeClosedHostValue(pair[1], tag, pair[0], 1, schemaVersion === 3);
-        if (!expression) return null;
-        seen.add(pair[0]);
-        props.push(Object.freeze([pair[0], expression] as const));
-      }
-      const children: ResourceHostChild[] = [];
-      for (const rawChild of rawChildren) {
-        const child = record(rawChild);
-        if (!child) return null;
-        if (child.kind === "host" && exact(child, ["kind", "host"])) {
-          const nested = visit(child.host, depth + 1);
-          if (!nested) return null;
-          children.push(Object.freeze({ kind: "host", host: nested }));
-        } else if (child.kind === "text" && exact(child, ["kind", "expression"])) {
-          if (++nodes > 256) return null;
-          const expression = normalizeClosedNumericExpression(child.expression, 1);
-          if (!expression) return null;
-          children.push(Object.freeze({ kind: "text", expression }));
-        } else return null;
-      }
-      return Object.freeze({ tag, key: host.key, props: Object.freeze(props), children: Object.freeze(children) });
-    } finally {
-      active.delete(raw);
-    }
-  };
-  try { return visit(input, 0); } catch { return null; }
-};
 
 /** Snapshot untrusted metadata; evaluation reads only this frozen copy. */
 export const normalizeClosedResourceHostProgram = (
@@ -105,7 +44,7 @@ export const normalizeClosedResourceHostProgram = (
     }
     if (!/^[A-Za-z_$][\w$]*$/.test(root.resourceProp as string)) return null;
     if (root.schemaVersion === 2 || root.schemaVersion === 3) {
-      const host = normalizeHost(root.host, root.schemaVersion);
+      const host = normalizeClosedHostTree(root.host, 1, root.schemaVersion === 3);
       return host ? Object.freeze({
         schemaVersion: root.schemaVersion,
         componentProgramId: root.componentProgramId as string,
@@ -150,28 +89,5 @@ export const evaluateClosedResourceHostProgram = (
     for (const [name, value] of program.host.props) props[name] = value;
     return jsx(program.host.tag, props, readyValue);
   }
-  const inputs = [readyValue as number];
-  const evaluate = (expression: ResourceHostValue) => evaluateClosedHostValue(expression, inputs);
-  const construct = (host: ResourceHostNode): RuntimeElement | null => {
-    const props: Record<string, unknown> = { key: host.key };
-    for (const [name, expression] of host.props) {
-      const value = evaluate(expression);
-      if (value === undefined) return null;
-      props[name] = value;
-    }
-    const children: RuntimeNode[] = [];
-    for (const child of host.children) {
-      if (child.kind === "host") {
-        const nested = construct(child.host);
-        if (!nested) return null;
-        children.push(nested);
-      } else {
-        const value = evaluateClosedNumericExpression(child.expression, inputs);
-        if (!primitive(value) || value === true) return null;
-        children.push(value);
-      }
-    }
-    return jsx(host.tag, props, ...children);
-  };
-  return construct(program.host);
+  return evaluateClosedHostTree(program.host, [readyValue as number]);
 };

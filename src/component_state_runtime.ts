@@ -3,8 +3,11 @@ import {
   type ClosedStoreHostProgram,
   closedStoreHostInputs,
   evaluateClosedStoreHostProgram,
+  evaluateClosedStoreHostTree,
   normalizeClosedStoreHostProgram,
 } from "./closed_store_host_program.ts";
+import type { ClosedHostTreeNode } from "./closed_host_tree.ts";
+import type { ClosedHostOutputValue } from "./closed_host_value.ts";
 import {
   type ClosedResourceHostProgram,
   evaluateClosedResourceHostProgram,
@@ -1304,6 +1307,96 @@ export class ComponentStateRoot<H, Parent = H> {
       const descriptor = Object.getOwnPropertyDescriptor(object, name);
       return descriptor && "value" in descriptor ? descriptor.value : undefined;
     };
+    const treeRegions = (
+      host: ClosedHostTreeNode, previous: RuntimeNode, next: RuntimeNode,
+    ): { regions: StorePropDelta[]; changed: boolean } | null => {
+      const staged: StorePropDelta[] = [];
+      let changed = false;
+      const visit = (shape: ClosedHostTreeNode, old: RuntimeNode, proposed: RuntimeNode): boolean => {
+        if (!old || !proposed || Array.isArray(old) || Array.isArray(proposed) ||
+          typeof old !== "object" || typeof proposed !== "object") return false;
+        const priorElement = Object.getOwnPropertyDescriptors(old);
+        const nextElement = Object.getOwnPropertyDescriptors(proposed);
+        const oldType = priorElement.type, newType = nextElement.type;
+        const oldProps = priorElement.props, newProps = nextElement.props;
+        if (!oldType || !newType || !oldProps || !newProps ||
+          !("value" in oldType) || !("value" in newType) ||
+          !("value" in oldProps) || !("value" in newProps)) return false;
+        const priorType = oldType.value;
+        const nextType = newType.value;
+        const priorProps = oldProps.value;
+        const nextProps = newProps.value;
+        if (priorType !== shape.tag || nextType !== shape.tag ||
+          !priorProps || !nextProps || typeof priorProps !== "object" ||
+          typeof nextProps !== "object" || Array.isArray(priorProps) ||
+          Array.isArray(nextProps)) return false;
+        const priorDescriptors = Object.getOwnPropertyDescriptors(priorProps);
+        const nextDescriptors = Object.getOwnPropertyDescriptors(nextProps);
+        const oldKey = priorDescriptors.key, newKey = nextDescriptors.key;
+        if (!oldKey || !newKey || !("value" in oldKey) || !("value" in newKey) ||
+          oldKey.value !== shape.key || newKey.value !== shape.key) return false;
+        const expected = new Set(["key", "children", ...shape.props.map(([name]) => name)]);
+        if (Object.keys(priorDescriptors).some((name) => !expected.has(name)) ||
+          Object.keys(nextDescriptors).some((name) => !expected.has(name))) return false;
+        const props: Array<readonly [string, ClosedHostOutputValue]> = [];
+        for (const [name] of shape.props) {
+          const prior = priorDescriptors[name];
+          const proposedValue = nextDescriptors[name];
+          if (!prior || !proposedValue || !("value" in prior) ||
+            !("value" in proposedValue)) return false;
+          props.push([name, proposedValue.value as ClosedHostOutputValue]);
+          changed ||= !Object.is(prior.value, proposedValue.value);
+        }
+        const childrenFor = (
+          descriptors: Record<string, PropertyDescriptor>,
+        ): RuntimeNode[] | null => {
+          const descriptor = descriptors.children;
+          if (descriptor && !("value" in descriptor)) return null;
+          if (shape.children.length === 0) return descriptor?.value === undefined ? [] : null;
+          const value = descriptor?.value;
+          if (shape.children.length === 1) return Array.isArray(value) ? null : [value];
+          if (!Array.isArray(value)) return null;
+          const elements = Object.getOwnPropertyDescriptors(value) as unknown as
+            Record<string, PropertyDescriptor>;
+          const length = elements.length;
+          if (!length || !("value" in length) ||
+            length.value !== shape.children.length ||
+            Reflect.ownKeys(value).length !== shape.children.length + 1) return null;
+          const copy: RuntimeNode[] = [];
+          for (let index = 0; index < shape.children.length; index++) {
+            const item = elements[index];
+            if (!item || !("value" in item)) return null;
+            copy.push(item.value as RuntimeNode);
+          }
+          return copy;
+        };
+        const oldChildren = childrenFor(priorDescriptors);
+        const nextChildren = childrenFor(nextDescriptors);
+        if (!oldChildren || !nextChildren ||
+          oldChildren.length !== shape.children.length ||
+          nextChildren.length !== shape.children.length) return false;
+        const childDescriptions: NonNullable<StorePropDelta["children"]>[number][] = [];
+        staged.push({ key: shape.key, tag: shape.tag, props, children: childDescriptions });
+        for (let index = 0; index < shape.children.length; index++) {
+          const child = shape.children[index];
+          const oldChild = oldChildren[index];
+          const nextChild = nextChildren[index];
+          if (child.kind === "host") {
+            childDescriptions.push({ kind: "host", key: child.host.key, tag: child.host.tag });
+            if (!visit(child.host, oldChild, nextChild)) return false;
+          } else {
+            if ((typeof oldChild !== "string" && typeof oldChild !== "number") ||
+              (typeof nextChild !== "string" && typeof nextChild !== "number")) return false;
+            const oldText = String(oldChild);
+            const nextText = String(nextChild);
+            childDescriptions.push({ kind: "text", text: nextText });
+            changed ||= oldText !== nextText;
+          }
+        }
+        return true;
+      };
+      return visit(host, previous, next) ? { regions: staged, changed } : null;
+    };
     const current = () => [...owners].every(([owner, { cache, inputs }]) =>
       this.#liveOwners.has(owner) && this.world.isAlive(owner) &&
       this.#componentCache.get(owner) === cache && componentCodeCurrent(cache.type) &&
@@ -1346,7 +1439,19 @@ export class ComponentStateRoot<H, Parent = H> {
         covered.add(inputId);
         if (selectedStores.has(store)) seen.add(store);
       }
-      const output = evaluateClosedStoreHostProgram(program, values);
+      const output = program.schemaVersion === 4
+        ? null : evaluateClosedStoreHostProgram(program, values);
+      if (program.schemaVersion === 4) {
+        const next = evaluateClosedStoreHostTree(program, values);
+        if (!next) throw new SparseCandidateIneligible();
+        const previous = cache.expandedResult;
+        const staged = treeRegions(program.host, previous, next);
+        if (!staged) throw new SparseCandidateIneligible();
+        outputChanged ||= staged.changed;
+        owners.set(owner, { cache, inputs, next });
+        regions.push(...staged.regions);
+        continue;
+      }
       const previous = cache.expandedResult;
       if (!output || !previous || Array.isArray(previous) || typeof previous !== "object" ||
         previous.type !== program.host.tag || previous.props.key !== program.host.key ||
