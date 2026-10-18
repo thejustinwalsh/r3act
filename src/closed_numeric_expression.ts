@@ -86,6 +86,7 @@ const dataRecord = (input: unknown): Record<string, unknown> | null => {
   const prototype = Object.getPrototypeOf(input);
   if (prototype !== Object.prototype && prototype !== null) return null;
   const descriptors = Object.getOwnPropertyDescriptors(input);
+  if (Reflect.ownKeys(input).length !== Object.keys(descriptors).length) return null;
   const result: Record<string, unknown> = Object.create(null);
   for (const [key, descriptor] of Object.entries(descriptors)) {
     if (!("value" in descriptor)) return null;
@@ -97,7 +98,8 @@ const dataRecord = (input: unknown): Record<string, unknown> | null => {
 const dataArray = (input: unknown): unknown[] | null => {
   if (!Array.isArray(input) || input.length > MAX_NODES) return null;
   const descriptors = Object.getOwnPropertyDescriptors(input);
-  if (Object.keys(descriptors).length !== input.length + 1) return null;
+  if (Reflect.ownKeys(input).length !== input.length + 1 ||
+    Object.keys(descriptors).length !== input.length + 1) return null;
   const copy: unknown[] = [];
   for (let index = 0; index < input.length; index++) {
     const descriptor = descriptors[index];
@@ -106,6 +108,9 @@ const dataArray = (input: unknown): unknown[] | null => {
   }
   return copy;
 };
+
+const exact = (value: Record<string, unknown>, keys: readonly string[]): boolean =>
+  Object.keys(value).length === keys.length && keys.every((key) => Object.hasOwn(value, key));
 
 /** Snapshot untrusted descriptor data; evaluation touches only these frozen copies. */
 export const normalizeClosedNumericExpression = (
@@ -131,12 +136,13 @@ export const normalizeClosedNumericExpression = (
       if (!node) return null;
       switch (node.kind) {
         case "input":
-          return Number.isSafeInteger(node.index) &&
+          return exact(node, ["kind", "index"]) && Number.isSafeInteger(node.index) &&
               (node.index as number) >= 0 &&
               (node.index as number) < inputCount
             ? Object.freeze({ kind: "input", index: node.index as number })
             : null;
         case "literal": {
+          if (!exact(node, ["kind", "value"])) return null;
           const literal = node.value;
           return literal === null || typeof literal === "string" ||
               typeof literal === "boolean" ||
@@ -145,7 +151,8 @@ export const normalizeClosedNumericExpression = (
             : null;
         }
         case "unary": {
-          if (typeof node.operator !== "string" || !unary.has(node.operator)) {
+          if (!exact(node, ["kind", "operator", "argument"]) ||
+            typeof node.operator !== "string" || !unary.has(node.operator)) {
             return null;
           }
           const argument = visit(node.argument, depth + 1);
@@ -160,6 +167,7 @@ export const normalizeClosedNumericExpression = (
         case "binary":
         case "logical": {
           if (
+            !exact(node, ["kind", "operator", "left", "right"]) ||
             typeof node.operator !== "string" ||
             !(node.kind === "binary" ? binary : logical).has(node.operator)
           ) {
@@ -186,6 +194,7 @@ export const normalizeClosedNumericExpression = (
             });
         }
         case "conditional": {
+          if (!exact(node, ["kind", "test", "consequent", "alternate"])) return null;
           const test = visit(node.test, depth + 1);
           const consequent = visit(node.consequent, depth + 1);
           const alternate = visit(node.alternate, depth + 1);
@@ -199,6 +208,7 @@ export const normalizeClosedNumericExpression = (
             : null;
         }
         case "template": {
+          if (!exact(node, ["kind", "parts", "expressions"])) return null;
           const parts = dataArray(node.parts);
           const expressions = dataArray(node.expressions);
           if (

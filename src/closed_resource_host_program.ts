@@ -1,14 +1,22 @@
 import { type ClosedNumericExpression, evaluateClosedNumericExpression, normalizeClosedNumericExpression } from "./closed_numeric_expression.ts";
 import { jsx, type RuntimeElement, type RuntimeNode } from "./jsx_binding_runtime.ts";
+import { isSafeClosedStyleName } from "./scoped_host_values.ts";
 
 type Primitive = string | number | boolean | null;
 type ResourceHostTag = "div" | "span" | "output" | "group" | "mesh";
+type ResourceHostValue = ClosedNumericExpression | Readonly<{
+  kind: "tuple";
+  items: readonly [ClosedNumericExpression, ClosedNumericExpression, ClosedNumericExpression];
+}> | Readonly<{
+  kind: "style";
+  entries: readonly (readonly [string, ClosedNumericExpression])[];
+}>;
 type ResourceHostChild = Readonly<{ kind: "host"; host: ResourceHostNode }> |
   Readonly<{ kind: "text"; expression: ClosedNumericExpression }>;
 type ResourceHostNode = Readonly<{
   tag: ResourceHostTag;
   key: string;
-  props: readonly (readonly [string, ClosedNumericExpression])[];
+  props: readonly (readonly [string, ResourceHostValue])[];
   children: readonly ResourceHostChild[];
 }>;
 type ProgramBase = Readonly<{
@@ -29,13 +37,14 @@ export type ClosedResourceHostProgram =
       child: "resource-value";
     }>;
   }>)
-  | (ProgramBase & Readonly<{ schemaVersion: 2; host: ResourceHostNode }>);
+  | (ProgramBase & Readonly<{ schemaVersion: 2 | 3; host: ResourceHostNode }>);
 
 const record = (input: unknown): Record<string, unknown> | null => {
   if (typeof input !== "object" || input === null || Array.isArray(input)) return null;
   const prototype = Object.getPrototypeOf(input);
   if (prototype !== Object.prototype && prototype !== null) return null;
   const descriptors = Object.getOwnPropertyDescriptors(input);
+  if (Reflect.ownKeys(input).length !== Object.keys(descriptors).length) return null;
   const copy: Record<string, unknown> = Object.create(null);
   for (const [key, descriptor] of Object.entries(descriptors)) {
     if (!("value" in descriptor)) return null;
@@ -55,7 +64,8 @@ const primitive = (value: unknown): value is Primitive =>
 const tupleArray = (input: unknown, limit = 32): unknown[] | null => {
   if (!Array.isArray(input) || input.length > limit) return null;
   const descriptors = Object.getOwnPropertyDescriptors(input);
-  if (Object.keys(descriptors).length !== input.length + 1) return null;
+  if (Reflect.ownKeys(input).length !== input.length + 1 ||
+    Object.keys(descriptors).length !== input.length + 1) return null;
   const copy: unknown[] = [];
   for (let index = 0; index < input.length; index++) {
     const descriptor = descriptors[index];
@@ -76,7 +86,48 @@ const propertyName = (tag: ResourceHostTag, name: string): boolean => {
     /^(position|rotation|scale)-[xyz]$/.test(name);
 };
 
-const normalizeHost = (input: unknown): ResourceHostNode | null => {
+const normalizeValue = (
+  input: unknown, tag: ResourceHostTag, name: string, schemaVersion: 2 | 3,
+): ResourceHostValue | null => {
+  if (schemaVersion === 3 && typeof input === "object" && input !== null) {
+    const aggregate = record(input);
+    if (!aggregate) return null;
+    if (aggregate.kind === "tuple") {
+      if ((tag !== "group" && tag !== "mesh") ||
+        (name !== "position" && name !== "rotation" && name !== "scale") ||
+        !exact(aggregate, ["kind", "items"])) return null;
+      const items = tupleArray(aggregate.items, 3);
+      if (!items || items.length !== 3) return null;
+      const first = normalizeClosedNumericExpression(items[0], 1);
+      const second = normalizeClosedNumericExpression(items[1], 1);
+      const third = normalizeClosedNumericExpression(items[2], 1);
+      if (!first || !second || !third) return null;
+      return Object.freeze({ kind: "tuple", items: Object.freeze([first, second, third] as const) });
+    }
+    if (aggregate.kind === "style") {
+      if ((tag !== "div" && tag !== "span" && tag !== "output") ||
+        name !== "style" || !exact(aggregate, ["kind", "entries"])) return null;
+      const rawEntries = tupleArray(aggregate.entries, 32);
+      if (!rawEntries) return null;
+      const entries: (readonly [string, ClosedNumericExpression])[] = [];
+      const seen = new Set<string>();
+      for (const raw of rawEntries) {
+        const pair = tupleArray(raw, 2);
+        if (!pair || pair.length !== 2 || typeof pair[0] !== "string" ||
+          !isSafeClosedStyleName(pair[0]) || seen.has(pair[0])) return null;
+        const expression = normalizeClosedNumericExpression(pair[1], 1);
+        if (!expression) return null;
+        seen.add(pair[0]);
+        entries.push(Object.freeze([pair[0], expression] as const));
+      }
+      return Object.freeze({ kind: "style", entries: Object.freeze(entries) });
+    }
+  }
+  if (!propertyName(tag, name)) return null;
+  return normalizeClosedNumericExpression(input, 1);
+};
+
+const normalizeHost = (input: unknown, schemaVersion: 2 | 3): ResourceHostNode | null => {
   const active = new Set<object>();
   const keys = new Set<string>();
   let nodes = 0;
@@ -93,13 +144,12 @@ const normalizeHost = (input: unknown): ResourceHostNode | null => {
       const rawProps = tupleArray(host.props);
       const rawChildren = tupleArray(host.children, 256);
       if (!rawProps || !rawChildren) return null;
-      const props: (readonly [string, ClosedNumericExpression])[] = [];
+      const props: (readonly [string, ResourceHostValue])[] = [];
       const seen = new Set<string>();
       for (const rawPair of rawProps) {
         const pair = tupleArray(rawPair, 2);
-        if (!pair || pair.length !== 2 || typeof pair[0] !== "string" ||
-          !propertyName(tag, pair[0]) || seen.has(pair[0])) return null;
-        const expression = normalizeClosedNumericExpression(pair[1], 1);
+        if (!pair || pair.length !== 2 || typeof pair[0] !== "string" || seen.has(pair[0])) return null;
+        const expression = normalizeValue(pair[1], tag, pair[0], schemaVersion);
         if (!expression) return null;
         seen.add(pair[0]);
         props.push(Object.freeze([pair[0], expression] as const));
@@ -134,15 +184,15 @@ export const normalizeClosedResourceHostProgram = (
   try {
     const root = record(input);
     if (!root || !exact(root, ["schemaVersion", "componentProgramId", "moduleRevision", "resourceUseSiteId", "resourceProp", "host"]) ||
-      (root.schemaVersion !== 1 && root.schemaVersion !== 2)) return null;
+      (root.schemaVersion !== 1 && root.schemaVersion !== 2 && root.schemaVersion !== 3)) return null;
     for (const key of ["componentProgramId", "moduleRevision", "resourceUseSiteId", "resourceProp"] as const) {
       if (typeof root[key] !== "string" || root[key].length === 0) return null;
     }
     if (!/^[A-Za-z_$][\w$]*$/.test(root.resourceProp as string)) return null;
-    if (root.schemaVersion === 2) {
-      const host = normalizeHost(root.host);
+    if (root.schemaVersion === 2 || root.schemaVersion === 3) {
+      const host = normalizeHost(root.host, root.schemaVersion);
       return host ? Object.freeze({
-        schemaVersion: 2,
+        schemaVersion: root.schemaVersion,
         componentProgramId: root.componentProgramId as string,
         moduleRevision: root.moduleRevision as string,
         resourceUseSiteId: root.resourceUseSiteId as string,
@@ -191,11 +241,26 @@ export const evaluateClosedResourceHostProgram = (
     return primitive(value) ? value : undefined;
   };
   const construct = (host: ResourceHostNode): RuntimeElement | null => {
-    const props: Record<string, Primitive> = { key: host.key };
+    const props: Record<string, unknown> = { key: host.key };
     for (const [name, expression] of host.props) {
-      const value = evaluate(expression);
-      if (value === undefined) return null;
-      props[name] = value;
+      if (expression.kind === "tuple") {
+        const items = expression.items.map(evaluate);
+        if (items.some((item) => typeof item !== "number" || !Number.isFinite(item))) return null;
+        props[name] = Object.freeze(items);
+      } else if (expression.kind === "style") {
+        const style: Record<string, string | number | null> = Object.create(null);
+        for (const [styleName, styleExpression] of expression.entries) {
+          const item = evaluate(styleExpression);
+          if (item !== null && typeof item !== "string" &&
+            !(typeof item === "number" && Number.isFinite(item))) return null;
+          style[styleName] = item;
+        }
+        props[name] = Object.freeze(style);
+      } else {
+        const value = evaluate(expression);
+        if (value === undefined) return null;
+        props[name] = value;
+      }
     }
     const children: RuntimeNode[] = [];
     for (const child of host.children) {

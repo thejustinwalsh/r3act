@@ -13,6 +13,7 @@ import {
 } from "./jsx_binding_runtime.ts";
 import { KeyedRegionBuckets } from "./keyed_region_buckets.ts";
 import { createDOMStylePropWriter } from "./dom_style_writer.ts";
+import { snapshotScopedHostProp } from "./scoped_host_values.ts";
 import {
   type CompiledOwnerUpdatePrimitive,
   type CompiledOwnerUpdateProgram,
@@ -30,6 +31,8 @@ type VElement = {
   tag: string;
   key: string | null;
   props: Readonly<Record<string, unknown>>;
+  /** Authored reads for an unbound style whose accepted data was copied into props. */
+  scopedSourceProps?: Readonly<Record<string, unknown>>;
   children: readonly VNode[];
   keyedRegionId: string | null;
 };
@@ -391,24 +394,46 @@ const normalizeMany = (input: RuntimeNode): VNode[] => {
   return [normalized];
 };
 
-const isScopedHostProp = (name: string, value: unknown): boolean =>
+const isPrimitiveOnlyScopedHostProp = (name: string, value: unknown): boolean =>
   name !== "ref" && name !== "style" && !/^on[A-Z]/.test(name) &&
   (value === null || value === undefined || typeof value === "string" ||
     typeof value === "number" || typeof value === "boolean");
 
-const snapshotScopedHostTree = (node: VNode): VNode | null => {
+const snapshotScopedHostTree = <H>(
+  node: VNode,
+  mounted?: MountedNode<H>,
+): VNode | null => {
   if (node.kind === "text") {
     const copy: VText = { kind: "text", text: node.text, key: node.key };
     return Object.freeze(copy);
   }
   const props: Record<string, unknown> = {};
-  for (const [name, value] of Object.entries(node.props)) {
-    if (!isScopedHostProp(name, value)) return null;
-    props[name] = value;
+  const descriptors = Object.getOwnPropertyDescriptors(node.props);
+  for (const name of Reflect.ownKeys(descriptors)) {
+    if (typeof name !== "string") return null;
+    const descriptor = descriptors[name];
+    if (!("value" in descriptor)) return null;
+    if (mounted && (name === "position" || name === "rotation" ||
+      name === "scale") && Array.isArray(descriptor.value) &&
+      !Object.isFrozen(descriptor.value)) return null;
+    if (node.scopedSourceProps) {
+      const source = Object.getOwnPropertyDescriptor(node.scopedSourceProps, name);
+      if (!source || !("value" in source) ||
+        !snapshotScopedHostProp(node.tag, name, source.value).accepted) {
+        return null;
+      }
+    }
+    const snapshot = snapshotScopedHostProp(node.tag, name, descriptor.value);
+    if (!snapshot.accepted) return null;
+    Object.defineProperty(props, name, { value: snapshot.value, enumerable: true,
+      writable: false, configurable: false });
   }
   const children: VNode[] = [];
-  for (const child of node.children) {
-    const copy = snapshotScopedHostTree(child);
+  const copies = mounted
+    ? mountedChildren(mounted).map((child) =>
+      snapshotScopedHostTree(child.vnode, child))
+    : node.children.map((child) => snapshotScopedHostTree(child));
+  for (const copy of copies) {
     if (!copy) return null;
     children.push(copy);
   }
@@ -421,6 +446,19 @@ const snapshotScopedHostTree = (node: VNode): VNode | null => {
     keyedRegionId: node.keyedRegionId,
   };
   return Object.freeze(copy);
+};
+
+const cloneMountedElementVNode = (
+  vnode: VElement,
+  changes: Pick<VElement, "children">,
+): VElement => {
+  const copy = { ...vnode, ...changes };
+  if (vnode.scopedSourceProps) {
+    Object.defineProperty(copy, "scopedSourceProps", {
+      value: vnode.scopedSourceProps,
+    });
+  }
+  return copy;
 };
 
 const mountedChildren = <H>(node: MountedNode<H>): MountedNode<H>[] =>
@@ -503,11 +541,11 @@ class AcceptedMountedJournal<H> {
 
   constructor(readonly roots: readonly MountedNode<H>[]) {}
 
-  capture(node: MountedNode<H>) {
+  capture(node: MountedNode<H>, acceptedVNode: VNode = node.vnode) {
     if (this.#before.has(node)) return;
-    const vnode = node.vnode.kind === "element"
-      ? { ...node.vnode, children: node.vnode.children }
-      : node.vnode;
+    const vnode = acceptedVNode.kind === "element"
+      ? { ...acceptedVNode, children: acceptedVNode.children }
+      : acceptedVNode;
     this.#before.set(node, {
       vnode,
       children: node.children,
@@ -631,7 +669,9 @@ const applyProps = <H, P>(
   next: Readonly<Record<string, unknown>>,
   previousWriters?: ReadonlyMap<string, readonly BoundPropGroup<H>[]>,
   afterProp?: (name: string, next: unknown) => void,
+  acceptedBefore?: Readonly<Record<string, unknown>>,
 ) => {
+  let writtenStyle: unknown = noStructuredWrite;
   const names = new Set([...Object.keys(previous), ...Object.keys(next)]);
   for (const name of names) {
     // Diff against the writer's last committed value: BoundValue may already expose
@@ -662,10 +702,40 @@ const applyProps = <H, P>(
     } else {
       before = materializeProp(name, previous[name]);
     }
-    const value = materializeProp(name, next[name]);
-    if (!Object.is(before, value)) host.setProp(handle, name, value, before);
+    // Authored previous style still runs in order; the accepted copy governs host diff.
+    if (name === "style" && acceptedBefore && !previousWriter?.length) {
+      before = materializeProp(name, acceptedBefore[name]);
+    }
+    let styleHasBinding = false;
+    const value = materializeProp(name, next[name], name === "style"
+      ? () => { styleHasBinding = true; }
+      : undefined);
+    if (!Object.is(before, value)) {
+      host.setProp(handle, name, value, before);
+      if (name === "style" && !styleHasBinding) writtenStyle = value;
+    }
     afterProp?.(name, next[name]);
   }
+  return writtenStyle;
+};
+
+const noStructuredWrite = Symbol("no structured host write");
+
+const acceptedStructuredVNode = (
+  vnode: VElement,
+  writtenStyle: unknown,
+): VElement => {
+  if (writtenStyle === noStructuredWrite || Object.isFrozen(vnode.props)) {
+    return vnode;
+  }
+  let snapshot;
+  try { snapshot = snapshotScopedHostProp(vnode.tag, "style", writtenStyle); }
+  catch { return vnode; }
+  if (!snapshot.accepted) return vnode;
+  const props = { ...vnode.props, style: snapshot.value };
+  const accepted = { ...vnode, props };
+  Object.defineProperty(accepted, "scopedSourceProps", { value: vnode.props });
+  return accepted;
 };
 
 const materializeCreationProps = (
@@ -741,12 +811,17 @@ const removeMountedSubtree = <H, P>(
   }
 };
 
-const materializeValue = (value: unknown): unknown => {
+const materializeValue = (value: unknown, bindingSeen?: () => void): unknown => {
   const binding = getBoundValue(value);
+  if (binding) bindingSeen?.();
   return binding ? readBoundValue(binding) : value;
 };
 
-const materializeProp = (name: string, value: unknown): unknown => {
+const materializeProp = (
+  name: string,
+  value: unknown,
+  bindingSeen?: () => void,
+): unknown => {
   if (
     name === "style" && typeof value === "object" && value !== null &&
     !Array.isArray(value)
@@ -754,11 +829,11 @@ const materializeProp = (name: string, value: unknown): unknown => {
     const style = value as Record<string, unknown>;
     const output: Record<string, unknown> = {};
     for (const [key, styleValue] of Object.entries(style)) {
-      output[key] = materializeValue(styleValue);
+      output[key] = materializeValue(styleValue, bindingSeen);
     }
     return output;
   }
-  return materializeValue(value);
+  return materializeValue(value, bindingSeen);
 };
 
 const boundSourcesIn = (name: string, value: unknown): ScalarSource[] => {
@@ -867,7 +942,7 @@ const createMounted = <H, P>(
     parent,
     materializeCreationProps(vnode.props),
   );
-  applyProps(host, handle, {}, vnode.props);
+  const writtenStyle = applyProps(host, handle, {}, vnode.props);
   const children = reconcileChildren(
     host,
     handle as unknown as P,
@@ -876,7 +951,7 @@ const createMounted = <H, P>(
     keyIndex,
   );
   const mounted: MountedNode<H> = {
-    vnode,
+    vnode: acceptedStructuredVNode(vnode, writtenStyle),
     handle,
     children,
     parent: null,
@@ -938,15 +1013,16 @@ const updateMounted = <H, P>(
     return old;
   }
   if (next.kind === "element" && old.vnode.kind === "element") {
-    applyProps(
+    const writtenStyle = applyProps(
       host,
       old.handle,
-      old.vnode.props,
+      old.vnode.scopedSourceProps ?? old.vnode.props,
       next.props,
       old.scalarBindingGroups,
       keyIndex?.refreshProp
         ? (name, value) => keyIndex.refreshProp!(old, name, value)
         : undefined,
+      old.vnode.scopedSourceProps ? old.vnode.props : undefined,
     );
     const children = reconcileChildren(
       host,
@@ -963,12 +1039,12 @@ const updateMounted = <H, P>(
     if (old.vnode.keyedRegionId !== next.keyedRegionId) {
       if (keyIndex?.detachKey) keyIndex.detachKey(old);
       else keyIndex?.detach?.(old);
-      old.vnode = next;
+      old.vnode = acceptedStructuredVNode(next, writtenStyle);
       if (keyIndex?.attachKey) keyIndex.attachKey(old);
       else keyIndex?.attach?.(old);
       return old;
     }
-    old.vnode = next;
+    old.vnode = acceptedStructuredVNode(next, writtenStyle);
     return old;
   }
   throw new Error("Incompatible VDOM node kinds reached update path");
@@ -1966,7 +2042,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     // so removed rows are released immediately.
     acceptedJournal?.capture(parent);
     const releasedChildVNodeCount = parent.vnode.children.length;
-    parent.vnode = { ...parent.vnode, children: [] };
+    parent.vnode = cloneMountedElementVNode(parent.vnode, { children: [] });
     this.#snapshot = [];
     this.#snapshotDirty = true;
     if (incrementVersion) this.#version++;
@@ -2052,7 +2128,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         node.scalarIncompatibleBindingProps?.size) return false;
       if (node.vnode.kind === "element") {
         for (const [name, value] of Object.entries(node.vnode.props)) {
-          if (!isScopedHostProp(name, value)) return false;
+          if (!isPrimitiveOnlyScopedHostProp(name, value)) return false;
         }
       }
       let valid = true;
@@ -2466,12 +2542,13 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       return null;
     };
     const methodNames = ["createElement", "createText", "setText", "place",
-      "remove", "dispose"] as const;
+      "remove", "dispose", "setStyleProp", "prepareStyleProp"] as const;
     const methods = methodNames.map(hostMethod);
     if (methods.slice(0, 5).some((method) => !method)) return null;
     type OldNode = {
       node: MountedNode<H>;
       vnode: VNode;
+      acceptedVNode: VNode;
       handle: H;
       parent: MountedNode<H> | null;
       index: number;
@@ -2498,32 +2575,26 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     const newNodes: NewNode[] = [];
     const removedNodes = new Set<MountedNode<H>>();
     const candidateKeys = new Set<string>();
-    const safeProps = (props: Readonly<Record<string, unknown>>) =>
-      Object.entries(Object.getOwnPropertyDescriptors(props)).every(
-        ([name, descriptor]) => "value" in descriptor &&
-          name !== "ref" && name !== "style" && !/^on[A-Z]/.test(name) &&
-          (descriptor.value === null || descriptor.value === undefined ||
-            typeof descriptor.value === "string" ||
-            typeof descriptor.value === "boolean" ||
-            (typeof descriptor.value === "number" &&
-              Number.isFinite(descriptor.value))),
-      );
-    const collectOld = (node: MountedNode<H>): boolean => {
+    const collectOld = (node: MountedNode<H>, acceptedVNode: VNode): boolean => {
       if (node.hostDisposed || removedNodes.has(node) || node.keyedChildren ||
         node.scalarBindingGroups?.size ||
         node.scalarIncompatibleBindingProps?.size ||
         (node.vnode.kind === "element" &&
-          (node.vnode.keyedRegionId !== null || !safeProps(node.vnode.props)))) {
+          node.vnode.keyedRegionId !== null) ||
+        node.vnode.kind !== acceptedVNode.kind ||
+        (acceptedVNode.kind === "element" &&
+          (node.children.length !== acceptedVNode.children.length ||
+            acceptedVNode.keyedRegionId !== null))) {
         return false;
       }
       removedNodes.add(node);
-      oldNodes.push({ node, vnode: node.vnode, handle: node.handle,
+      oldNodes.push({ node, vnode: node.vnode, acceptedVNode, handle: node.handle,
         parent: node.parent, index: node.parentIndex });
-      return node.children.every(collectOld);
+      return node.vnode.kind === "text" || node.children.every((child, index) =>
+        collectOld(child, (acceptedVNode as VElement).children[index]));
     };
     const collectNext = (node: VNode): boolean => {
-      if (node.kind === "element" &&
-        (node.keyedRegionId !== null || !safeProps(node.props))) return false;
+      if (node.kind === "element" && node.keyedRegionId !== null) return false;
       if (node.key !== null) {
         if (candidateKeys.has(node.key)) return false;
         candidateKeys.add(node.key);
@@ -2536,7 +2607,9 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         const matches = this.#nodesByKey.get(region.key);
         if (matches?.size !== 1) return null;
         const old = matches.values().next().value as MountedNode<H>;
-        if (old.vnode.kind !== "element" || !collectOld(old)) return null;
+        const acceptedOld = snapshotScopedHostTree(old.vnode, old);
+        if (old.vnode.kind !== "element" || !acceptedOld ||
+          !collectOld(old, acceptedOld)) return null;
         const normalized = normalizeMany(region.tree);
         if (normalized.length !== 1 || normalized[0].key !== region.key) return null;
         const next = snapshotScopedHostTree(normalized[0]);
@@ -2646,6 +2719,11 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         state = "committed";
         const pendingRefs = new Map(this.#pendingRefs);
         const baseVersion = this.#version;
+        for (const { node, acceptedVNode } of oldNodes) {
+          this.#acceptedJournal?.capture(node, acceptedVNode);
+          node.vnode = acceptedVNode;
+        }
+        this.#acceptedSnapshot = null;
         const keyIndex: MountedKeyIndex<H> = {
           detach: (node) => this.#removeFromKeyIndex(node),
           attach: (node) => this.#addToKeyIndex(node),
@@ -2728,8 +2806,9 @@ export class VDOMSnapshotRoot<H, Parent = H> {
                 children[index] = applied;
                 parent.children = children;
                 if (parent.vnode.kind === "element") {
-                  parent.vnode = { ...parent.vnode,
-                    children: children.map((child) => child.vnode) };
+                  parent.vnode = cloneMountedElementVNode(parent.vnode, {
+                    children: children.map((child) => child.vnode),
+                  });
                 }
               } else {
                 const roots = this.#mounted.slice();
@@ -2782,6 +2861,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           }
           if (errors.length) throw new AggregateError(
             [error, ...errors], "Scoped host subtree replacement and repair failed",
+            { cause: error },
           );
           throw error;
         } finally {
@@ -5715,7 +5795,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
 
   #attachScalarBindingNode(node: MountedNode<H>) {
     if (node.vnode.kind !== "element") return;
-    for (const [name, rawValue] of Object.entries(node.vnode.props)) {
+    const authored = node.vnode.scopedSourceProps ?? node.vnode.props;
+    for (const [name, rawValue] of Object.entries(authored)) {
       this.#registerScalarBindingProp(node, name, rawValue);
     }
   }
@@ -5784,7 +5865,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       node.scalarBindingGroups = undefined;
       node.scalarIncompatibleBindingProps = undefined;
       if (node.vnode.kind === "element") {
-        for (const [name, rawValue] of Object.entries(node.vnode.props)) {
+        const authored = node.vnode.scopedSourceProps ?? node.vnode.props;
+        for (const [name, rawValue] of Object.entries(authored)) {
           if (this.#compiledGraph) {
             for (const binding of compiledBindingsIn(name, rawValue)) {
               const existingSlot = this.#compiledSlotBySource.get(

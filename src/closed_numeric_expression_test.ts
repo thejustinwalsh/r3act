@@ -92,3 +92,18 @@ Deno.test("closed expression rejects accessors, cycles, and boundedness violatio
   }
   equal(normalizeClosedNumericExpression(deep, 1), null, "deep tree declined");
 });
+
+Deno.test("closed expression rejects surplus fields and symbol metadata", () => {
+  equal(normalizeClosedNumericExpression({ kind: "input", index: 0, callback() {} }, 1),
+    null, "surplus callback declined");
+  equal(normalizeClosedNumericExpression({ kind: "binary", operator: "+",
+    left: { kind: "input", index: 0 }, right: { kind: "literal", value: 1, extra: 2 } }, 1),
+    null, "nested surplus field declined");
+  const symbol = { kind: "input", index: 0, [Symbol("hidden")]: () => 1 };
+  equal(normalizeClosedNumericExpression(symbol, 1), null, "symbol metadata declined");
+  const parts = ["value=", ""] as string[] & { hidden?: boolean };
+  parts.hidden = true;
+  equal(normalizeClosedNumericExpression({ kind: "template", parts,
+    expressions: [{ kind: "input", index: 0 }] }, 1), null,
+  "array metadata declined");
+});

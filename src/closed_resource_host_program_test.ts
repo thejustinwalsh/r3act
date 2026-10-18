@@ -115,3 +115,90 @@ Deno.test("closed resource subtree declines unsafe shape, getters and nonprimiti
   equal(evaluateClosedResourceHostProgram(program, { value: 1 }), null, "object value declined");
   equal(evaluateClosedResourceHostProgram(program, true), null, "true text child declined");
 });
+
+const valueDescriptor = (): any => ({
+  schemaVersion: 3,
+  componentProgramId: "example.tsx#component:Values",
+  moduleRevision: "sha:values",
+  resourceUseSiteId: "example.tsx#component:Values#store:0",
+  resourceProp: "resource",
+  host: { tag: "div", key: "values", props: [["style", { kind: "style", entries: [
+    ["color", { kind: "literal", value: "red" }],
+    ["--offset", { kind: "input", index: 0 }],
+    ["marginTop", { kind: "literal", value: null }],
+  ] }]], children: [
+    { kind: "host", host: { tag: "group", key: "scene", props: [
+      ["position", { kind: "tuple", items: [
+        { kind: "input", index: 0 }, { kind: "literal", value: 2 },
+        { kind: "binary", operator: "+", left: { kind: "input", index: 0 },
+          right: { kind: "literal", value: 1 } },
+      ] }],
+    ], children: [] } },
+  ] },
+});
+
+Deno.test("schema 3 copies declarative styles and tuples into stable candidate values", () => {
+  const raw = valueDescriptor();
+  const program = normalizeClosedResourceHostProgram(raw);
+  equal(program?.schemaVersion, 3, "schema 3 normalized");
+  raw.host.props[0][1].entries[0][0] = "backgroundColor";
+  raw.host.props[0][1].entries[0][1].value = "blue";
+  raw.host.children[0].host.props[0][1].items[1].value = 99;
+  const first = evaluateClosedResourceHostProgram(program!, 4)!;
+  const second = evaluateClosedResourceHostProgram(program!, 5)!;
+  equal(first.props.style.color, "red", "captured style entry");
+  equal(first.props.style["--offset"], 4, "numeric style entry");
+  equal(first.props.style.marginTop, null, "null style entry");
+  equal(first.props.children.props.position[0], 4, "first coordinate");
+  equal(first.props.children.props.position[1], 2, "captured coordinate");
+  equal(first.props.children.props.position[2], 5, "computed coordinate");
+  equal(second.props.children.props.position[0], 5, "next candidate coordinate");
+  equal(first.props.style === second.props.style, false, "style is not reused");
+  equal(first.props.children.props.position === second.props.children.props.position, false,
+    "tuple is not reused");
+  equal(Object.isFrozen(program?.host.props[0][1]), true, "frozen style descriptor");
+  equal(Object.isFrozen(first.props.style), true, "frozen style candidate");
+  equal(Object.isFrozen(first.props.children.props.position), true, "frozen tuple candidate");
+});
+
+Deno.test("schema 3 rejects malformed aggregates and unsupported evaluated values", () => {
+  const reject = (mutate: (raw: any) => void, label: string) => {
+    const raw = valueDescriptor();
+    mutate(raw);
+    equal(normalizeClosedResourceHostProgram(raw), null, label);
+  };
+  reject((raw) => raw.host.props[0][1].entries.push(["color", { kind: "literal", value: "blue" }]),
+    "duplicate style key");
+  for (const name of ["__proto__", "constructor", "prototype", "1color", "--bad key"]) {
+    reject((raw) => raw.host.props[0][1].entries[0][0] = name, `unsafe ${name}`);
+  }
+  reject((raw) => raw.host.props[0][1].entries = Array.from({ length: 33 }, (_, i) =>
+    [`--key${i}`, { kind: "literal", value: "x" }]), "style key bound");
+  reject((raw) => Object.defineProperty(raw.host.props[0][1].entries[0], "1", {
+    get() { throw new Error("getter reached"); },
+  }), "style accessor");
+  reject((raw) => raw.host.children[0].host.props[0][1].items.pop(), "short tuple");
+  reject((raw) => raw.host.children[0].host.props[0][1].items.push({ kind: "literal", value: 4 }),
+    "long tuple");
+  reject((raw) => raw.host.children[0].host.props[0][1].kind = "style", "wrong aggregate host");
+  reject((raw) => raw.host.props[0][1].extra = () => 1, "extra callback field");
+  reject((raw) => raw.host.children[0].host.props[0][1].items[0].extra = true,
+    "extra expression field");
+  reject((raw) => raw.host.props[0][1].entries[0][1] = { kind: "input", index: 0,
+    get hidden() { throw new Error("getter reached"); } }, "expression accessor");
+  const styleBoolean = valueDescriptor();
+  styleBoolean.host.props[0][1].entries[0][1] = { kind: "literal", value: true };
+  equal(evaluateClosedResourceHostProgram(normalizeClosedResourceHostProgram(styleBoolean)!, 4), null,
+    "boolean style declines evaluation");
+  const tupleNonFinite = valueDescriptor();
+  tupleNonFinite.host.children[0].host.props[0][1].items[2] = { kind: "binary", operator: "/",
+    left: { kind: "literal", value: 1 }, right: { kind: "literal", value: 0 } };
+  equal(evaluateClosedResourceHostProgram(normalizeClosedResourceHostProgram(tupleNonFinite)!, 4), null,
+    "nonfinite tuple declines evaluation");
+  const tupleString = valueDescriptor();
+  tupleString.host.children[0].host.props[0][1].items[2] = { kind: "literal", value: "3" };
+  equal(evaluateClosedResourceHostProgram(normalizeClosedResourceHostProgram(tupleString)!, 4), null,
+    "coercible tuple string declines evaluation");
+  const old = valueDescriptor(); old.schemaVersion = 2;
+  equal(normalizeClosedResourceHostProgram(old), null, "schema 2 rejects aggregates");
+});

@@ -19,7 +19,7 @@ const input = { kind: "input", index: 0 } as const;
 const plusOne = { kind: "binary", operator: "+", left: input,
   right: { kind: "literal", value: 1 } } as const;
 
-async function fixture(id: string, host = new MemoryVDOMHost(), unsafeFallback = false) {
+async function fixture(id: string, host = new MemoryVDOMHost(), unsafeFallback = false, structured = false) {
   const source = `resource-subtree/${id}.tsx`;
   registerCompiledSemanticPlan({ schema_version: 1, source_file: source,
     module_revision: "resource-subtree-v1", owners: [], sources: [], sinks: [], operations: [],
@@ -46,20 +46,26 @@ async function fixture(id: string, host = new MemoryVDOMHost(), unsafeFallback =
   });
   const Fallback = defineComponent(`${id}:Fallback`, () => {
     useEffectAt("lifetime", () => () => { cleanup.push("outer"); });
-    return jsx("div", { key: "b-host" }, jsx(Inner, { key: "inner-owner" }));
+    return jsx("div", { key: "b-host", ...(structured ? { style: { color: "gray" } } : {}) },
+      jsx(Inner, { key: "inner-owner" }));
   });
   const programId = `${source}#component:Ready`;
+  const styleProp = ["style", { kind: "style", entries: [
+    ["--ready", input], ["color", { kind: "literal", value: "red" }],
+  ] }] as const;
   const Ready = defineComponent(programId, (props: { resource: AsyncResource<number> }) => {
     readyRenders++;
     const value = useAt("ready", props.resource) as number;
-    return jsx("output", { key: "b-host", "data-ready": value }, [
+    return jsx("output", { key: "b-host", "data-ready": value,
+      ...(structured ? { style: { "--ready": value, color: "red" } } : {}) }, [
       jsx("span", { key: "left", "data-value": value }, value),
       jsx("span", { key: "right", "data-value": value + 1 }, value + 1),
     ]);
   }, { propOnlySites: [], closedResourceHostProgram: {
-    schemaVersion: 2, componentProgramId: programId, moduleRevision: "resource-subtree-v1",
+    schemaVersion: structured ? 3 : 2, componentProgramId: programId, moduleRevision: "resource-subtree-v1",
     resourceUseSiteId: `${programId}#store:0`, resourceProp: "resource",
-    host: { tag: "output", key: "b-host", props: [["data-ready", input]], children: [
+    host: { tag: "output", key: "b-host", props: [["data-ready", input],
+      ...(structured ? [styleProp] : [])], children: [
       { kind: "host", host: { tag: "span", key: "left", props: [["data-value", input]],
         children: [{ kind: "text", expression: input }] } },
       { kind: "host", host: { tag: "span", key: "right", props: [["data-value", plusOne]],
@@ -114,6 +120,27 @@ Deno.test("resource subtree reveals and retires nested fallback owners beside pe
     assertEquals(text(f.main), "new-a45");
     assertStrictEquals(f.main.children[1], ready);
     assertEquals(f.cleanup.length, 2);
+  } finally { f.dispose(); }
+});
+
+Deno.test("structured resource style reveals beside an independent pending branch", async () => {
+  const f = await fixture("resource-subtree-style", new MemoryVDOMHost(), false, true);
+  try {
+    const a = f.main.children[0], fallback = f.main.children[1];
+    f.mode.dispatch(1); f.root.flush();
+    const renders = f.renders;
+    f.pendingB.resolve(4); await Promise.resolve(); f.root.flush();
+    assertStrictEquals(f.main.children[0], a);
+    assert(f.main.children[1] !== fallback);
+    const readyStyle = f.main.children[1].props.style as Record<string, unknown>;
+    assertEquals(readyStyle["--ready"], 4);
+    assertEquals(readyStyle.color, "red");
+    assertEquals(f.renders, renders);
+    assertEquals(f.cleanup, ["outer", "inner"]);
+    const ready = f.main.children[1];
+    f.pendingA.resolve("new-a"); await Promise.resolve(); f.root.flush();
+    assertStrictEquals(f.main.children[1], ready);
+    assertEquals(text(f.main), "new-a45");
   } finally { f.dispose(); }
 });
 
@@ -190,5 +217,33 @@ Deno.test("partial resource subtree failure leaves fallback ownership and effect
     f.root.dispose();
     assertEquals(f.cleanup, ["outer", "inner"]);
     assertThrows(() => f.fallbackSet(1), Error, "not alive");
+  } finally { f.dispose(); }
+});
+
+Deno.test("partial structured style write keeps accepted fallback and quarantines reveal", async () => {
+  class FailingStyleHost extends MemoryVDOMHost {
+    fail = false;
+    override setProp(node: MemoryNode, name: string, value: unknown, previous?: unknown) {
+      super.setProp(node, name, value, previous);
+      if (this.fail && name === "style") throw new Error("partial style host");
+    }
+    override setStyleProp(node: MemoryNode, name: string, value: unknown) {
+      super.setStyleProp(node, name, value);
+      if (this.fail && name === "color") throw new Error("partial style host");
+    }
+  }
+  const host = new FailingStyleHost();
+  const f = await fixture("resource-subtree-style-partial", host, false, true);
+  try {
+    f.mode.dispatch(1); f.root.flush();
+    const accepted = JSON.stringify(f.root.snapshot), version = f.root.publicationVersion;
+    const owners = f.root.diagnostics().ownerCount;
+    host.fail = true;
+    f.pendingB.resolve(8); await Promise.resolve();
+    assertThrows(() => f.root.flush(), Error, "partial style host");
+    assertEquals(JSON.stringify(f.root.snapshot), accepted);
+    assertEquals(f.root.publicationVersion, version);
+    assertEquals(f.root.diagnostics().ownerCount, owners);
+    assertEquals(f.cleanup, []);
   } finally { f.dispose(); }
 });

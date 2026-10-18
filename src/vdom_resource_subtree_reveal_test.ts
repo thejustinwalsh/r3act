@@ -6,6 +6,7 @@ import {
   type PreparedKeyedVDOMProgram,
   type MemoryNode,
 } from "./vdom_snapshot_runtime.ts";
+import { isSafeClosedStyleName, snapshotScopedHostProp } from "./scoped_host_values.ts";
 
 const fallback = () => jsx("div", { key: "resource-host", "data-phase": "pending" }, [
   jsx("span", { key: "fallback-child" }, "loading"),
@@ -104,7 +105,9 @@ Deno.test("scoped resource reveal declines bound fallback, unsafe props and key 
   root.dispose();
 
   for (const props of [
-    { style: { color: "red" } },
+    { style: { get color() { return "red"; } } },
+    { style: { color: Infinity } },
+    { position: [1, 2, Infinity] },
     { onClick: () => {} },
     { ref: { current: null } },
   ]) {
@@ -127,6 +130,221 @@ Deno.test("scoped resource reveal declines bound fallback, unsafe props and key 
       jsx("p", { key: "after" }, "collision")) },
   ]), null);
   plain.dispose();
+});
+
+Deno.test("scoped resource values copy style and tuple data before external mutation", () => {
+  class RetainingHost extends MemoryVDOMHost {
+    values: unknown[] = [];
+    onStyleWrite?: () => void;
+    override setProp(node: MemoryNode, name: string, value: unknown,
+      previous: unknown) {
+      if (name === "style" || name === "position") this.values.push(value);
+      if (name === "style") this.onStyleWrite?.();
+      super.setProp(node, name, value, previous);
+    }
+  }
+  const host = new RetainingHost(), container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  const oldStyle = { color: "gray" }, nextStyle = { color: "green", opacity: 0.7 };
+  const nextPosition = [4, 5, 6];
+  root.commit(jsx("section", { key: "app" }, [
+    jsx("div", { key: "style-host", style: oldStyle }, "old"),
+    jsx("group", { key: "tuple-host", position: Object.freeze([1, 2, 3]) }),
+  ]));
+  oldStyle.color = "green";
+  const ready = root.prepareScopedHostSubtreeReplacements([
+    { key: "style-host", tree: jsx("div", { key: "style-host", style: nextStyle }, "new") },
+    { key: "tuple-host", tree: jsx("group", { key: "tuple-host", position: nextPosition }) },
+  ]);
+  assert(ready);
+  oldStyle.color = "black";
+  nextStyle.color = "red";
+  nextPosition[0] = 99;
+  host.onStyleWrite = () => { nextStyle.opacity = 0.1; nextPosition[1] = 99; };
+  root.beginPublication();
+  ready.commit();
+  const during = root.snapshot[0] as { children: Array<{ props: { style: { color: string } } }> };
+  assertEquals(during.children[0].props.style.color, "gray");
+  assert(ready.validatePostHost());
+  root.publishAccepted();
+  const current = root.snapshot[0] as { children: Array<{ props: Record<string, unknown> }> };
+  assertEquals(current.children[0].props.style, { color: "green", opacity: 0.7 });
+  assertEquals(current.children[1].props.position, [4, 5, 6]);
+  assert(host.values.every((value) => value !== oldStyle && value !== nextStyle &&
+    value !== nextPosition));
+  assertEquals(host.values.at(-2), { color: "green", opacity: 0.7 });
+  assertEquals(host.values.at(-1), [4, 5, 6]);
+  root.dispose();
+});
+
+Deno.test("scoped reveal declines mutable generic tuple fallback history", () => {
+  const host = new MemoryVDOMHost(), container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  const original = [1, 2, 3];
+  root.commit(jsx("group", { key: "resource-host", position: original }));
+  original[0] = 9;
+  assertEquals(root.prepareScopedHostSubtreeReplacements([
+    { key: "resource-host", tree: jsx("group", { key: "resource-host",
+      position: [4, 5, 6] }) },
+  ]), null);
+  root.dispose();
+});
+
+Deno.test("ordinary style mount and update preserve getter and Proxy trap order", () => {
+  const trace: string[] = [];
+  const style = (label: string) => new Proxy({ color: label }, {
+    ownKeys(target) { trace.push(`${label}:keys`); return Reflect.ownKeys(target); },
+    getOwnPropertyDescriptor(target, key) {
+      trace.push(`${label}:descriptor:${String(key)}`);
+      return Reflect.getOwnPropertyDescriptor(target, key);
+    },
+    get(target, key, receiver) {
+      trace.push(`${label}:get:${String(key)}`);
+      return Reflect.get(target, key, receiver);
+    },
+  });
+  const host = new MemoryVDOMHost(), container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  root.commit(jsx("div", { key: "resource-host", style: style("old") }));
+  const read = (label: string) => [
+    `${label}:keys`, `${label}:descriptor:color`, `${label}:get:color`,
+  ];
+  assertEquals(trace, [...read("old"), ...read("old"), ...read("old"),
+    ...read("old")]);
+  trace.length = 0;
+  root.commit(jsx("div", { key: "resource-host", style: style("next") }));
+  assertEquals(trace, [...read("old"), ...read("next"), ...read("next"),
+    ...read("next")]);
+  root.dispose();
+});
+
+Deno.test("keyed parent edits retain authored style reads and accepted values", () => {
+  let opacity = 0.2, reads = 0;
+  const oldStyle = { get opacity() { reads++; return opacity; } };
+  const host = new MemoryVDOMHost(), container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  root.commit(jsx("div", { key: "rows-parent", style: oldStyle },
+    keyedOwnerChildren("rows-region", [
+      jsx("li", { key: "a" }, "a"), jsx("li", { key: "b" }, "b"),
+    ])));
+  assert(root.commitKeyedRegionDelta("rows-parent", "rows-region", [
+    { type: "move", key: "b", beforeKey: "a" },
+  ]));
+  const accepted = root.snapshot[0] as { props: { style: { opacity: number } } };
+  assertEquals(accepted.props.style.opacity, 0.2);
+  reads = 0;
+  opacity = 0.7;
+  assertEquals(accepted.props.style.opacity, 0.2);
+  root.commit(jsx("div", { key: "rows-parent", style: { opacity: 0.7 } },
+    keyedOwnerChildren("rows-region", [
+      jsx("li", { key: "b" }, "b"), jsx("li", { key: "a" }, "a"),
+    ])));
+  assertEquals(reads, 1);
+  assertEquals((root.snapshot[0] as typeof accepted).props.style.opacity, 0.7);
+  root.dispose();
+});
+
+Deno.test("ordinary style update diffs against accepted value after source mutation", () => {
+  class DiffStyleHost extends MemoryVDOMHost {
+    override setProp(node: MemoryNode, name: string, value: unknown,
+      previous: unknown) {
+      if (name !== "style") return super.setProp(node, name, value, previous);
+      const before = (previous ?? {}) as Record<string, unknown>;
+      const after = (value ?? {}) as Record<string, unknown>;
+      const actual = (node.props.style ??= {}) as Record<string, unknown>;
+      for (const key of new Set([...Object.keys(before), ...Object.keys(after)])) {
+        if (!Object.is(before[key], after[key])) actual[key] = after[key];
+      }
+    }
+  }
+  const trace: string[] = [];
+  let opacity = 0.2;
+  const authored = { get opacity() { trace.push("old-get"); return opacity; } };
+  const host = new DiffStyleHost(), container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  root.commit(jsx("div", { key: "resource-host", style: authored }));
+  assertEquals((container.children[0].props.style as { opacity: number }).opacity, 0.2);
+  trace.length = 0;
+  opacity = 0.7;
+  root.commit(jsx("div", { key: "resource-host", style: { opacity: 0.7 } }));
+  assertEquals(trace, ["old-get"]);
+  assertEquals((container.children[0].props.style as { opacity: number }).opacity, 0.7);
+  root.dispose();
+});
+
+Deno.test("unsupported ordinary style reads its old getter once per update", () => {
+  let reads = 0;
+  const oldStyle = { get opacity() { reads++; return true; } };
+  const host = new MemoryVDOMHost(), container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  root.commit(jsx("div", { key: "resource-host", style: oldStyle }));
+  reads = 0;
+  root.commit(jsx("div", { key: "resource-host", style: { opacity: 0.7 } }));
+  assertEquals(reads, 1);
+  root.dispose();
+});
+
+Deno.test("scoped resource values decline unsafe structure and stale host writer", () => {
+  assert(isSafeClosedStyleName("background-color"));
+  assert(isSafeClosedStyleName("--accent-color"));
+  for (const key of ["__proto__", "prototype", "constructor", "bad key"]) {
+    assertEquals(isSafeClosedStyleName(key), false);
+  }
+  for (const [tag, name, value] of [
+    ["div", "style", { opacity: NaN }],
+    ["div", "style", { get color() { return "red"; } }],
+    ["mesh", "position", [1, 2]],
+    ["mesh", "scale", [1, 2, Infinity]],
+    ["div", "position", [1, 2, 3]],
+    ["group", "style", { color: "red" }],
+  ] as const) assertEquals(snapshotScopedHostProp(tag, name, value).accepted, false);
+  const host = new MemoryVDOMHost(), container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  root.commit(jsx("div", { key: "resource-host", style: { color: "gray" } }));
+  const ready = root.prepareScopedHostSubtreeReplacements([
+    { key: "resource-host", tree: jsx("div", { key: "resource-host",
+      style: { color: "green" } }) },
+  ]);
+  assert(ready);
+  const writer = host.setProp;
+  host.setProp = () => {};
+  assertEquals(ready.validate(), false);
+  host.setProp = writer;
+  ready.discard();
+  root.dispose();
+});
+
+Deno.test("scoped style writer failure preserves accepted data and quarantines", () => {
+  const failure = new Error("style write failed after host mutation");
+  class PartialStyleHost extends MemoryVDOMHost {
+    fail = false;
+    override setProp(node: MemoryNode, name: string, value: unknown,
+      previous: unknown) {
+      super.setProp(node, name, value, previous);
+      if (this.fail && name === "style") throw failure;
+    }
+  }
+  const host = new PartialStyleHost(), container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  root.commit(jsx("div", { key: "resource-host", style: { color: "gray" } }));
+  const ready = root.prepareScopedHostSubtreeReplacements([
+    { key: "resource-host", tree: jsx("div", { key: "resource-host",
+      style: { color: "green" } }) },
+  ]);
+  assert(ready);
+  root.beginPublication();
+  host.fail = true;
+  let caught: unknown;
+  try { ready.commit(); } catch (error) { caught = error; }
+  assertStrictEquals(caught, failure);
+  assertEquals((root.snapshot[0] as { props: { style: { color: string } } })
+    .props.style.color, "gray");
+  root.failPublication();
+  assertEquals(root.prepareScopedHostSubtreeReplacements([
+    { key: "resource-host", tree: jsx("div", { key: "resource-host" }) },
+  ]), null);
+  host.fail = false;
+  root.dispose();
 });
 
 Deno.test("resource subtree host failure retains accepted fallback and quarantines later cuts", () => {

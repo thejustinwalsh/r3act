@@ -4345,10 +4345,59 @@ fn closed_resource_subtree_property_name(tag: &str, name: &str) -> bool {
     }
 }
 
+fn closed_resource_style_name(name: &str) -> bool {
+    if matches!(name, "__proto__" | "prototype" | "constructor") { return false; }
+    let body = name.strip_prefix("--").unwrap_or(name);
+    !body.is_empty() && (body.as_bytes()[0].is_ascii_alphabetic() ||
+        body.as_bytes()[0] == b'_') && body.bytes().all(|byte|
+        byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-')
+}
+
+fn closed_resource_aggregate_expression(
+    expression: &Expression<'_>, tag: &str, name: &str,
+    value_sites: &BTreeMap<SymbolId, String>, source_sites: &[String],
+    semantic: &Semantic<'_>, source: &str,
+) -> Option<serde_json::Value> {
+    let mut expression = expression;
+    while let Expression::ParenthesizedExpression(parenthesized) = expression {
+        expression = &parenthesized.expression;
+    }
+    if matches!(tag, "mesh" | "group") && matches!(name, "position" | "rotation" | "scale") {
+        let Expression::ArrayExpression(array) = expression else { return None; };
+        if array.elements.len() != 3 { return None; }
+        let items = array.elements.iter().map(|item| closed_store_host_expression(
+            item.as_expression()?, value_sites, source_sites, semantic, source,
+        )).collect::<Option<Vec<_>>>()?;
+        return Some(serde_json::json!({"kind":"tuple","items":items}));
+    }
+    if matches!(tag, "div" | "span" | "output") && name == "style" {
+        let Expression::ObjectExpression(object) = expression else { return None; };
+        if object.properties.len() > 32 { return None; }
+        let mut seen = BTreeSet::new();
+        let mut entries = Vec::with_capacity(object.properties.len());
+        for property in &object.properties {
+            let oxc_ast::ast::ObjectPropertyKind::ObjectProperty(property) = property else { return None; };
+            if property.computed || property.method || property.shorthand ||
+                property.kind != oxc_ast::ast::PropertyKind::Init { return None; }
+            let key = match &property.key {
+                PropertyKey::StaticIdentifier(key) => key.name.as_str(),
+                PropertyKey::StringLiteral(key) => key.value.as_str(),
+                _ => return None,
+            };
+            if !closed_resource_style_name(key) || !seen.insert(key.to_owned()) { return None; }
+            let value = closed_store_host_expression(&property.value, value_sites,
+                source_sites, semantic, source)?;
+            entries.push(serde_json::json!([key, value]));
+        }
+        return Some(serde_json::json!({"kind":"style","entries":entries}));
+    }
+    None
+}
+
 fn closed_resource_subtree_host(
     element: &JSXElement<'_>, value_symbol: SymbolId, site_id: &str,
     semantic: &Semantic<'_>, source: &str, keys: &mut BTreeSet<String>,
-    count: &mut usize, depth: usize,
+    count: &mut usize, depth: usize, has_aggregate: &mut bool,
 ) -> Option<serde_json::Value> {
     *count += 1;
     if *count > 256 || depth > 32 || element.opening_element.attributes.len() > 33 { return None; }
@@ -4371,13 +4420,26 @@ fn closed_resource_subtree_host(
             if value.value.is_empty() || value.value.chars().any(|ch| matches!(ch, '&' | '\n' | '\r' | '\t')) { return None; }
             key = Some(value.value.to_string());
         } else {
-            if !closed_resource_subtree_property_name(tag, name) || !seen.insert(name.to_owned()) { return None; }
-            let expression = match attribute.value.as_ref()? {
-                JSXAttributeValue::StringLiteral(value) if !value.value.chars().any(|ch| matches!(ch, '&' | '\n' | '\r' | '\t')) =>
-                    serde_json::json!({"kind":"literal","value":value.value.as_str()}),
-                JSXAttributeValue::ExpressionContainer(container) => closed_store_host_expression(
-                    container.expression.as_expression()?, &value_sites, &source_sites, semantic, source)?,
-                _ => return None,
+            let aggregate = (matches!(tag, "mesh" | "group") &&
+                matches!(name, "position" | "rotation" | "scale")) ||
+                (matches!(tag, "div" | "span" | "output") && name == "style");
+            if (!aggregate && !closed_resource_subtree_property_name(tag, name)) ||
+                !seen.insert(name.to_owned()) { return None; }
+            let expression = if aggregate {
+                let JSXAttributeValue::ExpressionContainer(container) = attribute.value.as_ref()? else { return None; };
+                let expression = closed_resource_aggregate_expression(
+                    container.expression.as_expression()?, tag, name, &value_sites,
+                    &source_sites, semantic, source)?;
+                *has_aggregate = true;
+                expression
+            } else {
+                match attribute.value.as_ref()? {
+                    JSXAttributeValue::StringLiteral(value) if !value.value.chars().any(|ch| matches!(ch, '&' | '\n' | '\r' | '\t')) =>
+                        serde_json::json!({"kind":"literal","value":value.value.as_str()}),
+                    JSXAttributeValue::ExpressionContainer(container) => closed_store_host_expression(
+                        container.expression.as_expression()?, &value_sites, &source_sites, semantic, source)?,
+                    _ => return None,
+                }
             };
             props.push(serde_json::json!([name, expression]));
         }
@@ -4390,7 +4452,7 @@ fn closed_resource_subtree_host(
         match child {
             JSXChild::Element(nested) => {
                 let host = closed_resource_subtree_host(nested, value_symbol, site_id,
-                    semantic, source, keys, count, depth + 1)?;
+                    semantic, source, keys, count, depth + 1, has_aggregate)?;
                 children.push(serde_json::json!({"kind":"host","host":host}));
             }
             JSXChild::ExpressionContainer(container) => {
@@ -4459,10 +4521,12 @@ fn closed_resource_subtree_program(
     let Expression::JSXElement(element) = return_expression else { return None; };
     let mut keys = BTreeSet::new();
     let mut count = 0;
+    let mut has_aggregate = false;
     let host = closed_resource_subtree_host(element, value_symbol,
-        &component.store_sites[0].site_id, semantic, source, &mut keys, &mut count, 0)?;
+        &component.store_sites[0].site_id, semantic, source, &mut keys, &mut count, 0,
+        &mut has_aggregate)?;
     Some(serde_json::json!({
-        "schemaVersion": 2,
+        "schemaVersion": if has_aggregate { 3 } else { 2 },
         "componentProgramId": component.component_site_id,
         "moduleRevision": revision,
         "resourceUseSiteId": component.store_sites[0].site_id,
@@ -7895,6 +7959,102 @@ export function Label() { const [label] = useState("ready"); return <span data-l
         }
         let code = plan.component_module.unwrap();
         assert_eq!(code.matches("closedResourceHostProgram:").count(), 2);
+    }
+
+    #[test]
+    fn emits_schema_three_resource_host_values_only_for_literal_aggregates() {
+        let source = r#"
+import { use } from "native_runtime_api.ts";
+export function Styled(props) {
+  const value = use(props.resource);
+  return <div key="styled" data-kind="ready"><span key="styled-child" style={{ color: value, "background-color": "red", "--gap": value + 1, opacity: 0.5 }}>{value}</span></div>;
+}
+export function Positioned({ resource }) {
+  const value = use(resource);
+  return <group key="positioned"><mesh key="positioned-mesh" position={[value, value + 1, 2]} rotation={[0, value, 0]} scale={[1, 1, 1]}/></group>;
+}
+export function Primitive(props) {
+  const value = use(props.resource);
+  return <div key="primitive"><output key="primitive-child" data-value={value}>{value}</output></div>;
+}
+"#;
+        let response = compile_state("resource-host-values.tsx", source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let plan = response.plan.unwrap();
+        let revision = plan.module_revision.clone();
+        let components = plan.components.unwrap();
+        let styled = components.iter().find(|component| component.name == "Styled").unwrap();
+        let style_program = styled.closed_resource_host_program.as_ref().unwrap();
+        assert_eq!(style_program["schemaVersion"], 3);
+        assert_eq!(style_program["moduleRevision"], revision);
+        assert_eq!(style_program["resourceUseSiteId"], styled.store_sites[0].site_id);
+        assert_eq!(style_program["host"]["children"][0]["host"]["props"][0], serde_json::json!([
+            "style", {"kind":"style","entries":[
+                ["color",{"kind":"input","index":0}],
+                ["background-color",{"kind":"literal","value":"red"}],
+                ["--gap",{"kind":"binary","operator":"+",
+                    "left":{"kind":"input","index":0},"right":{"kind":"literal","value":1.0}}],
+                ["opacity",{"kind":"literal","value":0.5}]
+            ]}
+        ]));
+        let positioned = components.iter().find(|component| component.name == "Positioned").unwrap();
+        let tuple_program = positioned.closed_resource_host_program.as_ref().unwrap();
+        assert_eq!(tuple_program["schemaVersion"], 3);
+        assert_eq!(tuple_program["resourceUseSiteId"], positioned.store_sites[0].site_id);
+        let props = tuple_program["host"]["children"][0]["host"]["props"].as_array().unwrap();
+        assert_eq!(props.len(), 3);
+        assert_eq!(props[0][0], "position");
+        assert_eq!(props[0][1]["kind"], "tuple");
+        assert_eq!(props[0][1]["items"].as_array().unwrap().len(), 3);
+        assert_eq!(props[0][1]["items"][0], serde_json::json!({"kind":"input","index":0}));
+        assert_eq!(props[1][0], "rotation");
+        assert_eq!(props[2][0], "scale");
+        let primitive = components.iter().find(|component| component.name == "Primitive").unwrap();
+        assert_eq!(primitive.closed_resource_host_program.as_ref().unwrap()["schemaVersion"], 2);
+        let code = plan.component_module.unwrap();
+        assert_eq!(code.matches("closedResourceHostProgram:").count(), 3);
+        assert!(code.contains("\"schemaVersion\":3"), "{code}");
+    }
+
+    #[test]
+    fn declines_unsafe_resource_host_value_shapes_to_generic_reconciliation() {
+        let cases = [
+            ("tuple-length", "<mesh key=\"child\" position={[value, 1]}/>"),
+            ("tuple-spread", "<mesh key=\"child\" position={[value, ...other]}/>"),
+            ("tuple-hole", "<mesh key=\"child\" position={[value, , 1]}/>"),
+            ("tuple-call", "<mesh key=\"child\" position={[value, read(), 1]}/>"),
+            ("tuple-capture", "<mesh key=\"child\" position={[value, other, 1]}/>"),
+            ("tuple-property", "<mesh key=\"child\" position={[value.x, 0, 1]}/>"),
+            ("tuple-dom", "<div key=\"child\" position={[value, 0, 1]}/>"),
+            ("style-spread", "<div key=\"child\" style={{ color: value, ...other }}/>"),
+            ("style-computed", "<div key=\"child\" style={{ [other]: value }}/>"),
+            ("style-getter", "<div key=\"child\" style={{ get color() { return value; } }}/>"),
+            ("style-method", "<div key=\"child\" style={{ color() { return value; } }}/>"),
+            ("style-shorthand", "<div key=\"child\" style={{ value }}/>"),
+            ("style-call", "<div key=\"child\" style={{ color: choose(value) }}/>"),
+            ("style-duplicate", "<div key=\"child\" style={{ color: value, color: 1 }}/>"),
+            ("style-prototype", "<div key=\"child\" style={{ __proto__: value }}/>"),
+            ("style-unsafe-name", "<div key=\"child\" style={{ \"--bad;name\": value }}/>"),
+            ("style-three", "<mesh key=\"child\" style={{ color: value }}/>"),
+            ("extra-read", "<div key=\"child\" style={{ color: props.other }}/>"),
+        ];
+        for (name, child) in cases {
+            let source = format!("import {{ use }} from \"native_runtime_api.ts\";\nexport function Candidate(props) {{ const value = use(props.resource); return <group key=\"root\">{child}</group>; }}");
+            let response = compile_state(&format!("resource-host-{name}.tsx"), &source);
+            assert!(response.error.is_none(), "{name}: {:?}", response.error);
+            let component = response.plan.unwrap().components.unwrap().into_iter().next().unwrap();
+            assert!(component.closed_resource_host_program.is_none(), "{name} unexpectedly closed");
+        }
+        for count in [32, 33] {
+            let entries = (0..count).map(|index| format!("p{index}: value")).collect::<Vec<_>>().join(", ");
+            let source = format!("import {{ use }} from \"native_runtime_api.ts\";\nexport function Candidate(props) {{ const value = use(props.resource); return <div key=\"root\" style={{{{{entries}}}}}/>; }}");
+            let response = compile_state(&format!("resource-host-style-{count}.tsx"), &source);
+            assert!(response.error.is_none(), "{count}: {:?}", response.error);
+            let component = response.plan.unwrap().components.unwrap().into_iter().next().unwrap();
+            assert_eq!(component.closed_resource_host_program.as_ref().map(|program|
+                program["schemaVersion"].as_u64()),
+                if count == 32 { Some(Some(3)) } else { None });
+        }
     }
 
     #[test]
