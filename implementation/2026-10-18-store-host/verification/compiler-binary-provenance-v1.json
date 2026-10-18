@@ -1,0 +1,28 @@
+{
+  "initialCargoBuild": {
+    "commandReceipt": "cargo-build-v1.exit.json",
+    "binaryReceipt": "compiler-binary-v1.json",
+    "sha256": "24f6155e75f8650ff6931ceb22b32d1942b57f20e4c4dc0c14365398e450a75b"
+  },
+  "rebuildEvidence": {
+    "firstFixtureWithoutExplicitBinary": "compiler/compiled_joint_transaction_test.mjs",
+    "fixtureIndex": 7,
+    "pluginConfiguration": "nativeModulePlugin({ root: projectRoot })",
+    "pluginBehavior": "compiler/vite_native_module.ts invokes cargo build --quiet without --locked when compilerBinary is omitted, setting CARGO_HOME to <compilerRoot>/.cache/cargo",
+    "debugBinaryMtimeUtc": "2026-10-18T17:09:49.107348Z",
+    "compiledFixture07LogMtimeUtc": "2026-10-18T17:09:49.194029Z",
+    "interpretation": "The initial user-CARGO_HOME debug executable was rebuilt during the first default-plugin fixture, using the plugin's project-local Cargo home. Rust source/manifest/lock were unchanged."
+  },
+  "storeFixture": {
+    "commandReceipt": "compiled-12-v1.exit.json",
+    "pathBehavior": "compiler/compiled_store_host_test.mjs explicitly passes compiler/oxc-spike/target/debug/ui-graph-compiler-spike",
+    "fixtureLogMtimeUtc": "2026-10-18T17:09:51.058558Z",
+    "interpretation": "The fixture ran after the plugin-triggered rebuild and used the shared debug-binary path. A contemporaneous hash was not recorded, so exact SHA equality with the later benchmark binary cannot be asserted."
+  },
+  "benchmarkBuild": {
+    "receipt": "../benchmark/proof-v1/build-proof.json",
+    "compilerSha256BeforeAndAfter": "633c4bc974f4d65a8952a9b6203bbcfaec9bbe66da196db05076256027e0b5b2",
+    "interpretation": "The exclusive benchmark build captured this binary hash before and after its build; no Rust source changes occurred between the correctness gate and benchmark build."
+  },
+  "limitation": "Do not claim all compiler-backed fixtures used the initial hash 24f6155e... or that fixture 12 had a directly recorded 633c4bc... hash. The new Store fixture did run after the rebuild via the explicit shared path; precise historical per-fixture executable bytes were not captured."
+}

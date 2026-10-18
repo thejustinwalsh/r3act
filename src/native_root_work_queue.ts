@@ -95,6 +95,14 @@ export type NativeTransactionRootWork = Omit<NativeRetainedRootWork, "roots"> & 
   }[];
 };
 
+/** A declared publication cut covering every closed reader of selected Stores. */
+export type NativeStoreRootWork = Omit<NativeRetainedRootWork, "roots"> & {
+  readonly roots: readonly {
+    readonly root: NativeRoot;
+    readonly stores: readonly AnyAsyncStore[];
+  }[];
+};
+
 /**
  * Native owner roots wired to the overlapping publication queue. A queued
  * group prepares every root and waits for every observed resource before any
@@ -147,6 +155,14 @@ export class NativeRootWorkQueue {
     );
   }
 
+  enqueueStores(work: NativeStoreRootWork): NativeRootWorkHandle {
+    return this.#enqueuePrepared(
+      work,
+      work.roots.map(({ root, stores }) => ({ root, stores: Object.freeze([...stores]) })),
+      ({ root, stores }) => root.prepareStores(stores),
+    );
+  }
+
   enqueueCollections(work: NativeCollectionRootWork): NativeRootWorkHandle {
     return this.#enqueuePrepared(
       work,
@@ -171,7 +187,7 @@ export class NativeRootWorkQueue {
   }
 
   #enqueuePrepared<Entry extends { readonly root: NativeRoot }>(
-    work: NativeRootWork | NativeRetainedRootWork | NativeCollectionRootWork | NativeTransactionRootWork,
+    work: NativeRootWork | NativeRetainedRootWork | NativeCollectionRootWork | NativeTransactionRootWork | NativeStoreRootWork,
     entries: readonly Entry[],
     prepareCandidate: (
       entry: Entry,

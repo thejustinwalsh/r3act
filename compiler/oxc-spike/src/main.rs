@@ -230,6 +230,8 @@ struct NativeComponentMetadata {
     store_sites: Vec<NativeStoreSiteMetadata>,
     #[serde(rename = "closedResourceHostProgram", skip_serializing_if = "Option::is_none")]
     closed_resource_host_program: Option<serde_json::Value>,
+    #[serde(rename = "closedStoreHostProgram", skip_serializing_if = "Option::is_none")]
+    closed_store_host_program: Option<serde_json::Value>,
     #[serde(default)]
     collection_sites: Vec<NativeCollectionSiteMetadata>,
     numeric_sinks: Vec<NativeNumericSinkMetadata>,
@@ -3693,6 +3695,15 @@ fn compile_native_component_module(
     };
     closed_resource_collector.visit_program(&parsed.program);
     let closed_resource_programs = closed_resource_collector.programs;
+    let mut closed_store_collector = ClosedStoreHostCollector {
+        components: &state_plan.components,
+        semantic: &semantic,
+        source,
+        revision,
+        programs: BTreeMap::new(),
+    };
+    closed_store_collector.visit_program(&parsed.program);
+    let closed_store_programs = closed_store_collector.programs;
     let import_span = state_plan
         .hook_import
         .clone()
@@ -4059,6 +4070,7 @@ fn compile_native_component_module(
         &component_prop_sites,
         &component_state_layouts,
         &closed_resource_programs,
+        &closed_store_programs,
     )?;
     let components = state_plan
         .components
@@ -4110,6 +4122,9 @@ fn compile_native_component_module(
                 })
                 .collect(),
             closed_resource_host_program: closed_resource_programs
+                .get(&component.component_site_id)
+                .cloned(),
+            closed_store_host_program: closed_store_programs
                 .get(&component.component_site_id)
                 .cloned(),
             store_sites: component
@@ -4313,6 +4328,164 @@ fn closed_resource_host_program(
     }))
 }
 
+fn closed_store_host_property_name(tag: &str, name: &str) -> bool {
+    match tag {
+        "div" | "output" => {
+            name.starts_with("data-") && name.len() >= 6 &&
+            name.as_bytes()[5].is_ascii_lowercase() &&
+            name[6..].bytes().all(|byte| byte.is_ascii_lowercase() ||
+                byte.is_ascii_digit() || byte == b'-')
+        }
+        "mesh" | "group" => {
+            matches!(name, "position-x" | "position-y" | "position-z" |
+                "rotation-x" | "rotation-y" | "rotation-z" |
+                "scale-x" | "scale-y" | "scale-z" | "visible")
+        }
+        _ => false,
+    }
+}
+
+fn closed_store_host_expression(
+    expression: &Expression<'_>, value_symbol: SymbolId, semantic: &Semantic<'_>,
+    source: &str, site_id: &str,
+) -> Option<serde_json::Value> {
+    let expression_span = expression.span();
+    let mut references = Vec::new();
+    if !owner_update_program::visit_closed_primitive_expression(
+        expression,
+        owner_update_program::ClosedExpressionPolicy::Primitive,
+        &mut |identifier| {
+            if reference_symbol(identifier, semantic) != Some(value_symbol) { return false; }
+            references.push(StateReference {
+                start: identifier.span.start - expression_span.start,
+                end: identifier.span.end - expression_span.start,
+                site_id: site_id.to_owned(),
+            });
+            true
+        },
+    ) { return None; }
+    let sink = Sink {
+        owner_program_id: String::new(), sink_id: String::new(),
+        source_sites: vec![site_id.to_owned()],
+        expression: slice(source, span(expression_span.start, expression_span.end)).to_owned(),
+        references,
+    };
+    let encoded = owner_update_program::closed_numeric_expression(&sink)?;
+    serde_json::from_str(&encoded).ok()
+}
+
+fn closed_store_host_program(
+    node: &Function<'_>, component: &ComponentStateSiteIr,
+    semantic: &Semantic<'_>, source: &str, revision: &str,
+) -> Option<serde_json::Value> {
+    if node.r#async || node.generator || node.params.items.len() != 1 ||
+        node.params.rest.is_some() || !component.state_sites.is_empty() ||
+        !component.effect_sites.is_empty() || !component.collection_sites.is_empty() ||
+        component.store_sites.len() != 1 || component.store_sites[0].hook_name != "use"
+    { return None; }
+    let parameter = &node.params.items[0];
+    if parameter.optional || parameter.initializer.is_some() { return None; }
+    let (props_symbol, destructured) = match &parameter.pattern {
+        BindingPattern::BindingIdentifier(identifier) => (identifier.symbol_id.get(), None),
+        BindingPattern::ObjectPattern(pattern) if pattern.rest.is_none() && pattern.properties.len() == 1 => {
+            let property = &pattern.properties[0];
+            let BindingPattern::BindingIdentifier(local) = &property.value else { return None; };
+            if property.computed { return None; }
+            (None, Some((type_property_name(&property.key)?.to_owned(), local.symbol_id.get()?)))
+        }
+        _ => return None,
+    };
+    let body = node.body.as_ref()?;
+    if !body.directives.is_empty() || body.statements.len() != 2 { return None; }
+    let declaration = match body.statements.first()?.as_declaration()? {
+        Declaration::VariableDeclaration(declaration)
+            if declaration.kind == oxc_ast::ast::VariableDeclarationKind::Const &&
+                declaration.declarations.len() == 1 => declaration,
+        _ => return None,
+    };
+    let declarator = &declaration.declarations[0];
+    let BindingPattern::BindingIdentifier(value_binding) = &declarator.id else { return None; };
+    let value_symbol = value_binding.symbol_id.get()?;
+    let Expression::CallExpression(call) = declarator.init.as_ref()? else { return None; };
+    let store_site = &component.store_sites[0];
+    if call.arguments.len() != 1 || store_site.call.start != call.span.start ||
+        store_site.call.end != call.span.end { return None; }
+    let argument = call.arguments.first()?.as_expression()?;
+    let store_prop = if let Expression::StaticMemberExpression(member) = argument {
+        let Expression::Identifier(object) = &member.object else { return None; };
+        if props_symbol.is_none() || reference_symbol(object, semantic) != props_symbol { return None; }
+        member.property.name.to_string()
+    } else if let Expression::Identifier(identifier) = argument {
+        let (name, symbol) = destructured.as_ref()?;
+        if reference_symbol(identifier, semantic) != Some(*symbol) { return None; }
+        name.clone()
+    } else { return None; };
+    if !store_prop.bytes().next().is_some_and(|byte| byte.is_ascii_alphabetic() || byte == b'_' || byte == b'$') ||
+        !store_prop.bytes().all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'$') { return None; }
+    let Statement::ReturnStatement(return_statement) = body.statements.get(1)? else { return None; };
+    let mut return_expression = return_statement.argument.as_ref()?;
+    while let Expression::ParenthesizedExpression(parenthesized) = return_expression {
+        return_expression = &parenthesized.expression;
+    }
+    let Expression::JSXElement(element) = return_expression else { return None; };
+    let JSXElementName::Identifier(tag) = &element.opening_element.name else { return None; };
+    let tag = tag.name.as_str();
+    if !matches!(tag, "mesh" | "group" | "div" | "output") ||
+        !element.children.is_empty() || element.opening_element.attributes.len() > 33 { return None; }
+    let mut key = None;
+    let mut props = Vec::<serde_json::Value>::new();
+    let mut seen = BTreeSet::new();
+    for attribute in &element.opening_element.attributes {
+        let JSXAttributeItem::Attribute(attribute) = attribute else { return None; };
+        let JSXAttributeName::Identifier(name) = &attribute.name else { return None; };
+        let name = name.name.as_str();
+        if name == "key" {
+            if key.is_some() { return None; }
+            let Some(JSXAttributeValue::StringLiteral(value)) = attribute.value.as_ref() else { return None; };
+            if value.value.is_empty() || value.value.chars().any(|ch| matches!(ch, '&' | '\n' | '\r' | '\t')) { return None; }
+            key = Some(value.value.to_string());
+        } else {
+            if !closed_store_host_property_name(tag, name) || !seen.insert(name.to_owned()) { return None; }
+            let JSXAttributeValue::ExpressionContainer(container) = attribute.value.as_ref()? else { return None; };
+            let expression = container.expression.as_expression()?;
+            let program = closed_store_host_expression(expression, value_symbol,
+                semantic, source, &store_site.site_id)?;
+            props.push(serde_json::json!([name, program]));
+        }
+    }
+    if props.is_empty() { return None; }
+    let key = key?;
+    Some(serde_json::json!({
+        "schemaVersion": 1,
+        "componentProgramId": component.component_site_id,
+        "moduleRevision": revision,
+        "storeUseSiteId": store_site.site_id,
+        "storeProp": store_prop,
+        "host": { "tag": tag, "key": key, "props": props, "child": null }
+    }))
+}
+
+struct ClosedStoreHostCollector<'p, 'a> {
+    components: &'p [ComponentStateSiteIr],
+    semantic: &'p Semantic<'a>,
+    source: &'p str,
+    revision: &'p str,
+    programs: BTreeMap<String, serde_json::Value>,
+}
+
+impl<'a> Visit<'a> for ClosedStoreHostCollector<'_, 'a> {
+    fn visit_function(&mut self, node: &Function<'a>, flags: ScopeFlags) {
+        if let Some(component) = self.components.iter().find(|component|
+            component.declaration.start == node.span.start &&
+            component.declaration.end == node.span.end)
+            && let Some(program) = closed_store_host_program(node, component,
+                self.semantic, self.source, self.revision)
+        {
+            self.programs.insert(component.component_site_id.clone(), program);
+        }
+        walk::walk_function(self, node, flags);
+    }
+}
 struct ClosedResourceHostCollector<'p, 'a> {
     components: &'p [ComponentStateSiteIr],
     semantic: &'p Semantic<'a>,
@@ -4348,6 +4521,7 @@ fn transform_native_component_source(
     prop_sites: &BTreeMap<String, BTreeSet<String>>,
     state_layouts: &BTreeMap<String, Vec<NativeStateLayoutSlotMetadata>>,
     closed_resource_programs: &BTreeMap<String, serde_json::Value>,
+    closed_store_programs: &BTreeMap<String, serde_json::Value>,
 ) -> Result<(String, Vec<NativeModuleEdit>), String> {
     let import_span = plan
         .hook_import
@@ -4449,12 +4623,16 @@ fn transform_native_component_source(
             .get(&component.component_site_id)
             .map(|program| format!(", closedResourceHostProgram: {program}"))
             .unwrap_or_default();
+        let closed_store_option = closed_store_programs
+            .get(&component.component_site_id)
+            .map(|program| format!(", closedStoreHostProgram: {program}"))
+            .unwrap_or_default();
         let owner_kernel_option = owner_kernel_indices
             .get(&component.component_site_id)
             .map(|index| format!(", ownerUpdateProgram: {}[{index}]", aliases[9]))
             .unwrap_or_default();
         registrations.push_str(&format!(
-            "\n{}({}, {}, {{ propOnlySites: [{}]{}{}{}{} }});",
+            "\n{}({}, {}, {{ propOnlySites: [{}]{}{}{}{}{} }});",
             aliases[0],
             site,
             component.name,
@@ -4467,6 +4645,7 @@ fn transform_native_component_source(
             state_layout_option,
             owner_kernel_option,
             closed_resource_option,
+            closed_store_option,
         ));
         for state in &component.state_sites {
             let site = serde_json::to_string(&state.site_id).map_err(|error| error.to_string())?;
@@ -7292,6 +7471,49 @@ export function Label() { const [label] = useState("ready"); return <span data-l
         assert!(!is_native_runtime_module("@compiled-ui/runtime/react"));
         assert!(!is_native_runtime_module("@r3act/host-dom"));
         assert!(!is_native_runtime_module("react"));
+    }
+
+    #[test]
+    fn emits_closed_store_host_program_only_for_one_numeric_use_and_closed_leaf() {
+        let response = compile_state(
+            "native-closed-store-host.tsx",
+            include_str!("../../fixtures/native-closed-store-host.tsx"),
+        );
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let plan = response.plan.unwrap();
+        let revision = plan.module_revision.clone();
+        let components = plan.components.unwrap();
+        let mesh = components.iter().find(|component| component.name == "Mesh").unwrap();
+        let mesh_program = mesh.closed_store_host_program.as_ref().unwrap();
+        assert_eq!(mesh_program["schemaVersion"], 1);
+        assert_eq!(mesh_program["componentProgramId"], mesh.component_site_id);
+        assert_eq!(mesh_program["moduleRevision"], revision);
+        assert_eq!(mesh_program["storeUseSiteId"], mesh.store_sites[0].site_id);
+        assert_eq!(mesh_program["storeProp"], "position");
+        assert_eq!(mesh_program["host"], serde_json::json!({
+            "tag": "mesh", "key": "mesh", "props": [
+                ["position-x", {"kind":"binary","operator":"*",
+                    "left":{"kind":"input","index":0},
+                    "right":{"kind":"literal","value":2.0}}],
+                ["visible", {"kind":"binary","operator":">",
+                    "left":{"kind":"input","index":0},
+                    "right":{"kind":"literal","value":0.0}}]
+            ], "child": null
+        }));
+        let dom = components.iter().find(|component| component.name == "Dom").unwrap();
+        let dom_program = dom.closed_store_host_program.as_ref().unwrap();
+        assert_eq!(dom_program["storeProp"], "store");
+        assert_eq!(dom_program["host"]["tag"], "div");
+        assert_eq!(dom_program["host"]["props"][0][0], "data-value");
+        assert_eq!(dom_program["host"]["props"][0][1]["kind"], "conditional");
+        for component in components.iter().filter(|component|
+            component.name != "Mesh" && component.name != "Dom") {
+            assert!(component.closed_store_host_program.is_none(),
+                "{} unexpectedly closed", component.name);
+        }
+        let code = plan.component_module.unwrap();
+        assert_eq!(code.matches("closedStoreHostProgram:").count(), 2);
+        assert!(code.contains("closedStoreHostProgram: {"));
     }
 
     #[test]

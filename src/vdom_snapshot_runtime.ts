@@ -99,6 +99,34 @@ export interface PreparedRetainedSourceDelta {
   readonly readSources: readonly ScalarSource[];
 }
 
+export type StorePropDelta = Readonly<{
+  key: string;
+  tag: string;
+  props: readonly (readonly [string, number | string | boolean | null])[];
+}>;
+
+const storePropDeltaBrand: unique symbol = Symbol();
+export interface PreparedStorePropDelta {
+  readonly [storePropDeltaBrand]: never;
+}
+
+type StorePropDeltaRecord<H> = {
+  readonly targets: readonly {
+    node: MountedNode<H>;
+    vnode: VElement;
+    handle: H;
+    parent: MountedNode<H> | null;
+    parentIndex: number;
+    bucket: KeyedRegionBuckets<MountedNode<H>> | undefined;
+    writes: readonly (readonly [string, number | string | boolean | null, number | string | boolean | null])[];
+    next: VElement;
+  }[];
+  readonly writer: VDOMHost<H>["setProp"];
+  applied: boolean;
+  publicationToken: object | null;
+  appliedVersion: number | null;
+};
+
 type RetainedSourceDeltaRecord<H> = {
   readonly root: object;
   readonly structuralVersion: number;
@@ -237,6 +265,20 @@ export interface VDOMHost<H, Parent = H> {
   /** Resolve a host handle to the public instance exposed through `ref`. */
   getPublicInstance?(node: H): unknown;
 }
+
+const hostPropWriter = <H, Parent>(host: VDOMHost<H, Parent>) => {
+  let target: object | null = host;
+  while (target) {
+    const descriptor = Object.getOwnPropertyDescriptor(target, "setProp");
+    if (descriptor) {
+      return typeof descriptor.value === "function"
+        ? descriptor.value as VDOMHost<H, Parent>["setProp"]
+        : null;
+    }
+    target = Object.getPrototypeOf(target);
+  }
+  return null;
+};
 
 export type VDOMRefCallback = (instance: unknown | null) => unknown;
 export type VDOMRefObject = { current: unknown };
@@ -1051,6 +1093,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     PreparedRetainedSourceDelta,
     RetainedSourceDeltaRecord<H>
   >();
+  #storePropDeltas = new WeakMap<PreparedStorePropDelta, StorePropDeltaRecord<H>>();
   #programSourceSlots = new Map<ScalarSource, NumericProgramSourceSlot<H>>();
   #preparedNumericRowPrograms = new WeakMap<
     PreparedNumericRowProgram,
@@ -2844,6 +2887,148 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       : this.#groupsBySource.get(source);
     return !!groups &&
       (groups instanceof Set ? groups.size : groups.length) > 0;
+  }
+
+  /** Prepare primitive prop writes on exact mounted, globally keyed host leaves. */
+  prepareStorePropDelta(
+    regions: readonly StorePropDelta[],
+  ): PreparedStorePropDelta | null {
+    if (this.#publicationToken || this.#publicationFailed ||
+      this.#compiledGraph !== null ||
+      this.#numericWriteInProgress || regions.length === 0) return null;
+    const writer = hostPropWriter(this.host);
+    if (!writer) return null;
+    const seen = new Set<string>();
+    const targets: StorePropDeltaRecord<H>["targets"][number][] = [];
+    for (const region of regions) {
+      if (!region.key || !region.tag || seen.has(region.key) ||
+        region.props.length === 0) return null;
+      seen.add(region.key);
+      const matches = this.#nodesByKey.get(region.key);
+      if (matches?.size !== 1) return null;
+      const node = matches.values().next().value as MountedNode<H>;
+      const vnode = node.vnode;
+      if (node.hostDisposed || vnode.kind !== "element" ||
+        vnode.key !== region.key || vnode.tag !== region.tag ||
+        vnode.keyedRegionId !== null || node.children.length !== 0 ||
+        node.keyedChildren || node.scalarBindingGroups?.size ||
+        node.scalarIncompatibleBindingProps?.size) return null;
+      const descriptors = Object.getOwnPropertyDescriptors(vnode.props);
+      const safe = (name: string, value: unknown) =>
+        name !== "ref" && name !== "style" && !/^on[A-Z]/.test(name) &&
+        (value === null || typeof value === "string" ||
+          typeof value === "boolean" ||
+          (typeof value === "number" && Number.isFinite(value)));
+      if (Object.entries(descriptors).some(([name, descriptor]) =>
+        !("value" in descriptor) || !safe(name, descriptor.value)
+      )) return null;
+      const nextProps: Record<string, unknown> = { ...vnode.props };
+      const names = new Set<string>();
+      const writes: Array<readonly [string, number | string | boolean | null,
+        number | string | boolean | null]> = [];
+      for (const [name, next] of region.props) {
+        const prior = descriptors[name];
+        if (names.has(name) || !prior || !("value" in prior) ||
+          !safe(name, next)) return null;
+        names.add(name);
+        const previous = prior.value as number | string | boolean | null;
+        nextProps[name] = next;
+        writes.push([name, next, previous]);
+      }
+      const parent = node.parent;
+      targets.push({
+        node, vnode, handle: node.handle, parent,
+        parentIndex: node.parentIndex,
+        bucket: parent?.keyedChildren,
+        writes,
+        next: { ...vnode, props: Object.freeze(nextProps) },
+      });
+    }
+    const token = Object.freeze({}) as PreparedStorePropDelta;
+    this.#storePropDeltas.set(token, {
+      targets, writer, applied: false, publicationToken: null,
+      appliedVersion: null,
+    });
+    if (!this.isStorePropDeltaCurrent(token)) return null;
+    return token;
+  }
+
+  /** Validate exact mounted writers without requiring an unrelated root version. */
+  isStorePropDeltaCurrent(
+    token: PreparedStorePropDelta,
+    options: { afterHost?: boolean } = {},
+  ): boolean {
+    const record = this.#storePropDeltas.get(token);
+    if (!record || this.#publicationFailed || this.#compiledGraph !== null ||
+      hostPropWriter(this.host) !== record.writer ||
+      this.#numericWriteInProgress) {
+      return false;
+    }
+    if (options.afterHost) {
+      if (!record.applied || !record.publicationToken ||
+        this.#publicationToken !== record.publicationToken ||
+        this.#version !== record.appliedVersion) return false;
+    } else if (record.applied || this.#publicationToken) return false;
+    for (const target of record.targets) {
+      const { node, vnode, parent, bucket } = target;
+      if (node.hostDisposed || node.handle !== target.handle ||
+        node.parent !== parent || node.vnode !==
+          (options.afterHost ? target.next : vnode) ||
+        this.#nodesByKey.get(vnode.key!)?.size !== 1 ||
+        !this.#nodesByKey.get(vnode.key!)?.has(node) ||
+        node.scalarBindingGroups?.size ||
+        node.scalarIncompatibleBindingProps?.size) return false;
+      if (parent) {
+        if (parent.hostDisposed || parent.keyedChildren !== bucket ||
+          (bucket ? bucket.get(vnode.key!) !== node :
+            parent.children[target.parentIndex] !== node)) return false;
+      } else if (this.#mounted[target.parentIndex] !== node) return false;
+    }
+    return true;
+  }
+
+  /** Apply a prepared primitive cut inside the shared active publication. */
+  applyStorePropDelta(token: PreparedStorePropDelta): void {
+    const record = this.#storePropDeltas.get(token);
+    if (!record || !this.#publicationToken || record.applied ||
+      this.#publicationFailed || this.#compiledGraph !== null ||
+      hostPropWriter(this.host) !== record.writer ||
+      this.#numericWriteInProgress) {
+      throw new Error("Prepared Store prop delta is stale");
+    }
+    record.applied = true;
+    for (const target of record.targets) {
+      const { node, vnode, parent, bucket } = target;
+      if (node.hostDisposed || node.handle !== target.handle ||
+        node.vnode !== vnode || node.parent !== parent ||
+        node.scalarBindingGroups?.size ||
+        node.scalarIncompatibleBindingProps?.size ||
+        this.#nodesByKey.get(target.vnode.key!)?.size !== 1 ||
+        !this.#nodesByKey.get(target.vnode.key!)?.has(node) ||
+        (parent ? parent.hostDisposed || parent.keyedChildren !== bucket ||
+          (bucket ? bucket.get(vnode.key!) !== node :
+            parent.children[target.parentIndex] !== node) :
+          this.#mounted[target.parentIndex] !== node)) {
+        throw new Error("Prepared Store prop delta target is stale");
+      }
+    }
+    const versionAtApply = this.#version;
+    for (const target of record.targets) {
+      this.#acceptedJournal?.capture(target.node);
+      for (const [name, next, previous] of target.writes) {
+        if (!Object.is(previous, next)) {
+          record.writer.call(this.host, target.handle, name, next, previous);
+        }
+      }
+    }
+    if (this.#version !== versionAtApply ||
+      record.targets.some((target) => target.node.vnode !== target.vnode)) {
+      throw new Error("Prepared Store prop delta changed during host application");
+    }
+    for (const target of record.targets) target.node.vnode = target.next;
+    this.#snapshotDirty = true;
+    record.publicationToken = this.#publicationToken;
+    record.appliedVersion = this.#version;
   }
 
   /** Prepare only the compiler-proven retained writers reached by this cut. */

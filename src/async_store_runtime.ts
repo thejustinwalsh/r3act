@@ -187,6 +187,7 @@ export class StoreRenderSnapshot<S, A = StoreAction<S, S>> {
     readonly state: S,
     readonly version: number,
     private readonly rootEpoch: object,
+    readonly closedNumeric = false,
   ) {}
 
   read<T>(source: StoreSource<T>, readerId: string): T {
@@ -206,15 +207,34 @@ export class StoreRenderSnapshot<S, A = StoreAction<S, S>> {
   /** False means discard/rebuild the candidate; never publish a mixed render. */
   validate(): boolean {
     return !this.#committed &&
-      this.store._validateRender(this.rootId, this.version, this.rootEpoch);
+      (!this.closedNumeric ||
+        canonicalClosedNumericStore.call(this.store)) &&
+      (this.closedNumeric
+        ? canonicalValidateRender.call(
+          this.store,
+          this.rootId,
+          this.version,
+          this.rootEpoch,
+        )
+        : this.store._validateRender(this.rootId, this.version, this.rootEpoch));
   }
 
   validatePublicationInputs(): boolean {
-    return !this.#committed && this.store._validateRenderLineage(
-      this.rootId,
-      this.version,
-      this.rootEpoch,
-    );
+    return !this.#committed &&
+      (!this.closedNumeric ||
+        canonicalClosedNumericStore.call(this.store)) &&
+      (this.closedNumeric
+        ? canonicalValidateRenderLineage.call(
+          this.store,
+          this.rootId,
+          this.version,
+          this.rootEpoch,
+        )
+        : this.store._validateRenderLineage(
+          this.rootId,
+          this.version,
+          this.rootEpoch,
+        ));
   }
 
   /** Call after host commit. Repeated calls are harmless. */
@@ -346,6 +366,68 @@ export class AsyncStore<S, A = StoreAction<S, S>> implements StoreSource<S> {
       this.getRootVersion(rootId),
       rootEpoch,
     );
+  }
+
+  /** Capture a direct numeric read without invoking a source or reducer callback. */
+  _beginClosedNumericRender(rootId: string): StoreRenderSnapshot<S, A> | null {
+    try {
+      const entries = this.#entries;
+      if (!canonicalClosedNumericStore.call(this)) {
+        return null;
+      }
+
+      let state = this.#baseState;
+      for (const entry of entries) {
+        const transitionId = entry.priority.kind === "transition"
+          ? entry.priority.transitionId
+          : null;
+        const pending = entry.pendingRoots.has(rootId) &&
+          !entry.committedRoots.has(rootId);
+        const open = transitionId !== null &&
+          this.#transitions.get(transitionId)?.open === true;
+        if (transitionId !== null && (pending || open)) return null;
+        state = entry.state;
+      }
+      if (typeof state !== "number" || !Number.isFinite(state)) return null;
+      this.#knownRoots.add(rootId);
+      let rootEpoch = this.#rootEpochs.get(rootId);
+      if (!rootEpoch) this.#rootEpochs.set(rootId, rootEpoch = {});
+      return new StoreRenderSnapshot(
+        this, rootId, {}, state, this.#rootVersions.get(rootId) ?? 0,
+        rootEpoch, true,
+      );
+    } catch (error) {
+      if (error instanceof TypeError) return null;
+      throw error;
+    }
+  }
+
+  _isClosedNumericCanonical(): boolean {
+    try {
+      this.#entries;
+      if (Object.getPrototypeOf(this) !== AsyncStore.prototype) return false;
+      const currentKeys = Reflect.ownKeys(AsyncStore.prototype);
+      if (currentKeys.length !== closedNumericPrototypeKeys.length) return false;
+      for (const key of closedNumericPrototypeKeys) {
+        if (!currentKeys.includes(key)) return false;
+        const expected = closedNumericPrototypeDescriptors.get(key);
+        const actual = Object.getOwnPropertyDescriptor(AsyncStore.prototype, key);
+        if (
+          !expected || !actual || expected.value !== actual.value ||
+          expected.get !== actual.get || expected.set !== actual.set ||
+          expected.writable !== actual.writable ||
+          expected.enumerable !== actual.enumerable ||
+          expected.configurable !== actual.configurable
+        ) return false;
+      }
+      for (const name of Object.getOwnPropertyNames(AsyncStore.prototype)) {
+        if (name !== "constructor" && Object.hasOwn(this, name)) return false;
+      }
+      return !Object.hasOwn(this, storeDependencies);
+    } catch (error) {
+      if (error instanceof TypeError) return false;
+      throw error;
+    }
   }
 
   select<T>(selector: (state: S, previous: T | undefined) => T) {
@@ -917,6 +999,20 @@ export class AsyncStore<S, A = StoreAction<S, S>> implements StoreSource<S> {
   }
 }
 
+const closedNumericPrototypeKeys = Reflect.ownKeys(AsyncStore.prototype);
+const closedNumericPrototypeDescriptors = new Map(
+  closedNumericPrototypeKeys.map((key) => [
+    key,
+    Object.getOwnPropertyDescriptor(AsyncStore.prototype, key)!,
+  ]),
+);
+const canonicalClosedNumericStore = AsyncStore.prototype._isClosedNumericCanonical;
+const canonicalBeginClosedNumericRender = AsyncStore.prototype._beginClosedNumericRender;
+const canonicalValidateRender = AsyncStore.prototype._validateRender;
+const canonicalValidateRenderLineage = AsyncStore.prototype._validateRenderLineage;
+const canonicalPrepareReaderValues = AsyncStore.prototype._prepareReaderValues;
+const canonicalPublishReaderValues = AsyncStore.prototype._publishPreparedReaderValues;
+
 export function createAsyncStore<S>(initialState: S): AsyncStore<S>;
 export function createAsyncStore<S, A>(
   initialState: S,
@@ -1220,6 +1316,56 @@ export class StoreRenderTransaction {
     }
     map.delete(key);
   }
+  /** Stage one direct Store numeric read without invoking authored read logic. */
+  readClosedNumeric(
+    store: AnyAsyncStore,
+    readerId: string,
+  ): number | null {
+    if (this.#closed || this.#preparedPublication) {
+      throw new Error("Cannot read a closed or prepared store transaction");
+    }
+    if (!readerId) throw new Error("A store reader requires a site ID");
+    const cached = this.#values.get(readerId);
+    if (cached) {
+      return this.#snapshots.get(store)?.closedNumeric === true &&
+          cached.source === store && typeof cached.value === "number" &&
+          Number.isFinite(cached.value)
+        ? cached.value
+        : null;
+    }
+    let snapshot = this.#snapshots.get(store);
+    if (!snapshot) {
+      snapshot = canonicalBeginClosedNumericRender.call(
+        store,
+        this.rootId,
+      ) ?? undefined;
+      if (!snapshot) return null;
+      if (store.mutationEpoch > this.#startedEpoch) {
+        this.#discoveredAfterMutation = true;
+      }
+      this.#snapshots.set(store, snapshot);
+      this.#states.set(store, snapshot.state);
+    }
+    if (
+      !snapshot.closedNumeric ||
+      !canonicalClosedNumericStore.call(store) ||
+      typeof snapshot.state !== "number" || !Number.isFinite(snapshot.state)
+    ) return null;
+
+    this.#setJournaled(this.#readers, readerId, new Set([store]));
+    let pending = this.#pending.get(store);
+    if (!pending) {
+      pending = new Map();
+      this.#setJournaled(this.#pending, store, pending);
+    }
+    this.#setJournaled(pending, readerId, new Map());
+    this.#setJournaled(this.#values, readerId, {
+      source: store,
+      value: snapshot.state,
+    });
+    this.#recordBranchChange(readerId);
+    return snapshot.state;
+  }
   read<T>(source: StoreSource<T>, readerId: string): T {
     if (this.#closed || this.#preparedPublication) {
       throw new Error("Cannot read a closed or prepared store transaction");
@@ -1295,7 +1441,12 @@ export class StoreRenderTransaction {
   #stagePublication(): void {
     const prepared = new Map<AnyAsyncStore, PreparedReaderValues>();
     for (const [store, pending] of this.#pending) {
-      prepared.set(store, store._prepareReaderValues(this.rootId, pending));
+      prepared.set(
+        store,
+        this.#snapshots.get(store)?.closedNumeric
+          ? canonicalPrepareReaderValues.call(store, this.rootId, pending)
+          : store._prepareReaderValues(this.rootId, pending),
+      );
     }
     this.#preparedPublication = prepared;
   }
@@ -1306,7 +1457,11 @@ export class StoreRenderTransaction {
       throw new Error("Store publication was not prepared");
     }
     for (const [store, readers] of prepared) {
-      store._publishPreparedReaderValues(this.rootId, readers);
+      if (this.#snapshots.get(store)?.closedNumeric) {
+        canonicalPublishReaderValues.call(store, this.rootId, readers);
+      } else {
+        store._publishPreparedReaderValues(this.rootId, readers);
+      }
     }
     this.#closed = true;
     this.#preparedPublication = undefined;

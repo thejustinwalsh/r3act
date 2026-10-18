@@ -31,3 +31,7 @@ This ledger tracks work; it does not waive any master-plan finish-line requireme
 ## First boundary result
 
 Correctness and installed-consumer gates pass; original failed gates remain in `verification/`. The sole offline headless pair passes identity/output/lifetime checks but Native is slower: 0.85 / 0.50 ms median, 2.30 / 0.70 ms within-page maximum, mount 57.5 / 9.1 ms and disposal 6.9 / 1.0 ms. This is descriptive only, one page per arm and no retry. No physical redesign or speed claim follows. Full inputs/assets and samples are in `benchmark/proof-v1/`.
+
+## Closed Store host boundary
+
+The next integrated slice passes 870 runtime tests, 44 Rust tests, twelve actual compiled fixtures and fresh packages. Direct numeric `use(props.store)` consumers can produce compiler-proven primitive DOM/Three prop cuts beside unrelated pending resources, explicitly grouped through `prepareStores` / `enqueueStores`. Every selected Store reader must qualify; existing Store versions and mounted identities govern conflicts. The single matched dispatch-to-observer observation was slower for Native (1.7/0.5 ms), with no speed or general UX qualification. [Results](../2026-10-18-store-host/results.md) preserve fixture failures and compiler executable provenance limits. General multi-input/selector, joint Store/World/collection, resource ownership, portability, cold/memory and independent-device work remains open; the full-plan goal remains active.

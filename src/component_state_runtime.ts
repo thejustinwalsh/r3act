@@ -1,5 +1,10 @@
 import { normalizeClosedNumericExpression } from "./closed_numeric_expression.ts";
 import {
+  type ClosedStoreHostProgram,
+  evaluateClosedStoreHostProgram,
+  normalizeClosedStoreHostProgram,
+} from "./closed_store_host_program.ts";
+import {
   type ClosedResourceHostProgram,
   evaluateClosedResourceHostProgram,
   normalizeClosedResourceHostProgram,
@@ -326,6 +331,7 @@ export const defineComponent = <P extends Record<string, unknown>>(
     readonly stateLayout?: CompiledStateLayout;
     readonly ownerUpdateProgram?: CompiledOwnerUpdateProgram;
     readonly closedResourceHostProgram?: ClosedResourceHostProgram;
+    readonly closedStoreHostProgram?: ClosedStoreHostProgram;
   },
 ): ComponentType<P> => {
   if (siteId.length === 0) {
@@ -375,10 +381,17 @@ export const defineComponent = <P extends Record<string, unknown>>(
       (!closedResourceHostProgram || closedResourceHostProgram.componentProgramId !== siteId)) {
       throw new Error("Closed resource host program must match its component revision");
     }
-    const expectedRevision = stateLayout?.moduleRevision ??
-      closedResourceHostProgram?.moduleRevision;
-    if (stateLayout && closedResourceHostProgram &&
-      stateLayout.moduleRevision !== closedResourceHostProgram.moduleRevision) {
+    const closedStoreHostProgram = metadata?.closedStoreHostProgram === undefined
+      ? undefined : normalizeClosedStoreHostProgram(metadata.closedStoreHostProgram);
+    if (metadata?.closedStoreHostProgram !== undefined &&
+      (!closedStoreHostProgram || closedStoreHostProgram.componentProgramId !== siteId)) {
+      throw new Error("Closed Store host program must match its component revision");
+    }
+    const revisions = [stateLayout?.moduleRevision,
+      closedResourceHostProgram?.moduleRevision, closedStoreHostProgram?.moduleRevision]
+      .filter((value): value is string => value !== undefined);
+    const expectedRevision = revisions[0];
+    if (revisions.some((revision) => revision !== expectedRevision)) {
       throw new Error("Compiled component programs disagree on module revision");
     }
     const revision = moduleEnd < 0 ? undefined : captureCompiledSemanticRevision(
@@ -394,6 +407,7 @@ export const defineComponent = <P extends Record<string, unknown>>(
         ...(revision ? { revision } : {}),
         ...(stateLayout ? { stateLayout } : {}),
         ...(closedResourceHostProgram ? { closedResourceHostProgram } : {}),
+        ...(closedStoreHostProgram ? { closedStoreHostProgram } : {}),
       }),
     });
   }
@@ -408,6 +422,7 @@ type ComponentMetadata = {
   readonly hostLeafOutput?: boolean;
   readonly stateLayout?: CompiledStateLayout;
   readonly closedResourceHostProgram?: ClosedResourceHostProgram;
+  readonly closedStoreHostProgram?: ClosedStoreHostProgram;
 };
 
 const componentRevision = (component: unknown) =>
@@ -1252,6 +1267,123 @@ export class ComponentStateRoot<H, Parent = H> {
       selectedRegionKeys: selected,
       scopedStructural: true,
       scopedCells: cells,
+    });
+  }
+
+  /** Prepare all closed primitive host consumers of the selected direct Stores. */
+  prepareStores(selected: readonly AnyAsyncStore[]): NativeRootCandidate<H, Parent> | null {
+    return this.#prepareClosedStoreCandidate(selected, false);
+  }
+
+  #prepareClosedStoreCandidate(
+    selected: readonly AnyAsyncStore[], requireOutputChange: boolean,
+  ): NativeRootCandidate<H, Parent> | null {
+    this.#assertActive();
+    this.#assertNoPublicationBarrier("prepare Store props");
+    if (this.#pendingDirectIntent || !selected.length ||
+      new Set(selected).size !== selected.length) return null;
+    const selectedStores = new Set(selected);
+    const stores = new StoreRenderTransaction(this.#rootId);
+    type Reader = {
+      id: string; owner: OwnerId; store: AnyAsyncStore; cache: ComponentCache;
+      program: ClosedStoreHostProgram; next: RuntimeElement;
+      membership: Set<AnyAsyncStore>;
+    };
+    const readers: Reader[] = [];
+    const regions: { key: string; tag: string; props: readonly (readonly [string, string | number | boolean | null])[] }[] = [];
+    const seen = new Set<AnyAsyncStore>();
+    let outputChanged = false;
+    const ownValue = (object: object, name: string) => {
+      const descriptor = Object.getOwnPropertyDescriptor(object, name);
+      return descriptor && "value" in descriptor ? descriptor.value : undefined;
+    };
+    const current = () => readers.every(({ id, owner, store, cache, program, membership }) =>
+      this.#liveOwners.has(owner) && this.world.isAlive(owner) &&
+      this.#componentCache.get(owner) === cache &&
+      this.#liveStoreReaders.get(id) === membership && membership.size === 1 && membership.has(store) &&
+      componentCodeCurrent(cache.type) && ownValue(cache.props, program.storeProp) === store
+    ) && [...this.#liveStoreReaders].every(([id, membership]) =>
+      ![...membership].some((store) => selectedStores.has(store)) ||
+      readers.some((reader) => reader.id === id && reader.membership === membership)
+    );
+    let delta: ReturnType<VDOMSnapshotRoot<H, Parent>["prepareStorePropDelta"]> = null;
+    try {
+      for (const [id, membership] of this.#liveStoreReaders) {
+        const participating = [...membership].filter((store) => selectedStores.has(store));
+        if (!participating.length) continue;
+        if (participating.length !== 1 || membership.size !== 1) throw new SparseCandidateIneligible();
+        const store = participating[0];
+        const split = id.indexOf("\u0000");
+        const owner = Number(id.slice(0, split));
+        const cache = this.#componentCache.get(owner);
+        const program = typeof cache?.type === "function"
+          ? (cache.type as SiteComponent<unknown> & { [componentMetadata]?: ComponentMetadata })[componentMetadata]?.closedStoreHostProgram
+          : undefined;
+        if (split <= 0 || !Number.isSafeInteger(owner) || !cache || !program ||
+          id !== `${owner}\u0000${program.storeUseSiteId}` ||
+          cache.subtreeOwners.size !== 1 || cache.ownEffects.size !== 0 ||
+          cache.propBoundSites.size !== 0 || cache.keyedRegion || cache.nativeBoundary ||
+          ownValue(cache.props, program.storeProp) !== store || !componentCodeCurrent(cache.type)) {
+          throw new SparseCandidateIneligible();
+        }
+        const value = stores.readClosedNumeric(store, id);
+        if (value === null) throw new SparseCandidateIneligible();
+        const output = evaluateClosedStoreHostProgram(program, value);
+        if (!output) throw new SparseCandidateIneligible();
+        const next = Object.freeze({ type: program.host.tag,
+          props: Object.freeze(Object.fromEntries([["key", program.host.key], ...output])) });
+        const previous = cache.expandedResult;
+        if (!previous || Array.isArray(previous) || typeof previous !== "object" ||
+          previous.type !== program.host.tag || previous.props.key !== program.host.key ||
+          (previous.props.children !== undefined && previous.props.children !== null && previous.props.children !== false)) {
+          throw new SparseCandidateIneligible();
+        }
+        outputChanged ||= output.some(([name, value]) => !Object.is(previous.props[name], value));
+        readers.push({ id, owner, store, cache, program, next, membership });
+        regions.push({ key: program.host.key, tag: program.host.tag, props: output });
+        seen.add(store);
+      }
+      if (seen.size !== selectedStores.size || !readers.length ||
+        (requireOutputChange && !outputChanged) || !current() || !stores.validate()) {
+        throw new SparseCandidateIneligible();
+      }
+      delta = this.#vdom.prepareStorePropDelta(regions);
+      if (!delta || !current() || !stores.validate()) throw new SparseCandidateIneligible();
+    } catch (error) {
+      const errors = collectCleanupErrors([
+        () => stores.discard(), () => this.#discardUncommittedStoreRoots(stores),
+      ]);
+      if (error instanceof SparseCandidateIneligible && !errors.length) return null;
+      return throwWithCleanup(error, errors);
+    }
+    return this.#createCandidateLifecycle({
+      baseVersion: this.#publicationVersion, baseVDOMVersion: this.#vdom.version,
+      scope: { kind: "retained" }, stores, transitions: [], pendingResources: [], blocked: false,
+      codeCurrent: current,
+      validatePrepared: () => this.#vdom.isStorePropDeltaCurrent(delta!) && current() && stores.validate(),
+      validatePostHost: () => this.#vdom.isStorePropDeltaCurrent(delta!, { afterHost: true }) &&
+        current() && stores.validatePublicationInputs(),
+      commitHost: () => this.#vdom.applyStorePropDelta(delta!),
+      preparePublication: () => stores.preparePublicationAfterHost(),
+      publish: () => {
+        stores.publishAccepted();
+        for (const { owner, cache, next } of readers) {
+          this.#componentCache.set(owner, { ...cache, result: next, expandedResult: next });
+          this.#refreshDirectKeyedRegionOutput(owner);
+          for (const ancestor of this.world.ownerLineage(owner).slice(1)) {
+            const live = this.#componentCache.get(ancestor);
+            if (live) this.#componentCache.set(ancestor, {
+              ...live, expandedResult: null, invalidatedBySparseStore: true,
+            });
+          }
+        }
+        this.#publicationVersion++;
+      },
+      installSubscriptions: () => [],
+      runEffects: () => { stores.notifyPublished(); return []; },
+      discard: () => stores.discard(),
+      releaseArtifacts: () => { readers.length = 0; regions.length = 0; delta = null; },
+      effectFailureMessage: "Store prop publication callbacks failed",
     });
   }
 
@@ -2436,6 +2568,18 @@ export class ComponentStateRoot<H, Parent = H> {
     const storeGenerationAtStart = this.#storeNotificationGeneration;
     const asyncWorkPending = this.#liveResourceSubscriptions.size > 0 ||
       this.#pendingResourceRetry || this.#pendingBoundaryRetries.size > 0;
+    if (this.#liveResourceSubscriptions.size > 0 &&
+      !this.#pendingResourceRetry && this.#pendingBoundaryRetries.size === 0 &&
+      this.#pendingChanges.size === 0 && this.#pendingCollectionRegionKeys.size === 0 &&
+      storeGenerationAtStart !== this.#committedStoreNotificationGeneration &&
+      this.#tryFlushClosedStores()) {
+      const fresh = this.#storeNotificationGeneration !== storeGenerationAtStart ||
+        this.#pendingResourceRetry || this.#pendingBoundaryRetries.size > 0;
+      this.#deferredFlush = false;
+      if (fresh || this.#hasPendingWork()) this.#schedule();
+      reportFlush();
+      return true;
+    }
     const urgentPublished = asyncWorkPending && this.#pendingChanges.size > 0 &&
       this.#pendingCollectionRegionKeys.size === 0 &&
       this.#tryFlushUrgentRetainedCut();
@@ -3058,6 +3202,32 @@ export class ComponentStateRoot<H, Parent = H> {
     } finally {
       this.#scopedFlushActive = false;
     }
+  }
+
+  #tryFlushClosedStores(): boolean {
+    const acceptedTree = this.#tree;
+    let published = false;
+    this.#scopedFlushActive = true;
+    try {
+      for (const store of [...this.#liveStoreSubscriptions.keys()]) {
+        if (this.#disposed || this.#disposeRequested || this.#terminalHostFailed ||
+          this.#codeInvalidated || this.#tree !== acceptedTree) break;
+        const candidate = this.#prepareClosedStoreCandidate([store], true);
+        if (!candidate) continue;
+        try {
+          if (!candidate.validate()) { candidate.discard(); continue; }
+          candidate.commitHost();
+          candidate.publish();
+          published = true;
+          candidate.runEffects();
+        } catch (error) {
+          return throwWithCleanup(error, collectCleanupErrors([() => candidate.discard()]));
+        }
+      }
+    } finally {
+      this.#scopedFlushActive = false;
+    }
+    return published;
   }
 
   #prepareBoundaryReveal(
