@@ -5854,6 +5854,38 @@ export class DOMVDOMHost implements VDOMHost<Node, Node> {
     }
   }
 
+  describePropertyWrite(
+    node: Node,
+    name: string,
+    next: unknown,
+  ): HostPropertyCapability {
+    let valuePolicy: HostPropertyCapability["valuePolicy"] = "unknown";
+    if (Object.getPrototypeOf(this) === DOMVDOMHost.prototype &&
+      Object.getOwnPropertyDescriptor(this, "setProp") === undefined &&
+      Object.getOwnPropertyDescriptor(DOMVDOMHost.prototype, "setProp")?.value ===
+        domBaseSetProp &&
+      (node instanceof HTMLElement || node instanceof SVGElement)) {
+      if (name === "style") valuePolicy = "copy";
+      else if (/^on[A-Z]/.test(name)) {
+        if (typeof next === "function") valuePolicy = "retain";
+      } else if (name === "className" || name.startsWith("aria-") ||
+        name.startsWith("data-") || node instanceof SVGElement ||
+        (name === "htmlFor" && node instanceof HTMLLabelElement) ||
+        (name === "value" &&
+          (node instanceof HTMLInputElement ||
+            node instanceof HTMLTextAreaElement ||
+            node instanceof HTMLSelectElement))) {
+        valuePolicy = "copy";
+      }
+    }
+    return Object.freeze({
+      valuePolicy,
+      targetResource: null,
+      valueResource: null,
+      mayThrow: true,
+    });
+  }
+
   setStyleProp(node: Node, name: string, value: unknown) {
     if (!(node instanceof HTMLElement || node instanceof SVGElement)) return;
     writeStyle(node.style, name, value);
@@ -5878,3 +5910,5 @@ export class DOMVDOMHost implements VDOMHost<Node, Node> {
     if (node.parentNode === parent) parent.removeChild(node);
   }
 }
+
+const domBaseSetProp = DOMVDOMHost.prototype.setProp;

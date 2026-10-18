@@ -1015,6 +1015,7 @@ export class ComponentStateRoot<H, Parent = H> {
   #everHadNativeBoundary = false;
   #pendingResourceRetry = false;
   #pendingBoundaryRetries = new Set<OwnerId>();
+  #boundaryRevealDrainActive = false;
   #boundaryPrimaries = new Map<string, BoundaryPrimary>();
   #storeNotificationGeneration = 0;
   #committedStoreNotificationGeneration = 0;
@@ -2302,7 +2303,7 @@ export class ComponentStateRoot<H, Parent = H> {
     this.#assertActive();
     // Keep capture buffers owned by the outer frame across reentrant flushes; its
     // acknowledgement schedules any newer setter version.
-    if (this.#nativeCellCutActive) {
+    if (this.#nativeCellCutActive || this.#boundaryRevealDrainActive) {
       this.#scheduled = false;
       this.#deferredFlush = true;
       return false;
@@ -2329,27 +2330,81 @@ export class ComponentStateRoot<H, Parent = H> {
     const resourceRetry = this.#pendingResourceRetry;
     this.#pendingResourceRetry = false;
     const boundaryRetries = [...this.#pendingBoundaryRetries];
+    const capturedBoundaryOwners = new Set(boundaryRetries);
     this.#pendingBoundaryRetries.clear();
-    if (!resourceRetry && boundaryRetries.length === 1) {
-      let reveal: NativeRootCandidate<H, Parent> | null;
-      try {
-        reveal = this.#prepareBoundaryReveal(boundaryRetries[0]);
-      } catch (error) {
-        this.#pendingResourceRetry = true;
-        throw error;
-      }
-      if (reveal) {
-        if (reveal.validate()) {
-          reveal.commitHost();
-          reveal.publish();
-          reveal.runEffects();
-          reportFlush();
-          return true;
-        }
-        reveal.discard();
-      }
+    const canDrainBoundaries = this.#pendingChanges.size === 0 &&
+      this.#pendingCollectionRegionKeys.size === 0;
+    const acceptedTree = this.#tree;
+    let boundaryPublished = false;
+    let boundaryFallback = false;
+    let boundaryAborted = false;
+    if (canDrainBoundaries && boundaryRetries.length > 0) {
+      const drained = this.#drainBoundaryRetries(boundaryRetries, acceptedTree);
+      boundaryPublished = drained.published;
+      boundaryFallback = drained.fallback;
+      boundaryAborted = drained.aborted;
+    } else if (boundaryRetries.length > 0) {
+      boundaryFallback = true;
+      for (const owner of boundaryRetries) this.#pendingBoundaryRetries.add(owner);
     }
-    const retryWholeTree = resourceRetry || boundaryRetries.length > 0;
+    if (boundaryAborted) {
+      this.#deferredFlush = false;
+      reportFlush();
+      return boundaryPublished;
+    }
+    const retryWholeTree = resourceRetry || boundaryFallback;
+    if (boundaryPublished && !retryWholeTree) {
+      this.#deferredFlush = false;
+      if (this.#hasPendingWork()) this.#schedule();
+      reportFlush();
+      return true;
+    }
+    if (boundaryPublished) this.#deferredFlush = false;
+    const runGenericRetry = (): boolean => {
+      const unprocessed = [...this.#pendingBoundaryRetries].filter((owner) =>
+        capturedBoundaryOwners.has(owner)
+      );
+      for (const owner of unprocessed) this.#pendingBoundaryRetries.delete(owner);
+      const before = this.#publicationVersion;
+      this.#deferredFlush = false;
+      this.#boundaryRevealDrainActive = true;
+      try {
+        this.#renderAndCommit(this.#tree, true);
+      } catch (error) {
+        if (!this.#disposed) {
+          for (const owner of unprocessed) {
+            const cache = this.#componentCache.get(owner);
+            if (cache?.nativeBoundary && cache.pendingResource) {
+              this.#pendingBoundaryRetries.add(owner);
+            }
+          }
+          if (!this.#terminalHostFailed) this.#pendingResourceRetry = true;
+        }
+        throw error;
+      } finally {
+        this.#boundaryRevealDrainActive = false;
+      }
+      const published = this.#publicationVersion !== before;
+      if (!published && !this.#disposed) {
+        for (const owner of unprocessed) {
+          const cache = this.#componentCache.get(owner);
+          if (cache?.nativeBoundary && cache.pendingResource) {
+            this.#pendingBoundaryRetries.add(owner);
+          }
+        }
+      }
+      const deferred = this.#deferredFlush;
+      this.#deferredFlush = false;
+      if (
+        (published && deferred) ||
+        (this.#pendingChanges.size === 0 &&
+          this.#pendingCollectionRegionKeys.size === 0 &&
+          [...this.#pendingBoundaryRetries].some((owner) =>
+            !capturedBoundaryOwners.has(owner)
+          ))
+      ) this.#schedule();
+      return published;
+    };
     const storeGeneration = this.#storeNotificationGeneration;
     const storeChangePending =
       storeGeneration !== this.#committedStoreNotificationGeneration;
@@ -2363,7 +2418,7 @@ export class ComponentStateRoot<H, Parent = H> {
       retryWholeTree && this.#pendingChanges.size === 0 && !storeChangePending &&
       this.#pendingCollectionRegionKeys.size === 0
     ) {
-      this.#renderAndCommit(this.#tree, true);
+      runGenericRetry();
       reportFlush();
       return true;
     }
@@ -2379,8 +2434,7 @@ export class ComponentStateRoot<H, Parent = H> {
     }
     const capturedChanges = this.#pendingChanges.capture();
     if (retryWholeTree) {
-      this.#renderAndCommit(this.#tree, true);
-      this.#finishChanges(capturedChanges);
+      if (runGenericRetry()) this.#finishChanges(capturedChanges);
       reportFlush();
       return true;
     }
@@ -2772,6 +2826,73 @@ export class ComponentStateRoot<H, Parent = H> {
     }
   }
 
+  #drainBoundaryRetries(
+    targets: readonly OwnerId[],
+    acceptedTree: RuntimeNode,
+  ): { published: boolean; fallback: boolean; aborted: boolean } {
+    let published = false;
+    let fallback = false;
+    let aborted = false;
+    let next = 0;
+    this.#boundaryRevealDrainActive = true;
+    try {
+      while (next < targets.length) {
+        if (this.#disposed || this.#disposeRequested ||
+          this.#codeInvalidated || this.#terminalHostFailed ||
+          this.#tree !== acceptedTree) {
+          aborted = true;
+          break;
+        }
+        if (this.#pendingChanges.size > 0 ||
+          this.#pendingCollectionRegionKeys.size > 0) {
+          fallback = true;
+          break;
+        }
+        const reveal = this.#prepareBoundaryReveal(targets[next]);
+        if (!reveal) {
+          fallback = true;
+          this.#pendingBoundaryRetries.add(targets[next]);
+          next++;
+          continue;
+        }
+        try {
+          if (!reveal.validate()) {
+            reveal.discard();
+            fallback = true;
+            this.#pendingBoundaryRetries.add(targets[next]);
+            next++;
+            continue;
+          }
+          reveal.commitHost();
+          reveal.publish();
+          published = true;
+          next++;
+          reveal.runEffects();
+        } catch (error) {
+          const cleanup = collectCleanupErrors([() => reveal.discard()]);
+          return throwWithCleanup(error, cleanup);
+        }
+      }
+    } catch (error) {
+      if (!this.#disposed && !this.#terminalHostFailed) {
+        this.#pendingResourceRetry = true;
+      }
+      throw error;
+    } finally {
+      for (; next < targets.length; next++) {
+        const owner = targets[next];
+        const cache = this.#componentCache.get(owner);
+        if (cache?.nativeBoundary && cache.pendingResource) {
+          this.#pendingBoundaryRetries.add(owner);
+        }
+      }
+      this.#boundaryRevealDrainActive = false;
+    }
+    if (this.#disposed || this.#disposeRequested || this.#codeInvalidated ||
+      this.#terminalHostFailed || this.#tree !== acceptedTree) aborted = true;
+    return { published, fallback, aborted };
+  }
+
   #prepareBoundaryReveal(
     boundaryOwner: OwnerId,
   ): NativeRootCandidate<H, Parent> | null {
@@ -2786,15 +2907,16 @@ export class ComponentStateRoot<H, Parent = H> {
       resource.status.status !== "fulfilled") return null;
     const child = Object.getOwnPropertyDescriptor(boundaryCache.props, "children")?.value;
     if (!child || Array.isArray(child) || typeof child !== "object" ||
-      typeof child.type !== "function" || !child.props ||
-      typeof child.props !== "object" || !Object.isFrozen(child) ||
-      !Object.isFrozen(child.props)) return null;
-    const childType = child.type;
+      !Object.isFrozen(child)) return null;
+    const childType = Object.getOwnPropertyDescriptor(child, "type")?.value;
+    const childProps = Object.getOwnPropertyDescriptor(child, "props")?.value;
+    if (typeof childType !== "function" || !childProps ||
+      typeof childProps !== "object" || !Object.isFrozen(childProps)) return null;
     const program = closedResourceHostProgramFor(childType);
     if (!program) return null;
     const revision = componentRevision(childType);
     if (!revision) return null;
-    const descriptors = Object.getOwnPropertyDescriptors(child.props);
+    const descriptors = Object.getOwnPropertyDescriptors(childProps);
     if (Object.values(descriptors).some((descriptor) => !("value" in descriptor))) {
       return null;
     }
@@ -2809,14 +2931,19 @@ export class ComponentStateRoot<H, Parent = H> {
     }
     const oldOutput = boundaryCache.expandedResult;
     if (!oldOutput || Array.isArray(oldOutput) ||
-      typeof oldOutput !== "object" || oldOutput.type !== program.host.tag ||
-      Object.getOwnPropertyDescriptor(oldOutput.props, "key")?.value !==
+      typeof oldOutput !== "object" ||
+      Object.getOwnPropertyDescriptor(oldOutput, "type")?.value !== program.host.tag) {
+      return null;
+    }
+    const oldOutputProps = Object.getOwnPropertyDescriptor(oldOutput, "props")?.value;
+    if (!oldOutputProps || typeof oldOutputProps !== "object" ||
+      Object.getOwnPropertyDescriptor(oldOutputProps, "key")?.value !==
         program.host.key) return null;
     if (boundaryCache.subtreeOwners.size !== 1 ||
       !boundaryCache.subtreeOwners.has(boundaryOwner) ||
       boundaryCache.ownEffects.size !== 0 ||
       boundaryCache.propBoundSites.size !== 0) return null;
-    const oldProps = Object.getOwnPropertyDescriptors(oldOutput.props);
+    const oldProps = Object.getOwnPropertyDescriptors(oldOutputProps);
     if (Object.values(oldProps).some((descriptor) => !('value' in descriptor)) ||
       Object.entries(oldProps).some(([name, descriptor]) => {
         const value = descriptor.value;
@@ -2877,17 +3004,23 @@ export class ComponentStateRoot<H, Parent = H> {
         return null;
       }
       const current = () =>
-        !this.#codeInvalidated && isCompiledSemanticRevisionCurrent(revision) &&
+        Object.getOwnPropertyDescriptor(child, "type")?.value === childType &&
+        Object.getOwnPropertyDescriptor(child, "props")?.value === childProps &&
+        Object.getOwnPropertyDescriptor(oldOutput, "type")?.value === program.host.tag &&
+        Object.getOwnPropertyDescriptor(oldOutput, "props")?.value === oldOutputProps &&
+        this.#publicationVersion === baseVersion &&
+        this.#vdom.version === baseVDOMVersion &&
         Object.getPrototypeOf(resource) === AsyncResource.prototype &&
         !Object.hasOwn(resource, "read") && !Object.hasOwn(resource, "status") &&
         !Object.hasOwn(resource, "version") &&
+        !this.#codeInvalidated && isCompiledSemanticRevisionCurrent(revision) &&
         this.#componentCache.get(boundaryOwner) === boundaryCache &&
         this.#liveOwners.has(boundaryOwner) && this.world.isAlive(boundaryOwner) &&
         !this.#boundaryPrimaries.has(String(boundaryOwner)) &&
         boundaryCache.pendingResource === resource &&
         this.world.findOwner(boundaryOwner, siteId, childKey) === undefined;
       const sourceCurrent = () =>
-        Object.getOwnPropertyDescriptor(child.props, program.resourceProp)?.value === source;
+        Object.getOwnPropertyDescriptor(childProps, program.resourceProp)?.value === source;
       const candidate = this.#createCandidateLifecycle({
         baseVersion,
         baseVDOMVersion,
@@ -5733,7 +5866,7 @@ export class ComponentStateRoot<H, Parent = H> {
     if (this.#disposed || this.#scheduled) return;
     if (
       this.#publicationBarrier || this.#hostApplicationDepth > 0 ||
-      this.#directPublicationPending
+      this.#directPublicationPending || this.#boundaryRevealDrainActive
     ) {
       this.#deferredFlush = true;
       return;
@@ -5744,7 +5877,7 @@ export class ComponentStateRoot<H, Parent = H> {
       this.#scheduled = false;
       if (
         this.#publicationBarrier || this.#hostApplicationDepth > 0 ||
-        this.#directPublicationPending
+        this.#directPublicationPending || this.#boundaryRevealDrainActive
       ) {
         this.#deferredFlush = true;
         return;
