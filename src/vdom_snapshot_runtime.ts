@@ -2445,6 +2445,361 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     return this.prepareScopedKeyedRetainedAndStoreDeltas(deltas, updates, []);
   }
 
+  /** Prepare static host-subtree replacements against exact mounted footprints. */
+  prepareScopedHostSubtreeReplacements(
+    regions: readonly { key: string; tree: RuntimeNode }[],
+  ): PreparedKeyedVDOMProgram | null {
+    if (!regions.length || this.#publicationToken || this.#publicationFailed ||
+      this.#compiledGraph || this.#numericWriteInProgress ||
+      this.keyIndexMaintenance !== "delta" ||
+      this.bindingIndexMaintenance !== "delta") return null;
+    const writer = hostPropWriter(this.host);
+    if (!writer) return null;
+    const hostMethod = (name: string): Function | null => {
+      let object: object | null = this.host;
+      while (object) {
+        const descriptor = Object.getOwnPropertyDescriptor(object, name);
+        if (descriptor) return typeof descriptor.value === "function"
+          ? descriptor.value : null;
+        object = Object.getPrototypeOf(object);
+      }
+      return null;
+    };
+    const methodNames = ["createElement", "createText", "setText", "place",
+      "remove", "dispose"] as const;
+    const methods = methodNames.map(hostMethod);
+    if (methods.slice(0, 5).some((method) => !method)) return null;
+    type OldNode = {
+      node: MountedNode<H>;
+      vnode: VNode;
+      handle: H;
+      parent: MountedNode<H> | null;
+      index: number;
+    };
+    type Target = {
+      key: string;
+      old: MountedNode<H>;
+      parent: MountedNode<H> | null;
+      index: number;
+      bucket: KeyedRegionBuckets<MountedNode<H>> | undefined;
+      afterKey: string | null;
+      next: VNode;
+      applied: MountedNode<H> | null;
+    };
+    type NewNode = {
+      node: MountedNode<H>;
+      vnode: VNode;
+      handle: H;
+      parent: MountedNode<H> | null;
+      index: number;
+    };
+    const targets: Target[] = [];
+    const oldNodes: OldNode[] = [];
+    const newNodes: NewNode[] = [];
+    const removedNodes = new Set<MountedNode<H>>();
+    const candidateKeys = new Set<string>();
+    const safeProps = (props: Readonly<Record<string, unknown>>) =>
+      Object.entries(Object.getOwnPropertyDescriptors(props)).every(
+        ([name, descriptor]) => "value" in descriptor &&
+          name !== "ref" && name !== "style" && !/^on[A-Z]/.test(name) &&
+          (descriptor.value === null || descriptor.value === undefined ||
+            typeof descriptor.value === "string" ||
+            typeof descriptor.value === "boolean" ||
+            (typeof descriptor.value === "number" &&
+              Number.isFinite(descriptor.value))),
+      );
+    const collectOld = (node: MountedNode<H>): boolean => {
+      if (node.hostDisposed || removedNodes.has(node) || node.keyedChildren ||
+        node.scalarBindingGroups?.size ||
+        node.scalarIncompatibleBindingProps?.size ||
+        (node.vnode.kind === "element" &&
+          (node.vnode.keyedRegionId !== null || !safeProps(node.vnode.props)))) {
+        return false;
+      }
+      removedNodes.add(node);
+      oldNodes.push({ node, vnode: node.vnode, handle: node.handle,
+        parent: node.parent, index: node.parentIndex });
+      return node.children.every(collectOld);
+    };
+    const collectNext = (node: VNode): boolean => {
+      if (node.kind === "element" &&
+        (node.keyedRegionId !== null || !safeProps(node.props))) return false;
+      if (node.key !== null) {
+        if (candidateKeys.has(node.key)) return false;
+        candidateKeys.add(node.key);
+      }
+      return node.kind === "text" || node.children.every(collectNext);
+    };
+    try {
+      for (const region of regions) {
+        if (!region.key) return null;
+        const matches = this.#nodesByKey.get(region.key);
+        if (matches?.size !== 1) return null;
+        const old = matches.values().next().value as MountedNode<H>;
+        if (old.vnode.kind !== "element" || !collectOld(old)) return null;
+        const normalized = normalizeMany(region.tree);
+        if (normalized.length !== 1 || normalized[0].key !== region.key) return null;
+        const next = snapshotScopedHostTree(normalized[0]);
+        if (!next || next.kind !== "element" || !collectNext(next)) return null;
+        const parent = old.parent;
+        const bucket = parent?.keyedChildren;
+        targets.push({ key: region.key, old, parent,
+          index: old.parentIndex, bucket,
+          afterKey: bucket?.afterKey(region.key) ?? null,
+          next, applied: null });
+      }
+    } catch {
+      return null;
+    }
+    const current = () => {
+      if (this.#publicationFailed || this.#compiledGraph ||
+        this.#numericWriteInProgress || hostPropWriter(this.host) !== writer ||
+        methodNames.some((name, index) => hostMethod(name) !== methods[index])) {
+        return false;
+      }
+      for (const { node, vnode, handle, parent, index } of oldNodes) {
+        if (node.hostDisposed || node.vnode !== vnode || node.handle !== handle ||
+          node.parent !== parent || node.parentIndex !== index) return false;
+        if (parent) {
+          if (parent.hostDisposed || (parent.keyedChildren
+            ? parent.keyedChildren.get(vnode.key!) !== node
+            : parent.children[index] !== node)) return false;
+        } else if (this.#mounted[index] !== node) return false;
+      }
+      for (const { key, old, parent, index, bucket, afterKey } of targets) {
+        const matches = this.#nodesByKey.get(key);
+        if (matches?.size !== 1 || !matches.has(old) ||
+          (parent?.keyedChildren ?? undefined) !== bucket ||
+          (bucket ? bucket.get(key) !== old || bucket.afterKey(key) !== afterKey
+            : parent ? parent.children[index] !== old : this.#mounted[index] !== old)) {
+          return false;
+        }
+      }
+      for (const key of candidateKeys) {
+        const matches = this.#nodesByKey.get(key);
+        if (matches && [...matches].some((node) => !removedNodes.has(node))) return false;
+      }
+      return true;
+    };
+    if (!current()) return null;
+    let state: "prepared" | "committed" | "discarded" = "prepared";
+    let appliedVersion: number | null = null;
+    let appliedToken: object | null = null;
+    const newCurrent = () => newNodes.every(({ node, vnode, handle, parent, index }) => {
+      if (node.hostDisposed || node.vnode !== vnode || node.handle !== handle ||
+        node.parent !== parent || node.parentIndex !== index) return false;
+      if (parent) {
+        if (parent.hostDisposed || (parent.keyedChildren
+          ? parent.keyedChildren.get(vnode.key!) !== node
+          : parent.children[index] !== node)) return false;
+      } else if (this.#mounted[index] !== node) return false;
+      if (vnode.key !== null) {
+        const matches = this.#nodesByKey.get(vnode.key);
+        if (matches?.size !== 1 || !matches.has(node)) return false;
+      }
+      return true;
+    });
+    const captureNew = (node: MountedNode<H>, vnode: VNode): boolean => {
+      if (node.vnode !== vnode || node.hostDisposed ||
+        (vnode.kind === "element" && (node.children.length !== vnode.children.length ||
+          !node.children.every((child, index) =>
+            captureNew(child, vnode.children[index])
+          )))) return false;
+      newNodes.push({ node, vnode, handle: node.handle,
+        parent: node.parent, index: node.parentIndex });
+      return true;
+    };
+    const program: PreparedKeyedVDOMProgram = {
+      scoped: true,
+      structuralVersionDelta: 1,
+      overlapsRetainedTargets: (delta) => {
+        const record = this.#retainedSourceDeltas.get(delta);
+        return !record || record.groups.some((group) =>
+          [...removedNodes].some((node) => node.handle === group.handle)
+        );
+      },
+      overlapsStoreTargets: (delta) => {
+        const record = this.#storePropDeltas.get(delta);
+        return !record || record.targets.some((target) => removedNodes.has(target.node));
+      },
+      validate: () => state === "prepared" && !this.#publicationToken && current(),
+      validatePostHost: () => state === "committed" && appliedToken !== null &&
+        this.#publicationToken === appliedToken && !this.#publicationFailed &&
+        this.#version === appliedVersion && hostPropWriter(this.host) === writer &&
+        methodNames.every((name, index) => hostMethod(name) === methods[index]) &&
+        newCurrent() && targets.every(({ key, parent, index,
+          bucket, afterKey, applied, next }) => {
+          if (!applied || applied.hostDisposed || applied.parent !== parent ||
+            applied.vnode !== next || parent?.hostDisposed ||
+            this.#nodesByKey.get(key)?.size !== 1 ||
+            !this.#nodesByKey.get(key)?.has(applied)) return false;
+          return bucket ? parent?.keyedChildren === bucket &&
+              bucket.get(key) === applied &&
+              bucket.afterKey(key) === afterKey
+            : parent ? parent.children[index] === applied
+            : this.#mounted[index] === applied;
+        }),
+      commit: () => {
+        if (state !== "prepared" || !this.#publicationToken || !current()) {
+          throw new Error("Prepared scoped host subtree replacement is stale");
+        }
+        state = "committed";
+        const pendingRefs = new Map(this.#pendingRefs);
+        const baseVersion = this.#version;
+        const keyIndex: MountedKeyIndex<H> = {
+          detach: (node) => this.#removeFromKeyIndex(node),
+          attach: (node) => this.#addToKeyIndex(node),
+        };
+        const created: Array<{
+          handle: H;
+          placedParent: Parent | undefined;
+          disposed: boolean;
+        }> = [];
+        const createdByHandle = new Map<H, typeof created[number]>();
+        const track = (handle: H) => {
+          const entry = { handle, placedParent: undefined as Parent | undefined,
+            disposed: false };
+          created.push(entry);
+          createdByHandle.set(handle, entry);
+          return handle;
+        };
+        const host: VDOMHost<H, Parent> = {
+          createElement: (tag, parent, props) =>
+            track(this.#renderHost.createElement(tag, parent, props)),
+          createText: (text) => track(this.#renderHost.createText(text)),
+          setText: (node, text) => this.#renderHost.setText(node, text),
+          setProp: (node, name, value, previous) =>
+            this.#renderHost.setProp(node, name, value, previous),
+          setStyleProp: this.#renderHost.setStyleProp
+            ? (node, name, value, previous) =>
+              this.#renderHost.setStyleProp!(node, name, value, previous)
+            : undefined,
+          prepareStyleProp: this.#renderHost.prepareStyleProp
+            ? (node, name) => this.#renderHost.prepareStyleProp!(node, name)
+            : undefined,
+          place: (parent, node, before) => {
+            const entry = createdByHandle.get(node);
+            if (entry) entry.placedParent = parent;
+            this.#renderHost.place(parent, node, before);
+          },
+          remove: (parent, node) => {
+            this.#renderHost.remove(parent, node);
+            const entry = createdByHandle.get(node);
+            if (entry) entry.placedParent = undefined;
+          },
+          dispose: this.#renderHost.dispose ? (node) => {
+            const entry = createdByHandle.get(node);
+            if (entry) entry.disposed = true;
+            this.#renderHost.dispose!(node);
+          } : undefined,
+        };
+        if (this.#acceptedJournal) {
+          acceptedJournalByHost.set(host as object, this.#acceptedJournal);
+        }
+        try {
+          for (const target of targets) {
+            const { old, parent, index, bucket, key, next } = target;
+            const hostParent = parent
+              ? parent.handle as unknown as Parent : this.container;
+            let applied: MountedNode<H>;
+            if (compatible(old.vnode, next)) {
+              applied = updateMounted(host, hostParent, old, next, keyIndex);
+            } else {
+              this.#acceptedJournal?.capture(old);
+              if (parent) this.#acceptedJournal?.capture(parent);
+              visitMountedSubtree(old, keyIndex.detach);
+              removeMountedSubtree(host, hostParent, old);
+              applied = createMounted(host, next, hostParent, keyIndex);
+              target.applied = applied;
+              applied.parent = parent;
+              applied.parentIndex = index;
+              const anchor = bucket
+                ? target.afterKey === null ? null : bucket.get(target.afterKey)!.handle
+                : parent ? parent.children[index + 1]?.handle ?? null
+                : this.#mounted[index + 1]?.handle ?? null;
+              host.place(hostParent, applied.handle, anchor);
+              if (bucket) {
+                this.#acceptedJournal?.record(bucket, {
+                  kind: "replace", oldKey: key, newKey: key, child: old,
+                });
+                bucket.replace(key, key, applied);
+              } else if (parent) {
+                const children = parent.children.slice();
+                children[index] = applied;
+                parent.children = children;
+                if (parent.vnode.kind === "element") {
+                  parent.vnode = { ...parent.vnode,
+                    children: children.map((child) => child.vnode) };
+                }
+              } else {
+                const roots = this.#mounted.slice();
+                roots[index] = applied;
+                this.#mounted = roots;
+              }
+            }
+            target.applied = applied;
+          }
+          newNodes.length = 0;
+          if (!targets.every((target) => target.applied &&
+            captureNew(target.applied, target.next)) ||
+            !newCurrent() || this.#version !== baseVersion ||
+            hostPropWriter(this.host) !== writer ||
+            methodNames.some((name, index) => hostMethod(name) !== methods[index])) {
+            throw new Error("Scoped host subtree changed during application");
+          }
+          this.#snapshotDirty = true;
+          this.#version++;
+          this.#partialCommitCount++;
+          this.#partialCommitBatchCount++;
+          appliedVersion = this.#version;
+          appliedToken = this.#publicationToken;
+        } catch (error) {
+          const errors: unknown[] = [];
+          for (let index = created.length - 1; index >= 0; index--) {
+            const entry = created[index];
+            if (entry.placedParent !== undefined) {
+              try { this.#renderHost.remove(entry.placedParent, entry.handle); }
+              catch (failure) { errors.push(failure); }
+            }
+            if (!entry.disposed && this.#renderHost.dispose) {
+              entry.disposed = true;
+              try { this.#renderHost.dispose(entry.handle); }
+              catch (failure) { errors.push(failure); }
+            }
+          }
+          for (const target of targets) {
+            if (target.applied) visitMountedSubtree(target.applied, (node) => {
+              if (createdByHandle.has(node.handle)) node.hostDisposed = true;
+            });
+          }
+          this.#pendingRefs.clear();
+          for (const [node, ref] of pendingRefs) this.#pendingRefs.set(node, ref);
+          this.#snapshotDirty = true;
+          this.#version++;
+          try { this.#rebuildKeyIndex(); } catch (failure) { errors.push(failure); }
+          try { this.#rebuildBindingIndex(); } catch (failure) {
+            this.#clearBindingIndex(); errors.push(failure);
+          }
+          if (errors.length) throw new AggregateError(
+            [error, ...errors], "Scoped host subtree replacement and repair failed",
+          );
+          throw error;
+        } finally {
+          acceptedJournalByHost.delete(host as object);
+        }
+      },
+      discard: () => {
+        state = "discarded";
+        targets.length = 0;
+        oldNodes.length = 0;
+        newNodes.length = 0;
+        removedNodes.clear();
+        candidateKeys.clear();
+      },
+    };
+    return program;
+  }
+
   /** Prepare one scoped keyed, retained-source and Store-prop publication. */
   prepareScopedKeyedRetainedAndStoreDeltas(
     deltas: readonly KeyedRegionDeltaRequest[],

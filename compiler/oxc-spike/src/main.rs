@@ -3690,6 +3690,7 @@ fn compile_native_component_module(
     let mut closed_resource_collector = ClosedResourceHostCollector {
         components: &state_plan.components,
         semantic: &semantic,
+        source,
         revision,
         programs: BTreeMap::new(),
     };
@@ -4328,6 +4329,148 @@ fn closed_resource_host_program(
     }))
 }
 
+fn closed_resource_subtree_property_name(tag: &str, name: &str) -> bool {
+    if name == "key" || name == "children" || name == "ref" || name == "style" ||
+        name == "__proto__" || name == "prototype" || name == "constructor" ||
+        name.starts_with("on") { return false; }
+    match tag {
+        "div" | "span" | "output" => name.starts_with("data-") && name.len() >= 6 &&
+            name.as_bytes()[5].is_ascii_lowercase() && name[6..].bytes().all(|byte|
+                byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-'),
+        "group" | "mesh" => name == "name" || name == "visible" || matches!(name,
+            "position-x" | "position-y" | "position-z" |
+            "rotation-x" | "rotation-y" | "rotation-z" |
+            "scale-x" | "scale-y" | "scale-z"),
+        _ => false,
+    }
+}
+
+fn closed_resource_subtree_host(
+    element: &JSXElement<'_>, value_symbol: SymbolId, site_id: &str,
+    semantic: &Semantic<'_>, source: &str, keys: &mut BTreeSet<String>,
+    count: &mut usize, depth: usize,
+) -> Option<serde_json::Value> {
+    *count += 1;
+    if *count > 256 || depth > 32 || element.opening_element.attributes.len() > 33 { return None; }
+    let JSXElementName::Identifier(tag) = &element.opening_element.name else { return None; };
+    let tag = tag.name.as_str();
+    if !matches!(tag, "div" | "span" | "output" | "group" | "mesh") { return None; }
+    let mut key = None;
+    let mut props = Vec::<serde_json::Value>::new();
+    let mut seen = BTreeSet::new();
+    let mut value_sites = BTreeMap::new();
+    value_sites.insert(value_symbol, site_id.to_owned());
+    let source_sites = [site_id.to_owned()];
+    for attribute in &element.opening_element.attributes {
+        let JSXAttributeItem::Attribute(attribute) = attribute else { return None; };
+        let JSXAttributeName::Identifier(name) = &attribute.name else { return None; };
+        let name = name.name.as_str();
+        if name == "key" {
+            if key.is_some() { return None; }
+            let Some(JSXAttributeValue::StringLiteral(value)) = attribute.value.as_ref() else { return None; };
+            if value.value.is_empty() || value.value.chars().any(|ch| matches!(ch, '&' | '\n' | '\r' | '\t')) { return None; }
+            key = Some(value.value.to_string());
+        } else {
+            if !closed_resource_subtree_property_name(tag, name) || !seen.insert(name.to_owned()) { return None; }
+            let expression = match attribute.value.as_ref()? {
+                JSXAttributeValue::StringLiteral(value) if !value.value.chars().any(|ch| matches!(ch, '&' | '\n' | '\r' | '\t')) =>
+                    serde_json::json!({"kind":"literal","value":value.value.as_str()}),
+                JSXAttributeValue::ExpressionContainer(container) => closed_store_host_expression(
+                    container.expression.as_expression()?, &value_sites, &source_sites, semantic, source)?,
+                _ => return None,
+            };
+            props.push(serde_json::json!([name, expression]));
+        }
+    }
+    let key = key?;
+    if !keys.insert(key.clone()) { return None; }
+    let mut children = Vec::<serde_json::Value>::new();
+    if element.children.len() > 256 { return None; }
+    for child in &element.children {
+        match child {
+            JSXChild::Element(nested) => {
+                let host = closed_resource_subtree_host(nested, value_symbol, site_id,
+                    semantic, source, keys, count, depth + 1)?;
+                children.push(serde_json::json!({"kind":"host","host":host}));
+            }
+            JSXChild::ExpressionContainer(container) => {
+                *count += 1;
+                if *count > 256 { return None; }
+                let expression = closed_store_host_expression(container.expression.as_expression()?,
+                    &value_sites, &source_sites, semantic, source)?;
+                children.push(serde_json::json!({"kind":"text","expression":expression}));
+            }
+            _ => return None,
+        }
+    }
+    Some(serde_json::json!({"tag":tag,"key":key,"props":props,"children":children}))
+}
+
+fn closed_resource_subtree_program(
+    node: &Function<'_>, component: &ComponentStateSiteIr,
+    semantic: &Semantic<'_>, source: &str, revision: &str,
+) -> Option<serde_json::Value> {
+    if node.r#async || node.generator || node.params.items.len() != 1 || node.params.rest.is_some() ||
+        !component.state_sites.is_empty() || !component.effect_sites.is_empty() ||
+        !component.collection_sites.is_empty() || component.store_sites.len() != 1 ||
+        component.store_sites[0].hook_name != "use" { return None; }
+    let parameter = &node.params.items[0];
+    if parameter.optional || parameter.initializer.is_some() { return None; }
+    let (props_symbol, destructured) = match &parameter.pattern {
+        BindingPattern::BindingIdentifier(identifier) => (identifier.symbol_id.get(), None),
+        BindingPattern::ObjectPattern(pattern) if pattern.rest.is_none() && pattern.properties.len() == 1 => {
+            let property = &pattern.properties[0];
+            let BindingPattern::BindingIdentifier(local) = &property.value else { return None; };
+            if property.computed { return None; }
+            (None, Some((type_property_name(&property.key)?.to_owned(), local.symbol_id.get()?)))
+        }
+        _ => return None,
+    };
+    let body = node.body.as_ref()?;
+    if !body.directives.is_empty() || body.statements.len() != 2 { return None; }
+    let declaration = match body.statements.first()?.as_declaration()? {
+        Declaration::VariableDeclaration(declaration)
+            if declaration.kind == oxc_ast::ast::VariableDeclarationKind::Const && declaration.declarations.len() == 1 => declaration,
+        _ => return None,
+    };
+    let declarator = &declaration.declarations[0];
+    let BindingPattern::BindingIdentifier(value_binding) = &declarator.id else { return None; };
+    let value_symbol = value_binding.symbol_id.get()?;
+    let Expression::CallExpression(call) = declarator.init.as_ref()? else { return None; };
+    if call.arguments.len() != 1 || component.store_sites[0].call.start != call.span.start ||
+        component.store_sites[0].call.end != call.span.end { return None; }
+    let resource_argument = call.arguments.first()?.as_expression()?;
+    let resource_prop = if let Expression::StaticMemberExpression(member) = resource_argument {
+        let Expression::Identifier(object) = &member.object else { return None; };
+        if props_symbol.is_none() || reference_symbol(object, semantic) != props_symbol { return None; }
+        member.property.name.to_string()
+    } else if let Expression::Identifier(identifier) = resource_argument {
+        let (name, symbol) = destructured.as_ref()?;
+        if reference_symbol(identifier, semantic) != Some(*symbol) { return None; }
+        name.clone()
+    } else { return None; };
+    if !resource_prop.bytes().next().is_some_and(|byte| byte.is_ascii_alphabetic() || byte == b'_' || byte == b'$') ||
+        !resource_prop.bytes().all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'$') { return None; }
+    let Statement::ReturnStatement(return_statement) = body.statements.get(1)? else { return None; };
+    let mut return_expression = return_statement.argument.as_ref()?;
+    while let Expression::ParenthesizedExpression(parenthesized) = return_expression {
+        return_expression = &parenthesized.expression;
+    }
+    let Expression::JSXElement(element) = return_expression else { return None; };
+    let mut keys = BTreeSet::new();
+    let mut count = 0;
+    let host = closed_resource_subtree_host(element, value_symbol,
+        &component.store_sites[0].site_id, semantic, source, &mut keys, &mut count, 0)?;
+    Some(serde_json::json!({
+        "schemaVersion": 2,
+        "componentProgramId": component.component_site_id,
+        "moduleRevision": revision,
+        "resourceUseSiteId": component.store_sites[0].site_id,
+        "resourceProp": resource_prop,
+        "host": host,
+    }))
+}
+
 fn closed_store_host_property_name(tag: &str, name: &str) -> bool {
     match tag {
         "div" | "output" => {
@@ -4514,6 +4657,7 @@ impl<'a> Visit<'a> for ClosedStoreHostCollector<'_, 'a> {
 struct ClosedResourceHostCollector<'p, 'a> {
     components: &'p [ComponentStateSiteIr],
     semantic: &'p Semantic<'a>,
+    source: &'p str,
     revision: &'p str,
     programs: BTreeMap<String, serde_json::Value>,
 }
@@ -4522,6 +4666,7 @@ impl<'a> Visit<'a> for ClosedResourceHostCollector<'_, 'a> {
     fn visit_function(&mut self, node: &Function<'a>, flags: ScopeFlags) {
         if let Some(component) = self.components.iter().find(|component| component.declaration.start == node.span.start && component.declaration.end == node.span.end)
             && let Some(program) = closed_resource_host_program(node, component, self.semantic, self.revision)
+                .or_else(|| closed_resource_subtree_program(node, component, self.semantic, self.source, self.revision))
         {
             self.programs.insert(component.component_site_id.clone(), program);
         }
@@ -7626,13 +7771,68 @@ export function Label() { const [label] = useState("ready"); return <span data-l
                 "child": "resource-value"
             }));
         }
-        for component in components.iter().filter(|component| component.name != "Ready" && component.name != "Destructured") {
+        let dynamic = components.iter().find(|component| component.name == "DynamicProp").unwrap();
+        let program = dynamic.closed_resource_host_program.as_ref().unwrap();
+        assert_eq!(program["schemaVersion"], 2);
+        assert_eq!(program["host"]["props"][0][1], serde_json::json!({
+            "kind":"input","index":0
+        }));
+        for component in components.iter().filter(|component| !matches!(
+            component.name.as_str(), "Ready" | "Destructured" | "DynamicProp")) {
             assert!(component.closed_resource_host_program.is_none(), "{} unexpectedly closed", component.name);
         }
         let code = plan.component_module.unwrap();
-        assert_eq!(code.matches("closedResourceHostProgram:").count(), 2);
+        assert_eq!(code.matches("closedResourceHostProgram:").count(), 3);
         assert!(code.contains("closedResourceHostProgram: {"));
         assert!(code.contains("\"moduleRevision\":"));
+    }
+
+    #[test]
+    fn emits_bounded_closed_resource_host_subtree_only_for_direct_primitive_use() {
+        let source = include_str!("../../fixtures/native-resource-subtree.tsx");
+        let response = compile_state("native-resource-subtree.tsx", source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let plan = response.plan.unwrap();
+        let revision = plan.module_revision.clone();
+        let components = plan.components.unwrap();
+        for (name, prop, tag, key) in [
+            ("DomTree", "resource", "div", "dom-root"),
+            ("ThreeTree", "resource", "group", "three-root"),
+        ] {
+            let component = components.iter().find(|component| component.name == name).unwrap();
+            let program = component.closed_resource_host_program.as_ref().unwrap();
+            assert_eq!(program["schemaVersion"], 2);
+            assert_eq!(program["componentProgramId"], component.component_site_id);
+            assert_eq!(program["moduleRevision"], revision);
+            assert_eq!(program["resourceUseSiteId"], component.store_sites[0].site_id);
+            assert_eq!(program["resourceProp"], prop);
+            assert_eq!(program["host"]["tag"], tag);
+            assert_eq!(program["host"]["key"], key);
+            assert_eq!(program["host"]["children"].as_array().unwrap().len(), 2);
+        }
+        let dom = components.iter().find(|component| component.name == "DomTree").unwrap();
+        let host = &dom.closed_resource_host_program.as_ref().unwrap()["host"];
+        assert_eq!(host["children"][0]["host"]["children"][0], serde_json::json!({
+            "kind":"text", "expression":{"kind":"input","index":0}
+        }));
+        assert_eq!(host["children"][1]["host"]["props"][0][1], serde_json::json!({
+            "kind":"binary","operator":"+",
+            "left":{"kind":"input","index":0},
+            "right":{"kind":"literal","value":1.0}
+        }));
+        let three = components.iter().find(|component| component.name == "ThreeTree").unwrap();
+        let host = &three.closed_resource_host_program.as_ref().unwrap()["host"];
+        assert_eq!(host["children"][0]["host"]["props"][0][0], "position-x");
+        assert_eq!(host["children"][1]["host"]["props"][0][1], serde_json::json!({
+            "kind":"literal","value":"static"
+        }));
+        for component in components.iter().filter(|component|
+            component.name != "DomTree" && component.name != "ThreeTree") {
+            assert!(component.closed_resource_host_program.is_none(),
+                "{} unexpectedly closed", component.name);
+        }
+        let code = plan.component_module.unwrap();
+        assert_eq!(code.matches("closedResourceHostProgram:").count(), 2);
     }
 
     #[test]

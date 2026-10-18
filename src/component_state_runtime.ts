@@ -28,7 +28,7 @@ import {
   isPendingResourceToken,
   ResourceRejection,
 } from "./async_resource_runtime.ts";
-import { ResourceReadSet } from "./resource_read_set.ts";
+import { closedResourceStatus, ResourceReadSet } from "./resource_read_set.ts";
 import { PendingStateChanges } from "./pending_state_changes.ts";
 import type {
   CompiledOwnerUpdateProgram,
@@ -3252,10 +3252,7 @@ export class ComponentStateRoot<H, Parent = H> {
       !this.#liveOwners.has(boundaryOwner) || !this.world.isAlive(boundaryOwner) ||
       this.#boundaryPrimaries.has(String(boundaryOwner))) return null;
     const resource = boundaryCache.pendingResource;
-    if (Object.getPrototypeOf(resource) !== AsyncResource.prototype ||
-      Object.hasOwn(resource, "read") || Object.hasOwn(resource, "status") ||
-      Object.hasOwn(resource, "version") ||
-      resource.status.status !== "fulfilled") return null;
+    if (closedResourceStatus(resource)?.status !== "fulfilled") return null;
     const child = Object.getOwnPropertyDescriptor(boundaryCache.props, "children")?.value;
     if (!child || Array.isArray(child) || typeof child !== "object" ||
       !Object.isFrozen(child)) return null;
@@ -3283,30 +3280,38 @@ export class ComponentStateRoot<H, Parent = H> {
     const oldOutput = boundaryCache.expandedResult;
     if (!oldOutput || Array.isArray(oldOutput) ||
       typeof oldOutput !== "object" ||
-      Object.getOwnPropertyDescriptor(oldOutput, "type")?.value !== program.host.tag) {
+      typeof Object.getOwnPropertyDescriptor(oldOutput, "type")?.value !== "string") {
       return null;
     }
     const oldOutputProps = Object.getOwnPropertyDescriptor(oldOutput, "props")?.value;
     if (!oldOutputProps || typeof oldOutputProps !== "object" ||
       Object.getOwnPropertyDescriptor(oldOutputProps, "key")?.value !==
         program.host.key) return null;
-    if (boundaryCache.subtreeOwners.size !== 1 ||
-      !boundaryCache.subtreeOwners.has(boundaryOwner) ||
+    if (!boundaryCache.subtreeOwners.has(boundaryOwner) ||
       boundaryCache.ownEffects.size !== 0 ||
       boundaryCache.propBoundSites.size !== 0) return null;
-    const oldProps = Object.getOwnPropertyDescriptors(oldOutputProps);
-    if (Object.values(oldProps).some((descriptor) => !('value' in descriptor)) ||
-      Object.entries(oldProps).some(([name, descriptor]) => {
-        const value = descriptor.value;
-        return name === "children"
-          ? value !== null && value !== undefined &&
-            typeof value !== "string" && typeof value !== "number"
-          : name !== "key" &&
-            (!/^data-[a-z][a-z0-9-]*$/.test(name) ||
-              !(value === null || typeof value === "string" ||
-                typeof value === "boolean" ||
-                (typeof value === "number" && Number.isFinite(value))));
-      })) return null;
+    const fallbackCaches = new Map<OwnerId, {
+      cache: ComponentCache;
+      revision: CompiledSemanticRevisionToken | undefined;
+    }>();
+    for (const owner of boundaryCache.subtreeOwners) {
+      if (owner === boundaryOwner) continue;
+      const cache = this.#componentCache.get(owner);
+      if (!cache || !this.#liveOwners.has(owner) || !this.world.isAlive(owner) ||
+        !this.world.isWithin(owner, boundaryOwner) || cache.nativeBoundary ||
+        cache.keyedRegion || cache.pendingResource || cache.propBoundSites.size ||
+        this.#ownerHasStoreReaders(owner)) return null;
+      const revision = componentRevision(cache.type);
+      if (revision && !isCompiledSemanticRevisionCurrent(revision)) return null;
+      fallbackCaches.set(owner, { cache, revision });
+    }
+    const oldTag = Object.getOwnPropertyDescriptor(oldOutput, "type")?.value;
+    const retired = [...fallbackCaches.keys()].sort((left, right) =>
+      this.world.ownerLineage(right).length - this.world.ownerLineage(left).length
+    );
+    const retiredEffects = [...this.#liveEffects].filter(([, effect]) =>
+      fallbackCaches.has(effect.owner)
+    );
     for (const readerId of this.#liveStoreReaders.keys()) {
       if (readerId.startsWith(`\u0000suspense-pending:${boundaryOwner}:`)) {
         return null;
@@ -3319,8 +3324,8 @@ export class ComponentStateRoot<H, Parent = H> {
     let reads: ResourceReadSet | null = new ResourceReadSet(this.#resourceTable);
     let preparedProgram: ReturnType<VDOMSnapshotRoot<H, Parent>["prepareKeyedRegionDeltas"]> = null;
     try {
-      const value = reads.read(resource);
-      const generated = evaluateClosedResourceHostProgram(program, value);
+      const status = reads.readClosed(resource);
+      const generated = status && evaluateClosedResourceHostProgram(program, status.value);
       if (!generated) {
         preparation.discard();
         stores.discard();
@@ -3344,8 +3349,7 @@ export class ComponentStateRoot<H, Parent = H> {
         ownEffects: new Map(),
         propBoundSites: new Set(),
       };
-      preparedProgram = this.#vdom.prepareKeyedRegionDeltas(
-        [],
+      preparedProgram = this.#vdom.prepareScopedHostSubtreeReplacements(
         [{ key: program.host.key, tree: generated }],
       );
       if (!preparedProgram) {
@@ -3357,24 +3361,28 @@ export class ComponentStateRoot<H, Parent = H> {
       const current = () =>
         Object.getOwnPropertyDescriptor(child, "type")?.value === childType &&
         Object.getOwnPropertyDescriptor(child, "props")?.value === childProps &&
-        Object.getOwnPropertyDescriptor(oldOutput, "type")?.value === program.host.tag &&
+        Object.getOwnPropertyDescriptor(oldOutput, "type")?.value === oldTag &&
         Object.getOwnPropertyDescriptor(oldOutput, "props")?.value === oldOutputProps &&
-        this.#publicationVersion === baseVersion &&
-        this.#vdom.version === baseVDOMVersion &&
-        Object.getPrototypeOf(resource) === AsyncResource.prototype &&
-        !Object.hasOwn(resource, "read") && !Object.hasOwn(resource, "status") &&
-        !Object.hasOwn(resource, "version") &&
+        closedResourceStatus(resource)?.status === "fulfilled" &&
         !this.#codeInvalidated && isCompiledSemanticRevisionCurrent(revision) &&
         this.#componentCache.get(boundaryOwner) === boundaryCache &&
         this.#liveOwners.has(boundaryOwner) && this.world.isAlive(boundaryOwner) &&
+        [...fallbackCaches].every(([owner, { cache, revision }]) =>
+          this.#componentCache.get(owner) === cache &&
+          this.#liveOwners.has(owner) && this.world.isAlive(owner) &&
+          !this.#ownerHasStoreReaders(owner) &&
+          (!revision || isCompiledSemanticRevisionCurrent(revision))
+        ) && retiredEffects.every(([key, effect]) => this.#liveEffects.get(key) === effect) &&
         !this.#boundaryPrimaries.has(String(boundaryOwner)) &&
         boundaryCache.pendingResource === resource &&
-        this.world.findOwner(boundaryOwner, siteId, childKey) === undefined;
+        this.world.findOwner(boundaryOwner, siteId, childKey) === undefined &&
+        preparation.validatePublicationInputs();
       const sourceCurrent = () =>
         Object.getOwnPropertyDescriptor(childProps, program.resourceProp)?.value === source;
       const candidate = this.#createCandidateLifecycle({
         baseVersion,
         baseVDOMVersion,
+        scope: { kind: "keyed", versionDelta: 1 },
         stores,
         transitions: [],
         pendingResources: [],
@@ -3405,6 +3413,9 @@ export class ComponentStateRoot<H, Parent = H> {
         publish: () => {
           preparation.publishAccepted();
           stores.publishAccepted();
+          for (const owner of retired) this.#retireOwnerAccepted(owner);
+          for (const [key] of retiredEffects) this.#liveEffects.delete(key);
+          for (const owner of retired) this.#liveEffectKeysByOwner.delete(owner);
           this.#componentCache.set(childOwner, childCache);
           this.#componentCache.set(boundaryOwner, {
             ...boundaryCache,
@@ -3414,6 +3425,7 @@ export class ComponentStateRoot<H, Parent = H> {
           });
           this.#liveOwners.add(childOwner);
           this.#boundaryPrimaries.set(String(boundaryOwner), { tree: child });
+          this.#refreshDirectKeyedRegionOutput(boundaryOwner);
           for (const ancestor of this.world.ownerLineage(boundaryOwner).slice(1)) {
             const cache = this.#componentCache.get(ancestor);
             if (!cache) continue;
@@ -3437,6 +3449,7 @@ export class ComponentStateRoot<H, Parent = H> {
           try { preparation.notifyPublished(); } catch (error) { errors.push(error); }
           try { stores.notifyPublished(); } catch (error) { errors.push(error); }
           try { this.#vdom.flushRefs(); } catch (error) { errors.push(error); }
+          errors.push(...this.#cleanupEffects(retiredEffects.map(([, effect]) => effect)));
           return errors;
         },
         discard: () => {
@@ -3447,7 +3460,11 @@ export class ComponentStateRoot<H, Parent = H> {
           reads = null;
         },
         releaseArtifacts: () => {
+          preparedProgram?.discard();
           preparedProgram = null;
+          fallbackCaches.clear();
+          retired.length = 0;
+          retiredEffects.length = 0;
           reads?.discard();
           reads = null;
         },
@@ -5380,7 +5397,7 @@ export class ComponentStateRoot<H, Parent = H> {
               if (!candidate) {
                 const previous = stage.previousRows.get(key);
                 if (options.scopedStructural && previous) {
-                  this.#retireCollectionRowAccepted(previous.owner);
+                  this.#retireOwnerAccepted(previous.owner);
                 }
                 stage.region.rows.delete(key);
                 stage.region.hostKeysByCollectionKey.delete(key);
@@ -6135,7 +6152,7 @@ export class ComponentStateRoot<H, Parent = H> {
     }
   }
 
-  #retireCollectionRowAccepted(owner: OwnerId) {
+  #retireOwnerAccepted(owner: OwnerId) {
     const cache = this.#componentCache.get(owner);
     if (!cache) return;
     const lineage = this.world.ownerLineage(owner).slice(1);

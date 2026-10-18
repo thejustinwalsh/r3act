@@ -1,0 +1,13 @@
+# Pre-gate resource-subtree source review
+
+Status: source integrated; consolidated correctness and one matched comparison pending.
+
+Schema 2 serializes a bounded tree of keyed intrinsic hosts and primitive expression text over one direct resource input. Rust/OXC supplies symbol/site/revision proof; normalization freezes own-data fields, bounds depth/nodes and rejects unsafe props or collisions. Schema 1 remains supported. Unsupported resources, host shapes and authored effects retain generic rendering.
+
+ResourceReadSet keeps its existing version authority, distinguishing canonical closed capture from ordinary observable reads. A captured native getter checks the private resource brand before reflection; overridden own/prototype behavior declines without calling authored resource getters. Ordinary read/validation semantics remain public and observable. No persistent identity/version registry is added.
+
+The VDOM scoped replacement pins every old mounted node and actual host writer/structural method, validates candidate key collisions, and validates resulting descendants after host work. Host-type changes use existing creation/disposal. Operation-local allocation tracking releases newly returned handles if construction fails; cleanup errors retain the original exception. Arbitrary host create calls that throw before returning a handle remain host-owned failure cases. Accepted snapshots retain old structure during applying; partial failure quarantines the domain.
+
+Root captures accepted fallback component caches and revision tokens, refuses their Store/collection/boundary/binding participation, and prepares one generated owner under the existing World preparation. Admission and post-host checks retain exact slot/lifetime/resource/writer authority. The candidate is a mergeable scoped host/cache delta, while full replacements keep whole-root guards. Accepted publication retires fallback owners, revokes their setters/pending local work, detaches their activation effects, installs the generated primary and patches current ancestor caches. Detached cleanup runs in existing effect order after acceptance; unrelated/newer live-owner actions remain pending.
+
+Source review corrected two evidence traps before execution: fallback state need not have a numeric layout when no prop uses it, and Three's shared default geometry/material live until host teardown. The compiled fixture uses explicit owned fallback resources to test disposal at reveal. Native activation cleanup is paired with React mount/unmount layout effects in the descriptive browser workload. The baseline dense FAIL, exhausted attribution and original release obligations remain unchanged.
