@@ -162,7 +162,7 @@ Deno.test("scoped joint move preserves unrelated pending Store history and subsc
   }
 });
 
-Deno.test("selected Store-dependent row keeps opaque collection fallback", () => {
+Deno.test("opaque Store-reading rows move without replay, while selected Store writes and removal decline", () => {
   const id = "scoped-async-selected-store";
   const store = createAsyncStore(0);
   const collection = createKeyedCollection<Row>(
@@ -173,20 +173,84 @@ Deno.test("selected Store-dependent row keeps opaque collection fallback", () =>
   const root = new ComponentStateRoot(host, container, {
     rootId: id, scheduleCommit() {},
   });
-  const RowView = defineComponent(`${id}:row`, ({ row }: { row: Row }) =>
-    jsx("li", { "data-id": row.id, value: useStoreAt("value", store) }));
+  const renders = { a: 0, b: 0 };
+  const RowView = defineComponent(`${id}:row`, ({ row }: { row: Row }) => {
+    renders[row.id as keyof typeof renders]++;
+    return jsx("li", { "data-id": row.id, value: useStoreAt("value", store) });
+  });
   const List = defineComponent(`${id}:list`, () => jsx("ul", {},
     renderCollectionAt(`${id}:region`, collection, (row) =>
       jsx(RowView, { row }))));
   root.mount(jsx(List, {}));
   try {
+    const [a, b] = container.children[0].children;
+    const before = { ...renders };
     move(collection);
-    assertStrictEquals(root.prepareCollections([collection]), null);
-    assertEquals(container.children[0].children.map((node) =>
-      node.props["data-id"]), ["a", "b"]);
+    const moveCut = root.prepareCollections([collection]);
+    assert(moveCut);
+    assert(store.dispatch(1));
+    publish(moveCut);
+    assertStrictEquals(container.children[0].children[0], b);
+    assertStrictEquals(container.children[0].children[1], a);
+    assertEquals(renders, before, "move replayed opaque Store readers");
+    assertEquals([a.props.value, b.props.value], [0, 0],
+      "move consumed a newer Store action without publishing its output");
+    assertEquals(store.diagnostics().readers, 2);
+    assert(store.diagnostics().listeners > 0);
+    assertStrictEquals(root.prepareTransaction({ cells: [], collections: [], stores: [store] }), null,
+      "an opaque selected Store consumer was certified as closed");
     assert(root.flush());
-    assertEquals(container.children[0].children.map((node) =>
-      node.props["data-id"]), ["b", "a"]);
+    assertEquals([a.props.value, b.props.value], [1, 1],
+      "ordinary reconciliation lost the pending Store action");
+    assertStrictEquals(container.children[0].children[0], b);
+    assertStrictEquals(container.children[0].children[1], a);
+
+    assert(collection.apply(collection.version, [{ type: "remove", key: "b" }]).ok);
+    assertStrictEquals(root.prepareCollections([collection]), null,
+      "scoped removal cannot retire a live Store reader");
+    assert(root.flush());
+    assertEquals(container.children[0].children.map((node) => node.props["data-id"]), ["a"]);
+    assertEquals(store.diagnostics().readers, 1);
+  } finally {
+    root.dispose();
+  }
+});
+
+Deno.test("same-key replacement drops a Store reader while retaining row state", () => {
+  const id = "scoped-async-store-reader-replace";
+  type StoreRow = { id: string; read: boolean };
+  const store = createAsyncStore(3);
+  const collection = createKeyedCollection<StoreRow>([{ id: "a", read: true }], (row) => row.id);
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new ComponentStateRoot(host, container, { rootId: id, scheduleCommit() {} });
+  let setToken!: (value: number) => boolean;
+  const RowView = defineComponent(`${id}:row`, ({ row }: { row: StoreRow }) => {
+    const [token, setter] = useStateAt("token", 7);
+    setToken = setter;
+    return jsx("li", { "data-id": row.id, "data-token": token,
+      "data-store": row.read ? useStoreAt("value", store) : "closed" });
+  });
+  const List = defineComponent(`${id}:list`, () => jsx("ul", {},
+    renderCollectionAt(`${id}:region`, collection, (row) => jsx(RowView, { row }))));
+  root.mount(jsx(List, {}));
+  try {
+    const rowHost = container.children[0].children[0];
+    assertEquals([rowHost.props["data-token"], rowHost.props["data-store"]], [7, 3]);
+    assertEquals(store.diagnostics().readers, 1);
+    assert(setToken(9));
+    assert(root.flush());
+    assertStrictEquals(container.children[0].children[0], rowHost);
+    assertEquals(rowHost.props["data-token"], 9);
+    assert(collection.apply(collection.version, [{ type: "replace", key: "a",
+      value: { id: "a", read: false } }]).ok);
+    assert(root.flush());
+    assertStrictEquals(container.children[0].children[0], rowHost);
+    assertEquals([rowHost.props["data-token"], rowHost.props["data-store"]], [9, "closed"]);
+    assertEquals(store.diagnostics().readers, 0,
+      "direct replacement retained the old accepted Store reader");
+    assertEquals(store.diagnostics().listeners, 0);
+    assertEquals(root.diagnostics().pendingChangeCount, 0);
   } finally {
     root.dispose();
   }

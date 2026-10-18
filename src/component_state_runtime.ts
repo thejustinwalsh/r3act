@@ -1,6 +1,7 @@
 import { normalizeClosedNumericExpression } from "./closed_numeric_expression.ts";
 import {
   type ClosedStoreHostProgram,
+  closedStoreHostInputs,
   evaluateClosedStoreHostProgram,
   normalizeClosedStoreHostProgram,
 } from "./closed_store_host_program.ts";
@@ -76,6 +77,7 @@ import {
   type PreparedVDOMCommit,
   type RuntimeCounterCallback,
   type RuntimeProfileCallback,
+  type StorePropDelta,
   type VDOMHost,
   type VDOMKeyIndexMaintenance,
   VDOMSnapshotRoot,
@@ -185,6 +187,13 @@ type RetainedCellWrite = {
   source: ScalarSource;
   version: number;
   value: number;
+};
+type ClosedStoreOutputCut = {
+  readonly owners: ReadonlySet<OwnerId>;
+  readonly regions: readonly StorePropDelta[];
+  current(): boolean;
+  publish(): void;
+  release(): void;
 };
 type CandidateLifecycleSpec<H, Parent> = {
   baseVersion: number;
@@ -1238,13 +1247,15 @@ export class ComponentStateRoot<H, Parent = H> {
     return this.prepareTransaction({ cells: [], collections });
   }
 
-  /** Prepare one explicit closed numeric and keyed collection cut. */
+  /** Prepare one declared closed local, Store and keyed collection cut. */
   prepareTransaction(work: {
     readonly cells: readonly StateCellHandle[];
     readonly collections: readonly KeyedCollection<any>[];
+    readonly stores?: readonly AnyAsyncStore[];
   }): NativeRootCandidate<H, Parent> | null {
     const { cells, collections } = work;
-    if (collections.length === 0) return this.prepareRetained(cells);
+    const selectedStores = work.stores ?? [];
+    if (collections.length === 0) return this.#prepareClosedInputCandidate(cells, selectedStores);
     this.#assertActive();
     this.#assertNoPublicationBarrier("prepare transaction");
     if (this.#pendingDirectIntent || this.#terminalHostFailed || this.#codeInvalidated ||
@@ -1267,6 +1278,7 @@ export class ComponentStateRoot<H, Parent = H> {
       selectedRegionKeys: selected,
       scopedStructural: true,
       scopedCells: cells,
+      scopedStores: selectedStores,
     });
   }
 
@@ -1275,99 +1287,86 @@ export class ComponentStateRoot<H, Parent = H> {
     return this.#prepareClosedStoreCandidate(selected, false);
   }
 
-  #prepareClosedStoreCandidate(
-    selected: readonly AnyAsyncStore[], requireOutputChange: boolean,
-  ): NativeRootCandidate<H, Parent> | null {
-    this.#assertActive();
-    this.#assertNoPublicationBarrier("prepare Store props");
-    if (this.#pendingDirectIntent || !selected.length ||
-      new Set(selected).size !== selected.length) return null;
+  #stageClosedStoreOutputs(
+    selected: readonly AnyAsyncStore[], stores: StoreRenderTransaction,
+    requireOutputChange = false,
+  ): ClosedStoreOutputCut {
+    if (new Set(selected).size !== selected.length) throw new SparseCandidateIneligible();
     const selectedStores = new Set(selected);
-    const stores = new StoreRenderTransaction(this.#rootId);
-    type Reader = {
-      id: string; owner: OwnerId; store: AnyAsyncStore; cache: ComponentCache;
-      program: ClosedStoreHostProgram; next: RuntimeElement;
-      membership: Set<AnyAsyncStore>;
-    };
-    const readers: Reader[] = [];
-    const regions: { key: string; tag: string; props: readonly (readonly [string, string | number | boolean | null])[] }[] = [];
+    type Input = { id: string; prop: string; store: AnyAsyncStore; membership: Set<AnyAsyncStore> };
+    type Owner = { cache: ComponentCache; inputs: Input[]; next: RuntimeElement };
+    const owners = new Map<OwnerId, Owner>();
+    const covered = new Set<string>();
     const seen = new Set<AnyAsyncStore>();
+    const regions: StorePropDelta[] = [];
     let outputChanged = false;
     const ownValue = (object: object, name: string) => {
       const descriptor = Object.getOwnPropertyDescriptor(object, name);
       return descriptor && "value" in descriptor ? descriptor.value : undefined;
     };
-    const current = () => readers.every(({ id, owner, store, cache, program, membership }) =>
+    const current = () => [...owners].every(([owner, { cache, inputs }]) =>
       this.#liveOwners.has(owner) && this.world.isAlive(owner) &&
-      this.#componentCache.get(owner) === cache &&
-      this.#liveStoreReaders.get(id) === membership && membership.size === 1 && membership.has(store) &&
-      componentCodeCurrent(cache.type) && ownValue(cache.props, program.storeProp) === store
+      this.#componentCache.get(owner) === cache && componentCodeCurrent(cache.type) &&
+      inputs.every(({ id, prop, store, membership }) =>
+        this.#liveStoreReaders.get(id) === membership && membership.size === 1 &&
+        membership.has(store) && ownValue(cache.props, prop) === store
+      ) && [...this.#liveStoreReaders.keys()].every((id) =>
+        !id.startsWith(`${owner}\u0000`) || covered.has(id)
+      )
     ) && [...this.#liveStoreReaders].every(([id, membership]) =>
-      ![...membership].some((store) => selectedStores.has(store)) ||
-      readers.some((reader) => reader.id === id && reader.membership === membership)
+      ![...membership].some((store) => selectedStores.has(store)) || covered.has(id)
     );
-    let delta: ReturnType<VDOMSnapshotRoot<H, Parent>["prepareStorePropDelta"]> = null;
-    try {
-      for (const [id, membership] of this.#liveStoreReaders) {
-        const participating = [...membership].filter((store) => selectedStores.has(store));
-        if (!participating.length) continue;
-        if (participating.length !== 1 || membership.size !== 1) throw new SparseCandidateIneligible();
-        const store = participating[0];
-        const split = id.indexOf("\u0000");
-        const owner = Number(id.slice(0, split));
-        const cache = this.#componentCache.get(owner);
-        const program = typeof cache?.type === "function"
-          ? (cache.type as SiteComponent<unknown> & { [componentMetadata]?: ComponentMetadata })[componentMetadata]?.closedStoreHostProgram
-          : undefined;
-        if (split <= 0 || !Number.isSafeInteger(owner) || !cache || !program ||
-          id !== `${owner}\u0000${program.storeUseSiteId}` ||
-          cache.subtreeOwners.size !== 1 || cache.ownEffects.size !== 0 ||
-          cache.propBoundSites.size !== 0 || cache.keyedRegion || cache.nativeBoundary ||
-          ownValue(cache.props, program.storeProp) !== store || !componentCodeCurrent(cache.type)) {
-          throw new SparseCandidateIneligible();
-        }
-        const value = stores.readClosedNumeric(store, id);
-        if (value === null) throw new SparseCandidateIneligible();
-        const output = evaluateClosedStoreHostProgram(program, value);
-        if (!output) throw new SparseCandidateIneligible();
-        const next = Object.freeze({ type: program.host.tag,
-          props: Object.freeze(Object.fromEntries([["key", program.host.key], ...output])) });
-        const previous = cache.expandedResult;
-        if (!previous || Array.isArray(previous) || typeof previous !== "object" ||
-          previous.type !== program.host.tag || previous.props.key !== program.host.key ||
-          (previous.props.children !== undefined && previous.props.children !== null && previous.props.children !== false)) {
-          throw new SparseCandidateIneligible();
-        }
-        outputChanged ||= output.some(([name, value]) => !Object.is(previous.props[name], value));
-        readers.push({ id, owner, store, cache, program, next, membership });
-        regions.push({ key: program.host.key, tag: program.host.tag, props: output });
-        seen.add(store);
-      }
-      if (seen.size !== selectedStores.size || !readers.length ||
-        (requireOutputChange && !outputChanged) || !current() || !stores.validate()) {
+    for (const [id, membership] of this.#liveStoreReaders) {
+      if (![...membership].some((store) => selectedStores.has(store))) continue;
+      const split = id.indexOf("\u0000");
+      const owner = Number(id.slice(0, split));
+      if (split <= 0 || !Number.isSafeInteger(owner)) throw new SparseCandidateIneligible();
+      if (owners.has(owner)) continue;
+      const cache = this.#componentCache.get(owner);
+      const program = typeof cache?.type === "function"
+        ? (cache.type as SiteComponent<unknown> & { [componentMetadata]?: ComponentMetadata })[componentMetadata]?.closedStoreHostProgram
+        : undefined;
+      if (!cache || !program || cache.subtreeOwners.size !== 1 ||
+        cache.ownEffects.size !== 0 || cache.propBoundSites.size !== 0 ||
+        cache.keyedRegion || cache.nativeBoundary || !componentCodeCurrent(cache.type)) {
         throw new SparseCandidateIneligible();
       }
-      delta = this.#vdom.prepareStorePropDelta(regions);
-      if (!delta || !current() || !stores.validate()) throw new SparseCandidateIneligible();
-    } catch (error) {
-      const errors = collectCleanupErrors([
-        () => stores.discard(), () => this.#discardUncommittedStoreRoots(stores),
-      ]);
-      if (error instanceof SparseCandidateIneligible && !errors.length) return null;
-      return throwWithCleanup(error, errors);
+      const inputs: Input[] = [];
+      const values: number[] = [];
+      for (const input of closedStoreHostInputs(program)) {
+        const inputId = `${owner}\u0000${input.storeUseSiteId}`;
+        const store = ownValue(cache.props, input.storeProp) as AnyAsyncStore;
+        const inputMembership = this.#liveStoreReaders.get(inputId);
+        if (!store || !inputMembership || inputMembership.size !== 1 ||
+          !inputMembership.has(store)) throw new SparseCandidateIneligible();
+        const value = stores.readClosedNumeric(store, inputId);
+        if (value === null) throw new SparseCandidateIneligible();
+        inputs.push({ id: inputId, prop: input.storeProp, store, membership: inputMembership });
+        values.push(value);
+        covered.add(inputId);
+        if (selectedStores.has(store)) seen.add(store);
+      }
+      const output = evaluateClosedStoreHostProgram(program, values);
+      const previous = cache.expandedResult;
+      if (!output || !previous || Array.isArray(previous) || typeof previous !== "object" ||
+        previous.type !== program.host.tag || previous.props.key !== program.host.key ||
+        (previous.props.children !== undefined && previous.props.children !== null && previous.props.children !== false)) {
+        throw new SparseCandidateIneligible();
+      }
+      outputChanged ||= output.some(([name, value]) => !Object.is(previous.props[name], value));
+      const next = Object.freeze({ type: program.host.tag,
+        props: Object.freeze(Object.fromEntries([["key", program.host.key], ...output])) });
+      owners.set(owner, { cache, inputs, next });
+      regions.push({ key: program.host.key, tag: program.host.tag, props: output });
     }
-    return this.#createCandidateLifecycle({
-      baseVersion: this.#publicationVersion, baseVDOMVersion: this.#vdom.version,
-      scope: { kind: "retained" }, stores, transitions: [], pendingResources: [], blocked: false,
-      codeCurrent: current,
-      validatePrepared: () => this.#vdom.isStorePropDeltaCurrent(delta!) && current() && stores.validate(),
-      validatePostHost: () => this.#vdom.isStorePropDeltaCurrent(delta!, { afterHost: true }) &&
-        current() && stores.validatePublicationInputs(),
-      commitHost: () => this.#vdom.applyStorePropDelta(delta!),
-      preparePublication: () => stores.preparePublicationAfterHost(),
+    if (seen.size !== selectedStores.size || (requireOutputChange && !outputChanged) ||
+      !current() || !stores.validate()) throw new SparseCandidateIneligible();
+    const ownerIds = new Set(owners.keys());
+    return {
+      owners: ownerIds, regions, current,
       publish: () => {
-        stores.publishAccepted();
-        for (const { owner, cache, next } of readers) {
+        for (const [owner, { next }] of owners) {
+          const cache = this.#componentCache.get(owner)!;
           this.#componentCache.set(owner, { ...cache, result: next, expandedResult: next });
           this.#refreshDirectKeyedRegionOutput(owner);
           for (const ancestor of this.world.ownerLineage(owner).slice(1)) {
@@ -1377,69 +1376,84 @@ export class ComponentStateRoot<H, Parent = H> {
             });
           }
         }
-        this.#publicationVersion++;
       },
-      installSubscriptions: () => [],
-      runEffects: () => { stores.notifyPublished(); return []; },
-      discard: () => stores.discard(),
-      releaseArtifacts: () => { readers.length = 0; regions.length = 0; delta = null; },
-      effectFailureMessage: "Store prop publication callbacks failed",
-    });
+      release: () => { owners.clear(); ownerIds.clear(); covered.clear(); regions.length = 0; },
+    };
+  }
+
+  #prepareClosedStoreCandidate(
+    selected: readonly AnyAsyncStore[], requireOutputChange: boolean,
+  ): NativeRootCandidate<H, Parent> | null {
+    return this.#prepareClosedInputCandidate([], selected, requireOutputChange);
   }
 
   /** Prepare a closed retained-prop cut; include every joint input cell. */
-  prepareRetained(
-    cells: readonly StateCellHandle[],
+  prepareRetained(cells: readonly StateCellHandle[]): NativeRootCandidate<H, Parent> | null {
+    return this.#prepareClosedInputCandidate(cells, []);
+  }
+
+  #prepareClosedInputCandidate(
+    cells: readonly StateCellHandle[], selected: readonly AnyAsyncStore[],
+    requireOutputChange = false,
   ): NativeRootCandidate<H, Parent> | null {
     this.#assertActive();
-    this.#assertNoPublicationBarrier("prepare retained props");
-    if (this.#pendingDirectIntent || this.#terminalHostFailed ||
-      this.#codeInvalidated || !cells.length) {
-      return null;
-    }
+    this.#assertNoPublicationBarrier("prepare closed inputs");
+    if (this.#pendingDirectIntent || (!cells.length && !selected.length)) return null;
     const captured = this.#captureRetainedCells(cells);
     if (!captured) return null;
     const { writes, sources } = captured;
-    const delta = this.#vdom.prepareRetainedSourceDelta(
-      writes.map(({ source, value }) => [source, value] as const),
-    );
-    if (!delta || delta.readSources.some(
-      (source) => !sources.has(source),
-    )) return null;
-    const codeCurrent = () => writes.every(({ handle }) => {
+    const stores = new StoreRenderTransaction(this.#rootId);
+    let closed: ClosedStoreOutputCut | null = null;
+    let program: import("./vdom_snapshot_runtime.ts").PreparedScopedKeyedRetainedProgram | null = null;
+    try {
+      if (selected.length) closed = this.#stageClosedStoreOutputs(selected, stores, requireOutputChange);
+      program = this.#vdom.prepareScopedKeyedRetainedAndStoreDeltas([], writes.map(
+        ({ source, value }) => [source, value] as const,
+      ), closed?.regions ?? []);
+      if (!program || program.readSources.some((source) => !sources.has(source))) {
+        throw new SparseCandidateIneligible();
+      }
+    } catch (error) {
+      const errors = collectCleanupErrors([
+        () => program?.discard(), () => closed?.release(), () => stores.discard(),
+        () => this.#discardUncommittedStoreRoots(stores),
+      ]);
+      if (error instanceof SparseCandidateIneligible && !errors.length) return null;
+      return throwWithCleanup(error, errors);
+    }
+    const codeCurrent = () => (closed?.current() ?? true) && writes.every(({ handle }) => {
       const cache = this.#componentCache.get(handle.owner);
       return cache !== undefined && componentCodeCurrent(cache.type);
     });
-    const stores = new StoreRenderTransaction(this.#rootId);
     const handles = writes.map(({ handle }) => handle);
     const versions = writes.map(({ version }) => version);
-    if (!this.#validateRetainedCells(writes, false) || !codeCurrent()) return null;
     return this.#createCandidateLifecycle({
-      baseVersion: this.#publicationVersion,
-      baseVDOMVersion: this.#vdom.version,
-      scope: { kind: "retained" },
-      stores,
-      transitions: [],
-      pendingResources: [],
-      blocked: false,
+      baseVersion: this.#publicationVersion, baseVDOMVersion: this.#vdom.version,
+      scope: { kind: "retained" }, stores, transitions: [], pendingResources: [], blocked: false,
       codeCurrent,
-      validatePrepared: () => this.#vdom.isRetainedSourceDeltaCurrent(delta) &&
-        this.#validateRetainedCells(writes, false),
-      validatePostHost: () => this.#vdom.isRetainedSourceDeltaCurrent(delta, { afterHost: true }) &&
-        this.#validateRetainedCells(writes, true),
-      commitHost: () => { this.#vdom.applyRetainedSourceDelta(delta); },
-      preparePublication: () => {},
+      validatePrepared: () => program!.validate() && this.#validateRetainedCells(writes, false) &&
+        (closed?.current() ?? true) && stores.validate(),
+      validatePostHost: () => program!.validatePostHost() && this.#validateRetainedCells(writes, true) &&
+        (closed?.current() ?? true) && stores.validatePublicationInputs(),
+      commitHost: () => program!.commit(),
+      preparePublication: () => stores.preparePublicationAfterHost(),
       publish: () => {
+        stores.publishAccepted();
+        closed?.publish();
         for (const write of writes) this.#lastSourceValues.set(write.source, write.value);
         this.world.clearCellChangesThrough(handles, versions, handles.length);
         this.#pendingChanges.clearNativeThrough(handles, versions, handles.length);
         this.#publicationVersion++;
       },
       installSubscriptions: () => [],
-      runEffects: () => [],
-      discard: () => {},
-      releaseArtifacts: () => { writes.length = 0; handles.length = 0; versions.length = 0; },
-      effectFailureMessage: "Retained prop publication callbacks failed",
+      runEffects: () => { stores.notifyPublished(); return []; },
+      discard: () => stores.discard(),
+      releaseArtifacts: () => {
+        program?.discard(); program = null;
+        closed?.release(); closed = null;
+        writes.length = 0; handles.length = 0; versions.length = 0;
+      },
+      effectFailureMessage: "Closed input publication callbacks failed",
     });
   }
 
@@ -4497,6 +4511,7 @@ export class ComponentStateRoot<H, Parent = H> {
       readonly selectedRegionKeys?: ReadonlySet<string>;
       readonly scopedStructural?: boolean;
       readonly scopedCells?: readonly StateCellHandle[];
+      readonly scopedStores?: readonly AnyAsyncStore[];
     },
   ): NativeRootCandidate<H, Parent> | null {
     if (this.#pendingCollectionRegionKeys.size === 0 ||
@@ -4542,8 +4557,8 @@ export class ComponentStateRoot<H, Parent = H> {
     const droppedReaderIds = new Set<string>();
     const renderedOwners = new Set<OwnerId>();
     const retiredOwners = new Set<OwnerId>();
-    const scopedTouchedOwners = new Set<OwnerId>();
     const privateOwners = new Set<OwnerId>();
+    let closedStoreOutputs: ClosedStoreOutputCut | null = null;
     const capturedBindings: Array<{
       binding: BoundValue<unknown>;
       sources: ScalarSource[];
@@ -4561,6 +4576,13 @@ export class ComponentStateRoot<H, Parent = H> {
     const scopedVersions: number[] = [];
     const validateScopedCells = (afterHost: boolean) =>
       this.#validateRetainedCells(scopedCellWrites, afterHost);
+    const hasScopedStoreReaderConflict = () => {
+      if (!options.scopedStructural) return false;
+      for (const owner of retiredOwners) {
+        if (this.#ownerHasStoreReaders(owner)) return true;
+      }
+      return false;
+    };
     const discardArtifacts = () => {
       try {
         preparation.discard();
@@ -4569,6 +4591,7 @@ export class ComponentStateRoot<H, Parent = H> {
         resourceReads?.discard();
         resourceReads = null;
         this.#discardUncommittedStoreRoots(stores);
+        closedStoreOutputs?.release(); closedStoreOutputs = null;
       }
     };
 
@@ -4589,6 +4612,9 @@ export class ComponentStateRoot<H, Parent = H> {
       }
 
       if (options.scopedStructural) {
+        if (options.scopedStores?.length) {
+          closedStoreOutputs = this.#stageClosedStoreOutputs(options.scopedStores, stores);
+        }
         const captured = this.#captureRetainedCells(options.scopedCells ?? []);
         if (!captured) throw new SparseCandidateIneligible();
         scopedCellWrites.push(...captured.writes);
@@ -4811,7 +4837,6 @@ export class ComponentStateRoot<H, Parent = H> {
             if (operation.type === "remove") {
               const previous = rowFor(stage, operation.key);
               if (!previous) throw new SparseCandidateIneligible();
-              if (options.scopedStructural) scopedTouchedOwners.add(previous.owner);
               if (options.scopedStructural &&
                 previous.cache.subtreeOwners.size !== 1
               ) throw new SparseCandidateIneligible();
@@ -4845,7 +4870,6 @@ export class ComponentStateRoot<H, Parent = H> {
               }
             } else if (operation.type === "move") {
               const row = rowFor(stage, operation.key);
-              if (options.scopedStructural && row) scopedTouchedOwners.add(row.owner);
               const anchor = operation.beforeKey === null
                 ? null
                 : rowFor(stage, operation.beforeKey);
@@ -4959,7 +4983,7 @@ export class ComponentStateRoot<H, Parent = H> {
 
       const affectedReaderIds = new Set<string>(droppedReaderIds);
       const readerOwners = new Map<number, string[]>();
-      for (const readerId of this.#liveStoreReaders.keys()) {
+      if (!options.scopedStructural) for (const readerId of this.#liveStoreReaders.keys()) {
         const split = readerId.indexOf("\u0000");
         if (split <= 0) throw new SparseCandidateIneligible();
         const owner = Number(readerId.slice(0, split));
@@ -4968,8 +4992,8 @@ export class ComponentStateRoot<H, Parent = H> {
         ids.push(readerId);
         readerOwners.set(owner, ids);
       }
-      if (options.scopedStructural &&
-        [...scopedTouchedOwners].some((owner) => readerOwners.has(owner))
+      if (options.scopedStructural && closedStoreOutputs &&
+        [...closedStoreOutputs.owners].some((owner) => retiredOwners.has(owner))
       ) throw new SparseCandidateIneligible();
 
       if (!options.scopedStructural) {
@@ -5144,6 +5168,7 @@ export class ComponentStateRoot<H, Parent = H> {
       if (resourceWasRead || preparation.hasStateWrites()) {
         throw new SparseCandidateIneligible();
       }
+      if (hasScopedStoreReaderConflict()) throw new SparseCandidateIneligible();
       if (options.scopedStructural && (
         leafRegions.length > 0 || leafCaches.size > 0 ||
         numericWrites.length > 0 || renderedOwners.size > 0 ||
@@ -5159,10 +5184,12 @@ export class ComponentStateRoot<H, Parent = H> {
         regionId: stage.region.siteId,
         operations: stage.operations,
       }));
-      if (options.scopedStructural && scopedCellWrites.length > 0) {
-        const joint = this.#vdom.prepareScopedKeyedAndRetainedDeltas(
+      if (options.scopedStructural && (scopedCellWrites.length > 0 ||
+        (closedStoreOutputs?.regions.length ?? 0) > 0)) {
+        const joint = this.#vdom.prepareScopedKeyedRetainedAndStoreDeltas(
           deltas,
           scopedCellWrites.map(({ source, value }) => [source, value] as const),
+          closedStoreOutputs?.regions ?? [],
         );
         if (!joint || joint.readSources.some((source) =>
           !scopedSources.has(source)
@@ -5190,7 +5217,7 @@ export class ComponentStateRoot<H, Parent = H> {
         }
       };
       for (const [owner, cache] of leafCaches) captureMixedValues(owner, cache);
-      for (const stage of stages.values()) {
+      if (!options.scopedStructural) for (const stage of stages.values()) {
         for (const row of stage.rows.values()) {
           if (row) captureMixedValues(row.owner, row.cache);
         }
@@ -5206,15 +5233,6 @@ export class ComponentStateRoot<H, Parent = H> {
         touchedCollections.every((stage) =>
           stage.region.collection.version >= stage.read.toVersion
         );
-      const hasScopedStoreReaderConflict = () => {
-        if (!options.scopedStructural) return false;
-        for (const owner of scopedTouchedOwners) {
-          for (const readerId of this.#liveStoreReaders.keys()) {
-            if (readerId.startsWith(`${owner}\u0000`)) return true;
-          }
-        }
-        return false;
-      };
       const validateScopedCache = () => !options.scopedStructural ||
         !hasScopedStoreReaderConflict() &&
         touchedCollections.every((stage) =>
@@ -5251,7 +5269,7 @@ export class ComponentStateRoot<H, Parent = H> {
         scopedSources.clear();
         scopedHandles.length = 0;
         scopedVersions.length = 0;
-        scopedTouchedOwners.clear();
+        closedStoreOutputs?.release(); closedStoreOutputs = null;
         privateOwners.clear();
         retiredOwners.clear();
         renderedOwners.clear();
@@ -5267,7 +5285,7 @@ export class ComponentStateRoot<H, Parent = H> {
         pendingResources: [],
         blocked: false,
         codeCurrent: () => cacheCodeCurrent(leafCaches.values()) &&
-          validateScopedCache() &&
+          validateScopedCache() && (closedStoreOutputs?.current() ?? true) &&
           scopedCellWrites.every(({ handle }) => {
             const cache = this.#componentCache.get(handle.owner);
             return cache !== undefined && componentCodeCurrent(cache.type);
@@ -5286,8 +5304,8 @@ export class ComponentStateRoot<H, Parent = H> {
           validateScopedCache() &&
           (resourceReads?.validate() ?? false) &&
           (preparedProgram?.validate() ?? false) &&
-          preparation.validate() && stores.validate() &&
-          validateScopedCells(false),
+          preparation.validate() && validateScopedCells(false) &&
+          (closedStoreOutputs?.current() ?? true) && stores.validate(),
         validatePostHost: () =>
           preparation.validatePublicationInputs() &&
           !preparation.hasStateWrites() &&
@@ -5298,9 +5316,8 @@ export class ComponentStateRoot<H, Parent = H> {
           (!options.scopedStructural ||
             committedProgram?.validatePostHost() === true) &&
           (resourceReads?.validate() ?? false) &&
-          preparation.validatePublicationInputs() &&
-          stores.validatePublicationInputs() &&
-          validateScopedCells(true),
+          preparation.validatePublicationInputs() && validateScopedCells(true) &&
+          (closedStoreOutputs?.current() ?? true) && stores.validatePublicationInputs(),
         preparePublication: () => {
           preparation.preparePublicationAfterHost();
           stores.preparePublicationAfterHost();
@@ -5402,14 +5419,15 @@ export class ComponentStateRoot<H, Parent = H> {
               if (previous && previous.owner !== candidate.owner) {
                 stage.ownerRegion.keysByOwner.delete(previous.owner);
               }
-              if (previous && previous.owner === candidate.owner) {
+              if (previous && previous.owner === candidate.owner &&
+                !options.scopedStructural) {
                 this.#syncOwnerSourceValues(
                   candidate.owner,
                   previous.cache,
                   candidate.cache.propBoundSites,
                   capturedMixedValues.get(candidate.owner),
                 );
-              } else {
+              } else if (!previous || previous.owner !== candidate.owner) {
                 for (const site of candidate.cache.propBoundSites) {
                   const source = this.world.scalarSource(candidate.owner, site);
                   if (source) {
@@ -5446,6 +5464,7 @@ export class ComponentStateRoot<H, Parent = H> {
               });
             }
           }
+          closedStoreOutputs?.publish();
           for (const [owner, cache] of leafCaches) {
             const previous = leafPreviousCaches.get(owner);
             if (previous) {
@@ -5497,7 +5516,7 @@ export class ComponentStateRoot<H, Parent = H> {
           } catch (error) {
             errors.push(error);
           }
-          if (!options.scopedStructural) {
+          if (!options.scopedStructural || closedStoreOutputs) {
             try {
               stores.notifyPublished();
             } catch (error) {
@@ -5548,7 +5567,6 @@ export class ComponentStateRoot<H, Parent = H> {
       leafRegions.length = 0;
       numericWrites.length = 0;
       numericSources.clear();
-      scopedTouchedOwners.clear();
       privateOwners.clear();
       retiredOwners.clear();
       renderedOwners.clear();
@@ -5771,6 +5789,11 @@ export class ComponentStateRoot<H, Parent = H> {
               discardCandidate();
               return false;
             }
+            if (row.cache.subtreeOwners.size !== 1 ||
+              this.#ownerHasStoreReaders(row.owner)) {
+              discardCandidate();
+              return false;
+            }
             overlay.set(operation.key, null);
             operations.push({ type: "remove", key: row.hostKey });
           } else if (operation.type === "move") {
@@ -5795,6 +5818,11 @@ export class ComponentStateRoot<H, Parent = H> {
               return false;
             }
             if (!isInsert && !previous) {
+              discardCandidate();
+              return false;
+            }
+            if (previous && (previous.cache.subtreeOwners.size !== 1 ||
+              this.#ownerHasStoreReaders(previous.owner))) {
               discardCandidate();
               return false;
             }
@@ -6343,6 +6371,15 @@ export class ComponentStateRoot<H, Parent = H> {
     this.world.clearChangesThrough(captured);
     this.#pendingChanges.clearThrough(captured);
     if (this.#pendingChanges.size > 0) this.#schedule();
+  }
+
+  #ownerHasStoreReaders(owner: OwnerId): boolean {
+    for (const readerId of this.#liveStoreReaders.keys()) {
+      if (readerId.startsWith(`${owner}\u0000`) ||
+        (readerId.startsWith("\u0000suspense-pending:") &&
+          readerId.includes(`:${owner}\u0000`))) return true;
+    }
+    return false;
   }
 
   #syncStoreReaders(

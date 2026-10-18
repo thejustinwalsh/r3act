@@ -333,6 +333,7 @@ export type PreparedKeyedVDOMProgram = {
   validate(): boolean;
   validatePostHost(): boolean;
   overlapsRetainedTargets(delta: PreparedRetainedSourceDelta): boolean;
+  overlapsStoreTargets(delta: PreparedStorePropDelta): boolean;
   commit(): void;
   discard(): void;
 };
@@ -2331,6 +2332,12 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         );
         return record.groups.some((group) => removedHandles.has(group.handle));
       },
+      overlapsStoreTargets: (delta) => {
+        const record = this.#storePropDeltas.get(delta);
+        return !record || record.targets.some((target) =>
+          replacedNodes.has(target.node)
+        );
+      },
       validate: () =>
         state === "prepared" && !this.#publicationFailed &&
         (scoped ? validateScoped() :
@@ -2434,47 +2441,71 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     deltas: readonly KeyedRegionDeltaRequest[],
     updates: readonly (readonly [ScalarSource, number])[],
   ): PreparedScopedKeyedRetainedProgram | null {
-    const retained = this.prepareRetainedSourceDelta(updates);
-    if (!retained) return null;
-    const keyed = this.prepareKeyedRegionDeltas(deltas, [], { scoped: true });
-    if (!keyed || keyed.structuralVersionDelta !== 1 ||
-      keyed.overlapsRetainedTargets(retained) || !keyed.validate() ||
-      !this.#isRetainedSourceDeltaCurrent(retained, undefined, true)) {
+    if (deltas.length === 0 || updates.length === 0) return null;
+    return this.prepareScopedKeyedRetainedAndStoreDeltas(deltas, updates, []);
+  }
+
+  /** Prepare one scoped keyed, retained-source and Store-prop publication. */
+  prepareScopedKeyedRetainedAndStoreDeltas(
+    deltas: readonly KeyedRegionDeltaRequest[],
+    updates: readonly (readonly [ScalarSource, number])[],
+    storeRegions: readonly StorePropDelta[],
+  ): PreparedScopedKeyedRetainedProgram | null {
+    if (!deltas.length && !updates.length && !storeRegions.length) return null;
+    const retained = updates.length ? this.prepareRetainedSourceDelta(updates) : null;
+    if (updates.length && !retained) return null;
+    const store = storeRegions.length ? this.prepareStorePropDelta(storeRegions) : null;
+    if (storeRegions.length && !store) return null;
+    const keyed = deltas.length
+      ? this.prepareKeyedRegionDeltas(deltas, [], { scoped: true })
+      : null;
+    if ((deltas.length && (!keyed || keyed.structuralVersionDelta !== 1)) ||
+      (retained && keyed?.overlapsRetainedTargets(retained)) ||
+      (store && keyed?.overlapsStoreTargets(store)) ||
+      (keyed && !keyed.validate()) ||
+      (retained && !this.#isRetainedSourceDeltaCurrent(retained, undefined, true)) ||
+      (store && !this.isStorePropDeltaCurrent(store))) {
       keyed?.discard();
       return null;
     }
     let state: "prepared" | "committed" | "discarded" = "prepared";
-    const program: PreparedScopedKeyedRetainedProgram = {
+    return {
       scoped: true,
-      structuralVersionDelta: 1,
-      readSources: retained.readSources,
-      overlapsRetainedTargets: (delta) => keyed.overlapsRetainedTargets(delta),
-      validate: () => state === "prepared" && keyed.validate() &&
-        !keyed.overlapsRetainedTargets(retained) &&
-        this.#isRetainedSourceDeltaCurrent(retained, undefined, true),
+      structuralVersionDelta: keyed?.structuralVersionDelta ?? 0,
+      readSources: retained?.readSources ?? [],
+      overlapsRetainedTargets: (delta) => keyed?.overlapsRetainedTargets(delta) ?? false,
+      overlapsStoreTargets: (delta) => keyed?.overlapsStoreTargets(delta) ?? false,
+      validate: () => state === "prepared" &&
+        (!keyed || keyed.validate()) &&
+        (!retained || !keyed?.overlapsRetainedTargets(retained)) &&
+        (!store || !keyed?.overlapsStoreTargets(store)) &&
+        (!retained || this.#isRetainedSourceDeltaCurrent(retained, undefined, true)) &&
+        (!store || this.isStorePropDeltaCurrent(store)),
       validatePostHost: () => state === "committed" &&
-        keyed.validatePostHost() &&
-        this.#isRetainedSourceDeltaCurrent(
-          retained,
-          { afterHost: true },
-          true,
-        ),
+        (!keyed || keyed.validatePostHost()) &&
+        (!retained || this.#isRetainedSourceDeltaCurrent(
+          retained, { afterHost: true }, true,
+        )) &&
+        (!store || this.isStorePropDeltaCurrent(store, { afterHost: true })),
       commit: () => {
-        if (state !== "prepared" || !keyed.validate() ||
-          keyed.overlapsRetainedTargets(retained)) {
+        if (state !== "prepared" ||
+          (keyed && !keyed.validate()) ||
+          (retained && keyed?.overlapsRetainedTargets(retained)) ||
+          (store && keyed?.overlapsStoreTargets(store)) ||
+          (store && !this.#isStorePropDeltaCurrent(store, false, true))) {
           throw new Error("Prepared scoped VDOM transaction is stale");
         }
         state = "committed";
-        this.#applyRetainedSourceDelta(retained, true);
-        keyed.commit();
+        if (retained) this.#applyRetainedSourceDelta(retained, true);
+        keyed?.commit();
+        if (store) this.applyStorePropDelta(store);
       },
       discard: () => {
         if (state === "discarded") return;
         if (state === "prepared") state = "discarded";
-        keyed.discard();
+        keyed?.discard();
       },
     };
-    return program;
   }
 
   /**
@@ -2958,22 +2989,31 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     token: PreparedStorePropDelta,
     options: { afterHost?: boolean } = {},
   ): boolean {
+    return this.#isStorePropDeltaCurrent(token, options.afterHost === true, false);
+  }
+
+  #isStorePropDeltaCurrent(
+    token: PreparedStorePropDelta,
+    afterHost: boolean,
+    allowActivePublication: boolean,
+  ): boolean {
     const record = this.#storePropDeltas.get(token);
     if (!record || this.#publicationFailed || this.#compiledGraph !== null ||
       hostPropWriter(this.host) !== record.writer ||
       this.#numericWriteInProgress) {
       return false;
     }
-    if (options.afterHost) {
+    if (afterHost) {
       if (!record.applied || !record.publicationToken ||
         this.#publicationToken !== record.publicationToken ||
         this.#version !== record.appliedVersion) return false;
-    } else if (record.applied || this.#publicationToken) return false;
+    } else if (record.applied ||
+      (allowActivePublication ? !this.#publicationToken : !!this.#publicationToken)) return false;
     for (const target of record.targets) {
       const { node, vnode, parent, bucket } = target;
       if (node.hostDisposed || node.handle !== target.handle ||
         node.parent !== parent || node.vnode !==
-          (options.afterHost ? target.next : vnode) ||
+          (afterHost ? target.next : vnode) ||
         this.#nodesByKey.get(vnode.key!)?.size !== 1 ||
         !this.#nodesByKey.get(vnode.key!)?.has(node) ||
         node.scalarBindingGroups?.size ||

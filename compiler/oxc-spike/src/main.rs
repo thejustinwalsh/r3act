@@ -4346,8 +4346,8 @@ fn closed_store_host_property_name(tag: &str, name: &str) -> bool {
 }
 
 fn closed_store_host_expression(
-    expression: &Expression<'_>, value_symbol: SymbolId, semantic: &Semantic<'_>,
-    source: &str, site_id: &str,
+    expression: &Expression<'_>, value_sites: &BTreeMap<SymbolId, String>,
+    source_sites: &[String], semantic: &Semantic<'_>, source: &str,
 ) -> Option<serde_json::Value> {
     let expression_span = expression.span();
     let mut references = Vec::new();
@@ -4355,18 +4355,19 @@ fn closed_store_host_expression(
         expression,
         owner_update_program::ClosedExpressionPolicy::Primitive,
         &mut |identifier| {
-            if reference_symbol(identifier, semantic) != Some(value_symbol) { return false; }
+            let Some(site_id) = reference_symbol(identifier, semantic)
+                .and_then(|symbol| value_sites.get(&symbol)) else { return false; };
             references.push(StateReference {
                 start: identifier.span.start - expression_span.start,
                 end: identifier.span.end - expression_span.start,
-                site_id: site_id.to_owned(),
+                site_id: site_id.clone(),
             });
             true
         },
     ) { return None; }
     let sink = Sink {
         owner_program_id: String::new(), sink_id: String::new(),
-        source_sites: vec![site_id.to_owned()],
+        source_sites: source_sites.to_vec(),
         expression: slice(source, span(expression_span.start, expression_span.end)).to_owned(),
         references,
     };
@@ -4378,51 +4379,69 @@ fn closed_store_host_program(
     node: &Function<'_>, component: &ComponentStateSiteIr,
     semantic: &Semantic<'_>, source: &str, revision: &str,
 ) -> Option<serde_json::Value> {
+    let input_count = component.store_sites.len();
     if node.r#async || node.generator || node.params.items.len() != 1 ||
         node.params.rest.is_some() || !component.state_sites.is_empty() ||
         !component.effect_sites.is_empty() || !component.collection_sites.is_empty() ||
-        component.store_sites.len() != 1 || component.store_sites[0].hook_name != "use"
+        !(1..=8).contains(&input_count) || component.store_sites.iter().any(|site| site.hook_name != "use")
     { return None; }
     let parameter = &node.params.items[0];
     if parameter.optional || parameter.initializer.is_some() { return None; }
     let (props_symbol, destructured) = match &parameter.pattern {
-        BindingPattern::BindingIdentifier(identifier) => (identifier.symbol_id.get(), None),
-        BindingPattern::ObjectPattern(pattern) if pattern.rest.is_none() && pattern.properties.len() == 1 => {
-            let property = &pattern.properties[0];
-            let BindingPattern::BindingIdentifier(local) = &property.value else { return None; };
-            if property.computed { return None; }
-            (None, Some((type_property_name(&property.key)?.to_owned(), local.symbol_id.get()?)))
+        BindingPattern::BindingIdentifier(identifier) => (identifier.symbol_id.get(), BTreeMap::new()),
+        BindingPattern::ObjectPattern(pattern) if pattern.rest.is_none() &&
+            !pattern.properties.is_empty() && pattern.properties.len() <= input_count => {
+            let mut names = BTreeMap::new();
+            for property in &pattern.properties {
+                let BindingPattern::BindingIdentifier(local) = &property.value else { return None; };
+                if property.computed { return None; }
+                names.insert(local.symbol_id.get()?, type_property_name(&property.key)?.to_owned());
+            }
+            (None, names)
         }
         _ => return None,
     };
     let body = node.body.as_ref()?;
-    if !body.directives.is_empty() || body.statements.len() != 2 { return None; }
-    let declaration = match body.statements.first()?.as_declaration()? {
-        Declaration::VariableDeclaration(declaration)
-            if declaration.kind == oxc_ast::ast::VariableDeclarationKind::Const &&
-                declaration.declarations.len() == 1 => declaration,
-        _ => return None,
-    };
-    let declarator = &declaration.declarations[0];
-    let BindingPattern::BindingIdentifier(value_binding) = &declarator.id else { return None; };
-    let value_symbol = value_binding.symbol_id.get()?;
-    let Expression::CallExpression(call) = declarator.init.as_ref()? else { return None; };
-    let store_site = &component.store_sites[0];
-    if call.arguments.len() != 1 || store_site.call.start != call.span.start ||
-        store_site.call.end != call.span.end { return None; }
-    let argument = call.arguments.first()?.as_expression()?;
-    let store_prop = if let Expression::StaticMemberExpression(member) = argument {
-        let Expression::Identifier(object) = &member.object else { return None; };
-        if props_symbol.is_none() || reference_symbol(object, semantic) != props_symbol { return None; }
-        member.property.name.to_string()
-    } else if let Expression::Identifier(identifier) = argument {
-        let (name, symbol) = destructured.as_ref()?;
-        if reference_symbol(identifier, semantic) != Some(*symbol) { return None; }
-        name.clone()
-    } else { return None; };
-    if !store_prop.bytes().next().is_some_and(|byte| byte.is_ascii_alphabetic() || byte == b'_' || byte == b'$') ||
-        !store_prop.bytes().all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'$') { return None; }
-    let Statement::ReturnStatement(return_statement) = body.statements.get(1)? else { return None; };
+    if !body.directives.is_empty() || body.statements.len() != input_count + 1 { return None; }
+    let mut value_sites = BTreeMap::new();
+    let mut source_sites = Vec::new();
+    let mut inputs = Vec::<serde_json::Value>::new();
+    let mut used_destructured = BTreeSet::new();
+    for index in 0..input_count {
+        let declaration = match body.statements.get(index)?.as_declaration()? {
+            Declaration::VariableDeclaration(declaration)
+                if declaration.kind == oxc_ast::ast::VariableDeclarationKind::Const &&
+                    declaration.declarations.len() == 1 => declaration,
+            _ => return None,
+        };
+        let declarator = &declaration.declarations[0];
+        let BindingPattern::BindingIdentifier(value_binding) = &declarator.id else { return None; };
+        let value_symbol = value_binding.symbol_id.get()?;
+        let Expression::CallExpression(call) = declarator.init.as_ref()? else { return None; };
+        let store_site = &component.store_sites[index];
+        if call.arguments.len() != 1 || store_site.call.start != call.span.start ||
+            store_site.call.end != call.span.end { return None; }
+        let argument = call.arguments.first()?.as_expression()?;
+        let store_prop = if let Expression::StaticMemberExpression(member) = argument {
+            let Expression::Identifier(object) = &member.object else { return None; };
+            if props_symbol.is_none() || reference_symbol(object, semantic) != props_symbol { return None; }
+            member.property.name.to_string()
+        } else if let Expression::Identifier(identifier) = argument {
+            let symbol = reference_symbol(identifier, semantic)?;
+            let name = destructured.get(&symbol)?;
+            used_destructured.insert(symbol);
+            name.clone()
+        } else { return None; };
+        if !store_prop.bytes().next().is_some_and(|byte| byte.is_ascii_alphabetic() || byte == b'_' || byte == b'$') ||
+            !store_prop.bytes().all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'$') { return None; }
+        source_sites.push(store_site.site_id.clone());
+        value_sites.insert(value_symbol, store_site.site_id.clone());
+        inputs.push(serde_json::json!({
+            "storeUseSiteId": store_site.site_id, "storeProp": store_prop,
+        }));
+    }
+    if props_symbol.is_none() && used_destructured.len() != destructured.len() { return None; }
+    let Statement::ReturnStatement(return_statement) = body.statements.get(input_count)? else { return None; };
     let mut return_expression = return_statement.argument.as_ref()?;
     while let Expression::ParenthesizedExpression(parenthesized) = return_expression {
         return_expression = &parenthesized.expression;
@@ -4448,21 +4467,27 @@ fn closed_store_host_program(
             if !closed_store_host_property_name(tag, name) || !seen.insert(name.to_owned()) { return None; }
             let JSXAttributeValue::ExpressionContainer(container) = attribute.value.as_ref()? else { return None; };
             let expression = container.expression.as_expression()?;
-            let program = closed_store_host_expression(expression, value_symbol,
-                semantic, source, &store_site.site_id)?;
+            let program = closed_store_host_expression(expression, &value_sites,
+                &source_sites, semantic, source)?;
             props.push(serde_json::json!([name, program]));
         }
     }
     if props.is_empty() { return None; }
     let key = key?;
-    Some(serde_json::json!({
-        "schemaVersion": 1,
+    let mut program = serde_json::json!({
         "componentProgramId": component.component_site_id,
         "moduleRevision": revision,
-        "storeUseSiteId": store_site.site_id,
-        "storeProp": store_prop,
         "host": { "tag": tag, "key": key, "props": props, "child": null }
-    }))
+    });
+    if input_count == 1 {
+        program["schemaVersion"] = serde_json::json!(1);
+        program["storeUseSiteId"] = inputs[0]["storeUseSiteId"].clone();
+        program["storeProp"] = inputs[0]["storeProp"].clone();
+    } else {
+        program["schemaVersion"] = serde_json::json!(2);
+        program["inputs"] = serde_json::json!(inputs);
+    }
+    Some(program)
 }
 
 struct ClosedStoreHostCollector<'p, 'a> {
@@ -7474,7 +7499,54 @@ export function Label() { const [label] = useState("ready"); return <span data-l
     }
 
     #[test]
-    fn emits_closed_store_host_program_only_for_one_numeric_use_and_closed_leaf() {
+    fn emits_ordered_joint_store_host_program_with_symbol_mapped_inputs() {
+        let response = compile_state(
+            "native-joint-store-host.tsx",
+            include_str!("../../fixtures/native-joint-store-host.tsx"),
+        );
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let plan = response.plan.unwrap();
+        let revision = plan.module_revision.clone();
+        let components = plan.components.unwrap();
+        for (name, props) in [
+            ("Joint", vec!["position", "camera"]),
+            ("Destructured", vec!["position", "camera"]),
+            ("SameStoreTwice", vec!["position", "position"]),
+            ("DestructuredTwice", vec!["position", "position"]),
+        ] {
+            let component = components.iter().find(|component| component.name == name).unwrap();
+            let program = component.closed_store_host_program.as_ref().unwrap();
+            assert_eq!(program["schemaVersion"], 2);
+            assert_eq!(program["componentProgramId"], component.component_site_id);
+            assert_eq!(program["moduleRevision"], revision);
+            assert_eq!(program["inputs"].as_array().unwrap().len(), 2);
+            for (index, prop) in props.iter().enumerate() {
+                assert_eq!(program["inputs"][index]["storeUseSiteId"],
+                    component.store_sites[index].site_id);
+                assert_eq!(program["inputs"][index]["storeProp"], *prop);
+            }
+        }
+        let joint = components.iter().find(|component| component.name == "Joint").unwrap();
+        let program = joint.closed_store_host_program.as_ref().unwrap();
+        assert_eq!(program["host"]["props"][0][1], serde_json::json!({
+            "kind":"binary","operator":"+",
+            "left":{"kind":"input","index":0},
+            "right":{"kind":"input","index":1}
+        }));
+        assert_eq!(program["host"]["props"][1][1]["kind"], "conditional");
+        for component in components.iter().filter(|component| !matches!(
+            component.name.as_str(), "Joint" | "Destructured" | "SameStoreTwice" | "DestructuredTwice"
+        )) {
+            assert!(component.closed_store_host_program.is_none(),
+                "{} unexpectedly closed", component.name);
+        }
+        let code = plan.component_module.unwrap();
+        assert_eq!(code.matches("closedStoreHostProgram:").count(), 4);
+        assert!(code.contains("\"schemaVersion\":2"));
+    }
+
+    #[test]
+    fn emits_closed_store_host_program_for_bounded_direct_numeric_uses_and_closed_leaf() {
         let response = compile_state(
             "native-closed-store-host.tsx",
             include_str!("../../fixtures/native-closed-store-host.tsx"),
@@ -7506,13 +7578,27 @@ export function Label() { const [label] = useState("ready"); return <span data-l
         assert_eq!(dom_program["host"]["tag"], "div");
         assert_eq!(dom_program["host"]["props"][0][0], "data-value");
         assert_eq!(dom_program["host"]["props"][0][1]["kind"], "conditional");
+        let multi = components.iter().find(|component| component.name == "MultipleHooks").unwrap();
+        let multi_program = multi.closed_store_host_program.as_ref().unwrap();
+        assert_eq!(multi_program["schemaVersion"], 2);
+        assert_eq!(multi_program["componentProgramId"], multi.component_site_id);
+        assert_eq!(multi_program["moduleRevision"], revision);
+        assert_eq!(multi_program["inputs"], serde_json::json!([
+            {"storeUseSiteId": multi.store_sites[0].site_id, "storeProp": "store"},
+            {"storeUseSiteId": multi.store_sites[1].site_id, "storeProp": "other"},
+        ]));
+        assert_eq!(multi_program["host"]["props"][0][1], serde_json::json!({
+            "kind":"binary","operator":"+",
+            "left":{"kind":"input","index":0},
+            "right":{"kind":"input","index":1}
+        }));
         for component in components.iter().filter(|component|
-            component.name != "Mesh" && component.name != "Dom") {
+            !matches!(component.name.as_str(), "Mesh" | "Dom" | "MultipleHooks")) {
             assert!(component.closed_store_host_program.is_none(),
                 "{} unexpectedly closed", component.name);
         }
         let code = plan.component_module.unwrap();
-        assert_eq!(code.matches("closedStoreHostProgram:").count(), 2);
+        assert_eq!(code.matches("closedStoreHostProgram:").count(), 3);
         assert!(code.contains("closedStoreHostProgram: {"));
     }
 

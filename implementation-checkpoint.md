@@ -1,5 +1,16 @@
 # Implementation checkpoint
 
+## Joint Store, World and collection cuts — 18 October 2026
+
+The compiler now supports two to eight direct numeric Store inputs into one closed primitive host leaf, preserving schema 1. Dependencies select affected consumers; complete joint inputs are captured without selecting unrelated consumers of read dependencies. `prepareTransaction({ cells, collections, stores })` / `enqueueTransaction` combine supported Store, local-state and keyed cuts under the existing lifecycle. Pure moves retain identity/readers and leave unselected numeric history alone. Store-reading and nested row retirement takes generic reconciliation; verification found and fixed a stale reader left by the direct removal/replacement route. Full-tree guards, exact acknowledgements, newer actions, per-root histories and resource ownership remain. See [source contract](implementation/2026-10-18-joint-inputs/design.md) and [results](implementation/2026-10-18-joint-inputs/results.md).
+
+Consolidated correctness passes **888 runtime tests**, **45 Rust tests**, native tooling, **fourteen compiled execution fixtures**, **seven Three cases**, both bounded retention checks and a fresh five-package installed consumer. All **731 inputs** match the final gate. Earlier failures and the detected v2 test-rename freeze race remain preserved; the final source is locked. New actual compiled grouped DOM/Three execution checks shared Store/World/collection publication beside an unrelated pending resource and balanced lifetime.
+
+The single offline headless transaction-to-matching-MutationObserver pair observed **6.7 / 0.6 ms Native/React**, with about 0.1 ms timer quantum. Native was slower. Outputs, retained identity/state, pending fallback, later reveal and empty teardown pass; **726 source/artifact hashes** match before/after. Mount was 10.4/4.4 ms, disposal 1.1/0.4 ms; JavaScript 502,770 bytes. This includes scheduling/delivery before paint, native handle capture/queue work versus React `flushSync`, and establishes no CPU, tail, physical-input, presentation or product qualification. No timing retry or server/network/TLS/trust action occurred.
+
+The first-pass goal remains active. General selectors/resource/structural admission, compiler portability, cold/retained-memory and independent-device qualification remain open. Human participants remain zero. No new physical layout or maintenance advantage is claimed; historic wins and dense FAIL retain their original scope.
+
+
 ## Closed Store host boundary — 18 October 2026
 
 The compiler-proven direct numeric Store subset now reaches DOM and Three host props without rerunning an authored component, selector or reducer during closed preparation. Explicit `prepareStores` / `enqueueStores` cuts include every accepted reader of each selected Store. Ordinary flush also admits changed closed outputs beside an observed pending resource. Mounted VNode/writer identity and existing Store root version/epoch govern conflicts; selected leaf/cache deltas merge against current state, while whole-tree candidates keep whole-root guards. Newer host-time actions, unrelated histories and resource ownership survive. Opaque readers, invisible transitions and unsupported shapes remain generic.

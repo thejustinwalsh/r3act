@@ -86,12 +86,13 @@ export type NativeCollectionRootWork = Omit<NativeRetainedRootWork, "roots"> & {
   }[];
 };
 
-/** A declared joint cut over retained cells and selected collection edits. */
+/** A declared joint cut over retained cells, collection edits, and Stores. */
 export type NativeTransactionRootWork = Omit<NativeRetainedRootWork, "roots"> & {
   readonly roots: readonly {
     readonly root: NativeRoot;
     readonly cells: readonly StateCellHandle[];
     readonly collections: readonly KeyedCollection<any>[];
+    readonly stores?: readonly AnyAsyncStore[];
   }[];
 };
 
@@ -177,12 +178,14 @@ export class NativeRootWorkQueue {
   enqueueTransaction(work: NativeTransactionRootWork): NativeRootWorkHandle {
     return this.#enqueuePrepared(
       work,
-      work.roots.map(({ root, cells, collections }) => ({
+      work.roots.map(({ root, cells, collections, stores }) => ({
         root,
         cells: Object.freeze([...cells]),
         collections: Object.freeze([...collections]),
+        stores: Object.freeze([...(stores ?? [])]),
       })),
-      ({ root, cells, collections }) => root.prepareTransaction({ cells, collections }),
+      ({ root, cells, collections, stores }) =>
+        root.prepareTransaction({ cells, collections, stores }),
     );
   }
 
