@@ -1,0 +1,40 @@
+Check src/native_prepared_row_cut_test.ts
+Check src/compiled_owner_binding_test.ts
+Check src/direct_cell_capability_test.ts
+Check src/prepared_owner_row_program_test.ts
+running 6 tests from ./src/native_prepared_row_cut_test.ts
+owner-row Root cuts use captured sparse and dense inputs without rerender ... ok (5ms)
+owner-row null retry cannot publish or acknowledge before acceptance ... ok (0ms)
+owner-row host reentry leaves newer work pending and preserves outer outputs ... ok (0ms)
+owner-row host failure is terminal and never acknowledges the failed cut ... ok (1ms)
+owner-row accepted no-write cut acknowledges without retry or publication ... ok (0ms)
+owner-row dispose during first writer cancels remaining writes and releases cut ... ok (0ms)
+running 5 tests from ./src/compiled_owner_binding_test.ts
+layout program IDs are normalized, frozen, signature-bearing and component-scoped ... ok (0ms)
+v1 and v2 bindings retain compatibility and expose only valid owner metadata ... ok (4ms)
+V2 owner mismatch keeps numeric binding but withholds owner association ... ok (0ms)
+multi-source V2 promotion projects actual strings and undefined without coercion ... ok (0ms)
+invalid v2 descriptors reject empty owner IDs and duplicate dependencies ... ok (0ms)
+running 8 tests from ./src/direct_cell_capability_test.ts
+direct capabilities preserve copied handle aliases and cached row views ... ok (1ms)
+forged, proxied, foreign, and mismatched identities fail closed ... ok (0ms)
+all address getters run once before capability resolution ... ok (0ms)
+batch acknowledgement snapshots both arrays before resolving handles ... ok (0ms)
+row leases scrub source slots and reject a reused row generation ... ok (0ms)
+acknowledgement preserves newer writes and retains future-cut behavior ... ok (0ms)
+updater destruction revokes existing capabilities before row release ... ok (0ms)
+throwing outer address getters fail without resolving identity ... ok (0ms)
+running 10 tests from ./src/prepared_owner_row_program_test.ts
+prepared owner rows project multi-source sinks from sparse captured cuts ... ok (2ms)
+prepared owner row guard rejects reentry and disposal cancels later sinks ... ok (0ms)
+prepared owner row projector failure occurs before any host write ... ok (0ms)
+prepared owner rows preserve forced writes for stable mutable outputs ... ok (0ms)
+prepared owner rows reject v1 and unassociated bindings ... ok (0ms)
+owner-row first dirty cut survives preparation after the column write ... ok (0ms)
+owner-row dirty fanouts preserve packed source and row order ... ok (0ms)
+owner-row stale untouched lease dependencies decline atomically ... ok (0ms)
+owner-row work visits grow linearly across one thousand rows ... ok (16ms)
+owner-row unused absent slots are accepted and v2 unary stays eligible ... ok (0ms)
+
+ok | 29 passed | 0 failed (156ms)
+

@@ -31,6 +31,18 @@ presentation remain part of its proof burden. The historical evidence and
 current counterevidence are kept distinct in the [empirical appendix](./empirical-appendix.md)
 and [notebook](./research.ipynb).
 
+## Structured Store host values — 18 October 2026
+
+Store schema 3 now supports compiler-proven DOM style records and stable Three position/rotation/scale tuples over one to eight direct numeric Store inputs. Schemas 1/2 remain supported. Store and resource metadata share one aggregate normalizer/evaluator; the compiler freezes eligible fresh tuple literals before their first host write. Selected leaf/cache deltas retain existing publication, complete reader coverage, exact acknowledgements, newer actions, fork histories and whole-tree guards. Unsupported consumers and mutable generic old tuples remain conservative.
+
+Consolidated correctness passes **929 runtime tests, zero failures, exit 0**, **54 Rust tests**, **24 artifact checks**, **seventeen actual compiled fixtures**, **seven Three cases**, two bounded retention checks and fresh five-package consumption (**458 archived files**). All **792 correctness inputs** match. Actual compiled DOM/Three execution verifies structured outputs, joint Store transactions beside pending work, fork histories and balanced resources. The preflight environment error, Rust assertion type error and stale primitive-only test expectation remain preserved; product source was unchanged by the two Rust test repairs.
+
+The sole offline headless transaction-to-MutationObserver pair observed **4.2 / 0.8 ms Native/React**, with about **0.1 ms** timer quantum. Native was slower. Matching structured outputs, retained host/row identity and local state, pending health fallback, later reveal and empty teardown pass; all **742 source/compiler/artifact hashes** match before and after. Mount was **8.4 / 5.7 ms**, disposal **0.8 / 0.4 ms**, combined JavaScript **520,110 bytes**. This includes native handle capture/queue work versus React flushSync and observer delivery before paint; one fixed-order observation does not qualify CPU, physical input, tails, presentation, cold/memory, independent-device or general speed. No timing retry or project server ran.
+
+The full-plan first-pass goal remains active. General selectors/resource/structural admission, Linux/other-platform execution, cold/retained-memory and independent-device product gates remain open. Apple container 1.5.0 and storage are on Depot, but startup still awaits the existing native administrator dialog to enable volume ownership. Human participants remain zero, with no maintenance advantage claim. Historic stable-binding wins, integrated dense FAIL and exhausted Recording A retain their original scope; no new physical layout is selected.
+
+See [source-locked results and preserved failures](implementation/2026-10-18-store-values/results.md).
+
 ## Direct intent and ordinary prop continuation — 18 October 2026
 
 After the earlier scoped-publication checkpoint, `85b34ee` drains multiple supported ready boundaries through independent receipts, and `154cdc7` integrates ordinary closed numeric prop updates beside unrelated pending resources. The subsequent source-locked direct-intent slice preserves latest requested trees and observed Store leases across suspension, handles newer World/Store/resource wakes, and releases cancelled/removed tree payloads held by closed candidates. Whole-tree bases and conservative scoped admission remain. Resource-version getter callbacks now run before accepted publication. The compiled Root fixture covers the public update contract used by the migration bridge; it is not a new React DOM bridge test.

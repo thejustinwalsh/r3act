@@ -1,0 +1,138 @@
+--- scripts/verify_product_mixed_compiled_owner_rows_evidence_v2.mjs	2026-10-13 08:31:35
++++ scripts/verify_product_mixed_compiled_owner_rows_evidence_v3.mjs	2026-10-13 08:35:23
+@@ -13,7 +13,7 @@
+ const finalResultsPath = `${rawDir}/FINALresults.json`;
+ const originalSummaryPath = `${rawDir}/summary.json`;
+ const summaryPath = `${rawDir}/summary-v2.json`;
+-const verificationPath = `${rawDir}/verification-v2.json`;
++const verificationPath = `${rawDir}/verification-v3.json`;
+ const checkpoint = "implementation/2026-10-13-compiled-owner-rows";
+ const statusPath = `${checkpoint}/status.json`;
+ const archivePath = `${checkpoint}/source-and-evidence.tar.gz`;
+@@ -43,6 +43,7 @@
+ const verifierPath = "scripts/verify_product_mixed_compiled_owner_rows_evidence.mjs";
+ const v2AnalyzerPath = "scripts/summarize_product_mixed_compiled_owner_rows_v2.mjs";
+ const v2VerifierPath = "scripts/verify_product_mixed_compiled_owner_rows_evidence_v2.mjs";
++const v3VerifierPath = "scripts/verify_product_mixed_compiled_owner_rows_evidence_v3.mjs";
+ const pilotVerifierPath = "scripts/verify_product_mixed_compiled_owner_rows_pilot.mjs";
+ const buildDirectory = "dist-product-mixed-compiled-owner-rows";
+ const schedulePath = "src/browser/product_mixed_schedule.ts";
+@@ -516,15 +517,44 @@
+ for (const [filename, expected] of Object.entries(prereg.inputLocks)) {
+   assert.equal(await hashFile(filename), expected, `Prerecorded input changed: ${filename}`);
+ }
+-assert.equal(prereg.proof.authoredOwnerRow.path, authoredOwnerRowProofPath);
+-assert.equal(prereg.proof.authoredOwnerRow.sha256, await hashFile(authoredOwnerRowProofPath));
++assert.equal(prereg.proof.compiledOwnerRow.path, authoredOwnerRowProofPath);
++assert.equal(prereg.proof.compiledOwnerRow.sha256, await hashFile(authoredOwnerRowProofPath));
++assert.equal(prereg.proof.compiledOwnerRow.status, authoredOwnerRowProof.status);
++assert.deepEqual(prereg.proof.compiledOwnerRow.ownerRowPrograms, authoredOwnerRowProof.ownerRowPrograms);
++assert.deepEqual(prereg.proof.compiledOwnerRow.assertions, authoredOwnerRowProof.assertions);
++const ownerMeta = prereg.proof.compiledOwnerRow.currentNativeBindingV2OwnerMeta;
++assert.equal(ownerMeta.authoredSource.path, authoredOwnerRowProof.authoredSource);
++assert.equal(ownerMeta.emittedModule.path, authoredOwnerRowProof.emittedModule);
++for (const metadata of Object.values(ownerMeta)) {
++  assert.equal(await hashFile(metadata.path), metadata.sha256, `Authored owner-row metadata input changed: ${metadata.path}`);
++}
+ assert.equal(prereg.proof.actualThreeOwnerRow.path, actualThreeOwnerRowProofPath);
+ assert.equal(prereg.proof.actualThreeOwnerRow.sha256, await hashFile(actualThreeOwnerRowProofPath));
+-assert.deepEqual(prereg.proof.authoredOwnerRow.assertions, authoredOwnerRowProof.assertions);
++assert.equal(prereg.proof.actualThreeOwnerRow.status, actualThreeOwnerRowProof.status);
++assert.equal(prereg.proof.actualThreeOwnerRow.ownerProgramId, actualThreeOwnerRowProof.ownerProgramId);
++assert.deepEqual(prereg.proof.actualThreeOwnerRow.numericOwnerRowCut, actualThreeOwnerRowProof.numericOwnerRowCut);
+ assert.deepEqual(prereg.proof.actualThreeOwnerRow.assertions, actualThreeOwnerRowProof.assertions);
+-assert.equal(prereg.proof.pilotManifestPath, pilotManifestPath);
+-assert.equal(prereg.proof.pilotManifestSha256, await hashFile(pilotManifestPath));
+-assert.deepEqual(prereg.proof.pilotPageHashes, pilotHashes);
++assert.deepEqual(prereg.proof.actualThreeOwnerRow.threeObjectIdentity, actualThreeOwnerRowProof.threeObjectIdentity);
++const productionPilotProof = prereg.proof.productionPilot;
++assert.equal(productionPilotProof.path, pilotManifestPath);
++assert.equal(productionPilotProof.sha256, await hashFile(pilotManifestPath));
++assert.equal(productionPilotProof.status, pilotManifest.status);
++assert.equal(productionPilotProof.scope, pilotManifest.scope);
++assert.deepEqual(productionPilotProof.pageFiles, pilotManifest.pageFiles);
++assert.deepEqual(productionPilotProof.pageSha256, pilotHashes);
++assert.deepEqual(productionPilotProof.sourceArchive, pilotManifest.sourceArchive);
++assert.deepEqual(productionPilotProof.productionSha256, pilotManifest.productionSha256);
++assert.deepEqual(productionPilotProof.servedAssetSha256, pilotManifest.servedAssetSha256);
++assert.deepEqual(productionPilotProof.assetPreflight, pilotManifest.assetPreflight);
++assert.deepEqual(productionPilotProof.engineEpoch, pilotManifest.engineEpoch);
++assert.deepEqual(productionPilotProof.chromiumDiagnostic, pilotManifest.chromiumDiagnostic);
++assert.deepEqual(productionPilotProof.verifier, {
++  path: pilotVerifierPath,
++  sha256: prereg.inputLocks[pilotVerifierPath],
++});
++assert.deepEqual(productionPilotProof.compilerProofs, pilotManifest.compilerProofs);
++assert.deepEqual(productionPilotProof.authoredOwnerRowProof, pilotManifest.authoredOwnerRowProof);
++assert.deepEqual(productionPilotProof.actualThreeOwnerRowProof, pilotManifest.actualThreeOwnerRowProof);
+ assert.equal(prereg.proof.compilerEmission.numericProgramDescriptors, 3);
+ assert.equal(prereg.proof.compilerEmission.numericProgramBindings, 3);
+ assert.deepEqual(prereg.proof.compilerEmission.ownerRow, nativeJson.ownerRow);
+@@ -543,8 +573,10 @@
+ assert.equal(prereg.proof.chromiumStorageDiagnostic.bundlePath, chromiumDiagnostic.bundlePath);
+ assert.equal(prereg.proof.chromiumStorageDiagnostic.bundleSha256, chromiumDiagnostic.bundleSha256);
+ assert.deepEqual(prereg.proof.chromiumStorageDiagnostic.bundledInputHashes, chromiumDiagnostic.bundledInputHashes);
++assert.deepEqual(prereg.proof.chromiumStorageDiagnostic.browserVersion, chromiumDiagnostic.browserVersion);
+ assert.deepEqual(prereg.proof.chromiumStorageDiagnostic.snapshots, chromiumDiagnostic.snapshots);
+ assert.deepEqual(prereg.proof.chromiumStorageDiagnostic.semantics, chromiumDiagnostic.semantics);
++assert.deepEqual(prereg.proof.chromiumStorageDiagnostic.rowCapabilities, chromiumDiagnostic.rowCapabilities);
+ assert.equal(prereg.pilotVerifier.path, pilotVerifierPath);
+ assert.equal(prereg.pilotVerifier.sha256, prereg.inputLocks[pilotVerifierPath]);
+ assert.equal(prereg.timingEnvironment.configSha256, prereg.inputLocks[timingConfigPath]);
+@@ -594,6 +626,9 @@
+ assert.equal(summary.repairProvenance.v2Run.rawRunId, prereg.runId);
+ assert.equal(summary.repairProvenance.v2Run.reusedRawRecords, true);
+ assert.equal(summary.repairProvenance.v2Run.recordCount, 30);
++assert.equal(summary.repairProvenance.v2Verifier.path, v2VerifierPath);
++assert.equal(summary.repairProvenance.v2Verifier.sha256, await hashFile(v2VerifierPath),
++  "V2 summary must preserve provenance for the V2 verifier that was actually run");
+ 
+ // Validate every raw page and compute timing statistics independently.
+ const directoryFiles = await readdir(rawDir);
+@@ -604,12 +639,11 @@
+   "summary.json", "summary-v2.json", ...sequenceFiles,
+ ].sort();
+ const observedJsonFiles = directoryFiles.filter((name) => name.endsWith(".json")).sort();
+-assert.ok(
+-  JSON.stringify(observedJsonFiles) === JSON.stringify(allowedJsonFiles) ||
+-  JSON.stringify(observedJsonFiles) === JSON.stringify([...allowedJsonFiles, "verification-v2.json"].sort()) ||
+-  JSON.stringify(observedJsonFiles) === JSON.stringify([...allowedJsonFiles, "verification.json"].sort()) ||
+-  JSON.stringify(observedJsonFiles) === JSON.stringify([...allowedJsonFiles, "verification.json", "verification-v2.json"].sort()),
+-  "Raw directory must retain V1 artifacts and allow only V2 summary/verifier outputs in addition");
++const allowedVerificationOutputs = new Set(["verification.json", "verification-v2.json", "verification-v3.json"]);
++assert.ok(allowedJsonFiles.every((filename) => observedJsonFiles.includes(filename)),
++  "Raw directory is missing a frozen V1 artifact or V2 summary");
++assert.ok(observedJsonFiles.every((filename) => allowedJsonFiles.includes(filename) || allowedVerificationOutputs.has(filename)),
++  "Raw directory contains an unexpected JSON file; V1/V2 artifacts must remain intact");
+ const manifestBySequence = new Map(manifest.files.map((entry) => [entry.sequence, entry]));
+ assert.equal(manifestBySequence.size, 30);
+ const pages = [];
+@@ -831,6 +865,28 @@
+     chromiumRepresentation: "PASS",
+     compiler: "PASS",
+     pilot: "PASS",
++  },
++  repairProvenance: {
++    originalV1: {
++      analyzer: { path: analyzerPath, sha256: prereg.inputLocks[analyzerPath] },
++      verifier: { path: verifierPath, sha256: prereg.inputLocks[verifierPath] },
++      invalidSummary: {
++        path: originalSummaryPath,
++        sha256: await hashFile(originalSummaryPath),
++        gate: originalSummary.gate,
++        validationErrors: originalValidationErrors,
++      },
++    },
++    v2: {
++      analyzer: { path: v2AnalyzerPath, sha256: await hashFile(v2AnalyzerPath) },
++      verifier: { path: v2VerifierPath, sha256: await hashFile(v2VerifierPath) },
++      summary: { path: summaryPath, sha256: await hashFile(summaryPath), gate: summary.gate },
++    },
++    v3: {
++      verifier: { path: v3VerifierPath, sha256: await hashFile(v3VerifierPath) },
++      output: verificationPath,
++    },
++    rawRun: { runId: prereg.runId, reusedExistingRecords: true, recordCount: expectedSchedule.length },
+   },
+   computedSizes,
+   pageSummaryAggregationVerified: true,

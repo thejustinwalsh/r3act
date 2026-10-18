@@ -1,0 +1,476 @@
+import {
+  associateCompiledOwnerUpdateProgram,
+  type CompiledOwnerUpdatePrimitive,
+  type CompiledOwnerUpdateProgram,
+  type CompiledStateLayout,
+} from "./compiled_state_layout.ts";
+import { bind, bindSources, jsx, NumericColumn, ScalarSource } from "./jsx_binding_runtime.ts";
+import { MemoryVDOMHost, VDOMSnapshotRoot } from "./vdom_snapshot_runtime.ts";
+
+const assert: (condition: unknown, message: string) => asserts condition = (condition, message) => {
+  if (!condition) throw new Error(message);
+};
+const same = (actual: unknown, expected: unknown, message: string) => {
+  if (!Object.is(actual, expected)) {
+    throw new Error(`${message}: expected ${String(expected)}, got ${String(actual)}`);
+  }
+};
+
+const makeLayout = (): CompiledStateLayout => Object.freeze({
+  schemaVersion: 1,
+  programId: "KernelRows",
+  slots: Object.freeze([
+    Object.freeze({ siteId: "x", slot: 0 }),
+    Object.freeze({ siteId: "y", slot: 1 }),
+  ]),
+});
+
+const makeKernel = (programId: string): CompiledOwnerUpdateProgram => ({
+  schemaVersion: 1,
+  programId,
+  slotCount: 2,
+  sinkIds: Object.freeze(["sum", "x"]),
+  executeCut(changedRows, changedSlots, changeCount, rowStates, stagedRows, stagedSinkIds, stagedValues) {
+    let stagedCount = 0;
+    for (let index = 0; index < changeCount; index++) {
+      const rowIndex = changedRows[index];
+      const slot = changedSlots[index];
+      const row = rowStates[rowIndex]!;
+      const add = (sinkIndex: number, value: number) => {
+        const bit = 1 << sinkIndex;
+        if ((row.seenMask & bit) !== 0) return;
+        row.seenMask |= bit;
+        if (!Object.is(row.sinks[sinkIndex].lastValue, value)) {
+          stagedRows[stagedCount] = rowIndex;
+          stagedSinkIds[stagedCount] = sinkIndex;
+          stagedValues[stagedCount] = value;
+          stagedCount++;
+        }
+      };
+      if (slot === 0) {
+        add(0, row.inputValues[0] + row.inputValues[1]);
+        add(1, row.inputValues[0]);
+      } else if (slot === 1) {
+        add(0, row.inputValues[0] + row.inputValues[1]);
+      }
+    }
+    return stagedCount;
+  },
+});
+
+const owned = <T extends object>(
+  value: T,
+  layout: CompiledStateLayout,
+  sourceSlots: readonly number[],
+  sinkId: string,
+  owner = 73,
+) => Object.assign(value, {
+  numericProgram: Object.freeze({
+    schemaVersion: 2 as const,
+    ownerProgramId: layout.programId!,
+    sinkId,
+    sourceSites: Object.freeze(sourceSlots.map((slot) => layout.slots[slot].siteId)),
+  }),
+  numericOwner: Object.freeze({
+    owner,
+    programId: layout.programId!,
+    layout,
+    sourceSlots: Object.freeze([...sourceSlots]),
+  }),
+});
+
+const makeSingleSlotLayout = (programId: string): CompiledStateLayout => Object.freeze({
+  schemaVersion: 1,
+  programId,
+  slots: Object.freeze([Object.freeze({ siteId: "value", slot: 0 })]),
+});
+
+const makeSingleSinkKernel = (
+  programId: string,
+  evaluate: (value: number) => number,
+): CompiledOwnerUpdateProgram => ({
+  schemaVersion: 1,
+  programId,
+  slotCount: 1,
+  sinkIds: Object.freeze(["value"]),
+  executeCut(changedRows, changedSlots, changeCount, rowStates, stagedRows, stagedSinkIds, stagedValues) {
+    let stagedCount = 0;
+    for (let index = 0; index < changeCount; index++) {
+      if (changedSlots[index] !== 0) continue;
+      const rowIndex = changedRows[index];
+      const row = rowStates[rowIndex]!;
+      if ((row.seenMask & 1) !== 0) continue;
+      row.seenMask |= 1;
+      const next = evaluate(row.inputValues[0]);
+      if (!Object.is(row.sinks[0].lastValue, next)) {
+        stagedRows[stagedCount] = rowIndex;
+        stagedSinkIds[stagedCount] = 0;
+        stagedValues[stagedCount] = next;
+        stagedCount++;
+      }
+    }
+    return stagedCount;
+  },
+});
+
+Deno.test("compiled owner update kernel stages sparse and dense row cuts", () => {
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container, undefined, () => {});
+  const layout = makeLayout();
+  associateCompiledOwnerUpdateProgram(layout, makeKernel("KernelRows"));
+  const x = new ScalarSource(801, 1);
+  const y = new ScalarSource(802, 2);
+  const columns = [
+    new NumericColumn(811, 0, new Float64Array([1])),
+    new NumericColumn(812, 1, new Float64Array([2])),
+  ];
+  let genericProjectorCalls = 0;
+  const sum = owned(bindSources([x, y], (values) => {
+    genericProjectorCalls++;
+    return values[0] + values[1];
+  }), layout, [0, 1], "sum");
+  const xValue = owned(bind(x, (value) => {
+    genericProjectorCalls++;
+    return value;
+  }), layout, [0], "x");
+  root.commit(jsx("output", { sum, x: xValue }), undefined, true);
+  genericProjectorCalls = 0;
+  const token = root.prepareNumericRowProgram({
+    owner: 73,
+    layout,
+    rowIdentity: {},
+    row: 0,
+    generation: 1,
+    sources: [x, y],
+    columns,
+  });
+  assert(token, "row preparation selects the associated complete kernel");
+
+  columns[1].values = new Float64Array(0);
+  same(root.executePreparedNumericRows(
+    [token], new Uint32Array([0]), new Uint32Array([0]), [4], 1,
+  ), null, "stale peer-column capacity declines before the kernel");
+  same(x.value, 1, "stale peer-column decline leaves source mirrors untouched");
+  columns[1].values = new Float64Array([2]);
+  same(root.executePreparedNumericRows(
+    [token], new Uint32Array([0, 0]), new Uint32Array([0, 0]), [4, 5], 2,
+  ), null, "conflicting duplicate values reject before mirroring");
+  same(x.value, 1, "conflicting values leave the source mirror unchanged");
+  same(genericProjectorCalls, 0, "conflicting values do not call projectors");
+
+  columns[0].values[0] = 4;
+  same(root.executePreparedNumericRows(
+    [token], new Uint32Array([0]), new Uint32Array([0]), [4], 1,
+  ), true, "sparse cut writes its changed sinks");
+  same(container.children[0].props.sum, 6, "sparse x update reads captured y");
+  same(container.children[0].props.x, 4, "sparse x update reaches unary sink");
+
+  columns[1].values[0] = 7;
+  same(root.executePreparedNumericRows(
+    [token], new Uint32Array([0, 0]), new Uint32Array([0, 1]), [5, 7], 2,
+  ), true, "dense cut stages changed outputs before host writes");
+  same(container.children[0].props.sum, 12, "dense cut projects the complete captured row");
+  same(container.children[0].props.x, 5, "dense cut preserves sink mapping");
+  same(genericProjectorCalls, 0, "compiled kernel bypasses per-group projectors");
+  same(root.executePreparedNumericRows(
+    [token], new Uint32Array([0, 0]), new Uint32Array([0, 1]), [5, 7], 2,
+  ), false, "equal compiled outputs suppress host writes");
+  const diagnostics = root.diagnostics();
+  same(diagnostics.preparedOwnerUpdateKernelBatches, 3, "kernel batches are counted");
+  same(diagnostics.preparedOwnerUpdateKernelSelectedSinks, 6,
+    "selected sink count includes equality checks");
+  same(diagnostics.preparedOwnerUpdateKernelStagedSinks, 4,
+    "equal outputs do not enter the staged writer list");
+  root.dispose();
+});
+
+Deno.test("incomplete compiled sink coverage chooses generic owner-row fallback", () => {
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container, undefined, () => {});
+  const layout = makeLayout();
+  associateCompiledOwnerUpdateProgram(layout, makeKernel("KernelRows"));
+  const x = new ScalarSource(821, 1);
+  const y = new ScalarSource(822, 2);
+  const columns = [
+    new NumericColumn(831, 0, new Float64Array([1])),
+    new NumericColumn(832, 1, new Float64Array([2])),
+  ];
+  let projected = 0;
+  const sum = owned(bindSources([x, y], (values) => {
+    projected++;
+    return values[0] + values[1];
+  }), layout, [0, 1], "sum");
+  const rootOnly = owned(bind(x, (value) => {
+    projected++;
+    return value;
+  }), layout, [0], "different-sink");
+  root.commit(jsx("output", { sum, x: rootOnly }), undefined, true);
+  projected = 0;
+  const token = root.prepareNumericRowProgram({
+    owner: 73,
+    layout,
+    rowIdentity: {},
+    row: 0,
+    generation: 1,
+    sources: [x, y],
+    columns,
+  });
+  assert(token, "generic fallback remains prepared when kernel sinks are incomplete");
+  columns[0].values[0] = 6;
+  same(root.executePreparedNumericRows(
+    [token], new Uint32Array([0]), new Uint32Array([0]), [6], 1,
+  ), true, "generic fallback applies the cut");
+  same(container.children[0].props.sum, 8, "generic fallback uses captured peer value");
+  same(projected, 2, "both fallback projectors execute once");
+  same(root.diagnostics().preparedOwnerUpdateGenericFallbackCuts, 1,
+    "fallback is visible in diagnostics");
+  root.dispose();
+});
+
+Deno.test("heterogeneous owner rows use ordered generic fanout with retained vectors", () => {
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container, undefined, () => {});
+  const layoutA = makeLayout();
+  const layoutB: CompiledStateLayout = Object.freeze({
+    schemaVersion: 1,
+    programId: "OtherRows",
+    slots: layoutA.slots,
+  });
+  associateCompiledOwnerUpdateProgram(layoutA, makeKernel("KernelRows"));
+  const aX = new ScalarSource(841, 1);
+  const aY = new ScalarSource(842, 2);
+  const bX = new ScalarSource(843, 3);
+  const bY = new ScalarSource(844, 4);
+  const aColumns = [
+    new NumericColumn(851, 0, new Float64Array([1])),
+    new NumericColumn(852, 1, new Float64Array([2])),
+  ];
+  const bColumns = [
+    new NumericColumn(853, 0, new Float64Array([3])),
+    new NumericColumn(854, 1, new Float64Array([4])),
+  ];
+  let genericCalls = 0;
+  let aInputs: readonly number[] | undefined;
+  const aSum = owned(bindSources([aX, aY], (values) => {
+    genericCalls++;
+    aInputs ??= values;
+    return values[0] + values[1];
+  }), layoutA, [0, 1], "sum-a", 73);
+  const aUnary = owned(bind(aX, (value) => {
+    genericCalls++;
+    return value;
+  }), layoutA, [0], "x-a", 73);
+  const bSum = owned(bindSources([bX, bY], (values) => {
+    genericCalls++;
+    return values[0] + values[1];
+  }), layoutB, [0, 1], "sum-b", 74);
+  const bUnary = owned(bind(bX, (value) => {
+    genericCalls++;
+    return value;
+  }), layoutB, [0], "x-b", 74);
+  root.commit(jsx("output", { aSum, aX: aUnary, bSum, bX: bUnary }), undefined, true);
+  genericCalls = 0;
+  const aToken = root.prepareNumericRowProgram({
+    owner: 73, layout: layoutA, rowIdentity: {}, row: 0, generation: 1,
+    sources: [aX, aY], columns: aColumns,
+  });
+  const bToken = root.prepareNumericRowProgram({
+    owner: 74, layout: layoutB, rowIdentity: {}, row: 0, generation: 1,
+    sources: [bX, bY], columns: bColumns,
+  });
+  assert(aToken && bToken, "both rows prepare through their own layouts");
+  const writes: string[] = [];
+  const setProp = host.setProp.bind(host);
+  host.setProp = (node, name, value, previous) => {
+    writes.push(name);
+    setProp(node, name, value, previous);
+  };
+  const cut = (aXValue: number, bXValue: number, aYValue: number, bYValue: number) => root.executePreparedNumericRows(
+    [aToken, bToken], new Uint32Array([0, 1, 0, 1]), new Uint32Array([0, 0, 1, 1]),
+    [aXValue, bXValue, aYValue, bYValue], 4,
+  );
+  same(cut(5, 9, 6, 10), true, "mixed kernel/generic rows take one generic cut");
+  same(writes.join(","), "aSum,aX,bSum,bX", "generic fallback keeps first-touch sink order");
+  same(container.children[0].props.aSum, 11, "kernel row uses generic projection after mixing");
+  same(container.children[0].props.bSum, 19, "generic row uses captured peer state");
+  same(genericCalls, 4, "all eligible sinks use generic projection in a mixed cut");
+  const stableInputs = aInputs;
+  writes.length = 0;
+  same(cut(7, 11, 8, 12), true, "a later heterogeneous cut remains generic");
+  same(aInputs, stableInputs, "fallback retains the per-sink argument vector");
+  same(root.diagnostics().preparedOwnerUpdateKernelBatches, 0,
+    "a heterogeneous cut does not partially execute a compiled kernel");
+  same(root.diagnostics().preparedOwnerUpdateGenericFallbackCuts, 2,
+    "both heterogeneous cuts are counted");
+  root.dispose();
+});
+
+Deno.test("kernel failure and invalid staged tails scrub before host writes", () => {
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  const layout = makeSingleSlotLayout("ThrowRows");
+  let capturedValues: CompiledOwnerUpdatePrimitive[] | undefined;
+  associateCompiledOwnerUpdateProgram(layout, {
+    schemaVersion: 1,
+    programId: "ThrowRows",
+    slotCount: 1,
+    sinkIds: Object.freeze(["value"]),
+    executeCut(_rows, _slots, _count, rowStates, rows, sinkIds, values) {
+      const row = rowStates[0]!;
+      row.seenMask |= 1;
+      rows[0] = 0;
+      sinkIds[0] = 0;
+      values[0] = row.inputValues[0];
+      capturedValues = values;
+      throw new Error("kernel failure after a staged write");
+    },
+  });
+  const source = new ScalarSource(861, 1);
+  const column = new NumericColumn(862, 0, new Float64Array([1]));
+  root.commit(jsx("output", {
+    value: owned(bind(source, (value) => value), layout, [0], "value"),
+  }), undefined, true);
+  const token = root.prepareNumericRowProgram({
+    owner: 73, layout, rowIdentity: {}, row: 0, generation: 1,
+    sources: [source], columns: [column],
+  });
+  assert(token, "throwing kernel row prepares");
+  column.values[0] = 2;
+  let threw = false;
+  try {
+    root.executePreparedNumericRows([token], new Uint32Array([0]), new Uint32Array([0]), [2], 1);
+  } catch {
+    threw = true;
+  }
+  assert(threw, "kernel exception remains terminal");
+  same(container.children[0].props.value, 1, "kernel exception occurs before host writes");
+  same(capturedValues?.[0], 0, "partial staged values are scrubbed after kernel throws");
+  root.dispose();
+});
+
+Deno.test("kernel validates every staged result before its first host write", () => {
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  const layout = makeSingleSlotLayout("InvalidRows");
+  associateCompiledOwnerUpdateProgram(layout, {
+    schemaVersion: 1,
+    programId: "InvalidRows",
+    slotCount: 1,
+    sinkIds: Object.freeze(["first", "later"]),
+    executeCut(_rows, _slots, _count, rowStates, rows, sinkIds, values) {
+      const row = rowStates[0]!;
+      row.seenMask |= 3;
+      rows[0] = 0;
+      rows[1] = 0;
+      sinkIds[0] = 0;
+      sinkIds[1] = 1;
+      values[0] = 2;
+      values[1] = { invalid: true } as never;
+      return 2;
+    },
+  });
+  const source = new ScalarSource(871, 1);
+  const column = new NumericColumn(872, 0, new Float64Array([1]));
+  root.commit(jsx("output", {
+    first: owned(bind(source, (value) => value), layout, [0], "first"),
+    later: owned(bind(source, (value) => value), layout, [0], "later"),
+  }), undefined, true);
+  const token = root.prepareNumericRowProgram({
+    owner: 73, layout, rowIdentity: {}, row: 0, generation: 1,
+    sources: [source], columns: [column],
+  });
+  assert(token, "multi-sink row prepares");
+  column.values[0] = 2;
+  let threw = false;
+  try {
+    root.executePreparedNumericRows([token], new Uint32Array([0]), new Uint32Array([0]), [2], 1);
+  } catch {
+    threw = true;
+  }
+  assert(threw, "malformed later staged output is rejected");
+  same(container.children[0].props.first, 1, "valid first staged output was not written early");
+  same(container.children[0].props.later, 1, "invalid later output leaves sibling untouched");
+  root.dispose();
+});
+
+Deno.test("kernel disposal cancels before selected-source bookkeeping or writers", () => {
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  const layout = makeSingleSlotLayout("DisposeRows");
+  associateCompiledOwnerUpdateProgram(layout, {
+    schemaVersion: 1,
+    programId: "DisposeRows",
+    slotCount: 1,
+    sinkIds: Object.freeze(["value"]),
+    executeCut(_rows, _slots, _count, rowStates, rows, sinkIds, values) {
+      const row = rowStates[0]!;
+      row.seenMask |= 1;
+      rows[0] = 0;
+      sinkIds[0] = 0;
+      values[0] = row.inputValues[0];
+      root.dispose();
+      return 1;
+    },
+  });
+  const source = new ScalarSource(881, 1);
+  const column = new NumericColumn(882, 0, new Float64Array([1]));
+  root.commit(jsx("output", {
+    value: owned(bind(source, (value) => value), layout, [0], "value"),
+  }), undefined, true);
+  const token = root.prepareNumericRowProgram({
+    owner: 73, layout, rowIdentity: {}, row: 0, generation: 1,
+    sources: [source], columns: [column],
+  });
+  assert(token, "disposal row prepares");
+  column.values[0] = 2;
+  same(root.executePreparedNumericRows([token], new Uint32Array([0]), new Uint32Array([0]), [2], 1),
+    false, "disposal from a kernel cancels its cut");
+  same(container.children.length, 0, "disposed host tree remains removed");
+});
+
+Deno.test("kernel host reentry failure leaves state retryable and cleans scratch", () => {
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  const layout = makeSingleSlotLayout("HostRows");
+  associateCompiledOwnerUpdateProgram(layout, makeSingleSinkKernel("HostRows", (value) => value));
+  const source = new ScalarSource(891, 1);
+  const column = new NumericColumn(892, 0, new Float64Array([1]));
+  root.commit(jsx("output", {
+    value: owned(bind(source, (value) => value), layout, [0], "value"),
+  }), undefined, true);
+  const token = root.prepareNumericRowProgram({
+    owner: 73, layout, rowIdentity: {}, row: 0, generation: 1,
+    sources: [source], columns: [column],
+  });
+  assert(token, "host row prepares");
+  column.values[0] = 2;
+  const originalSetProp = host.setProp.bind(host);
+  let reenter = true;
+  host.setProp = (node, name, value, previous) => {
+    if (reenter && name === "value") {
+      reenter = false;
+      root.executePreparedNumericRows([token], new Uint32Array([0]), new Uint32Array([0]), [2], 1);
+    }
+    originalSetProp(node, name, value, previous);
+  };
+  let threw = false;
+  try {
+    root.executePreparedNumericRows([token], new Uint32Array([0]), new Uint32Array([0]), [2], 1);
+  } catch {
+    threw = true;
+  }
+  assert(threw, "nested host write is rejected by the numeric write guard");
+  same(container.children[0].props.value, 1, "failed reentry does not complete the host write");
+  same(root.executePreparedNumericRows(
+    [token], new Uint32Array([0]), new Uint32Array([0]), [2], 1,
+  ), true, "a later cut succeeds after host failure cleanup");
+  same(container.children[0].props.value, 2, "retry publishes the captured value");
+  root.dispose();
+});

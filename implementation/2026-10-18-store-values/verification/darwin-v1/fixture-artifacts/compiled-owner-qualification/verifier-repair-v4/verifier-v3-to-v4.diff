@@ -1,0 +1,104 @@
+--- scripts/verify_product_mixed_compiled_owner_rows_evidence_v3.mjs	2026-10-13 08:35:23
++++ scripts/verify_product_mixed_compiled_owner_rows_evidence_v4.mjs	2026-10-13 08:37:51
+@@ -13,7 +13,7 @@
+ const finalResultsPath = `${rawDir}/FINALresults.json`;
+ const originalSummaryPath = `${rawDir}/summary.json`;
+ const summaryPath = `${rawDir}/summary-v2.json`;
+-const verificationPath = `${rawDir}/verification-v3.json`;
++const verificationPath = process.env.COMPILED_OWNER_V4_OUTPUT ?? `${rawDir}/verification-v4.json`;
+ const checkpoint = "implementation/2026-10-13-compiled-owner-rows";
+ const statusPath = `${checkpoint}/status.json`;
+ const archivePath = `${checkpoint}/source-and-evidence.tar.gz`;
+@@ -44,6 +44,8 @@
+ const v2AnalyzerPath = "scripts/summarize_product_mixed_compiled_owner_rows_v2.mjs";
+ const v2VerifierPath = "scripts/verify_product_mixed_compiled_owner_rows_evidence_v2.mjs";
+ const v3VerifierPath = "scripts/verify_product_mixed_compiled_owner_rows_evidence_v3.mjs";
++const v3VerificationLogPath = ".cache/compiled-owner-qualification/timing-verification-primary-v3.log";
++const v4VerifierPath = process.env.COMPILED_OWNER_V4_PATH ?? "scripts/verify_product_mixed_compiled_owner_rows_evidence_v4.mjs";
+ const pilotVerifierPath = "scripts/verify_product_mixed_compiled_owner_rows_pilot.mjs";
+ const buildDirectory = "dist-product-mixed-compiled-owner-rows";
+ const schedulePath = "src/browser/product_mixed_schedule.ts";
+@@ -517,6 +519,25 @@
+ for (const [filename, expected] of Object.entries(prereg.inputLocks)) {
+   assert.equal(await hashFile(filename), expected, `Prerecorded input changed: ${filename}`);
+ }
++assert.deepEqual(Object.keys(prereg.proof).sort(), [
++  "compiledOwnerRow", "actualThreeOwnerRow", "productionPilot", "chromiumStorageDiagnostic", "compilerEmission",
++].sort());
++assert.deepEqual(Object.keys(prereg.proof.compiledOwnerRow).sort(), [
++  "path", "sha256", "currentNativeBindingV2OwnerMeta", "status", "ownerRowPrograms", "assertions",
++].sort());
++assert.deepEqual(Object.keys(prereg.proof.compiledOwnerRow.currentNativeBindingV2OwnerMeta).sort(), ["authoredSource", "emittedModule"]);
++assert.deepEqual(Object.keys(prereg.proof.actualThreeOwnerRow).sort(), [
++  "path", "sha256", "status", "ownerProgramId", "numericOwnerRowCut", "assertions", "threeObjectIdentity",
++].sort());
++assert.deepEqual(Object.keys(prereg.proof.productionPilot).sort(), [
++  "path", "sha256", "status", "scope", "pageFiles", "pageSha256", "sourceArchive",
++  "productionSha256", "servedAssetSha256", "assetPreflight", "engineEpoch", "chromiumDiagnostic",
++  "verifier", "compilerProofs", "authoredOwnerRowProof", "actualThreeOwnerRowProof",
++].sort());
++assert.deepEqual(Object.keys(prereg.proof.chromiumStorageDiagnostic).sort(), [
++  "path", "sha256", "status", "attempt", "sourcePath", "sourceSha256", "bundlePath", "bundleSha256",
++  "bundledInputHashes", "browserVersion", "snapshots", "semantics", "rowCapabilities",
++].sort());
+ assert.equal(prereg.proof.compiledOwnerRow.path, authoredOwnerRowProofPath);
+ assert.equal(prereg.proof.compiledOwnerRow.sha256, await hashFile(authoredOwnerRowProofPath));
+ assert.equal(prereg.proof.compiledOwnerRow.status, authoredOwnerRowProof.status);
+@@ -555,15 +576,20 @@
+ assert.deepEqual(productionPilotProof.compilerProofs, pilotManifest.compilerProofs);
+ assert.deepEqual(productionPilotProof.authoredOwnerRowProof, pilotManifest.authoredOwnerRowProof);
+ assert.deepEqual(productionPilotProof.actualThreeOwnerRowProof, pilotManifest.actualThreeOwnerRowProof);
++const compilerEmissionFiles = Object.fromEntries(await Promise.all(compilerProofPaths.map(async (filename) =>
++  [filename, await hashFile(filename)])));
++assert.deepEqual(Object.keys(prereg.proof.compilerEmission).sort(), [
++  "files", "native", "numericProgramBindings", "numericProgramDescriptors", "react",
++].sort());
+ assert.equal(prereg.proof.compilerEmission.numericProgramDescriptors, 3);
+ assert.equal(prereg.proof.compilerEmission.numericProgramBindings, 3);
+-assert.deepEqual(prereg.proof.compilerEmission.ownerRow, nativeJson.ownerRow);
+-assert.deepEqual(Object.keys(prereg.proof.compilerEmission.files).sort(), compilerProofPaths.sort());
++assert.deepEqual(prereg.proof.compilerEmission.files, compilerEmissionFiles);
++assert.deepEqual(prereg.proof.compilerEmission.native, nativeJson);
++assert.deepEqual(prereg.proof.compilerEmission.react, reactJson);
++assert.deepEqual(prereg.proof.compilerEmission.native.ownerRow, nativeJson.ownerRow);
+ for (const filename of compilerProofPaths) {
+   assert.equal(prereg.proof.compilerEmission.files[filename], await hashFile(filename));
+ }
+-assert.deepEqual(prereg.proof.compilerEmission.native, nativeJson);
+-assert.deepEqual(prereg.proof.compilerEmission.react, reactJson);
+ assert.equal(prereg.proof.chromiumStorageDiagnostic.path, chromiumDiagnosticPath);
+ assert.equal(prereg.proof.chromiumStorageDiagnostic.sha256, chromiumDiagnosticHash);
+ assert.equal(prereg.proof.chromiumStorageDiagnostic.status, chromiumDiagnostic.status);
+@@ -577,8 +603,8 @@
+ assert.deepEqual(prereg.proof.chromiumStorageDiagnostic.snapshots, chromiumDiagnostic.snapshots);
+ assert.deepEqual(prereg.proof.chromiumStorageDiagnostic.semantics, chromiumDiagnostic.semantics);
+ assert.deepEqual(prereg.proof.chromiumStorageDiagnostic.rowCapabilities, chromiumDiagnostic.rowCapabilities);
+-assert.equal(prereg.pilotVerifier.path, pilotVerifierPath);
+-assert.equal(prereg.pilotVerifier.sha256, prereg.inputLocks[pilotVerifierPath]);
++assert.equal(productionPilotProof.verifier.path, pilotVerifierPath);
++assert.equal(productionPilotProof.verifier.sha256, prereg.inputLocks[pilotVerifierPath]);
+ assert.equal(prereg.timingEnvironment.configSha256, prereg.inputLocks[timingConfigPath]);
+ assert.equal(prereg.timingEnvironment.baseConfigSha256, prereg.inputLocks[baseConfigPath]);
+ assert.equal(prereg.scheduleSource.path, schedulePath);
+@@ -639,7 +665,9 @@
+   "summary.json", "summary-v2.json", ...sequenceFiles,
+ ].sort();
+ const observedJsonFiles = directoryFiles.filter((name) => name.endsWith(".json")).sort();
+-const allowedVerificationOutputs = new Set(["verification.json", "verification-v2.json", "verification-v3.json"]);
++const allowedVerificationOutputs = new Set([
++  "verification.json", "verification-v2.json", "verification-v3.json", "verification-v4.json",
++]);
+ assert.ok(allowedJsonFiles.every((filename) => observedJsonFiles.includes(filename)),
+   "Raw directory is missing a frozen V1 artifact or V2 summary");
+ assert.ok(observedJsonFiles.every((filename) => allowedJsonFiles.includes(filename) || allowedVerificationOutputs.has(filename)),
+@@ -884,6 +912,10 @@
+     },
+     v3: {
+       verifier: { path: v3VerifierPath, sha256: await hashFile(v3VerifierPath) },
++      executionLog: { path: v3VerificationLogPath, sha256: await hashFile(v3VerificationLogPath) },
++    },
++    v4: {
++      verifier: { path: v4VerifierPath, sha256: await hashFile(v4VerifierPath) },
+       output: verificationPath,
+     },
+     rawRun: { runId: prereg.runId, reusedExistingRecords: true, recordCount: expectedSchedule.length },

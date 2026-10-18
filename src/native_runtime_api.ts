@@ -153,6 +153,7 @@ export type {
 } from "./host_property_contract.ts";
 export type { ComponentType, RuntimeNode };
 export type { ClosedResourceHostProgram } from "./closed_resource_host_program.ts";
+export { stabilizeHostTuple } from "./closed_host_value.ts";
 export type { NumericBindingProgramDescriptor } from "./jsx_binding_runtime.ts";
 export type { CompiledOwnerUpdateProgram } from "./compiled_state_layout.ts";
 export {

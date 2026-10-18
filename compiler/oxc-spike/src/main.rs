@@ -3702,9 +3702,11 @@ fn compile_native_component_module(
         source,
         revision,
         programs: BTreeMap::new(),
+        tuple_spans: BTreeMap::new(),
     };
     closed_store_collector.visit_program(&parsed.program);
     let closed_store_programs = closed_store_collector.programs;
+    let closed_store_tuple_spans = closed_store_collector.tuple_spans;
     let import_span = state_plan
         .hook_import
         .clone()
@@ -4072,6 +4074,7 @@ fn compile_native_component_module(
         &component_state_layouts,
         &closed_resource_programs,
         &closed_store_programs,
+        &closed_store_tuple_spans,
     )?;
     let components = state_plan
         .components
@@ -4345,7 +4348,7 @@ fn closed_resource_subtree_property_name(tag: &str, name: &str) -> bool {
     }
 }
 
-fn closed_resource_style_name(name: &str) -> bool {
+fn closed_host_style_name(name: &str) -> bool {
     if matches!(name, "__proto__" | "prototype" | "constructor") { return false; }
     let body = name.strip_prefix("--").unwrap_or(name);
     !body.is_empty() && (body.as_bytes()[0].is_ascii_alphabetic() ||
@@ -4353,7 +4356,7 @@ fn closed_resource_style_name(name: &str) -> bool {
         byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-')
 }
 
-fn closed_resource_aggregate_expression(
+fn closed_host_aggregate_expression(
     expression: &Expression<'_>, tag: &str, name: &str,
     value_sites: &BTreeMap<SymbolId, String>, source_sites: &[String],
     semantic: &Semantic<'_>, source: &str,
@@ -4384,7 +4387,7 @@ fn closed_resource_aggregate_expression(
                 PropertyKey::StringLiteral(key) => key.value.as_str(),
                 _ => return None,
             };
-            if !closed_resource_style_name(key) || !seen.insert(key.to_owned()) { return None; }
+            if !closed_host_style_name(key) || !seen.insert(key.to_owned()) { return None; }
             let value = closed_store_host_expression(&property.value, value_sites,
                 source_sites, semantic, source)?;
             entries.push(serde_json::json!([key, value]));
@@ -4427,7 +4430,7 @@ fn closed_resource_subtree_host(
                 !seen.insert(name.to_owned()) { return None; }
             let expression = if aggregate {
                 let JSXAttributeValue::ExpressionContainer(container) = attribute.value.as_ref()? else { return None; };
-                let expression = closed_resource_aggregate_expression(
+                let expression = closed_host_aggregate_expression(
                     container.expression.as_expression()?, tag, name, &value_sites,
                     &source_sites, semantic, source)?;
                 *has_aggregate = true;
@@ -4537,7 +4540,7 @@ fn closed_resource_subtree_program(
 
 fn closed_store_host_property_name(tag: &str, name: &str) -> bool {
     match tag {
-        "div" | "output" => {
+        "div" | "span" | "output" => {
             name.starts_with("data-") && name.len() >= 6 &&
             name.as_bytes()[5].is_ascii_lowercase() &&
             name[6..].bytes().all(|byte| byte.is_ascii_lowercase() ||
@@ -4585,7 +4588,7 @@ fn closed_store_host_expression(
 fn closed_store_host_program(
     node: &Function<'_>, component: &ComponentStateSiteIr,
     semantic: &Semantic<'_>, source: &str, revision: &str,
-) -> Option<serde_json::Value> {
+) -> Option<(serde_json::Value, Vec<SourceSpan>)> {
     let input_count = component.store_sites.len();
     if node.r#async || node.generator || node.params.items.len() != 1 ||
         node.params.rest.is_some() || !component.state_sites.is_empty() ||
@@ -4656,11 +4659,13 @@ fn closed_store_host_program(
     let Expression::JSXElement(element) = return_expression else { return None; };
     let JSXElementName::Identifier(tag) = &element.opening_element.name else { return None; };
     let tag = tag.name.as_str();
-    if !matches!(tag, "mesh" | "group" | "div" | "output") ||
+    if !matches!(tag, "mesh" | "group" | "div" | "span" | "output") ||
         !element.children.is_empty() || element.opening_element.attributes.len() > 33 { return None; }
     let mut key = None;
     let mut props = Vec::<serde_json::Value>::new();
     let mut seen = BTreeSet::new();
+    let mut tuple_spans = Vec::new();
+    let mut has_aggregate = false;
     for attribute in &element.opening_element.attributes {
         let JSXAttributeItem::Attribute(attribute) = attribute else { return None; };
         let JSXAttributeName::Identifier(name) = &attribute.name else { return None; };
@@ -4671,22 +4676,40 @@ fn closed_store_host_program(
             if value.value.is_empty() || value.value.chars().any(|ch| matches!(ch, '&' | '\n' | '\r' | '\t')) { return None; }
             key = Some(value.value.to_string());
         } else {
-            if !closed_store_host_property_name(tag, name) || !seen.insert(name.to_owned()) { return None; }
+            let aggregate = (matches!(tag, "mesh" | "group") &&
+                matches!(name, "position" | "rotation" | "scale")) ||
+                (matches!(tag, "div" | "span" | "output") && name == "style");
+            if (!aggregate && !closed_store_host_property_name(tag, name)) ||
+                !seen.insert(name.to_owned()) { return None; }
             let JSXAttributeValue::ExpressionContainer(container) = attribute.value.as_ref()? else { return None; };
             let expression = container.expression.as_expression()?;
-            let program = closed_store_host_expression(expression, &value_sites,
-                &source_sites, semantic, source)?;
+            let program = if aggregate {
+                let program = closed_host_aggregate_expression(expression, tag, name,
+                    &value_sites, &source_sites, semantic, source)?;
+                has_aggregate = true;
+                if program.get("kind").and_then(serde_json::Value::as_str) == Some("tuple") {
+                    let expression_span = expression.span();
+                    tuple_spans.push(span(expression_span.start, expression_span.end));
+                }
+                program
+            } else {
+                closed_store_host_expression(expression, &value_sites,
+                    &source_sites, semantic, source)?
+            };
             props.push(serde_json::json!([name, program]));
         }
     }
-    if props.is_empty() { return None; }
+    if props.is_empty() || (tag == "span" && !has_aggregate) { return None; }
     let key = key?;
     let mut program = serde_json::json!({
         "componentProgramId": component.component_site_id,
         "moduleRevision": revision,
         "host": { "tag": tag, "key": key, "props": props, "child": null }
     });
-    if input_count == 1 {
+    if has_aggregate {
+        program["schemaVersion"] = serde_json::json!(3);
+        program["inputs"] = serde_json::json!(inputs);
+    } else if input_count == 1 {
         program["schemaVersion"] = serde_json::json!(1);
         program["storeUseSiteId"] = inputs[0]["storeUseSiteId"].clone();
         program["storeProp"] = inputs[0]["storeProp"].clone();
@@ -4694,7 +4717,7 @@ fn closed_store_host_program(
         program["schemaVersion"] = serde_json::json!(2);
         program["inputs"] = serde_json::json!(inputs);
     }
-    Some(program)
+    Some((program, tuple_spans))
 }
 
 struct ClosedStoreHostCollector<'p, 'a> {
@@ -4703,6 +4726,7 @@ struct ClosedStoreHostCollector<'p, 'a> {
     source: &'p str,
     revision: &'p str,
     programs: BTreeMap<String, serde_json::Value>,
+    tuple_spans: BTreeMap<String, Vec<SourceSpan>>,
 }
 
 impl<'a> Visit<'a> for ClosedStoreHostCollector<'_, 'a> {
@@ -4710,9 +4734,12 @@ impl<'a> Visit<'a> for ClosedStoreHostCollector<'_, 'a> {
         if let Some(component) = self.components.iter().find(|component|
             component.declaration.start == node.span.start &&
             component.declaration.end == node.span.end)
-            && let Some(program) = closed_store_host_program(node, component,
+            && let Some((program, tuple_spans)) = closed_store_host_program(node, component,
                 self.semantic, self.source, self.revision)
         {
+            if !tuple_spans.is_empty() {
+                self.tuple_spans.insert(component.component_site_id.clone(), tuple_spans);
+            }
             self.programs.insert(component.component_site_id.clone(), program);
         }
         walk::walk_function(self, node, flags);
@@ -4756,6 +4783,7 @@ fn transform_native_component_source(
     state_layouts: &BTreeMap<String, Vec<NativeStateLayoutSlotMetadata>>,
     closed_resource_programs: &BTreeMap<String, serde_json::Value>,
     closed_store_programs: &BTreeMap<String, serde_json::Value>,
+    closed_store_tuple_spans: &BTreeMap<String, Vec<SourceSpan>>,
 ) -> Result<(String, Vec<NativeModuleEdit>), String> {
     let import_span = plan
         .hook_import
@@ -4773,6 +4801,7 @@ fn transform_native_component_source(
         "__nativeBindStatePropAt".to_owned(),
         "__nativeNumericPrograms".to_owned(),
         "__nativeOwnerCutKernels".to_owned(),
+        "__nativeStabilizeHostTuple".to_owned(),
     ];
     for alias in &mut aliases {
         while source.contains(alias.as_str()) {
@@ -4786,8 +4815,13 @@ fn transform_native_component_source(
             .ok_or_else(|| format!("{path}: missing native runtime module source"))?,
     )
     .map_err(|error| error.to_string())?;
+    let tuple_helper_import = if closed_store_tuple_spans.is_empty() {
+        String::new()
+    } else {
+        format!(", stabilizeHostTuple as {}", aliases[10])
+    };
     let helper_import = format!(
-        "\nimport {{ defineComponent as {}, useStateAt as {}, useEffectAt as {}, useStoreAt as {}, bindStatePropsAt as {}, renderCollectionAt as {}, useAt as {}, bindStatePropAt as {} }} from {module};",
+        "\nimport {{ defineComponent as {}, useStateAt as {}, useEffectAt as {}, useStoreAt as {}, bindStatePropsAt as {}, renderCollectionAt as {}, useAt as {}, bindStatePropAt as {}{} }} from {module};",
         aliases[0],
         aliases[1],
         aliases[2],
@@ -4795,7 +4829,8 @@ fn transform_native_component_source(
         aliases[4],
         aliases[5],
         aliases[6],
-        aliases[7]
+        aliases[7],
+        tuple_helper_import
     );
     let numeric_program_table = if numeric_programs.is_empty() {
         String::new()
@@ -4824,6 +4859,20 @@ fn transform_native_component_source(
     let mut edits = Vec::new();
     let mut registrations = String::new();
     for component in &plan.components {
+        if let Some(tuple_spans) = closed_store_tuple_spans.get(&component.component_site_id) {
+            for tuple_span in tuple_spans {
+                edits.push(TextEdit {
+                    start: tuple_span.start as usize,
+                    end: tuple_span.start as usize,
+                    replacement: format!("{}(", aliases[10]),
+                });
+                edits.push(TextEdit {
+                    start: tuple_span.end as usize,
+                    end: tuple_span.end as usize,
+                    replacement: ")".to_owned(),
+                });
+            }
+        }
         let site = serde_json::to_string(&component.component_site_id)
             .map_err(|error| error.to_string())?;
         let sites = prop_sites
@@ -7817,7 +7866,128 @@ export function Label() { const [label] = useState("ready"); return <span data-l
     }
 
     #[test]
-    fn emits_closed_store_host_program_for_bounded_direct_numeric_uses_and_closed_leaf() {
+    fn emits_structured_store_host_values_and_stabilizes_only_eligible_tuples() {
+        let source = r#"import { use } from "native_runtime_api.ts";
+const __nativeStabilizeHostTuple = "authored";
+export function Single(props) { const x = use(props.store); return <mesh key="single" position={[x, 0, 1]} rotation={[(x + 1), 0, 0]} visible={x > 0}/>; }
+export function Joint({ a, b }) { const x = use(a); const y = use(b); return <group key="joint" scale={[x, y, 1]} position-x={x + y}/>; }
+export function Styled(props) { const x = use(props.store); return <span key="styled" data-label={x} style={{ color: "red", "background-color": x, "--gap": x + 1, opacity: null }}/>; }
+export function Primitive(props) { const x = use(props.store); return <div key="plain" data-value={x}/>; }
+export function Generic(props) { const x = use(props.store); return <mesh key="generic" position={props.position} visible={x > 0}/>; }"#;
+        let response = compile_state("structured-store.tsx", source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let plan = response.plan.unwrap();
+        let revision = plan.module_revision.clone();
+        let code = plan.component_module.as_ref().unwrap();
+        let components = plan.components.as_ref().unwrap();
+        let single = components.iter().find(|component| component.name == "Single").unwrap();
+        let single_program = single.closed_store_host_program.as_ref().unwrap();
+        assert_eq!(single_program["schemaVersion"], 3);
+        assert_eq!(single_program["moduleRevision"], revision);
+        assert_eq!(single_program["inputs"].as_array().unwrap().len(), 1);
+        assert_eq!(single_program["inputs"][0]["storeUseSiteId"], single.store_sites[0].site_id);
+        assert_eq!(single_program["host"]["props"][0][1]["kind"], "tuple");
+        assert_eq!(single_program["host"]["props"][1][1]["kind"], "tuple");
+        let joint = components.iter().find(|component| component.name == "Joint").unwrap();
+        let joint_program = joint.closed_store_host_program.as_ref().unwrap();
+        assert_eq!(joint_program["schemaVersion"], 3);
+        assert_eq!(joint_program["inputs"].as_array().unwrap().len(), 2);
+        assert_eq!(joint_program["host"]["props"][0][1]["items"][0],
+            serde_json::json!({"kind":"input","index":0}));
+        assert_eq!(joint_program["host"]["props"][0][1]["items"][1],
+            serde_json::json!({"kind":"input","index":1}));
+        let styled = components.iter().find(|component| component.name == "Styled").unwrap();
+        let style = &styled.closed_store_host_program.as_ref().unwrap()["host"]["props"][1][1];
+        assert_eq!(style["kind"], "style");
+        assert_eq!(style["entries"].as_array().unwrap().len(), 4);
+        assert_eq!(style["entries"][1][0], "background-color");
+        assert_eq!(style["entries"][2][0], "--gap");
+        assert_eq!(components.iter().find(|component| component.name == "Primitive").unwrap()
+            .closed_store_host_program.as_ref().unwrap()["schemaVersion"], 1);
+        assert!(components.iter().find(|component| component.name == "Generic").unwrap()
+            .closed_store_host_program.is_none());
+        assert!(code.contains("stabilizeHostTuple as __nativeStabilizeHostTuple_"), "{code}");
+        assert_eq!(code.matches("__nativeStabilizeHostTuple_(").count(), 3, "{code}");
+        assert!(code.contains("position={__nativeStabilizeHostTuple_([x, 0, 1])}"), "{code}");
+        assert!(code.contains("scale={__nativeStabilizeHostTuple_([x, y, 1])}"), "{code}");
+        assert!(code.contains("position={props.position}"), "{code}");
+    }
+
+    #[test]
+    fn structured_store_styles_keep_the_resource_field_limit_and_need_no_tuple_helper() {
+        for (count, accepted) in [(32, true), (33, false)] {
+            let entries = (0..count).map(|index| format!("\"--field-{index}\": x"))
+                .collect::<Vec<_>>().join(", ");
+            let source = format!("import {{ use }} from \"native_runtime_api.ts\"; export function Styled(props) {{ const x = use(props.store); return <output key=\"styled\" style={{{{{entries}}}}}/>; }}");
+            let response = compile_state(&format!("store-style-{count}.tsx"), &source);
+            assert!(response.error.is_none(), "{count}: {:?}", response.error);
+            let plan = response.plan.unwrap();
+            assert_eq!(plan.components.as_ref().unwrap()[0].closed_store_host_program.as_ref()
+                .and_then(|program| program["schemaVersion"].as_u64()),
+                if accepted { Some(3) } else { None }, "{count}");
+            assert!(!plan.component_module.unwrap().contains("stabilizeHostTuple as"));
+        }
+    }
+
+    #[test]
+    fn structured_store_host_values_decline_unsafe_syntax_without_tuple_import() {
+        for (name, prop) in [
+            ("tuple-length", "<mesh key=\"leaf\" position={[x, 1]}/>"),
+            ("tuple-spread", "<mesh key=\"leaf\" position={[x, ...other]}/>"),
+            ("tuple-hole", "<mesh key=\"leaf\" position={[x, , 1]}/>"),
+            ("tuple-call", "<mesh key=\"leaf\" position={[x, read(), 1]}/>"),
+            ("tuple-capture", "<mesh key=\"leaf\" position={[x, other, 1]}/>"),
+            ("tuple-read", "<mesh key=\"leaf\" position={[x, props.other, 1]}/>"),
+            ("tuple-dom", "<div key=\"leaf\" position={[x, 0, 1]}/>"),
+            ("style-spread", "<div key=\"leaf\" style={{ color: x, ...other }}/>"),
+            ("style-computed", "<div key=\"leaf\" style={{ [other]: x }}/>"),
+            ("style-getter", "<div key=\"leaf\" style={{ get color() { return x; } }}/>"),
+            ("style-method", "<div key=\"leaf\" style={{ color() { return x; } }}/>"),
+            ("style-shorthand", "<div key=\"leaf\" style={{ x }}/>"),
+            ("style-call", "<div key=\"leaf\" style={{ color: choose(x) }}/>"),
+            ("style-duplicate", "<div key=\"leaf\" style={{ color: x, color: 1 }}/>"),
+            ("style-prototype", "<div key=\"leaf\" style={{ __proto__: x }}/>"),
+            ("style-unsafe-name", "<div key=\"leaf\" style={{ \"--bad;name\": x }}/>"),
+            ("style-three", "<mesh key=\"leaf\" style={{ color: x }}/>"),
+            ("extra-prop-read", "<div key=\"leaf\" style={{ color: props.other }}/>"),
+        ] {
+            let source = format!("import {{ use }} from \"native_runtime_api.ts\"; export function Candidate(props) {{ const x = use(props.store); return {prop}; }}");
+            let response = compile_state(&format!("store-{name}.tsx"), &source);
+            assert!(response.error.is_none(), "{name}: {:?}", response.error);
+            let plan = response.plan.unwrap();
+            assert!(plan.components.as_ref().unwrap()[0].closed_store_host_program.is_none(),
+                "{name} unexpectedly closed");
+            assert!(!plan.component_module.unwrap().contains("stabilizeHostTuple as"),
+                "{name} unexpectedly imported tuple helper");
+        }
+    }
+
+    #[test]
+    fn primitive_store_schemas_do_not_import_tuple_helper() {
+        let response = compile_state("primitive-store.tsx",
+            "import { use } from \"native_runtime_api.ts\"; export function One(props) { const x = use(props.store); return <div key=\"one\" data-x={x}/>; } export function Two(props) { const x = use(props.a); const y = use(props.b); return <group key=\"two\" position-x={x + y}/>; }");
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let plan = response.plan.unwrap();
+        let components = plan.components.as_ref().unwrap();
+        assert_eq!(components[0].closed_store_host_program.as_ref().unwrap()["schemaVersion"], 1);
+        assert_eq!(components[1].closed_store_host_program.as_ref().unwrap()["schemaVersion"], 2);
+        assert!(!plan.component_module.unwrap().contains("stabilizeHostTuple as"));
+    }
+
+    #[test]
+    fn generic_tuple_after_extra_render_work_is_not_stabilized() {
+        let source = "import { use } from \"native_runtime_api.ts\"; export function Generic(props) { const x = use(props.store); const other = props.other; return <mesh key=\"generic\" position={[x, other, 1]}/>; }";
+        let response = compile_state("generic-store-tuple.tsx", source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let plan = response.plan.unwrap();
+        assert!(plan.components.as_ref().unwrap()[0].closed_store_host_program.is_none());
+        let code = plan.component_module.unwrap();
+        assert!(code.contains("position={[x, other, 1]}"), "{code}");
+        assert!(!code.contains("stabilizeHostTuple as"));
+    }
+
+    #[test]
+    fn emits_closed_store_host_program_for_bounded_direct_numeric_uses_and_leaf_values() {
         let response = compile_state(
             "native-closed-store-host.tsx",
             include_str!("../../fixtures/native-closed-store-host.tsx"),
@@ -7863,13 +8033,26 @@ export function Label() { const [label] = useState("ready"); return <span data-l
             "left":{"kind":"input","index":0},
             "right":{"kind":"input","index":1}
         }));
+        let style = components.iter().find(|component| component.name == "Style").unwrap();
+        let style_program = style.closed_store_host_program.as_ref().unwrap();
+        assert_eq!(style_program["schemaVersion"], 3);
+        assert_eq!(style_program["componentProgramId"], style.component_site_id);
+        assert_eq!(style_program["moduleRevision"], revision);
+        assert_eq!(style_program["inputs"], serde_json::json!([
+            {"storeUseSiteId": style.store_sites[0].site_id, "storeProp": "store"},
+        ]));
+        assert_eq!(style_program["host"], serde_json::json!({
+            "tag": "div", "key": "x", "props": [["style", {
+                "kind": "style", "entries": [["opacity", {"kind": "input", "index": 0}]]
+            }]], "child": null
+        }));
         for component in components.iter().filter(|component|
-            !matches!(component.name.as_str(), "Mesh" | "Dom" | "MultipleHooks")) {
+            !matches!(component.name.as_str(), "Mesh" | "Dom" | "MultipleHooks" | "Style")) {
             assert!(component.closed_store_host_program.is_none(),
                 "{} unexpectedly closed", component.name);
         }
         let code = plan.component_module.unwrap();
-        assert_eq!(code.matches("closedStoreHostProgram:").count(), 3);
+        assert_eq!(code.matches("closedStoreHostProgram:").count(), 4);
         assert!(code.contains("closedStoreHostProgram: {"));
     }
 

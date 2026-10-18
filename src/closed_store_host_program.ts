@@ -1,14 +1,14 @@
+import { type ClosedNumericExpression } from "./closed_numeric_expression.ts";
 import {
-  evaluateClosedNumericExpression,
-  normalizeClosedNumericExpression,
-  type ClosedNumericExpression,
-} from "./closed_numeric_expression.ts";
+  closedDataArray, closedDataRecord, evaluateClosedHostValue, exactClosedFields,
+  isClosedHostPrimitive, normalizeClosedHostValue,
+  type ClosedHostOutputValue, type ClosedHostValue,
+} from "./closed_host_value.ts";
 
-type Primitive = string | number | boolean | null;
-type Host = Readonly<{
-  tag: "mesh" | "group" | "div" | "output";
+type Host<Value extends ClosedHostValue> = Readonly<{
+  tag: "mesh" | "group" | "div" | "span" | "output";
   key: string;
-  props: readonly (readonly [string, ClosedNumericExpression])[];
+  props: readonly (readonly [string, Value])[];
   child: null;
 }>;
 export type ClosedStoreHostInput = Readonly<{
@@ -20,47 +20,21 @@ export type ClosedStoreHostInput = Readonly<{
 export type ClosedStoreHostProgram = Readonly<{
   componentProgramId: string;
   moduleRevision: string;
-  host: Host;
 }> & (
-  | Readonly<{ schemaVersion: 1; storeUseSiteId: string; storeProp: string }>
-  | Readonly<{ schemaVersion: 2; inputs: readonly ClosedStoreHostInput[] }>
+  | Readonly<{ schemaVersion: 1; storeUseSiteId: string; storeProp: string; host: Host<ClosedNumericExpression> }>
+  | Readonly<{ schemaVersion: 2; inputs: readonly ClosedStoreHostInput[]; host: Host<ClosedNumericExpression> }>
+  | Readonly<{ schemaVersion: 3; inputs: readonly ClosedStoreHostInput[]; host: Host<ClosedHostValue> }>
 );
 
-export type ClosedStoreHostOutput = readonly (readonly [string, Primitive])[];
+export type ClosedStoreHostOutput = readonly (readonly [string, ClosedHostOutputValue])[];
 
-const record = (input: unknown): Record<string, unknown> | null => {
-  if (typeof input !== "object" || input === null || Array.isArray(input)) return null;
-  const prototype = Object.getPrototypeOf(input);
-  if (prototype !== Object.prototype && prototype !== null) return null;
-  const copy: Record<string, unknown> = Object.create(null);
-  for (const [key, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(input))) {
-    if (!("value" in descriptor)) return null;
-    copy[key] = descriptor.value;
-  }
-  return copy;
-};
-const exact = (value: Record<string, unknown>, keys: readonly string[]) =>
-  Object.keys(value).length === keys.length &&
-  keys.every((key) => Object.hasOwn(value, key));
-const array = (input: unknown): unknown[] | null => {
-  if (!Array.isArray(input) || input.length > 32) return null;
-  const descriptors = Object.getOwnPropertyDescriptors(input);
-  if (Object.keys(descriptors).length !== input.length + 1) return null;
-  const copy: unknown[] = [];
-  for (let index = 0; index < input.length; index++) {
-    const descriptor = descriptors[index];
-    if (!descriptor || !("value" in descriptor)) return null;
-    copy.push(descriptor.value);
-  }
-  return copy;
-};
-const allowedName = (tag: Host["tag"], name: string) =>
-  tag === "div" || tag === "output"
+const record = closedDataRecord;
+const exact = exactClosedFields;
+const array = closedDataArray;
+const allowedName = (tag: Host<ClosedHostValue>["tag"], name: string) =>
+  tag === "div" || tag === "span" || tag === "output"
     ? /^data-[a-z][a-z0-9-]*$/.test(name)
     : /^(?:position|rotation|scale)-[xyz]$/.test(name) || name === "visible";
-const primitive = (value: unknown): value is Primitive =>
-  value === null || typeof value === "string" || typeof value === "boolean" ||
-  (typeof value === "number" && Number.isFinite(value));
 const input = (site: unknown, prop: unknown): ClosedStoreHostInput | null =>
   typeof site === "string" && site.length > 0 &&
     typeof prop === "string" && /^[A-Za-z_$][\w$]*$/.test(prop)
@@ -81,10 +55,10 @@ export const normalizeClosedStoreHostProgram = (
       const one = input(root.storeUseSiteId, root.storeProp);
       if (!one) return null;
       inputs = Object.freeze([one]);
-    } else if (root.schemaVersion === 2) {
+    } else if (root.schemaVersion === 2 || root.schemaVersion === 3) {
       if (!exact(root, ["schemaVersion", "componentProgramId", "moduleRevision", "inputs", "host"])) return null;
       const rawInputs = array(root.inputs);
-      if (!rawInputs || rawInputs.length < 2 || rawInputs.length > 8) return null;
+      if (!rawInputs || rawInputs.length < (root.schemaVersion === 2 ? 2 : 1) || rawInputs.length > 8) return null;
       const next: ClosedStoreHostInput[] = [];
       const sites = new Set<string>();
       for (const rawInput of rawInputs) {
@@ -99,19 +73,20 @@ export const normalizeClosedStoreHostProgram = (
     } else return null;
     const host = record(root.host);
     if (!host || !exact(host, ["tag", "key", "props", "child"]) ||
-      !["mesh", "group", "div", "output"].includes(host.tag as string) ||
+      !["mesh", "group", "div", "span", "output"].includes(host.tag as string) ||
+      (root.schemaVersion !== 3 && host.tag === "span") ||
       typeof host.key !== "string" || host.key.length === 0 ||
       host.child !== null) return null;
-    const tag = host.tag as Host["tag"];
+    const tag = host.tag as Host<ClosedHostValue>["tag"];
     const rawProps = array(host.props);
     if (!rawProps) return null;
-    const props: (readonly [string, ClosedNumericExpression])[] = [];
+    const props: (readonly [string, ClosedHostValue])[] = [];
     const names = new Set<string>();
     for (const rawProp of rawProps) {
       const pair = array(rawProp);
       if (!pair || pair.length !== 2 || typeof pair[0] !== "string" ||
-        !allowedName(tag, pair[0]) || names.has(pair[0])) return null;
-      const expression = normalizeClosedNumericExpression(pair[1], inputs.length);
+        (root.schemaVersion !== 3 && !allowedName(tag, pair[0])) || names.has(pair[0])) return null;
+      const expression = normalizeClosedHostValue(pair[1], tag, pair[0], inputs.length, root.schemaVersion === 3);
       if (!expression) return null;
       names.add(pair[0]);
       props.push(Object.freeze([pair[0], expression] as const));
@@ -124,7 +99,7 @@ export const normalizeClosedStoreHostProgram = (
     };
     return root.schemaVersion === 1
       ? Object.freeze({ ...common, schemaVersion: 1, ...inputs[0] }) as ClosedStoreHostProgram
-      : Object.freeze({ ...common, schemaVersion: 2, inputs }) as ClosedStoreHostProgram;
+      : Object.freeze({ ...common, schemaVersion: root.schemaVersion, inputs }) as ClosedStoreHostProgram;
   } catch {
     return null;
   }
@@ -133,28 +108,28 @@ export const normalizeClosedStoreHostProgram = (
 /** The ordered direct Store reads covered by the frozen compiler program. */
 export const closedStoreHostInputs = (
   program: ClosedStoreHostProgram,
-): readonly ClosedStoreHostInput[] => program.schemaVersion === 2
+): readonly ClosedStoreHostInput[] => program.schemaVersion !== 1
   ? program.inputs
   : Object.freeze([Object.freeze({
     storeUseSiteId: program.storeUseSiteId,
     storeProp: program.storeProp,
   })]);
 
-/** Evaluate only frozen primitive data; unsupported values decline admission. */
+/** Evaluate frozen compiler data into candidate-owned host values; unsupported values decline. */
 export const evaluateClosedStoreHostProgram = (
   program: ClosedStoreHostProgram,
   numericValues: number | readonly number[],
 ): ClosedStoreHostOutput | null => {
-  const count = program.schemaVersion === 2 ? program.inputs.length : 1;
+  const count = program.schemaVersion !== 1 ? program.inputs.length : 1;
   const values = typeof numericValues === "number"
     ? count === 1 ? [numericValues] : null
     : array(numericValues);
   if (!values || values.length !== count || values.some((value) =>
     typeof value !== "number" || !Number.isFinite(value))) return null;
-  const props: (readonly [string, Primitive])[] = [];
+  const props: (readonly [string, ClosedHostOutputValue])[] = [];
   for (const [name, expression] of program.host.props) {
-    const value = evaluateClosedNumericExpression(expression, values as number[]);
-    if (!primitive(value)) return null;
+    const value = evaluateClosedHostValue(expression, values as number[]);
+    if (value === undefined || (program.schemaVersion !== 3 && !isClosedHostPrimitive(value))) return null;
     props.push(Object.freeze([name, value] as const));
   }
   return Object.freeze(props);

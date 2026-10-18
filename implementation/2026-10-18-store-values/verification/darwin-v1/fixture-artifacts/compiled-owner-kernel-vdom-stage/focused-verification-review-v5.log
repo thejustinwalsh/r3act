@@ -1,0 +1,79 @@
+COMMAND: deno test --frozen --config .cache/compiled-owner-kernel-vdom-stage/test-overlay-v5/deno.browser.json .cache/compiled-owner-kernel-vdom-stage/test-overlay-v5/src/vdom_owner_update_kernel_test.ts .cache/compiled-owner-kernel-vdom-stage/test-overlay-v5/src/prepared_owner_row_program_test.ts .cache/compiled-owner-kernel-vdom-stage/test-overlay-v5/src/native_prepared_row_cut_test.ts .cache/compiled-owner-kernel-vdom-stage/test-overlay-v5/src/vdom_numeric_cell_cut_test.ts .cache/compiled-owner-kernel-vdom-stage/test-overlay-v5/src/vdom_numeric_program_test.ts .cache/compiled-owner-kernel-vdom-stage/test-overlay-v5/src/native_numeric_cell_cut_test.ts .cache/compiled-owner-kernel-vdom-stage/test-overlay-v5/src/native_numeric_program_test.ts
+EXIT_CODE: 0
+Check .cache/compiled-owner-kernel-vdom-stage/test-overlay-v5/src/vdom_owner_update_kernel_test.ts
+Check .cache/compiled-owner-kernel-vdom-stage/test-overlay-v5/src/prepared_owner_row_program_test.ts
+Check .cache/compiled-owner-kernel-vdom-stage/test-overlay-v5/src/native_prepared_row_cut_test.ts
+Check .cache/compiled-owner-kernel-vdom-stage/test-overlay-v5/src/vdom_numeric_cell_cut_test.ts
+Check .cache/compiled-owner-kernel-vdom-stage/test-overlay-v5/src/vdom_numeric_program_test.ts
+Check .cache/compiled-owner-kernel-vdom-stage/test-overlay-v5/src/native_numeric_cell_cut_test.ts
+Check .cache/compiled-owner-kernel-vdom-stage/test-overlay-v5/src/native_numeric_program_test.ts
+running 8 tests from ./.cache/compiled-owner-kernel-vdom-stage/test-overlay-v5/src/vdom_owner_update_kernel_test.ts
+compiled owner update kernel stages sparse and dense row cuts ... ok (2ms)
+kernel cuts stay bounded for sparse token indexes and deduplicate token aliases ... ok (0ms)
+incomplete compiled sink coverage chooses generic owner-row fallback ... ok (0ms)
+heterogeneous owner rows use ordered generic fanout with retained vectors ... ok (0ms)
+kernel failure and invalid staged tails scrub before host writes ... ok (0ms)
+kernel validates every staged result before its first host write ... ok (0ms)
+kernel disposal cancels before selected-source bookkeeping or writers ... ok (0ms)
+kernel host reentry failure leaves state retryable and cleans scratch ... ok (0ms)
+running 14 tests from ./.cache/compiled-owner-kernel-vdom-stage/test-overlay-v5/src/prepared_owner_row_program_test.ts
+prepared owner rows project multi-source sinks from sparse captured cuts ... ok (3ms)
+prepared owner rows reject duplicate source leases and reprepare after refresh ... ok (0ms)
+prepared owner row guard rejects reentry and disposal cancels later sinks ... ok (0ms)
+prepared owner row projector failure occurs before any host write ... ok (0ms)
+prepared owner rows preserve forced writes for stable mutable outputs ... ok (0ms)
+prepared owner rows reject v1 and unassociated bindings ... ok (0ms)
+owner-row first dirty cut survives preparation after the column write ... ok (0ms)
+owner-row dirty fanouts preserve packed source and row order ... ok (0ms)
+owner-row stale untouched lease dependencies decline atomically ... ok (0ms)
+owner-row record scratch clears after early decline and repeated cuts ... ok (0ms)
+owner-row work visits grow linearly across one thousand rows ... ok (17ms)
+owner-row unused absent slots are accepted and v2 unary stays eligible ... ok (0ms)
+owner-row projector disposal cancels safely after the final projection ... ok (0ms)
+single-source v2 derived projectors use the captured cut vector ... ok (0ms)
+running 6 tests from ./.cache/compiled-owner-kernel-vdom-stage/test-overlay-v5/src/native_prepared_row_cut_test.ts
+owner-row Root cuts use captured sparse and dense inputs without rerender ... ok (6ms)
+owner-row null retry cannot publish or acknowledge before acceptance ... ok (0ms)
+owner-row host reentry leaves newer work pending and preserves outer outputs ... ok (0ms)
+owner-row host failure is terminal and never acknowledges the failed cut ... ok (1ms)
+owner-row accepted no-write cut acknowledges without retry or publication ... ok (0ms)
+owner-row dispose during first writer cancels remaining writes and releases cut ... ok (0ms)
+running 8 tests from ./.cache/compiled-owner-kernel-vdom-stage/test-overlay-v5/src/vdom_numeric_cell_cut_test.ts
+source-column attachment declines unsupported and unbound sources atomically ... ok (1ms)
+dirty cell cut captures distinct addresses before projection and host callbacks ... ok (0ms)
+dirty cell projection failure is atomic and can be retried ... ok (0ms)
+dirty cell host failure and nested cut retain retry and guard behavior ... ok (0ms)
+same-source refresh and keyed move preserve cell mapping; removal prunes it ... ok (0ms)
+keyed edits prune only the sources detached by that edit ... ok (1ms)
+disposing from a dirty-cell host callback cancels writes and releases associations ... ok (0ms)
+invalid dirty-cell cuts do not mutate sources or hosts ... ok (0ms)
+running 7 tests from ./.cache/compiled-owner-kernel-vdom-stage/test-overlay-v5/src/vdom_numeric_program_test.ts
+program fanout detaches an old source when the retained prop switches source ... ok (2ms)
+missing style capability retains the general batch path and static style fields ... ok (0ms)
+numeric programs reject nested batches before mutation and release guard after host failure ... ok (0ms)
+numeric source programs batch sparse and dense compound sinks once ... ok (0ms)
+numeric program validates duplicate and stale sources before mutation; setSources keeps last-write semantics ... ok (0ms)
+numeric program source validation scales to dense cuts and sink slots reuse on churn ... ok (44ms)
+numeric program indices follow detach and projection failure stages no host writes ... ok (0ms)
+running 9 tests from ./.cache/compiled-owner-kernel-vdom-stage/test-overlay-v5/src/native_numeric_cell_cut_test.ts
+native numeric cut bypasses StateChange capture and defers reentrant flush ... ok (5ms)
+native numeric cuts stay scoped to roots sharing one World ... ok (0ms)
+native numeric cut leaves state pending after a host writer throws ... ok (0ms)
+disposing during a native cell writer clears its queued cut ... ok (0ms)
+mixed store work keeps the independent captured-change path ... ok (1ms)
+unsupported numeric fallback does not add a redundant scheduled flush ... ok (0ms)
+version mismatch declines native cut and preserves the newer write ... ok (0ms)
+native host writers cannot update or prepare the root reentrantly ... ok (0ms)
+propagated structural reentry remains a terminal host failure ... ok (0ms)
+running 8 tests from ./.cache/compiled-owner-kernel-vdom-stage/test-overlay-v5/src/native_numeric_program_test.ts
+program host disposal stops later writers and releases root buffers ... ok (5ms)
+numeric programs project a compound captured cut and share sources ... ok (0ms)
+numeric program reentry leaves newer source version pending ... ok (0ms)
+bindings without a numeric descriptor keep the generic path ... ok (0ms)
+one unannotated shared sink demotes the source to generic updates ... ok (0ms)
+validated program descriptors are frozen for retained eligibility ... ok (0ms)
+only descriptor-backed compound bindings reuse their input array ... ok (0ms)
+root numeric source scratch arrays retain high-water length ... ok (0ms)
+
+ok | 60 passed | 0 failed (370ms)
+

@@ -1,0 +1,589 @@
+--- a/src/compiled_state_layout.ts
++++ b/src/compiled_state_layout.ts
+@@ -3,6 +3,8 @@
+ /** Compiler-certified numeric state slots for one component site. */
+ export type CompiledStateLayout = Readonly<{
+   schemaVersion: 1;
++  /** Stable component program identity; omitted by legacy layout-v1 metadata. */
++  programId?: string;
+   slots: readonly Readonly<{ siteId: string; slot: number }>[];
+ }>;
+ 
+@@ -18,6 +20,13 @@
+ const normalizedLayouts = new WeakMap<object, CompiledStateLayout>();
+ const layoutSignatures = new WeakMap<object, string>();
+ const layoutSlotsBySite = new WeakMap<object, Map<string, number>>();
++const makeLayoutSignature = (
++  programId: string | undefined,
++  slots: readonly Readonly<{ siteId: string; slot: number }>[],
++): string => JSON.stringify([
++  programId ?? null,
++  slots.map(({ siteId, slot }) => [siteId, slot]),
++]);
+ 
+ /** Validate and defensively snapshot metadata once per compiler-owned object. */
+ export function normalizeCompiledStateLayout(
+@@ -31,6 +40,12 @@
+   if (input.schemaVersion !== 1 || !Array.isArray(input.slots)) {
+     throw new TypeError("Unsupported compiled state layout");
+   }
++  if (
++    input.programId !== undefined &&
++    (typeof input.programId !== "string" || input.programId.length === 0)
++  ) {
++    throw new TypeError("Invalid compiled state layout program ID");
++  }
+   const sites = new Set<string>();
+   const slots = input.slots.map((entry, index) => {
+     if (
+@@ -45,14 +60,12 @@
+   });
+   const normalized = Object.freeze({
+     schemaVersion: 1 as const,
++    ...(input.programId !== undefined ? { programId: input.programId } : {}),
+     slots: Object.freeze(slots),
+   });
+   normalizedLayouts.set(input as object, normalized);
+   normalizedLayouts.set(normalized, normalized);
+-  layoutSignatures.set(
+-    normalized,
+-    slots.map(({ siteId, slot }) => `${slot}:${siteId}`).join("\u0000"),
+-  );
++  layoutSignatures.set(normalized, makeLayoutSignature(input.programId, slots));
+   return normalized;
+ }
+ 
+@@ -62,8 +75,7 @@
+   const normalized = normalizeCompiledStateLayout(layout);
+   let signature = layoutSignatures.get(normalized);
+   if (signature === undefined) {
+-    signature = normalized.slots.map(({ siteId, slot }) => `${slot}:${siteId}`)
+-      .join("\u0000");
++    signature = makeLayoutSignature(normalized.programId, normalized.slots);
+     layoutSignatures.set(normalized, signature);
+   }
+   return signature;
+--- a/src/jsx_binding_runtime.ts
++++ b/src/jsx_binding_runtime.ts
+@@ -1,4 +1,5 @@
+ import { type BindingEdge, CompiledBindings } from "./compiled_bindings.ts";
++import type { CompiledStateLayout } from "./compiled_state_layout.ts";
+ 
+ export type RuntimeNode =
+   | RuntimeElement
+@@ -115,13 +116,34 @@
+   constructor(readonly id: number, public value: number) {}
+ }
+ 
+-/** Compiler proof that a binding is a fixed numeric source program. */
+-export type NumericBindingProgramDescriptor = Readonly<{
++/** Legacy compiler proof for a fixed numeric source program. */
++export type NumericBindingProgramDescriptorV1 = Readonly<{
+   schemaVersion: 1;
+   sinkId: string;
+   sourceSites: readonly string[];
+ }>;
+ 
++/** Owner-scoped compiler proof for an authored numeric sink. */
++export type NumericBindingProgramDescriptorV2 = Readonly<{
++  schemaVersion: 2;
++  ownerProgramId: string;
++  sinkId: string;
++  sourceSites: readonly string[];
++}>;
++
++/** Compiler proof that a binding is a fixed numeric source program. */
++export type NumericBindingProgramDescriptor =
++  | NumericBindingProgramDescriptorV1
++  | NumericBindingProgramDescriptorV2;
++
++/** Immutable owner/layout association for a compiled sink; contains no runtime handles. */
++export type NumericOwnerBinding = Readonly<{
++  owner: number;
++  programId: string;
++  layout: CompiledStateLayout;
++  sourceSlots: readonly number[];
++}>;
++
+ /** Contiguous per-entity values for a compiler-known trait/source slot. */
+ export class NumericColumn {
+   readonly source: ScalarSource;
+@@ -171,6 +193,10 @@
+   readonly entityIndex?: number;
+   /** Optional compiler-owned numeric program identity and fixed source shape. */
+   readonly numericProgram?: NumericBindingProgramDescriptor;
++  /** Optional owner-row association for a matching compiler-v2 program. */
++  readonly numericOwner?: NumericOwnerBinding;
++  /** Multi-source authored projector, exposed without wrapping or coercion. */
++  readonly projectInputs?: (values: readonly number[]) => unknown;
+ };
+ 
+ /** Mark a JSX prop as a scalar source binding, optionally projecting to a host value. */
+@@ -212,6 +238,7 @@
+     sources,
+     project: () => read(),
+     read,
++    ...(numericProgram?.schemaVersion === 2 ? { projectInputs: derive } : {}),
+     ...(numericProgram ? { numericProgram } : {}),
+   };
+ };
+--- a/src/component_state_runtime.ts
++++ b/src/component_state_runtime.ts
+@@ -16,6 +16,10 @@
+   CompiledStateLayout,
+   NumericLaneAddress,
+ } from "./compiled_state_layout.ts";
++import {
++  compiledStateLayoutSlot,
++  normalizeCompiledStateLayout,
++} from "./compiled_state_layout.ts";
+ export type { CompiledStateLayout } from "./compiled_state_layout.ts";
+ import {
+   type OwnerId,
+@@ -37,6 +41,8 @@
+   getKeyedOwnerVersion,
+   keyedOwnerChildren,
+   type NumericBindingProgramDescriptor,
++  type NumericBindingProgramDescriptorV1,
++  type NumericBindingProgramDescriptorV2,
+   type RuntimeElement,
+   type RuntimeNode,
+   type ScalarSource,
+@@ -277,24 +283,14 @@
+     let stateLayout: CompiledStateLayout | undefined;
+     if (metadata.stateLayout !== undefined) {
+       const layout = metadata.stateLayout;
+-      if (layout.schemaVersion !== 1 || !Array.isArray(layout.slots)) {
+-        throw new Error("Invalid compiled state layout schema");
++      if (layout.programId !== undefined && layout.programId !== siteId) {
++        throw new Error("Compiled state layout program ID must match its component site");
+       }
+-      const seen = new Set<string>();
+-      const slots = layout.slots.map((entry, slot) => {
+-        if (
+-          !entry || entry.slot !== slot ||
+-          !propOnlySites.includes(entry.siteId) || seen.has(entry.siteId)
+-        ) {
+-          throw new Error("Invalid compiled state layout slot");
+-        }
+-        seen.add(entry.siteId);
+-        return Object.freeze({ siteId: entry.siteId, slot });
+-      });
+-      stateLayout = Object.freeze({
+-        schemaVersion: 1,
+-        slots: Object.freeze(slots),
+-      });
++      const normalized = normalizeCompiledStateLayout(layout);
++      if (normalized.slots.some((entry) => !propOnlySites.includes(entry.siteId))) {
++        throw new Error("Invalid compiled state layout slot");
++      }
++      stateLayout = normalized;
+     }
+     Object.defineProperty(render, componentMetadata, {
+       value: Object.freeze({
+@@ -331,12 +327,23 @@
+   if (descriptor === undefined) return undefined;
+   if (
+     !descriptor || typeof descriptor !== "object" ||
+-    descriptor.schemaVersion !== 1 ||
++    (descriptor.schemaVersion !== 1 && descriptor.schemaVersion !== 2) ||
+     typeof descriptor.sinkId !== "string" || descriptor.sinkId.length === 0 ||
+     !Array.isArray(descriptor.sourceSites) ||
+     descriptor.sourceSites.length !== sites.length
+   ) {
+     throw new TypeError("Invalid numeric binding program descriptor");
++  }
++  if (
++    descriptor.schemaVersion === 2 &&
++    (typeof descriptor.ownerProgramId !== "string" ||
++      descriptor.ownerProgramId.length === 0 ||
++      descriptor.sourceSites.some((site) =>
++        typeof site !== "string" || site.length === 0
++      ) ||
++      new Set(descriptor.sourceSites).size !== descriptor.sourceSites.length)
++  ) {
++    throw new TypeError("Invalid owner-scoped numeric binding descriptor");
+   }
+   for (let index = 0; index < sites.length; index++) {
+     if (
+@@ -355,12 +362,61 @@
+   return Object.freeze(descriptor);
+ };
+ 
++/** Build immutable owner metadata only when the v2 program names this exact layout. */
++const numericOwnerBindingFor = (
++  active: ActiveOwner,
++  descriptor: NumericBindingProgramDescriptor | undefined,
++  siteIds: readonly string[],
++): BoundValue["numericOwner"] => {
++  if (
++    descriptor?.schemaVersion !== 2 || !active.stateLayout ||
++    active.stateLayout.programId !== descriptor.ownerProgramId
++  ) return undefined;
++  const sourceSlots: number[] = [];
++  for (const siteId of siteIds) {
++    const slot = compiledStateLayoutSlot(active.stateLayout, siteId);
++    if (slot === undefined) return undefined;
++    sourceSlots.push(slot);
++  }
++  return Object.freeze({
++    owner: active.owner,
++    programId: descriptor.ownerProgramId,
++    layout: active.stateLayout,
++    sourceSlots: Object.freeze(sourceSlots),
++  });
++};
++
+ /** Build a live numeric binding from state cells owned by the active component. */
+-export const bindStatePropsAt = <T>(
++export function bindStatePropsAt<T>(
+   siteIds: readonly string[],
+   derive: (values: readonly number[]) => T,
++  numericProgram: NumericBindingProgramDescriptorV2,
++): BoundValue<T> | T;
++export function bindStatePropsAt<T>(
++  siteIds: readonly string[],
++  derive: (values: readonly number[]) => T,
++  numericProgram?: NumericBindingProgramDescriptorV1,
++): BoundValue<T>;
++export function bindStatePropsAt<T>(
++  siteIds: readonly string[],
++  derive: (values: readonly number[]) => T,
++  numericProgram: NumericBindingProgramDescriptorV2,
++): BoundValue<T> | T;
++export function bindStatePropsAt<T>(
++  siteIds: readonly string[],
++  derive: (values: readonly number[]) => T,
++  numericProgram?: NumericBindingProgramDescriptorV1,
++): BoundValue<T>;
++export function bindStatePropsAt<T>(
++  siteIds: readonly string[],
++  derive: (values: readonly number[]) => T,
++  numericProgram: NumericBindingProgramDescriptor,
++): BoundValue<T> | T;
++export function bindStatePropsAt<T>(
++  siteIds: readonly string[],
++  derive: (values: readonly number[]) => T,
+   numericProgram?: NumericBindingProgramDescriptor,
+-): BoundValue<T> => {
++): BoundValue<T> | T {
+   const active = activeOwners[activeOwners.length - 1];
+   if (!active) {
+     throw new Error(
+@@ -374,24 +430,52 @@
+     numericProgram,
+     siteIds,
+   );
++  const numericOwner = numericOwnerBindingFor(
++    active,
++    validatedProgram,
++    siteIds,
++  );
+   const sources: ScalarSource[] = [];
++  let missingNumericSite: string | undefined;
+   for (const siteId of siteIds) {
+     const source = active.world.scalarSource(active.owner, siteId);
+     if (!source) {
+-      throw new Error(`State site ${siteId} is not a numeric state cell`);
++      missingNumericSite ??= siteId;
++      continue;
+     }
+     active.propBoundSites.add(siteId);
+     sources.push(source);
++  }
++  if (missingNumericSite !== undefined) {
++    if (!numericOwner || validatedProgram?.schemaVersion !== 2) {
++      throw new Error(
++        `State site ${missingNumericSite} is not a numeric state cell`,
++      );
++    }
++    // Promotion removes numeric sources but leaves the authored owner slots.
++    // Read their actual values and call the same projector with no coercion.
++    const values = siteIds.map((siteId) =>
++      active.world.useState<unknown>(
++        active.owner,
++        siteId,
++        undefined,
++        active.stateLayout!,
++      )[0] as number
++    );
++    return derive(values);
+   }
+   const binding = bindSources(sources, derive, validatedProgram);
++  const ownedBinding = numericOwner
++    ? { ...binding, numericOwner }
++    : binding;
+   active.captureBinding?.(
+-    binding as BoundValue<unknown>,
++    ownedBinding as BoundValue<unknown>,
+     sources,
+     active.owner,
+     siteIds,
+   );
+-  return binding;
+-};
++  return ownedBinding;
++}
+ 
+ /** Build a live numeric binding from one state cell owned by the active component. */
+ export const bindStatePropAt = <T>(
+@@ -414,11 +498,17 @@
+   const validatedProgram = validateNumericBindingProgram(numericProgram, [
+     siteId,
+   ]);
++  const numericOwner = numericOwnerBindingFor(
++    active,
++    validatedProgram,
++    [siteId],
++  );
+   const source = active.world.scalarSource(active.owner, siteId);
+   if (!source) {
+     if (
+-      validatedProgram &&
+-      active.stateLayout?.slots.some((slot) => slot.siteId === siteId)
++      (validatedProgram?.schemaVersion === 1 &&
++        active.stateLayout?.slots.some((slot) => slot.siteId === siteId)) ||
++      numericOwner !== undefined
+     ) {
+       // A compiler-certified numeric site can promote to general state. Its
+       // ordinary initializer already ran; read the same private/committed cell
+@@ -427,7 +517,7 @@
+         active.owner,
+         siteId,
+         undefined,
+-        active.stateLayout,
++        active.stateLayout!,
+       );
+       return project(value as number);
+     }
+@@ -443,6 +533,7 @@
+     sources,
+     read: () => project(sources[0].value),
+     ...(validatedProgram ? { numericProgram: validatedProgram } : {}),
++    ...(numericOwner ? { numericOwner } : {}),
+   };
+   active.captureBinding?.(
+     binding as BoundValue<unknown>,
+--- /dev/null
++++ b/src/compiled_owner_binding_test.ts
+@@ -0,0 +1,220 @@
++import { assertEquals, assertThrows } from "jsr:@std/assert";
++import {
++  bindStatePropAt,
++  bindStatePropsAt,
++  ComponentStateRoot,
++  defineComponent,
++  useStateAt,
++} from "./component_state_runtime.ts";
++import {
++  type BoundValue,
++  type NumericBindingProgramDescriptor,
++  type NumericBindingProgramDescriptorV2,
++  jsx,
++} from "./jsx_binding_runtime.ts";
++import { compiledStateLayoutSignature, normalizeCompiledStateLayout } from "./compiled_state_layout.ts";
++import { MemoryVDOMHost } from "./vdom_snapshot_runtime.ts";
++
++const program = (ownerProgramId: string, sourceSites: readonly string[]): NumericBindingProgramDescriptorV2 => ({
++  schemaVersion: 2,
++  ownerProgramId,
++  sinkId: `${ownerProgramId}:sink`,
++  sourceSites,
++});
++
++const metadataOf = (component: unknown): any =>
++  Object.getOwnPropertySymbols(component as object).map((symbol) =>
++    Object.getOwnPropertyDescriptor(component as object, symbol)?.value
++  ).find((value) => value?.propOnlySites);
++
++Deno.test("layout program IDs are normalized, frozen, signature-bearing and component-scoped", () => {
++  const mutableSlots = [{ siteId: "panel#state:0", slot: 0 }];
++  const input = { schemaVersion: 1 as const, programId: "panel", slots: mutableSlots };
++  const normalized = normalizeCompiledStateLayout(input);
++  assertEquals(normalized.programId, "panel");
++  assertEquals(Object.isFrozen(normalized), true);
++  assertEquals(Object.isFrozen(normalized.slots), true);
++  assertEquals(Object.isFrozen(normalized.slots[0]), true);
++  assertEquals(compiledStateLayoutSignature(normalized), compiledStateLayoutSignature(input));
++  const legacy = normalizeCompiledStateLayout({ schemaVersion: 1, slots: mutableSlots });
++  assertEquals(compiledStateLayoutSignature(legacy) === compiledStateLayoutSignature(normalized), false);
++  const sameShapeOtherProgram = normalizeCompiledStateLayout({
++    schemaVersion: 1,
++    programId: "other-panel",
++    slots: mutableSlots,
++  });
++  assertEquals(
++    compiledStateLayoutSignature(normalized) ===
++      compiledStateLayoutSignature(sameShapeOtherProgram),
++    false,
++  );
++  const delimiterLeft = normalizeCompiledStateLayout({
++    schemaVersion: 1,
++    programId: "panel",
++    slots: [
++      { siteId: "a\u00001:b", slot: 0 },
++      { siteId: "c", slot: 1 },
++    ],
++  });
++  const delimiterRight = normalizeCompiledStateLayout({
++    schemaVersion: 1,
++    programId: "panel",
++    slots: [
++      { siteId: "a", slot: 0 },
++      { siteId: "b\u00001:c", slot: 1 },
++    ],
++  });
++  assertEquals(
++    compiledStateLayoutSignature(delimiterLeft) ===
++      compiledStateLayoutSignature(delimiterRight),
++    false,
++  );
++  assertThrows(() => normalizeCompiledStateLayout({ schemaVersion: 1, programId: "", slots: [] }));
++  assertThrows(() => defineComponent("other", () => null, {
++    propOnlySites: ["panel#state:0"],
++    stateLayout: input,
++  }));
++  const component = defineComponent("panel", () => null, {
++    propOnlySites: ["panel#state:0"],
++    stateLayout: input,
++  });
++  assertEquals(metadataOf(component).stateLayout.programId, "panel");
++  mutableSlots[0].siteId = "mutated";
++  assertEquals(metadataOf(component).stateLayout.slots[0].siteId, "panel#state:0");
++});
++
++Deno.test("v1 and v2 bindings retain compatibility and expose only valid owner metadata", () => {
++  const layout = {
++    schemaVersion: 1 as const,
++    programId: "panel",
++    slots: [
++      { siteId: "panel#state:0", slot: 0 },
++      { siteId: "panel#state:1", slot: 1 },
++    ],
++  };
++  const sites = layout.slots.map(({ siteId }) => siteId);
++  let multi!: BoundValue<number>;
++  let unary!: BoundValue<number>;
++  let legacy!: BoundValue<number>;
++  const derive = (values: readonly number[]) => values[0] + values[1];
++  const Panel = defineComponent("panel", () => {
++    useStateAt(sites[0], 2);
++    useStateAt(sites[1], 3);
++    multi = bindStatePropsAt(sites, derive, program("panel", sites)) as BoundValue<number>;
++    unary = bindStatePropAt(sites[0], (value) => value * 2, {
++      schemaVersion: 2,
++      ownerProgramId: "panel",
++      sinkId: "panel:unary",
++      sourceSites: [sites[0]],
++    }) as BoundValue<number>;
++    legacy = bindStatePropsAt([sites[0]], ([value]) => value, {
++      schemaVersion: 1,
++      sinkId: "legacy",
++      sourceSites: [sites[0]],
++    }) as BoundValue<number>;
++    return jsx("output", { multi, unary, legacy });
++  }, { propOnlySites: sites, stateLayout: layout });
++  const host = new MemoryVDOMHost();
++  const container = host.createContainer();
++  const root = new ComponentStateRoot(host, container, { scheduleCommit() {} });
++  try {
++    root.mount(jsx(Panel, {}));
++    assertEquals(multi.numericProgram?.schemaVersion, 2);
++    assertEquals(multi.projectInputs, derive, "multi-source V2 exposes the authored projector directly");
++    assertEquals(multi.numericOwner?.programId, "panel");
++    assertEquals(multi.numericOwner?.layout.programId, "panel");
++    assertEquals(multi.numericOwner?.sourceSlots, [0, 1]);
++    assertEquals(Object.isFrozen(multi.numericOwner), true);
++    assertEquals(Object.isFrozen(multi.numericOwner?.sourceSlots), true);
++    assertEquals(unary.numericProgram?.schemaVersion, 2);
++    assertEquals(unary.numericOwner?.sourceSlots, [0]);
++    assertEquals(unary.projectInputs, undefined, "unary keeps its scalar projector without an array wrapper");
++    assertEquals(unary.project(4), 8);
++    assertEquals(legacy.numericProgram?.schemaVersion, 1);
++    assertEquals(legacy.numericOwner, undefined, "legacy V1 programs do not gain owner authority");
++    assertEquals(legacy.projectInputs, undefined);
++  } finally {
++    root.dispose();
++  }
++});
++
++Deno.test("V2 owner mismatch keeps numeric binding but withholds owner association", () => {
++  const site = "panel#state:0";
++  let captured!: BoundValue<number>;
++  const Panel = defineComponent("panel", () => {
++    useStateAt(site, 7);
++    captured = bindStatePropsAt([site], ([value]) => value, program("another-panel", [site])) as BoundValue<number>;
++    return jsx("output", { value: captured });
++  }, { propOnlySites: [site], stateLayout: {
++    schemaVersion: 1,
++    programId: "panel",
++    slots: [{ siteId: site, slot: 0 }],
++  } });
++  const host = new MemoryVDOMHost();
++  const container = host.createContainer();
++  const root = new ComponentStateRoot(host, container, { scheduleCommit() {} });
++  try {
++    root.mount(jsx(Panel, {}));
++    assertEquals(captured.numericProgram?.schemaVersion, 2);
++    assertEquals(captured.numericOwner, undefined);
++    assertEquals(captured.projectInputs?.([11]), 11);
++  } finally {
++    root.dispose();
++  }
++});
++
++Deno.test("multi-source V2 promotion projects actual strings and undefined without coercion", () => {
++  const sites = ["panel#state:0", "panel#state:1"];
++  let projected: unknown;
++  let projectionTypes: string[] = [];
++  const derive = (values: readonly number[]) => {
++    projected = values[0] === undefined ? values[1] : `${values[0]}:${String(values[1])}`;
++    projectionTypes = [typeof values[0], typeof values[1]];
++    return projected;
++  };
++  const Panel = defineComponent("panel", () => {
++    useStateAt(sites[0], "wide" as unknown as number);
++    useStateAt(sites[1], undefined as unknown as number);
++    const value = bindStatePropsAt(sites, derive, program("panel", sites));
++    return jsx("output", { value });
++  }, { propOnlySites: sites, stateLayout: {
++    schemaVersion: 1,
++    programId: "panel",
++    slots: sites.map((siteId, slot) => ({ siteId, slot })),
++  } });
++  const host = new MemoryVDOMHost();
++  const container = host.createContainer();
++  const root = new ComponentStateRoot(host, container, { scheduleCommit() {} });
++  try {
++    root.mount(jsx(Panel, {}));
++    assertEquals(projected, "wide:undefined");
++    assertEquals(projectionTypes, ["string", "undefined"]);
++  } finally {
++    root.dispose();
++  }
++});
++
++Deno.test("invalid v2 descriptors reject empty owner IDs and duplicate dependencies", () => {
++  const site = "panel#state:0";
++  const Panel = (descriptor: NumericBindingProgramDescriptor) => defineComponent("panel", () => {
++    useStateAt(site, 1);
++    bindStatePropsAt(descriptor.sourceSites, ([value]) => value, descriptor);
++    return jsx("output", {});
++  }, { propOnlySites: [site], stateLayout: {
++    schemaVersion: 1,
++    programId: "panel",
++    slots: [{ siteId: site, slot: 0 }],
++  } });
++  for (const descriptor of [
++    { schemaVersion: 2 as const, ownerProgramId: "", sinkId: "sink", sourceSites: [site] },
++    { schemaVersion: 2 as const, ownerProgramId: "panel", sinkId: "sink", sourceSites: [site, site] },
++  ]) {
++    const host = new MemoryVDOMHost();
++    const root = new ComponentStateRoot(host, host.createContainer(), { scheduleCommit() {} });
++    try {
++      assertThrows(() => root.mount(jsx(Panel(descriptor), {})));
++    } finally {
++      root.dispose();
++    }
++  }
++});

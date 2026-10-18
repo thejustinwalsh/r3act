@@ -14,6 +14,7 @@ import {
 import { KeyedRegionBuckets } from "./keyed_region_buckets.ts";
 import { createDOMStylePropWriter } from "./dom_style_writer.ts";
 import { snapshotScopedHostProp } from "./scoped_host_values.ts";
+import type { ClosedHostOutputValue } from "./closed_host_value.ts";
 import {
   type CompiledOwnerUpdatePrimitive,
   type CompiledOwnerUpdateProgram,
@@ -105,7 +106,7 @@ export interface PreparedRetainedSourceDelta {
 export type StorePropDelta = Readonly<{
   key: string;
   tag: string;
-  props: readonly (readonly [string, number | string | boolean | null])[];
+  props: readonly (readonly [string, ClosedHostOutputValue])[];
 }>;
 
 const storePropDeltaBrand: unique symbol = Symbol();
@@ -121,7 +122,7 @@ type StorePropDeltaRecord<H> = {
     parent: MountedNode<H> | null;
     parentIndex: number;
     bucket: KeyedRegionBuckets<MountedNode<H>> | undefined;
-    writes: readonly (readonly [string, number | string | boolean | null, number | string | boolean | null])[];
+    writes: readonly (readonly [string, ClosedHostOutputValue, ClosedHostOutputValue])[];
     next: VElement;
   }[];
   readonly writer: VDOMHost<H>["setProp"];
@@ -3355,7 +3356,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       (groups instanceof Set ? groups.size : groups.length) > 0;
   }
 
-  /** Prepare primitive prop writes on exact mounted, globally keyed host leaves. */
+  /** Prepare closed prop writes on exact mounted, globally keyed host leaves. */
   prepareStorePropDelta(
     regions: readonly StorePropDelta[],
   ): PreparedStorePropDelta | null {
@@ -3379,25 +3380,44 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         vnode.keyedRegionId !== null || node.children.length !== 0 ||
         node.keyedChildren || node.scalarBindingGroups?.size ||
         node.scalarIncompatibleBindingProps?.size) return null;
-      const descriptors = Object.getOwnPropertyDescriptors(vnode.props);
-      const safe = (name: string, value: unknown) =>
-        name !== "ref" && name !== "style" && !/^on[A-Z]/.test(name) &&
-        (value === null || typeof value === "string" ||
-          typeof value === "boolean" ||
-          (typeof value === "number" && Number.isFinite(value)));
-      if (Object.entries(descriptors).some(([name, descriptor]) =>
-        !("value" in descriptor) || !safe(name, descriptor.value)
-      )) return null;
-      const nextProps: Record<string, unknown> = { ...vnode.props };
+      let descriptors: Record<string, PropertyDescriptor>;
+      try { descriptors = Object.getOwnPropertyDescriptors(vnode.props); }
+      catch { return null; }
+      const capture = (name: string, value: unknown, previous: boolean) => {
+        try {
+          if (name === "ref" || /^on[A-Z]/.test(name)) return null;
+          if ((name === "style" || name === "position" || name === "rotation" ||
+            name === "scale") && previous && !Object.isFrozen(value)) return null;
+          if ((name === "position" || name === "rotation" || name === "scale") &&
+            !previous && !Object.isFrozen(value)) return null;
+          return snapshotScopedHostProp(vnode.tag, name, value);
+        } catch { return null; }
+      };
+      const nextProps: Record<string, unknown> = {};
+      for (const [name, descriptor] of Object.entries(descriptors)) {
+        if (!("value" in descriptor)) return null;
+        const captured = capture(name, descriptor.value, true);
+        if (!captured?.accepted || captured.value === undefined) return null;
+        if (vnode.scopedSourceProps) {
+          let authored: PropertyDescriptor | undefined;
+          try { authored = Object.getOwnPropertyDescriptor(vnode.scopedSourceProps, name); }
+          catch { return null; }
+          if (!authored || !("value" in authored) ||
+            !capture(name, authored.value, false)?.accepted) return null;
+        }
+        nextProps[name] = captured.value;
+      }
       const names = new Set<string>();
-      const writes: Array<readonly [string, number | string | boolean | null,
-        number | string | boolean | null]> = [];
-      for (const [name, next] of region.props) {
+      const writes: Array<readonly [string, ClosedHostOutputValue,
+        ClosedHostOutputValue]> = [];
+      for (const [name, proposed] of region.props) {
         const prior = descriptors[name];
-        if (names.has(name) || !prior || !("value" in prior) ||
-          !safe(name, next)) return null;
+        if (names.has(name) || !prior || !("value" in prior)) return null;
         names.add(name);
-        const previous = prior.value as number | string | boolean | null;
+        const captured = capture(name, proposed, false);
+        if (!captured?.accepted || captured.value === undefined) return null;
+        const next = captured.value as ClosedHostOutputValue;
+        const previous = nextProps[name] as ClosedHostOutputValue;
         nextProps[name] = next;
         writes.push([name, next, previous]);
       }

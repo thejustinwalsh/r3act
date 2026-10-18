@@ -59,7 +59,9 @@ const sourcePaths = async () => {
     "implementation/2026-10-18-native-platforms/design.md",
     "implementation/2026-10-18-native-platforms/source-review.md",
     "implementation/2026-10-18-resource-values/design.md",
-    "implementation/2026-10-18-resource-values/source-review.md"]) {
+    "implementation/2026-10-18-resource-values/source-review.md",
+    "implementation/2026-10-18-store-values/design.md",
+    "implementation/2026-10-18-store-values/source-review.md"]) {
     try { if ((await stat(path.join(root, relative))).isFile()) files.push(relative); }
     catch (error) { if (error?.code !== "ENOENT") throw error; }
   }
@@ -254,7 +256,7 @@ const runStep = async (name, command, args, { depends = [], deadlineMs = 300_000
 };
 
 let beforeSource;
-let beforeFixtures = new Map();
+let beforeFixtures;
 try {
   if (Object.hasOwn(process.env, "CARGO_TARGET_DIR") || Object.hasOwn(process.env, "CARGO_BUILD_TARGET")) {
     throw new Error("Native proof requires the default Cargo target path used by all compiled fixtures; CARGO_TARGET_DIR and CARGO_BUILD_TARGET are unsupported");
@@ -330,7 +332,7 @@ try {
     "compiled_retained_transaction_test", "compiled_owner_row_execution_test",
     "compiled_owner_row_three_execution_test", "compiled_store_host_test", "compiled_joint_store_host_test",
     "compiled_joint_input_transaction_test", "compiled_resource_subtree_reveal_test",
-    "compiled_resource_host_values_test"];
+    "compiled_resource_host_values_test", "compiled_store_host_values_test"];
   for (const [index, fixture] of fixtures.entries()) {
     const name = `compiled-${String(index + 1).padStart(2, "0")}`;
     const before = await compilerHash();
@@ -369,7 +371,9 @@ try {
     }
   } catch (error) { receipt.errors.push(`Package archive: ${error?.stack ?? error}`); }
   try {
-    receipt.fixtureArtifacts = await archiveFixtureChanges(beforeFixtures);
+    receipt.fixtureArtifacts = beforeFixtures
+      ? await archiveFixtureChanges(beforeFixtures)
+      : { status: "SKIPPED_BASELINE_NOT_CAPTURED", files: [] };
     await json(path.join(output, "fixture-artifacts.json"), receipt.fixtureArtifacts);
   } catch (error) { receipt.errors.push(`Fixture archive: ${error?.stack ?? error}`); }
   try {

@@ -1,0 +1,39 @@
+import { type ClosedNumericExpression } from "./closed_numeric_expression.ts";
+import { type ClosedHostOutputValue, type ClosedHostValue } from "./closed_host_value.ts";
+type Host<Value extends ClosedHostValue> = Readonly<{
+    tag: "mesh" | "group" | "div" | "span" | "output";
+    key: string;
+    props: readonly (readonly [string, Value])[];
+    child: null;
+}>;
+export type ClosedStoreHostInput = Readonly<{
+    storeUseSiteId: string;
+    storeProp: string;
+}>;
+/** Compiler data program for one or more direct numeric Store reads and one keyed host leaf. */
+export type ClosedStoreHostProgram = Readonly<{
+    componentProgramId: string;
+    moduleRevision: string;
+}> & (Readonly<{
+    schemaVersion: 1;
+    storeUseSiteId: string;
+    storeProp: string;
+    host: Host<ClosedNumericExpression>;
+}> | Readonly<{
+    schemaVersion: 2;
+    inputs: readonly ClosedStoreHostInput[];
+    host: Host<ClosedNumericExpression>;
+}> | Readonly<{
+    schemaVersion: 3;
+    inputs: readonly ClosedStoreHostInput[];
+    host: Host<ClosedHostValue>;
+}>);
+export type ClosedStoreHostOutput = readonly (readonly [string, ClosedHostOutputValue])[];
+/** Copy untrusted metadata into a frozen, data-only executable plan. */
+export declare const normalizeClosedStoreHostProgram: (raw: unknown) => ClosedStoreHostProgram | null;
+/** The ordered direct Store reads covered by the frozen compiler program. */
+export declare const closedStoreHostInputs: (program: ClosedStoreHostProgram) => readonly ClosedStoreHostInput[];
+/** Evaluate frozen compiler data into candidate-owned host values; unsupported values decline. */
+export declare const evaluateClosedStoreHostProgram: (program: ClosedStoreHostProgram, numericValues: number | readonly number[]) => ClosedStoreHostOutput | null;
+export {};
+//# sourceMappingURL=closed_store_host_program.d.ts.map

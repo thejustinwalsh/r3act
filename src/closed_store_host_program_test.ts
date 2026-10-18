@@ -120,3 +120,85 @@ Deno.test("joint Store host program rejects duplicate sites, getters, wrong inde
   extra.storeProp = "old";
   equal(normalizeClosedStoreHostProgram(extra), null);
 });
+
+const structuredData = (): any => ({
+  schemaVersion: 3,
+  componentProgramId: "module#component:Values",
+  moduleRevision: "revision",
+  inputs: [
+    { storeUseSiteId: "module#component:Values#store:0", storeProp: "position" },
+    { storeUseSiteId: "module#component:Values#store:1", storeProp: "camera" },
+  ],
+  host: { tag: "mesh", key: "values", child: null, props: [["position", {
+    kind: "tuple", items: [
+      { kind: "input", index: 0 }, { kind: "input", index: 1 },
+      { kind: "literal", value: 3 },
+    ],
+  }]] },
+});
+
+Deno.test("Store schema 3 evaluates fresh stable triples and one to eight direct inputs", () => {
+  const raw = structuredData();
+  const program = normalizeClosedStoreHostProgram(raw)!;
+  equal(program.schemaVersion, 3);
+  raw.host.props[0][1].items[2].value = 99;
+  const first = evaluateClosedStoreHostProgram(program, [1, 2])!;
+  const next = evaluateClosedStoreHostProgram(program, [4, 5])!;
+  equal((first[0][1] as readonly number[])[2], 3);
+  equal((next[0][1] as readonly number[])[0], 4);
+  equal(first[0][1] === next[0][1], false);
+  equal(Object.isFrozen(first[0][1]), true);
+  equal(evaluateClosedStoreHostProgram(program, [1]), null);
+  const one = structuredData();
+  one.inputs.pop();
+  one.host.props[0][1].items[1] = { kind: "literal", value: 2 };
+  equal(normalizeClosedStoreHostProgram(one)?.schemaVersion, 3);
+  const eight = structuredData();
+  for (let index = 2; index < 8; index++) {
+    eight.inputs.push({ storeUseSiteId: `site:${index}`, storeProp: `source${index}` });
+  }
+  equal(normalizeClosedStoreHostProgram(eight)?.schemaVersion, 3);
+  eight.inputs.push({ storeUseSiteId: "site:8", storeProp: "source8" });
+  equal(normalizeClosedStoreHostProgram(eight), null);
+});
+
+Deno.test("Store schema 3 accepts DOM style and declines malformed aggregate outputs", () => {
+  const raw = structuredData();
+  raw.host.tag = "span";
+  raw.host.props = [["style", { kind: "style", entries: [
+    ["color", { kind: "literal", value: "red" }],
+    ["--offset", { kind: "input", index: 0 }],
+  ] }]];
+  const program = normalizeClosedStoreHostProgram(raw)!;
+  const first = evaluateClosedStoreHostProgram(program, [1, 2])!;
+  const next = evaluateClosedStoreHostProgram(program, [3, 4])!;
+  equal((first[0][1] as Record<string, unknown>)["--offset"], 1);
+  equal(first[0][1] === next[0][1], false);
+  for (const tag of ["div", "output"]) {
+    raw.host.tag = tag;
+    equal(normalizeClosedStoreHostProgram(raw)?.schemaVersion, 3);
+  }
+  for (const tag of ["group", "mesh"]) {
+    const triple = structuredData(); triple.host.tag = tag;
+    equal(normalizeClosedStoreHostProgram(triple)?.schemaVersion, 3);
+  }
+  const symbol = structuredData();
+  symbol.host.props[0][1][Symbol("extra")] = true;
+  equal(normalizeClosedStoreHostProgram(symbol), null);
+  const accessor = structuredData();
+  Object.defineProperty(accessor.host.props[0][1].items, "0", {
+    get() { throw new Error("hidden"); },
+  });
+  equal(normalizeClosedStoreHostProgram(accessor), null);
+  const cycle = structuredData();
+  cycle.host.props[0][1].items[1] = cycle.host.props[0][1];
+  equal(normalizeClosedStoreHostProgram(cycle), null);
+  const nonfinite = structuredData();
+  nonfinite.host.props[0][1].items[2] = { kind: "binary", operator: "/",
+    left: { kind: "literal", value: 1 }, right: { kind: "literal", value: 0 } };
+  equal(evaluateClosedStoreHostProgram(normalizeClosedStoreHostProgram(nonfinite)!, [1, 2]), null);
+  const old = structuredData(); old.schemaVersion = 2;
+  equal(normalizeClosedStoreHostProgram(old), null);
+  const legacySpan = data(); legacySpan.host.tag = "span";
+  equal(normalizeClosedStoreHostProgram(legacySpan), null);
+});

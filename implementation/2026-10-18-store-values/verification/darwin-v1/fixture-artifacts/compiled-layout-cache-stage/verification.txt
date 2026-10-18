@@ -1,0 +1,8 @@
+Focused staged verification
+
+Command:
+deno test --config deno.browser.json --lock=deno.lock --frozen .cache/compiled-layout-cache-stage/src/compiled_state_layout_cache_test.ts .cache/compiled-layout-cache-stage/src/compiled_owner_binding_test.ts .cache/compiled-layout-cache-stage/src/compiled_state_layout_metadata_test.ts .cache/compiled-layout-cache-stage/src/compiled_layout_activation_test.ts .cache/compiled-layout-cache-stage/src/owner_numeric_layout_test.ts
+
+Result: 20 passed, 0 failed. Deno checked all five test modules and imported graph against the staged `compiled_state_layout.ts` candidate. Output is in logs/focused-tests.log.
+Hash manifest: verification-hashes.sha256 records the live baseline, candidate, frozen Deno config/lock, and original test inputs.
+No live source or test files were modified.

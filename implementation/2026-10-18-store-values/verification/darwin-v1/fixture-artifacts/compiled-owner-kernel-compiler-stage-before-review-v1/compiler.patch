@@ -1,0 +1,457 @@
+--- a/compiler/oxc-spike/src/main.rs
++++ b/compiler/oxc-spike/src/main.rs
+@@ -237,6 +237,16 @@
+ struct NativeStateLayoutSlotMetadata {
+     site_id: String,
+     slot: usize,
++}
++
++#[derive(Clone, Debug)]
++struct NativeNumericSinkCandidate {
++    owner_program_id: String,
++    sink_id: String,
++    source_sites: Vec<String>,
++    source_names: Vec<String>,
++    expression: String,
++    primitive_result: bool,
+ }
+ 
+ #[derive(Debug, Serialize)]
+@@ -3311,7 +3321,7 @@
+     };
+     usage.visit_program(&parsed.program);
+     let mut prop_edits = Vec::<(SourceSpan, String, String, bool, Option<usize>)>::new();
+-    let mut numeric_programs = Vec::<(String, String, Vec<String>)>::new();
++    let mut numeric_programs = Vec::<NativeNumericSinkCandidate>::new();
+     let mut prop_sites = BTreeSet::new();
+     let mut fallback_sites = BTreeSet::new();
+     let mut layout_eligible_sites = BTreeSet::new();
+@@ -3438,7 +3448,14 @@
+                 .map(|binding| binding.site_id.clone())
+                 .collect();
+             let sink_id = format!("{path}#numeric-sink:{}", candidate.span.start);
+-            numeric_programs.push((owner_program_id, sink_id, source_sites));
++            numeric_programs.push(NativeNumericSinkCandidate {
++                owner_program_id,
++                sink_id,
++                source_names: ordered.iter().map(|binding| binding.name.clone()).collect(),
++                source_sites,
++                expression: expression.clone(),
++                primitive_result: numeric_expression_has_primitive_result(&expression, &names),
++            });
+             prop_edits.push((
+                 candidate.span.clone(),
+                 prefix,
+@@ -3702,17 +3719,303 @@
+             index += 1;
+             continue;
+         }
++        return false;
++    }
++    true
++}
++
++/// Narrow executable-kernel subset: pure v2 expressions whose result is primitive.
++/// Arrays/objects and uncertain syntax remain on the existing projector path.
++fn numeric_expression_has_primitive_result(
++    source: &str,
++    state_names: &BTreeSet<String>,
++) -> bool {
++    if !numeric_expression_is_pure(source, state_names) {
+         return false;
++    }
++    let chars: Vec<char> = source.chars().collect();
++    let mut index = 0;
++    let mut previous_significant = None;
++    while index < chars.len() {
++        let current = chars[index];
++        if current.is_whitespace() {
++            index += 1;
++            continue;
++        }
++        if current == '\'' || current == '"' {
++            let quote = current;
++            index += 1;
++            while index < chars.len() {
++                if chars[index] == '\\' {
++                    index += 2;
++                    continue;
++                }
++                if chars[index] == quote {
++                    index += 1;
++                    break;
++                }
++                index += 1;
++            }
++            previous_significant = Some('v');
++            continue;
++        }
++        if current == '`' {
++            index += 1;
++            while index < chars.len() {
++                if chars[index] == '\\' {
++                    index += 2;
++                    continue;
++                }
++                if chars[index] == '`' {
++                    index += 1;
++                    break;
++                }
++                if chars[index] == '$' && chars.get(index + 1) == Some(&'{') {
++                    index += 2;
++                    let expression_start = index;
++                    let mut depth = 1usize;
++                    while index < chars.len() && depth > 0 {
++                        match chars[index] {
++                            '{' => depth += 1,
++                            '}' => depth -= 1,
++                            _ => {}
++                        }
++                        if depth > 0 {
++                            index += 1;
++                        }
++                    }
++                    if depth != 0 {
++                        return false;
++                    }
++                    let nested: String = chars[expression_start..index].iter().collect();
++                    if !numeric_expression_has_primitive_result(&nested, state_names) {
++                        return false;
++                    }
++                    index += 1;
++                    continue;
++                }
++                index += 1;
++            }
++            previous_significant = Some('v');
++            continue;
++        }
++        if current.is_ascii_digit() {
++            index += 1;
++            while index < chars.len()
++                && (chars[index].is_ascii_alphanumeric()
++                    || matches!(chars[index], '.' | '_' | '+' | '-'))
++            {
++                // Keep exponent signs within numeric tokens only.
++                if matches!(chars[index], '+' | '-')
++                    && !matches!(chars[index.saturating_sub(1)], 'e' | 'E')
++                {
++                    break;
++                }
++                index += 1;
++            }
++            previous_significant = Some('v');
++            continue;
++        }
++        if current == '_' || current == '$' || current.is_ascii_alphabetic() {
++            index += 1;
++            while index < chars.len()
++                && (chars[index] == '_' || chars[index] == '$' || chars[index].is_ascii_alphanumeric())
++            {
++                index += 1;
++            }
++            let mut next = index;
++            while next < chars.len() && chars[next].is_whitespace() {
++                next += 1;
++            }
++            // Reject chained calls and tagged templates, including parenthesized callee forms
++            // handled by the closing-paren check below.
++            if matches!(chars.get(next), Some('`')) {
++                return false;
++            }
++            previous_significant = Some('v');
++            continue;
++        }
++        if matches!(current, '[' | ']' | '{' | '}') {
++            return false;
++        }
++        if current == '(' && previous_significant == Some(')') {
++            return false;
++        }
++        if !matches!(current, '(' | ')' | '+' | '-' | '*' | '/' | '%' | '?' | ':' | '!' | '<' | '>' | '&' | '|') {
++            return false;
++        }
++        previous_significant = Some(current);
++        index += 1;
+     }
+     true
+ }
+ 
++fn rewrite_numeric_kernel_expression(
++    source: &str,
++    name_to_slot: &BTreeMap<String, usize>,
++) -> String {
++    let chars: Vec<char> = source.chars().collect();
++    let mut output = String::with_capacity(source.len() + 32);
++    let mut index = 0;
++    while index < chars.len() {
++        let current = chars[index];
++        if current == '\'' || current == '"' {
++            let quote = current;
++            let start = index;
++            index += 1;
++            while index < chars.len() {
++                if chars[index] == '\\' {
++                    index += 2;
++                    continue;
++                }
++                if chars[index] == quote {
++                    index += 1;
++                    break;
++                }
++                index += 1;
++            }
++            output.extend(chars[start..index].iter());
++            continue;
++        }
++        if current == '`' {
++            output.push(current);
++            index += 1;
++            while index < chars.len() {
++                if chars[index] == '\\' {
++                    output.push(chars[index]);
++                    if index + 1 < chars.len() {
++                        output.push(chars[index + 1]);
++                    }
++                    index += 2;
++                    continue;
++                }
++                if chars[index] == '`' {
++                    output.push('`');
++                    index += 1;
++                    break;
++                }
++                if chars[index] == '$' && chars.get(index + 1) == Some(&'{') {
++                    output.push('$');
++                    output.push('{');
++                    index += 2;
++                    let expression_start = index;
++                    let mut depth = 1usize;
++                    while index < chars.len() && depth > 0 {
++                        match chars[index] {
++                            '{' => depth += 1,
++                            '}' => depth -= 1,
++                            _ => {}
++                        }
++                        if depth > 0 {
++                            index += 1;
++                        }
++                    }
++                    let nested: String = chars[expression_start..index].iter().collect();
++                    output.push_str(&rewrite_numeric_kernel_expression(&nested, name_to_slot));
++                    if index < chars.len() {
++                        output.push('}');
++                        index += 1;
++                    }
++                    continue;
++                }
++                output.push(chars[index]);
++                index += 1;
++            }
++            continue;
++        }
++        if current == '_' || current == '$' || current.is_ascii_alphabetic() {
++            let start = index;
++            index += 1;
++            while index < chars.len()
++                && (chars[index] == '_' || chars[index] == '$' || chars[index].is_ascii_alphanumeric())
++            {
++                index += 1;
++            }
++            let name: String = chars[start..index].iter().collect();
++            if let Some(slot) = name_to_slot.get(&name) {
++                output.push_str(&format!("rowInputs[rowIndex * slotCount + {slot}]"));
++            } else {
++                output.push_str(&name);
++            }
++            continue;
++        }
++        output.push(current);
++        index += 1;
++    }
++    output
++}
++
++fn emit_primitive_owner_cut_kernels(
++    numeric_programs: &[NativeNumericSinkCandidate],
++    state_layouts: &BTreeMap<String, Vec<NativeStateLayoutSlotMetadata>>,
++    kernel_alias: &str,
++) -> (String, BTreeMap<String, usize>) {
++    let mut owners = BTreeSet::new();
++    for program in numeric_programs {
++        owners.insert(program.owner_program_id.clone());
++    }
++    let mut kernels = Vec::new();
++    let mut indices = BTreeMap::new();
++    for owner in owners {
++        let Some(layout) = state_layouts.get(&owner) else { continue };
++        let sinks: Vec<_> = numeric_programs
++            .iter()
++            .filter(|program| program.owner_program_id == owner)
++            .collect();
++        if sinks.is_empty() || sinks.len() > 30 || layout.is_empty() || layout.len() > 30
++            || sinks.iter().any(|sink| !sink.primitive_result)
++        {
++            continue;
++        }
++        let mut names_by_site = BTreeMap::new();
++        for sink in &sinks {
++            for (site, name) in sink.source_sites.iter().zip(&sink.source_names) {
++                names_by_site.entry(site.clone()).or_insert_with(|| name.clone());
++            }
++        }
++        if layout.iter().any(|slot| !names_by_site.contains_key(&slot.site_id)) {
++            continue;
++        }
++        let name_to_slot: BTreeMap<_, _> = layout.iter().enumerate().map(|(slot, entry)| {
++            (names_by_site[&entry.site_id].clone(), slot)
++        }).collect();
++        if name_to_slot.len() != layout.len() {
++            continue;
++        }
++        let owner_id = serde_json::to_string(&owner).unwrap_or_default();
++        let sink_ids = sinks.iter().map(|sink| serde_json::to_string(&sink.sink_id).unwrap_or_default()).collect::<Vec<_>>().join(", ");
++        let mut switch_cases = String::new();
++        for (slot_index, slot) in layout.iter().enumerate() {
++            let mut case_body = String::new();
++            for (sink_index, sink) in sinks.iter().enumerate() {
++                if !sink.source_sites.iter().any(|site| site == &slot.site_id) { continue; }
++                let bit = 1u32 << sink_index;
++                let expression = rewrite_numeric_kernel_expression(&sink.expression, &name_to_slot);
++                case_body.push_str(&format!(
++                    "if ((rowState.seenMask & {bit}) === 0) {{ rowState.seenMask |= {bit}; const next = ({expression}); const sinkState = rowState.sinks[{sink_index}]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) {{ stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = {sink_index}; stagedValues[stagedCount] = next; stagedCount++; }} }}"
++                ));
++            }
++            switch_cases.push_str(&format!("case {slot_index}: {{{case_body} break;}}"));
++        }
++        let slot_count = layout.len();
++        let code = format!(
++            "{{ schemaVersion: 1, programId: {owner_id}, slotCount: {slot_count}, sinkIds: [{sink_ids}], executeCut: function(changedRows, changedSlots, changeCount, rowInputs, rowStates, stagedRows, stagedSinkIds, stagedValues) {{ const slotCount = {slot_count}; let stagedCount = 0; for (let changeIndex = 0; changeIndex < changeCount; changeIndex++) {{ const rowIndex = changedRows[changeIndex]; const rowState = rowStates[rowIndex]; switch (changedSlots[changeIndex]) {{ {switch_cases} }} }} return stagedCount; }} }}"
++        );
++        indices.insert(owner, kernels.len());
++        kernels.push(code);
++    }
++    if kernels.is_empty() {
++        return (String::new(), indices);
++    }
++    (format!("\nconst {kernel_alias} = [{}];", kernels.join(", ")), indices)
++}
++
+ fn transform_native_component_source(
+     path: &str,
+     source: &str,
+     plan: &ComponentStateSitesPlan,
+     prop_edits: &[(SourceSpan, String, String, bool, Option<usize>)],
+-    numeric_programs: &[(String, String, Vec<String>)],
++    numeric_programs: &[NativeNumericSinkCandidate],
+     prop_sites: &BTreeMap<String, BTreeSet<String>>,
+     state_layouts: &BTreeMap<String, Vec<NativeStateLayoutSlotMetadata>>,
+ ) -> Result<(String, Vec<NativeModuleEdit>), String> {
+@@ -3731,6 +4034,7 @@
+         "__nativeUseAt".to_owned(),
+         "__nativeBindStatePropAt".to_owned(),
+         "__nativeNumericPrograms".to_owned(),
++        "__nativeOwnerCutKernels".to_owned(),
+     ];
+     for alias in &mut aliases {
+         while source.contains(alias.as_str()) {
+@@ -3760,10 +4064,10 @@
+     } else {
+         let descriptors = numeric_programs
+             .iter()
+-            .map(|(owner_program_id, sink_id, source_sites)| {
+-                let owner_program_id = serde_json::to_string(owner_program_id).unwrap_or_default();
+-                let sink_id = serde_json::to_string(sink_id).unwrap_or_default();
+-                let source_sites = source_sites
++            .map(|program| {
++                let owner_program_id = serde_json::to_string(&program.owner_program_id).unwrap_or_default();
++                let sink_id = serde_json::to_string(&program.sink_id).unwrap_or_default();
++                let source_sites = program.source_sites
+                     .iter()
+                     .map(|site| serde_json::to_string(site).unwrap_or_default())
+                     .collect::<Vec<_>>()
+@@ -3774,6 +4078,8 @@
+             .join(", ");
+         format!("\nconst {} = [{descriptors}] as const;", aliases[8])
+     };
++    let (owner_kernel_table, owner_kernel_indices) =
++        emit_primitive_owner_cut_kernels(numeric_programs, state_layouts, &aliases[9]);
+     let mut edits = Vec::new();
+     let mut registrations = String::new();
+     for component in &plan.components {
+@@ -3805,8 +4111,12 @@
+                 )
+             })
+             .unwrap_or_default();
++        let owner_kernel_option = owner_kernel_indices
++            .get(&component.component_site_id)
++            .map(|index| format!(", ownerUpdateProgram: {}[{index}]", aliases[9]))
++            .unwrap_or_default();
+         registrations.push_str(&format!(
+-            "\n{}({}, {}, {{ propOnlySites: [{}]{}{} }});",
++            "\n{}({}, {}, {{ propOnlySites: [{}]{}{}{} }});",
+             aliases[0],
+             site,
+             component.name,
+@@ -3817,6 +4127,7 @@
+                 ""
+             },
+             state_layout_option,
++            owner_kernel_option,
+         ));
+         for state in &component.state_sites {
+             let site = serde_json::to_string(&state.site_id).map_err(|error| error.to_string())?;
+@@ -3940,7 +4251,7 @@
+     edits.push(TextEdit {
+         start: import_span.end as usize,
+         end: import_span.end as usize,
+-        replacement: format!("{helper_import}{numeric_program_table}{registrations}"),
++        replacement: format!("{helper_import}{numeric_program_table}{owner_kernel_table}{registrations}"),
+     });
+     // `use(use(value))` puts the outer call's site argument at the same source
+     // offset as the inner call's callee replacement. Coalesce those edits so
+@@ -6875,4 +7186,44 @@
+                 .contains("nested capitalized function components")
+         );
+     }
++
++    #[test]
++    fn emits_one_primitive_whole_cut_kernel_and_preserves_v2_fallbacks() {
++        let response = compile_state(
++            "native-owner-cut-kernel.tsx",
++            include_str!("../../fixtures/native-owner-cut-kernel.tsx"),
++        );
++        assert!(response.error.is_none(), "{:?}", response.error);
++        let plan = response.plan.unwrap();
++        let components = plan.components.as_ref().unwrap();
++        let row = components.iter().find(|component| component.name == "Row").unwrap();
++        let same_shape = components.iter().find(|component| component.name == "SameShape").unwrap();
++        let vector = components.iter().find(|component| component.name == "Vector").unwrap();
++        assert_ne!(row.component_site_id, same_shape.component_site_id);
++        let code = plan.component_module.unwrap();
++        assert!(code.contains("const __nativeOwnerCutKernels = ["), "{code}");
++        assert!(code.contains("ownerUpdateProgram: __nativeOwnerCutKernels[0]"), "{code}");
++        assert!(code.contains("ownerUpdateProgram: __nativeOwnerCutKernels[1]"), "{code}");
++        assert!(!vector.prop_only_sites.is_empty());
++        assert!(!code.contains("ownerUpdateProgram: __nativeOwnerCutKernels[2]"), "{code}");
++        // V2 descriptors and sink projectors remain the fallback representation.
++        assert!(code.contains("schemaVersion: 2, ownerProgramId:"), "{code}");
++        assert!(code.contains("data-sum={__nativeBindStatePropAt("), "{code}");
++        assert!(code.contains("position={__nativeBindStatePropsAt("), "{code}");
++        assert!(code.contains("Math.sin(x)"), "{code}");
++        // The primitive kernel has a static switch and inline SameValue semantics;
++        // it does not call Object.is or invoke host writers.
++        assert!(code.contains("switch (changedSlots[changeIndex])"), "{code}");
++        assert!(code.contains("last === next ? (last !== 0 || 1 / last === 1 / next)"), "{code}");
++        assert!(!code.contains("Object.is(last, next)"), "{code}");
++
++        let vector_only = compile_state(
++            "primitive-kernel-vector-fallback.tsx",
++            r#"import { useState } from "native_runtime_api.ts"; export function Vector() { const [x] = useState(1); const [y] = useState(2); return <mesh position={[x, y]} />; }"#,
++        );
++        assert!(vector_only.error.is_none(), "{:?}", vector_only.error);
++        let vector_code = vector_only.plan.unwrap().component_module.unwrap();
++        assert!(!vector_code.contains("__nativeOwnerCutKernels"), "{vector_code}");
++        assert!(vector_code.contains("position={__nativeBindStatePropsAt([\"primitive-kernel-vector-fallback.tsx#component:Vector#state:0\", \"primitive-kernel-vector-fallback.tsx#component:Vector#state:1\"], ([x, y]) => ([x, y]), __nativeNumericPrograms[0])}"), "{vector_code}");
++    }
+ }

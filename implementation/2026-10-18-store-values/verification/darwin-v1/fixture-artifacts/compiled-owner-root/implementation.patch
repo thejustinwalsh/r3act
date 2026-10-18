@@ -1,0 +1,190 @@
+--- a/src/component_state_runtime.ts
++++ b/src/component_state_runtime.ts
+@@ -24,6 +24,7 @@
+   OwnerStateWorld,
+   type StateAction,
+   type StateCellHandle,
++  type NumericCellRowView,
+ } from "./owner_state_world.ts";
+ import {
+   bind,
+@@ -43,6 +44,7 @@
+ } from "./jsx_binding_runtime.ts";
+ import {
+   type PreparedNumericCellProgram,
++  type PreparedNumericRowProgram,
+   type PreparedVDOMCommit,
+   type RuntimeCounterCallback,
+   type RuntimeProfileCallback,
+@@ -770,6 +772,17 @@
+     NumericLaneAddress,
+     { readonly token: PreparedNumericCellProgram; readonly source: ScalarSource }
+   >();
++  #nativeRowPrograms = new WeakMap<object, {
++    token: PreparedNumericRowProgram;
++    epoch: number;
++    index: number;
++  }>();
++  #nativeRowEpoch = 0;
++  #nativeRowTokens: Array<PreparedNumericRowProgram | undefined> = [];
++  #nativeRowViews: Array<NumericCellRowView | undefined> = [];
++  #nativeChangedRows = new Uint32Array(0);
++  #nativeChangedSlots = new Uint32Array(0);
++  #nativeRowUsedCount = 0;
+   #nativeCellCutActive = false;
+   #liveStoreSubscriptions = new Map<AnyAsyncStore, () => void>();
+   #liveStoreReaders = new Map<string, Set<AnyAsyncStore>>();
+@@ -2155,6 +2168,7 @@
+     this.#pendingChanges.clear();
+     this.#lastSourceValues.clear();
+     this.#nativeLanePrograms = new WeakMap();
++    this.#nativeRowPrograms = new WeakMap();
+     if (!this.#nativeCellCutActive) {
+       this.#clearNumericProgramBuffers();
+       this.#numericProgramSources.length = 0;
+@@ -2162,6 +2176,7 @@
+       this.#numericProgramPreviousValues.length = 0;
+     }
+     if (!this.#nativeCellCutActive) {
++      this.#clearNativeRowBuffers();
+       this.#clearNativeCellCutBuffers();
+       this.#nativeCellHandles.length = 0;
+       this.#nativeCellVersions.length = 0;
+@@ -4748,6 +4763,125 @@
+     this.#numericProgramUsedCount = 0;
+   }
+ 
++  #clearNativeRowBuffers() {
++    for (let index = 0; index < this.#nativeRowUsedCount; index++) {
++      this.#nativeRowTokens[index] = undefined;
++      this.#nativeRowViews[index] = undefined;
++    }
++    this.#nativeRowUsedCount = 0;
++    if (this.#disposed) {
++      this.#nativeRowTokens.length = 0;
++      this.#nativeRowViews.length = 0;
++      this.#nativeChangedRows = new Uint32Array(0);
++      this.#nativeChangedSlots = new Uint32Array(0);
++    }
++  }
++
++  /** Execute one compiler-owned row plan per affected committed owner. */
++  #tryCommitNativeRows(count: number): boolean | null {
++    if (this.#nativeChangedRows.length < count) {
++      let capacity = Math.max(16, this.#nativeChangedRows.length);
++      while (capacity < count) capacity *= 2;
++      this.#nativeChangedRows = new Uint32Array(capacity);
++      this.#nativeChangedSlots = new Uint32Array(capacity);
++    }
++    // These epochs are Root-local: grafted roots never share cut bookkeeping.
++    if (this.#nativeRowEpoch === Number.MAX_SAFE_INTEGER) {
++      this.#nativeRowPrograms = new WeakMap();
++      this.#nativeRowEpoch = 0;
++    }
++    const epoch = ++this.#nativeRowEpoch;
++    let accepted = false;
++    try {
++      for (let index = 0; index < count; index++) {
++        const view = this.world.numericRowForCell(
++          this.#nativeCellHandles[index]!, this.#nativeCellVersions[index],
++        );
++        if (!view || !view.layout.programId) return null;
++        let prepared = this.#nativeRowPrograms.get(view.rowIdentity);
++        if (!prepared) {
++          const token = this.#vdom.prepareNumericRowProgram(view);
++          if (!token) return null;
++          prepared = { token, epoch: 0, index: 0 };
++          this.#nativeRowPrograms.set(view.rowIdentity, prepared);
++        }
++        if (prepared.epoch !== epoch) {
++          prepared.epoch = epoch;
++          prepared.index = this.#nativeRowUsedCount++;
++          this.#nativeRowTokens[prepared.index] = prepared.token;
++          this.#nativeRowViews[prepared.index] = view;
++        }
++        this.#nativeChangedRows[index] = prepared.index;
++        this.#nativeChangedSlots[index] = view.slot;
++        this.#numericProgramSources[index] = view.source;
++        this.#numericProgramCurrentValues[index] = view.columns[view.slot].values[view.row];
++        this.#numericProgramUsedCount = index + 1;
++      }
++      let declined = false;
++      let wrote = this.#commitHostMutation(() => {
++        const result = this.#vdom.executePreparedNumericRows(
++          this.#nativeRowTokens, this.#nativeChangedRows,
++          this.#nativeChangedSlots, this.#numericProgramCurrentValues, count,
++        );
++        if (result === null) {
++          declined = true;
++          return false;
++        }
++        return result;
++      });
++      if (declined) {
++        // A binding edit can stale a cached VDOM token. Recheck the entire
++        // World cut before rebuilding any row token; never recapture values.
++        for (let index = 0; index < count; index++) {
++          const current = this.world.numericRowForCell(
++            this.#nativeCellHandles[index]!, this.#nativeCellVersions[index],
++          );
++          const prior = this.#nativeRowViews[this.#nativeChangedRows[index]]!;
++          if (!current || current.rowIdentity !== prior.rowIdentity ||
++            current.slot !== this.#nativeChangedSlots[index] ||
++            current.source !== this.#numericProgramSources[index]) return null;
++        }
++        for (let index = 0; index < this.#nativeRowUsedCount; index++) {
++          const view = this.#nativeRowViews[index]!;
++          const token = this.#vdom.prepareNumericRowProgram(view);
++          if (!token) return null;
++          this.#nativeRowTokens[index] = token;
++          this.#nativeRowPrograms.get(view.rowIdentity)!.token = token;
++        }
++        declined = false;
++        wrote = this.#commitHostMutation(() => {
++          const result = this.#vdom.executePreparedNumericRows(
++            this.#nativeRowTokens, this.#nativeChangedRows,
++            this.#nativeChangedSlots, this.#numericProgramCurrentValues, count,
++          );
++          if (result === null) {
++            declined = true;
++            return false;
++          }
++          return result;
++        });
++        if (declined) return null;
++      }
++      accepted = true;
++      this.#count("numeric.row-batches");
++      this.#count("numeric.row-count", this.#nativeRowUsedCount);
++      this.#count("numeric.row-cells", count);
++      if (!this.#disposed) {
++        for (let index = 0; index < count; index++) {
++          this.#lastSourceValues.set(
++            this.#numericProgramSources[index]!, this.#numericProgramCurrentValues[index],
++          );
++        }
++        this.world.clearCellChangesThrough(this.#nativeCellHandles, this.#nativeCellVersions, count);
++        this.#pendingChanges.clearNativeThrough(this.#nativeCellHandles, this.#nativeCellVersions, count);
++      }
++      return wrote || count > 0;
++    } finally {
++      this.#clearNativeRowBuffers();
++      if (!accepted) this.#clearNumericProgramBuffers();
++    }
++  }
++
+   /** Capture exact published lane cells; null keeps the existing fallback cut. */
+   #tryCommitNativeLanes(count: number): boolean | null {
+     let accepted = false;
+@@ -4879,6 +5013,11 @@
+     this.#nativeCellCutActive = true;
+     let committed = false;
+     try {
++      const rowCommit = this.#tryCommitNativeRows(count);
++      if (rowCommit !== null) {
++        committed = rowCommit;
++        return committed;
++      }
+       const laneCommit = this.#tryCommitNativeLanes(count);
+       if (laneCommit !== null) {
+         committed = laneCommit;

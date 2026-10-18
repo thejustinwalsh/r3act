@@ -1282,7 +1282,7 @@ export class ComponentStateRoot<H, Parent = H> {
     });
   }
 
-  /** Prepare all closed primitive host consumers of the selected direct Stores. */
+  /** Prepare all closed host consumers of the selected direct Stores. */
   prepareStores(selected: readonly AnyAsyncStore[]): NativeRootCandidate<H, Parent> | null {
     return this.#prepareClosedStoreCandidate(selected, false);
   }

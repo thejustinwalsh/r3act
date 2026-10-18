@@ -1,0 +1,80 @@
+{
+  "name": "@compiled-ui/runtime",
+  "version": "0.0.0-private-alpha",
+  "type": "module",
+  "description": "Private compiled JSX runtime integration artifact; not a published compatibility claim",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "bin": {
+    "compiled-ui-compiler": "./dist/compiler/bin/darwin-arm64/ui-graph-compiler-spike"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/src/native_runtime_api.d.ts",
+      "import": "./dist/src/native_runtime_api.js"
+    },
+    "./core": {
+      "types": "./dist/src/native_runtime_api.d.ts",
+      "import": "./dist/src/native_runtime_api.js"
+    },
+    "./dom": {
+      "types": "./dist/src/native_dom_api.d.ts",
+      "import": "./dist/src/native_dom_api.js"
+    },
+    "./three": {
+      "types": "./dist/src/three_host.d.ts",
+      "import": "./dist/src/three_host.js"
+    },
+    "./three/jsx-runtime": {
+      "types": "./dist/src/three_jsx_runtime.d.ts",
+      "import": "./dist/src/three_jsx_runtime.js"
+    },
+    "./three/jsx-dev-runtime": {
+      "types": "./dist/src/three_jsx_dev_runtime.d.ts",
+      "import": "./dist/src/three_jsx_dev_runtime.js"
+    },
+    "./react": {
+      "types": "./dist/src/react_native_adapter.d.ts",
+      "import": "./dist/src/react_native_adapter.js"
+    },
+    "./vite": {
+      "types": "./dist/compiler/vite_native_plugin.d.ts",
+      "import": "./dist/compiler/vite_native_plugin.js"
+    },
+    "./jsx-runtime": {
+      "types": "./dist/src/native_jsx_runtime.d.ts",
+      "import": "./dist/src/native_jsx_runtime.js"
+    },
+    "./jsx-dev-runtime": {
+      "types": "./dist/src/native_jsx_dev_runtime.d.ts",
+      "import": "./dist/src/native_jsx_dev_runtime.js"
+    }
+  },
+  "dependencies": {
+    "magic-string": "^1.4.3"
+  },
+  "peerDependencies": {
+    "vite": "^8.3.1",
+    "react": "^19.3.0",
+    "three": "^0.186.1"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "three": {
+      "optional": true
+    }
+  }
+}

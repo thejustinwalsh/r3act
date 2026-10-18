@@ -182,6 +182,9 @@ Deno.test("schema 3 rejects malformed aggregates and unsupported evaluated value
     "long tuple");
   reject((raw) => raw.host.children[0].host.props[0][1].kind = "style", "wrong aggregate host");
   reject((raw) => raw.host.props[0][1].extra = () => 1, "extra callback field");
+  reject((raw) => raw.host.props[0][1][Symbol("extra")] = true, "symbol aggregate field");
+  reject((raw) => raw.host.children[0].host.props[0][1].items[Symbol("extra")] = true,
+    "symbol tuple item");
   reject((raw) => raw.host.children[0].host.props[0][1].items[0].extra = true,
     "extra expression field");
   reject((raw) => raw.host.props[0][1].entries[0][1] = { kind: "input", index: 0,

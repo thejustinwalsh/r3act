@@ -1,0 +1,350 @@
+--- a/src/compiled_state_layout.ts
++++ b/src/compiled_state_layout.ts
+@@ -8,6 +8,41 @@
+   slots: readonly Readonly<{ siteId: string; slot: number }>[];
+ }>;
+ 
++/** A primitive value accepted by the compiler-emitted owner update kernel. */
++export type CompiledOwnerUpdatePrimitive =
++  | number
++  | string
++  | boolean
++  | null
++  | undefined;
++
++/** Existing prepared sink value inspected by an owner update kernel. */
++export type CompiledOwnerUpdateSink = Readonly<{ lastValue: unknown }>;
++
++/** Existing prepared row state shared by generic and compiled execution. */
++export type CompiledOwnerUpdateRowState = {
++  readonly inputValues: readonly number[];
++  readonly sinks: readonly CompiledOwnerUpdateSink[];
++  seenMask: number;
++};
++
++/** Static primitive-only update kernel attached to one normalized layout. */
++export type CompiledOwnerUpdateProgram = Readonly<{
++  schemaVersion: 1;
++  programId: string;
++  slotCount: number;
++  sinkIds: readonly string[];
++  executeCut: (
++    changedRows: Uint32Array,
++    changedSlots: Uint32Array,
++    changeCount: number,
++    rowStates: readonly (CompiledOwnerUpdateRowState | undefined)[],
++    stagedRows: Uint32Array,
++    stagedSinkIds: Uint16Array,
++    stagedValues: CompiledOwnerUpdatePrimitive[],
++  ) => number;
++}>;
++
+ /** Stable World-owned column address for a committed numeric state cell. */
+ export type NumericLaneAddress = Readonly<{
+   column: NumericColumn;
+@@ -22,6 +57,7 @@
+   readonly layout: CompiledStateLayout;
+   readonly signature: string;
+   slotsBySite?: Map<string, number>;
++  ownerUpdateProgram?: CompiledOwnerUpdateProgram;
+ };
+ 
+ const layoutRecords = new WeakMap<object, NormalizedLayoutRecord>();
+@@ -101,3 +137,68 @@
+   }
+   return bySite.get(siteId);
+ }
++
++/** Validate and associate one immutable owner update program with a layout. */
++export function associateCompiledOwnerUpdateProgram(
++  layout: CompiledStateLayout,
++  input: CompiledOwnerUpdateProgram,
++): CompiledOwnerUpdateProgram {
++  const record = recordForLayout(layout);
++  if (typeof input !== "object" || input === null) {
++    throw new TypeError("Compiled owner update program must be an object");
++  }
++  const schemaVersion = input.schemaVersion;
++  const programId = input.programId;
++  const slotCount = input.slotCount;
++  const inputSinkIds = input.sinkIds;
++  const executeCut = input.executeCut;
++  if (
++    schemaVersion !== 1 || typeof programId !== "string" || !programId ||
++    record.layout.programId !== programId ||
++    !Number.isSafeInteger(slotCount) || slotCount !== record.layout.slots.length ||
++    slotCount < 1 || slotCount > 30 || !Array.isArray(inputSinkIds) ||
++    inputSinkIds.length < 1 || inputSinkIds.length > 30 ||
++    typeof executeCut !== "function"
++  ) {
++    throw new TypeError("Invalid compiled owner update program");
++  }
++  const seen = new Set<string>();
++  const sinkIds: string[] = [];
++  for (let index = 0; index < inputSinkIds.length; index++) {
++    const sinkId = inputSinkIds[index];
++    if (typeof sinkId !== "string" || !sinkId || seen.has(sinkId)) {
++      throw new TypeError("Invalid compiled owner update sink ID");
++    }
++    seen.add(sinkId);
++    sinkIds.push(sinkId);
++  }
++  const current = record.ownerUpdateProgram;
++  if (current) {
++    if (
++      current.schemaVersion !== schemaVersion ||
++      current.programId !== programId || current.slotCount !== slotCount ||
++      current.executeCut !== executeCut ||
++      current.sinkIds.length !== sinkIds.length ||
++      current.sinkIds.some((sinkId, index) => sinkId !== sinkIds[index])
++    ) {
++      throw new TypeError("Conflicting compiled owner update program");
++    }
++    return current;
++  }
++  const snapshot: CompiledOwnerUpdateProgram = Object.freeze({
++    schemaVersion: 1,
++    programId,
++    slotCount,
++    sinkIds: Object.freeze(sinkIds),
++    executeCut,
++  });
++  record.ownerUpdateProgram = snapshot;
++  return snapshot;
++}
++
++/** Resolve a program during VDOM row preparation, not during cut execution. */
++export function compiledOwnerUpdateProgramFor(
++  layout: CompiledStateLayout,
++): CompiledOwnerUpdateProgram | undefined {
++  return recordForLayout(layout).ownerUpdateProgram;
++}
+--- a/src/component_state_runtime.ts
++++ b/src/component_state_runtime.ts
+@@ -13,14 +13,19 @@
+ import { ResourceReadSet } from "./resource_read_set.ts";
+ import { PendingStateChanges } from "./pending_state_changes.ts";
+ import type {
++  CompiledOwnerUpdateProgram,
+   CompiledStateLayout,
+   NumericLaneAddress,
+ } from "./compiled_state_layout.ts";
+ import {
++  associateCompiledOwnerUpdateProgram,
+   compiledStateLayoutSlot,
+   normalizeCompiledStateLayout,
+ } from "./compiled_state_layout.ts";
+-export type { CompiledStateLayout } from "./compiled_state_layout.ts";
++export type {
++  CompiledOwnerUpdateProgram,
++  CompiledStateLayout,
++} from "./compiled_state_layout.ts";
+ import {
+   type OwnerId,
+   type OwnerKey,
+@@ -272,6 +277,7 @@
+     /** Compiler proof that every render result is a single intrinsic host root. */
+     readonly hostLeafOutput?: boolean;
+     readonly stateLayout?: CompiledStateLayout;
++    readonly ownerUpdateProgram?: CompiledOwnerUpdateProgram;
+   },
+ ): ComponentType<P> => {
+   if (siteId.length === 0) {
+@@ -296,6 +302,18 @@
+         throw new Error("Invalid compiled state layout slot");
+       }
+       stateLayout = normalized;
++    }
++    if (metadata.ownerUpdateProgram !== undefined) {
++      const program = metadata.ownerUpdateProgram;
++      if (
++        !stateLayout || program.programId !== siteId ||
++        stateLayout.programId !== siteId
++      ) {
++        throw new Error(
++          "Compiled owner update program must match its component and state layout IDs",
++        );
++      }
++      associateCompiledOwnerUpdateProgram(stateLayout, program);
+     }
+     Object.defineProperty(render, componentMetadata, {
+       value: Object.freeze({
+--- /dev/null
++++ b/src/compiled_owner_update_program_metadata_test.ts
+@@ -0,0 +1,169 @@
++import {
++  defineComponent,
++  type CompiledOwnerUpdateProgram,
++  type CompiledStateLayout,
++} from "./component_state_runtime.ts";
++import {
++  associateCompiledOwnerUpdateProgram,
++  compiledOwnerUpdateProgramFor,
++  normalizeCompiledStateLayout,
++} from "./compiled_state_layout.ts";
++
++function assert(condition: unknown, message: string): asserts condition {
++  if (!condition) throw new Error(message);
++}
++
++function assertThrows(run: () => unknown, message: string): void {
++  let threw = false;
++  try {
++    run();
++  } catch {
++    threw = true;
++  }
++  assert(threw, message);
++}
++
++const makeLayout = (programId = "Row") => ({
++  schemaVersion: 1 as const,
++  programId,
++  slots: [{ siteId: "Row#state:0", slot: 0 }],
++});
++
++const makeManySlotLayout = (count: number) => ({
++  schemaVersion: 1 as const,
++  programId: "Row",
++  slots: Array.from({ length: count }, (_, slot) => ({
++    siteId: `Row#state:${slot}`,
++    slot,
++  })),
++});
++
++const makeProgram = (
++  programId = "Row",
++  sinkIds: readonly string[] = ["style:left"],
++): CompiledOwnerUpdateProgram => ({
++  schemaVersion: 1,
++  programId,
++  slotCount: 1,
++  sinkIds,
++  executeCut: () => 0,
++});
++
++Deno.test("compiled owner program is snapshotted and shared by layout identity", () => {
++  const layout = makeLayout();
++  const sinks = ["style:left"];
++  const input = makeProgram("Row", sinks);
++  const component = defineComponent("Row", () => null, {
++    propOnlySites: ["Row#state:0"],
++    stateLayout: layout,
++    ownerUpdateProgram: input,
++  });
++  const normalized = normalizeCompiledStateLayout(layout);
++  const associated = compiledOwnerUpdateProgramFor(normalized);
++  assert(associated !== undefined, "program is available on normalized layout");
++  assert(
++    compiledOwnerUpdateProgramFor(layout) === associated,
++    "raw and normalized layouts share one association",
++  );
++  assert(Object.isFrozen(associated), "program descriptor is frozen");
++  assert(Object.isFrozen(associated.sinkIds), "sink IDs are frozen");
++  assert(
++    associateCompiledOwnerUpdateProgram(normalized, input) === associated,
++    "same association is idempotent",
++  );
++  sinks[0] = "mutated";
++  assert(associated.sinkIds[0] === "style:left", "sink IDs were copied");
++  assert(component !== null, "component registration completed");
++});
++
++Deno.test("compiled owner association rejects conflicting replacement", () => {
++  const layout = normalizeCompiledStateLayout(makeLayout());
++  const first = associateCompiledOwnerUpdateProgram(layout, makeProgram());
++  assertThrows(
++    () => associateCompiledOwnerUpdateProgram(layout, {
++      ...makeProgram(),
++      executeCut: () => 0,
++    }),
++    "a distinct function cannot replace the cached program",
++  );
++  assert(
++    compiledOwnerUpdateProgramFor(layout) === first,
++    "failed replacement preserves the original association",
++  );
++});
++
++Deno.test("compiled owner association rejects malformed identity and shape", () => {
++  const validLayout = makeLayout();
++  assertThrows(
++    () => defineComponent("Other", () => null, {
++      propOnlySites: ["Row#state:0"],
++      stateLayout: validLayout,
++      ownerUpdateProgram: makeProgram(),
++    }),
++    "component and program IDs must match",
++  );
++  assertThrows(
++    () => associateCompiledOwnerUpdateProgram(makeLayout(), {
++      ...makeProgram(),
++      slotCount: 2,
++    }),
++    "slot count must match the layout",
++  );
++  assertThrows(
++    () => associateCompiledOwnerUpdateProgram(makeLayout(), {
++      ...makeProgram(),
++      schemaVersion: 2,
++    } as unknown as CompiledOwnerUpdateProgram),
++    "unsupported program versions are rejected",
++  );
++  assertThrows(
++    () => associateCompiledOwnerUpdateProgram(makeLayout(), {
++      ...makeProgram(),
++      sinkIds: ["same", "same"],
++    }),
++    "duplicate sink IDs are rejected",
++  );
++  assertThrows(
++    () => associateCompiledOwnerUpdateProgram(makeLayout(), {
++      ...makeProgram(),
++      sinkIds: [],
++    }),
++    "empty sink lists are rejected",
++  );
++  assertThrows(
++    () => associateCompiledOwnerUpdateProgram(makeLayout(), {
++      ...makeProgram(),
++      sinkIds: Array.from({ length: 31 }, (_, index) => `sink:${index}`),
++    }),
++    "sink capacity is bounded",
++  );
++  assertThrows(
++    () => associateCompiledOwnerUpdateProgram(makeManySlotLayout(31), {
++      ...makeProgram(),
++      slotCount: 31,
++    }),
++    "slot capacity is bounded",
++  );
++  assertThrows(
++    () => associateCompiledOwnerUpdateProgram(makeLayout(), {
++      ...makeProgram(),
++      executeCut: null,
++    } as unknown as CompiledOwnerUpdateProgram),
++    "non-function kernels are rejected",
++  );
++});
++
++Deno.test("owner program requires matching state layout program ID", () => {
++  const layout: CompiledStateLayout = {
++    schemaVersion: 1,
++    slots: [{ siteId: "Row#state:0", slot: 0 }],
++  };
++  assertThrows(
++    () => defineComponent("Row", () => null, {
++      propOnlySites: ["Row#state:0"],
++      stateLayout: layout,
++      ownerUpdateProgram: makeProgram(),
++    }),
++    "owner program requires a layout program ID",
++  );
++});
+--- a/src/native_runtime_api.ts
++++ b/src/native_runtime_api.ts
+@@ -146,3 +146,4 @@
+ export type { VDOMHost } from "./vdom_snapshot_runtime.ts";
+ export type { ComponentType, RuntimeNode };
+ export type { NumericBindingProgramDescriptor } from "./jsx_binding_runtime.ts";
++export type { CompiledOwnerUpdateProgram } from "./compiled_state_layout.ts";

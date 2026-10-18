@@ -135,3 +135,121 @@ Deno.test("Store prop host failure leaves accepted view and rejects further cuts
   host.fail = false;
   root.dispose();
 });
+
+Deno.test("Store prop cut copies accepted styles and stabilized Three tuples", () => {
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  const oldTuple = Object.freeze([1, 2, 3] as const);
+  root.commit(jsx("main", {}, [
+    jsx("div", { key: "dom", style: { color: "red", opacity: 1 } }),
+    jsx("mesh", { key: "three", position: oldTuple }),
+  ]));
+  const [dom, three] = container.children[0].children;
+  const before = JSON.stringify(root.snapshot);
+  const nextStyle = { color: "blue", opacity: 0.5 };
+  const nextTuple = Object.freeze([4, 5, 6] as const);
+  const cut = root.prepareStorePropDelta([
+    { key: "dom", tag: "div", props: [["style", nextStyle]] },
+    { key: "three", tag: "mesh", props: [["position", nextTuple]] },
+  ]);
+  assert(cut, "stable structured cut declined");
+  nextStyle.color = "green";
+  root.beginPublication();
+  root.applyStorePropDelta(cut);
+  assert(JSON.stringify(root.snapshot) === before,
+    "applying exposed unaccepted structured props");
+  assert(root.isStorePropDeltaCurrent(cut, { afterHost: true }),
+    "structured host footprint changed during application");
+  root.publishAccepted();
+  assert(container.children[0].children[0] === dom &&
+    container.children[0].children[1] === three,
+  "structured cut replaced retained handles");
+  assert((dom.props.style as { color: string }).color === "blue" &&
+    (three.props.position as number[])[0] === 4,
+  "host did not receive copied structured values");
+  const accepted = JSON.stringify(root.snapshot);
+  nextStyle.opacity = 0;
+  assert(JSON.stringify(root.snapshot) === accepted,
+    "caller mutation aliased accepted style history");
+  const again = root.prepareStorePropDelta([
+    { key: "dom", tag: "div", props: [["style", { color: "purple" }]] },
+    { key: "three", tag: "mesh", props: [["position", Object.freeze([7, 8, 9] as const)]] },
+  ]);
+  assert(again, "new accepted structured history was not reusable");
+  accept(root, again);
+  root.dispose();
+});
+
+Deno.test("Store prop cut declines mutable old tuples and callback-bearing styles", () => {
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  root.commit(jsx("main", {}, [
+    jsx("mesh", { key: "mutable", position: [1, 2, 3] }),
+    jsx("div", { key: "accessor", style: Object.defineProperty({}, "color", {
+      get() { return "red"; }, enumerable: true,
+    }) }),
+  ]));
+  assert(root.prepareStorePropDelta([{ key: "mutable", tag: "mesh",
+    props: [["position", Object.freeze([4, 5, 6] as const)]] }]) === null,
+  "mutable generic tuple was certified as stable");
+  assert(root.prepareStorePropDelta([{ key: "accessor", tag: "div",
+    props: [["style", { color: "blue" }]] }]) === null,
+  "authored style accessor was certified closed");
+  root.dispose();
+});
+
+Deno.test("structured Store host failure preserves accepted values and quarantines later cuts", () => {
+  class FailingHost extends MemoryVDOMHost {
+    fail = false;
+    override setProp(node: ReturnType<MemoryVDOMHost["createContainer"]>,
+      name: string, value: unknown, previous?: unknown) {
+      super.setProp(node, name, value, previous);
+      if (this.fail && name === "position") throw new Error("structured host failed");
+    }
+  }
+  const host = new FailingHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  root.commit(jsx("main", {}, [
+    jsx("div", { key: "dom", style: { opacity: 0.1 } }),
+    jsx("mesh", { key: "three", position: Object.freeze([1, 2, 3] as const) }),
+  ]));
+  const before = JSON.stringify(root.snapshot);
+  const cut = root.prepareStorePropDelta([
+    { key: "dom", tag: "div", props: [["style", { opacity: 0.2 }]] },
+    { key: "three", tag: "mesh", props: [["position", Object.freeze([4, 5, 6] as const)]] },
+  ]);
+  assert(cut, "structured failure setup declined");
+  host.fail = true;
+  root.beginPublication();
+  let caught: unknown;
+  try { root.applyStorePropDelta(cut); } catch (error) { caught = error; }
+  assert(caught instanceof Error && caught.message === "structured host failed",
+    "original structured writer error was replaced");
+  assert(JSON.stringify(root.snapshot) === before,
+    "partial structured host work advanced accepted values");
+  root.failPublication();
+  assert(root.prepareStorePropDelta([{ key: "dom", tag: "div",
+    props: [["style", { opacity: 0.3 }]] }]) === null,
+  "failed publication admitted a later structured cut");
+  host.fail = false;
+  root.dispose();
+});
+
+Deno.test("structured Store cut rejects replaced writer after preparation", () => {
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  root.commit(jsx("main", {}, [
+    jsx("div", { key: "styled", style: { opacity: 0.1 } }),
+  ]));
+  const cut = root.prepareStorePropDelta([{ key: "styled", tag: "div",
+    props: [["style", { opacity: 0.2 }]] }]);
+  assert(cut, "structured writer setup declined");
+  host.setProp = () => {};
+  assert(!root.isStorePropDeltaCurrent(cut),
+    "replaced structured host writer remained current");
+  root.dispose();
+});

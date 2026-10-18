@@ -1,0 +1,98 @@
+--- src/compiled_state_layout.ts
++++ src/compiled_state_layout.ts
+@@ -17,9 +17,14 @@
+   site: string;
+ }>;
+ 
+-const normalizedLayouts = new WeakMap<object, CompiledStateLayout>();
+-const layoutSignatures = new WeakMap<object, string>();
+-const layoutSlotsBySite = new WeakMap<object, Map<string, number>>();
++// Source and normalized aliases share one private cache record.
++type NormalizedLayoutRecord = {
++  readonly layout: CompiledStateLayout;
++  readonly signature: string;
++  slotsBySite?: Map<string, number>;
++};
++
++const layoutRecords = new WeakMap<object, NormalizedLayoutRecord>();
+ const makeLayoutSignature = (
+   programId: string | undefined,
+   slots: readonly Readonly<{ siteId: string; slot: number }>[],
+@@ -28,14 +33,11 @@
+   slots.map(({ siteId, slot }) => [siteId, slot]),
+ ]);
+ 
+-/** Validate and defensively snapshot metadata once per compiler-owned object. */
+-export function normalizeCompiledStateLayout(
+-  input: CompiledStateLayout,
+-): CompiledStateLayout {
++function recordForLayout(input: CompiledStateLayout): NormalizedLayoutRecord {
+   if (typeof input !== "object" || input === null) {
+     throw new TypeError("Compiled state layout must be an object");
+   }
+-  const cached = normalizedLayouts.get(input as object);
++  const cached = layoutRecords.get(input as object);
+   if (cached) return cached;
+   if (input.schemaVersion !== 1 || !Array.isArray(input.slots)) {
+     throw new TypeError("Unsupported compiled state layout");
+@@ -58,27 +60,31 @@
+     sites.add(entry.siteId);
+     return Object.freeze({ siteId: entry.siteId, slot: entry.slot });
+   });
+-  const normalized = Object.freeze({
++  const normalized: CompiledStateLayout = Object.freeze({
+     schemaVersion: 1 as const,
+     ...(input.programId !== undefined ? { programId: input.programId } : {}),
+     slots: Object.freeze(slots),
+   });
+-  normalizedLayouts.set(input as object, normalized);
+-  normalizedLayouts.set(normalized, normalized);
+-  layoutSignatures.set(normalized, makeLayoutSignature(input.programId, slots));
+-  return normalized;
++  const record: NormalizedLayoutRecord = {
++    layout: normalized,
++    signature: makeLayoutSignature(input.programId, slots),
++  };
++  layoutRecords.set(input as object, record);
++  layoutRecords.set(normalized, record);
++  return record;
+ }
+ 
++/** Validate and defensively snapshot metadata once per compiler-owned object. */
++export function normalizeCompiledStateLayout(
++  input: CompiledStateLayout,
++): CompiledStateLayout {
++  return recordForLayout(input).layout;
++}
++
+ export function compiledStateLayoutSignature(
+   layout: CompiledStateLayout,
+ ): string {
+-  const normalized = normalizeCompiledStateLayout(layout);
+-  let signature = layoutSignatures.get(normalized);
+-  if (signature === undefined) {
+-    signature = makeLayoutSignature(normalized.programId, normalized.slots);
+-    layoutSignatures.set(normalized, signature);
+-  }
+-  return signature;
++  return recordForLayout(layout).signature;
+ }
+ 
+ /** Resolve a hook slot once per immutable layout descriptor. */
+@@ -86,12 +92,12 @@
+   layout: CompiledStateLayout,
+   siteId: string,
+ ): number | undefined {
+-  const normalized = normalizeCompiledStateLayout(layout);
+-  let bySite = layoutSlotsBySite.get(normalized as object);
++  const record = recordForLayout(layout);
++  let bySite = record.slotsBySite;
+   if (!bySite) {
+     bySite = new Map();
+-    for (const slot of normalized.slots) bySite.set(slot.siteId, slot.slot);
+-    layoutSlotsBySite.set(normalized as object, bySite);
++    for (const slot of record.layout.slots) bySite.set(slot.siteId, slot.slot);
++    record.slotsBySite = bySite;
+   }
+   return bySite.get(siteId);
+ }

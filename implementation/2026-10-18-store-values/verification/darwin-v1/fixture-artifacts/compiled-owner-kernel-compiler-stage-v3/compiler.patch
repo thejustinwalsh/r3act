@@ -1,0 +1,394 @@
+--- compiler/oxc-spike/src/main.rs	2026-10-13 07:27:55
++++ .cache/compiled-owner-kernel-compiler-stage-v3/compiler/oxc-spike/src/main.rs	2026-10-13 16:05:17
+@@ -13,7 +13,7 @@
+         FormalParameters, Function, FunctionBody, ImportDeclaration, ImportDeclarationSpecifier,
+         ImportOrExportKind, JSXAttributeItem, JSXAttributeName, JSXAttributeValue, JSXChild,
+         JSXElement, JSXElementName, JSXExpression, ModuleExportName, PropertyKey, Statement,
+-        UnaryOperator, VariableDeclaration, VariableDeclarator,
++        BinaryOperator, LogicalOperator, UnaryOperator, VariableDeclaration, VariableDeclarator,
+     },
+ };
+ use oxc_ast_visit::{Visit, walk};
+@@ -237,6 +237,22 @@
+ struct NativeStateLayoutSlotMetadata {
+     site_id: String,
+     slot: usize,
++}
++
++#[derive(Clone, Debug)]
++struct NativeNumericSinkCandidate {
++    owner_program_id: String,
++    sink_id: String,
++    source_sites: Vec<String>,
++    expression: String,
++    references: Vec<NativeKernelReference>,
++}
++
++#[derive(Clone, Debug)]
++struct NativeKernelReference {
++    start: u32,
++    end: u32,
++    site_id: String,
+ }
+ 
+ #[derive(Debug, Serialize)]
+@@ -275,6 +291,7 @@
+     span: SourceSpan,
+     state_refs: BTreeSet<SymbolId>,
+     state_ref_counts: BTreeMap<SymbolId, usize>,
++    state_reference_sites: BTreeMap<(u32, u32), String>,
+     other_refs: bool,
+ }
+ 
+@@ -1320,6 +1337,7 @@
+                                             ),
+                                             state_refs: BTreeSet::new(),
+                                             state_ref_counts: BTreeMap::new(),
++                                            state_reference_sites: BTreeMap::new(),
+                                             other_refs: false,
+                                         });
+                                     }
+@@ -1331,6 +1349,7 @@
+                             span: span(expression.span().start, expression.span().end),
+                             state_refs: BTreeSet::new(),
+                             state_ref_counts: BTreeMap::new(),
++                            state_reference_sites: BTreeMap::new(),
+                             other_refs: false,
+                         });
+                     }
+@@ -1363,6 +1382,10 @@
+                     candidate.span.start <= node.span.start && candidate.span.end >= node.span.end
+                 }) {
+                     candidate.state_refs.insert(symbol);
++                    candidate.state_reference_sites.insert(
++                        (node.span.start, node.span.end),
++                        binding.site_id.clone(),
++                    );
+                     *candidate.state_ref_counts.entry(symbol).or_default() += 1;
+                 } else {
+                     self.outside_state_reads.insert(binding.site_id.clone());
+@@ -3311,7 +3334,7 @@
+     };
+     usage.visit_program(&parsed.program);
+     let mut prop_edits = Vec::<(SourceSpan, String, String, bool, Option<usize>)>::new();
+-    let mut numeric_programs = Vec::<(String, String, Vec<String>)>::new();
++    let mut numeric_programs = Vec::<NativeNumericSinkCandidate>::new();
+     let mut prop_sites = BTreeSet::new();
+     let mut fallback_sites = BTreeSet::new();
+     let mut layout_eligible_sites = BTreeSet::new();
+@@ -3438,7 +3461,23 @@
+                 .map(|binding| binding.site_id.clone())
+                 .collect();
+             let sink_id = format!("{path}#numeric-sink:{}", candidate.span.start);
+-            numeric_programs.push((owner_program_id, sink_id, source_sites));
++            let expression = slice(source, candidate.span.clone());
++            let references = candidate
++                .state_reference_sites
++                .iter()
++                .map(|(&(start, end), site_id)| NativeKernelReference {
++                    start: start - candidate.span.start,
++                    end: end - candidate.span.start,
++                    site_id: site_id.clone(),
++                })
++                .collect();
++            numeric_programs.push(NativeNumericSinkCandidate {
++                owner_program_id,
++                sink_id,
++                source_sites,
++                expression: expression.clone(),
++                references,
++            });
+             prop_edits.push((
+                 candidate.span.clone(),
+                 prefix,
+@@ -3705,14 +3744,171 @@
+         return false;
+     }
+     true
++}
++
++/// Prove and rewrite a small primitive-only expression using OXC's parsed AST.
++/// Identifier spans must match references resolved by the enclosing component pass.
++fn owner_kernel_expression(
++    source: &str,
++    references: &[NativeKernelReference],
++    slot_by_site: &BTreeMap<String, usize>,
++) -> Option<String> {
++    fn visit(expression: &Expression<'_>, identifiers: &mut Vec<(u32, u32)>) -> bool {
++        match expression {
++            Expression::NumericLiteral(_)
++            | Expression::StringLiteral(_)
++            | Expression::BooleanLiteral(_)
++            | Expression::NullLiteral(_) => true,
++            Expression::Identifier(identifier) => {
++                identifiers.push((identifier.span.start, identifier.span.end));
++                true
++            }
++            Expression::TemplateLiteral(template) => {
++                template.expressions.iter().all(|expression| visit(expression, identifiers))
++            }
++            Expression::ParenthesizedExpression(parenthesized) => {
++                visit(&parenthesized.expression, identifiers)
++            }
++            Expression::UnaryExpression(unary) => {
++                matches!(
++                    unary.operator,
++                    UnaryOperator::UnaryPlus
++                        | UnaryOperator::UnaryNegation
++                        | UnaryOperator::LogicalNot
++                        | UnaryOperator::BitwiseNot
++                ) && visit(&unary.argument, identifiers)
++            }
++            Expression::BinaryExpression(binary) => {
++                !matches!(binary.operator, BinaryOperator::In | BinaryOperator::Instanceof)
++                    && visit(&binary.left, identifiers)
++                    && visit(&binary.right, identifiers)
++            }
++            Expression::LogicalExpression(logical) => {
++                matches!(
++                    logical.operator,
++                    LogicalOperator::Or | LogicalOperator::And | LogicalOperator::Coalesce
++                ) && visit(&logical.left, identifiers)
++                    && visit(&logical.right, identifiers)
++            }
++            Expression::ConditionalExpression(conditional) => {
++                visit(&conditional.test, identifiers)
++                    && visit(&conditional.consequent, identifiers)
++                    && visit(&conditional.alternate, identifiers)
++            }
++            // Calls, member access, assignment, update, arrays, objects, casts,
++            // globals and every syntax form outside this whitelist stay on v2.
++            _ => false,
++        }
++    }
++
++    let allocator = Allocator::default();
++    let expression = Parser::new(&allocator, source, SourceType::tsx())
++        .parse_expression()
++        .ok()?;
++    let mut identifier_spans = Vec::new();
++    if !visit(&expression, &mut identifier_spans) {
++        return None;
++    }
++
++    let reference_by_span: BTreeMap<_, _> = references
++        .iter()
++        .map(|reference| ((reference.start, reference.end), reference))
++        .collect();
++    let mut replacements = Vec::with_capacity(identifier_spans.len());
++    for (start, end) in identifier_spans {
++        let reference = reference_by_span.get(&(start, end))?;
++        let slot = slot_by_site.get(&reference.site_id)?;
++        replacements.push((start as usize, end as usize, *slot));
++    }
++    if replacements.len() != references.len() {
++        return None;
++    }
++    replacements.sort_by_key(|(start, _, _)| *start);
++
++    let mut output = String::with_capacity(source.len() + replacements.len() * 40);
++    let mut cursor = 0;
++    for (start, end, slot) in replacements {
++        if start < cursor || end > source.len() {
++            return None;
++        }
++        output.push_str(&source[cursor..start]);
++        output.push_str(&format!("rowState.inputValues[{slot}]"));
++        cursor = end;
++    }
++    output.push_str(&source[cursor..]);
++    Some(output)
+ }
+ 
++fn emit_primitive_owner_cut_kernels(
++    numeric_programs: &[NativeNumericSinkCandidate],
++    state_layouts: &BTreeMap<String, Vec<NativeStateLayoutSlotMetadata>>,
++    kernel_alias: &str,
++) -> (String, BTreeMap<String, usize>) {
++    let mut owners = BTreeSet::new();
++    for program in numeric_programs {
++        owners.insert(program.owner_program_id.clone());
++    }
++    let mut kernels = Vec::new();
++    let mut indices = BTreeMap::new();
++    for owner in owners {
++        let Some(layout) = state_layouts.get(&owner) else { continue };
++        let sinks: Vec<_> = numeric_programs
++            .iter()
++            .filter(|program| program.owner_program_id == owner)
++            .collect();
++        if sinks.is_empty() || sinks.len() > 30 || layout.is_empty() || layout.len() > 30 {
++            continue;
++        }
++        let slot_by_site: BTreeMap<_, _> = layout
++            .iter()
++            .enumerate()
++            .map(|(slot, entry)| (entry.site_id.clone(), slot))
++            .collect();
++        if sinks.iter().any(|sink| {
++            sink.references
++                .iter()
++                .any(|reference| !slot_by_site.contains_key(&reference.site_id))
++        }) {
++            continue;
++        }
++        let rewritten_expressions: Option<Vec<_>> = sinks
++            .iter()
++            .map(|sink| owner_kernel_expression(&sink.expression, &sink.references, &slot_by_site))
++            .collect();
++        let Some(rewritten_expressions) = rewritten_expressions else { continue };
++        let owner_id = serde_json::to_string(&owner).unwrap_or_default();
++        let sink_ids = sinks.iter().map(|sink| serde_json::to_string(&sink.sink_id).unwrap_or_default()).collect::<Vec<_>>().join(", ");
++        let mut switch_cases = String::new();
++        for (slot_index, slot) in layout.iter().enumerate() {
++            let mut case_body = String::new();
++            for (sink_index, sink) in sinks.iter().enumerate() {
++                if !sink.source_sites.iter().any(|site| site == &slot.site_id) { continue; }
++                let bit = 1u32 << sink_index;
++                let expression = &rewritten_expressions[sink_index];
++                case_body.push_str(&format!(
++                    "if ((rowState.seenMask & {bit}) === 0) {{ rowState.seenMask |= {bit}; const next = ({expression}); const sinkState = rowState.sinks[{sink_index}]; const last = sinkState.lastValue; const same = last === next ? (last !== 0 || 1 / last === 1 / next) : (last !== last && next !== next); if (!same) {{ stagedRows[stagedCount] = rowIndex; stagedSinkIds[stagedCount] = {sink_index}; stagedValues[stagedCount] = next; stagedCount++; }} }}"
++                ));
++            }
++            switch_cases.push_str(&format!("case {slot_index}: {{{case_body} break;}}"));
++        }
++        let code = format!(
++            "{{ schemaVersion: 1, programId: {owner_id}, sinkIds: [{sink_ids}], executeCut: function(changedRows, changedSlots, changeCount, rowStates, stagedRows, stagedSinkIds, stagedValues) {{ let stagedCount = 0; for (let changeIndex = 0; changeIndex < changeCount; changeIndex++) {{ const rowIndex = changedRows[changeIndex]; const rowState = rowStates[rowIndex]; switch (changedSlots[changeIndex]) {{ {switch_cases} }} }} return stagedCount; }} }}"
++        );
++        indices.insert(owner, kernels.len());
++        kernels.push(code);
++    }
++    if kernels.is_empty() {
++        return (String::new(), indices);
++    }
++    (format!("\nconst {kernel_alias} = [{}];", kernels.join(", ")), indices)
++}
++
+ fn transform_native_component_source(
+     path: &str,
+     source: &str,
+     plan: &ComponentStateSitesPlan,
+     prop_edits: &[(SourceSpan, String, String, bool, Option<usize>)],
+-    numeric_programs: &[(String, String, Vec<String>)],
++    numeric_programs: &[NativeNumericSinkCandidate],
+     prop_sites: &BTreeMap<String, BTreeSet<String>>,
+     state_layouts: &BTreeMap<String, Vec<NativeStateLayoutSlotMetadata>>,
+ ) -> Result<(String, Vec<NativeModuleEdit>), String> {
+@@ -3731,6 +3927,7 @@
+         "__nativeUseAt".to_owned(),
+         "__nativeBindStatePropAt".to_owned(),
+         "__nativeNumericPrograms".to_owned(),
++        "__nativeOwnerCutKernels".to_owned(),
+     ];
+     for alias in &mut aliases {
+         while source.contains(alias.as_str()) {
+@@ -3760,10 +3957,10 @@
+     } else {
+         let descriptors = numeric_programs
+             .iter()
+-            .map(|(owner_program_id, sink_id, source_sites)| {
+-                let owner_program_id = serde_json::to_string(owner_program_id).unwrap_or_default();
+-                let sink_id = serde_json::to_string(sink_id).unwrap_or_default();
+-                let source_sites = source_sites
++            .map(|program| {
++                let owner_program_id = serde_json::to_string(&program.owner_program_id).unwrap_or_default();
++                let sink_id = serde_json::to_string(&program.sink_id).unwrap_or_default();
++                let source_sites = program.source_sites
+                     .iter()
+                     .map(|site| serde_json::to_string(site).unwrap_or_default())
+                     .collect::<Vec<_>>()
+@@ -3774,6 +3971,8 @@
+             .join(", ");
+         format!("\nconst {} = [{descriptors}] as const;", aliases[8])
+     };
++    let (owner_kernel_table, owner_kernel_indices) =
++        emit_primitive_owner_cut_kernels(numeric_programs, state_layouts, &aliases[9]);
+     let mut edits = Vec::new();
+     let mut registrations = String::new();
+     for component in &plan.components {
+@@ -3805,8 +4004,12 @@
+                 )
+             })
+             .unwrap_or_default();
++        let owner_kernel_option = owner_kernel_indices
++            .get(&component.component_site_id)
++            .map(|index| format!(", ownerUpdateProgram: {}[{index}]", aliases[9]))
++            .unwrap_or_default();
+         registrations.push_str(&format!(
+-            "\n{}({}, {}, {{ propOnlySites: [{}]{}{} }});",
++            "\n{}({}, {}, {{ propOnlySites: [{}]{}{}{} }});",
+             aliases[0],
+             site,
+             component.name,
+@@ -3817,6 +4020,7 @@
+                 ""
+             },
+             state_layout_option,
++            owner_kernel_option,
+         ));
+         for state in &component.state_sites {
+             let site = serde_json::to_string(&state.site_id).map_err(|error| error.to_string())?;
+@@ -3940,7 +4144,7 @@
+     edits.push(TextEdit {
+         start: import_span.end as usize,
+         end: import_span.end as usize,
+-        replacement: format!("{helper_import}{numeric_program_table}{registrations}"),
++        replacement: format!("{helper_import}{numeric_program_table}{owner_kernel_table}{registrations}"),
+     });
+     // `use(use(value))` puts the outer call's site argument at the same source
+     // offset as the inner call's callee replacement. Coalesce those edits so
+@@ -6875,4 +7079,54 @@
+                 .contains("nested capitalized function components")
+         );
+     }
++
++    #[test]
++    fn emits_one_primitive_whole_cut_kernel_and_preserves_v2_fallbacks() {
++        let response = compile_state(
++            "native-owner-cut-kernel.tsx",
++            include_str!("../../fixtures/native-owner-cut-kernel.tsx"),
++        );
++        assert!(response.error.is_none(), "{:?}", response.error);
++        let plan = response.plan.unwrap();
++        let components = plan.components.as_ref().unwrap();
++        let row = components.iter().find(|component| component.name == "Row").unwrap();
++        let same_shape = components.iter().find(|component| component.name == "SameShape").unwrap();
++        let vector = components.iter().find(|component| component.name == "Vector").unwrap();
++        assert_ne!(row.component_site_id, same_shape.component_site_id);
++        let code = plan.component_module.unwrap();
++        assert!(code.contains("const __nativeOwnerCutKernels = ["), "{code}");
++        assert!(code.contains("ownerUpdateProgram: __nativeOwnerCutKernels[0]"), "{code}");
++        assert!(code.contains("ownerUpdateProgram: __nativeOwnerCutKernels[1]"), "{code}");
++        assert!(!vector.prop_only_sites.is_empty());
++        assert!(!code.contains("ownerUpdateProgram: __nativeOwnerCutKernels[2]"), "{code}");
++        // V2 descriptors and sink projectors remain the fallback representation.
++        assert!(code.contains("schemaVersion: 2, ownerProgramId:"), "{code}");
++        assert!(code.contains("data-sum={__nativeBindStatePropsAt("), "{code}");
++        assert!(code.contains("position={__nativeBindStatePropsAt("), "{code}");
++        assert!(code.contains("Math.sin(x)"), "{code}");
++        // The primitive kernel has a static switch and inline SameValue semantics;
++        // it does not call Object.is or invoke host writers.
++        assert!(code.contains("switch (changedSlots[changeIndex])"), "{code}");
++        assert!(code.contains("last === next ? (last !== 0 || 1 / last === 1 / next)"), "{code}");
++        assert!(!code.contains("Object.is(last, next)"), "{code}");
++        assert!(code.contains("rowState.inputValues[0] > 0 ? \"positive\" : \"nonpositive\""), "{code}");
++        assert!(code.contains("data-escaped"), "{code}");
++        assert_eq!(code.matches("ownerUpdateProgram: __nativeOwnerCutKernels[").count(), 2, "{code}");
++        for name in ["Member", "Call", "ShadowedUndefined", "Mutation", "Opaque", "MixedCoverage"] {
++            let component = components.iter().find(|component| component.name == name).unwrap();
++            let marker = format!("__nativeDefineComponent(\"{}\"", component.component_site_id);
++            let start = code.find(&marker).unwrap();
++            let end = code[start..].find(");").map(|offset| start + offset + 2).unwrap();
++            assert!(!code[start..end].contains("ownerUpdateProgram"), "{code}");
++        }
++
++        let vector_only = compile_state(
++            "primitive-kernel-vector-fallback.tsx",
++            r#"import { useState } from "native_runtime_api.ts"; export function Vector() { const [x] = useState(1); const [y] = useState(2); return <mesh position={[x, y]} />; }"#,
++        );
++        assert!(vector_only.error.is_none(), "{:?}", vector_only.error);
++        let vector_code = vector_only.plan.unwrap().component_module.unwrap();
++        assert!(!vector_code.contains("__nativeOwnerCutKernels"), "{vector_code}");
++        assert!(vector_code.contains("position={__nativeBindStatePropsAt([\"primitive-kernel-vector-fallback.tsx#component:Vector#state:0\", \"primitive-kernel-vector-fallback.tsx#component:Vector#state:1\"], ([x, y]) => ([x, y]), __nativeNumericPrograms[0])}"), "{vector_code}");
++    }
+ }

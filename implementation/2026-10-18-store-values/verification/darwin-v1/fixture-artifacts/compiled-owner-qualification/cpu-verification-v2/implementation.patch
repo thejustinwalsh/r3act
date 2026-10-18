@@ -1,0 +1,124 @@
+diff --git a/scripts/verify_product_mixed_compiled_owner_rows_cpu.mjs b/scripts/verify_product_mixed_compiled_owner_rows_cpu_v2.mjs
+index 83bcd1f..c12078f 100644
+--- a/scripts/verify_product_mixed_compiled_owner_rows_cpu.mjs
++++ b/scripts/verify_product_mixed_compiled_owner_rows_cpu_v2.mjs
+@@ -9,7 +9,7 @@ const outputDirectory = "results/product-mixed-compiled-owner-rows-cpu";
+ const preregistrationPath = `${outputDirectory}/preregistration.json`;
+ const resultsPath = `${outputDirectory}/results.json`;
+ const postLockPath = `${outputDirectory}/source-build-post-lock.json`;
+-const verificationPath = `${outputDirectory}/verification.json`;
++const verificationPath = `${outputDirectory}/verification-v2.json`;
+ const checkpointPath = "implementation/2026-10-13-compiled-owner-rows/status.json";
+ const archivePath = "implementation/2026-10-13-compiled-owner-rows/source-and-evidence.tar.gz";
+ const expectedArchiveHash = "4aabe8b6cb3168aae50ba8474464452494d790aac60b472611fc20f54ec7a08c";
+@@ -20,6 +20,8 @@ const expectedTimingArchiveHash = "f89b9ed1e96218548324478854876d2d3fde544c86c7c
+ const priorConfirmation = "results/product-mixed-compiled-owner-rows-confirmation";
+ const profileScriptPath = "scripts/profile_product_mixed_compiled_owner_rows_cpu.mjs";
+ const verifierPath = "scripts/verify_product_mixed_compiled_owner_rows_cpu.mjs";
++const v2VerifierPath = "scripts/verify_product_mixed_compiled_owner_rows_cpu_v2.mjs";
++const originalFailureLogPath = ".cache/compiled-owner-qualification/cpu-verification-primary.log";
+ const protocolPath = "product-mixed-compiled-owner-rows-cpu-protocol.md";
+ const configPath = "vite.product-mixed-compiled-owner-rows-cpu.config.ts";
+ const schedulePath = "src/browser/product_mixed_schedule.ts";
+@@ -110,9 +112,9 @@ function summarizeProfile(profile, productionHashes) {
+     if (name === "(idle)" || name === "idle") return "idle";
+     if (name === "(program)" || name === "program") return "program";
+     if (/garbage collector|\(gc\)|^gc$/.test(name)) return "gc";
+-    if (basename.startsWith("product-mixed-v2-")) return "harness bundle";
+-    if (basename.startsWith("native_product_mixed_arm-")) return "native arm bundle";
+-    if (basename.startsWith("product_mixed_react_arm-")) return "react arm bundle";
++    if (basename.startsWith("product-mixed-v2-")) return "shared harness and runtime bundle";
++    if (basename.startsWith("native_product_mixed_arm-")) return "native arm and runtime bundle";
++    if (basename.startsWith("product_mixed_react_arm-")) return "React arm bundle";
+     if (productionByBasename.has(basename)) return "production document or style";
+     return "other runtime";
+   };
+@@ -140,7 +142,8 @@ function summarizeProfile(profile, productionHashes) {
+     sampleCount: profile.samples.length,
+     topFrames,
+     categoryTime,
+-    categoryMethod: "URL/function-name heuristics only; bundled arm chunks combine authored app and runtime code, so labels do not establish causality.",
++    categoryMethod:
++      "URL/function-name heuristics only; the native arm chunk combines authored app and native runtime code, so labels do not establish per-stage CPU cost or causality.",
+   };
+ }
+ 
+@@ -265,6 +268,11 @@ const engineEpoch = {
+   jsVersion: chromiumDiagnostic.browserVersion.jsVersion,
+   revision: chromiumDiagnostic.browserVersion.revision,
+ };
++assert.deepEqual(frozen.qualifiedEngineDiagnostic, {
++  path: chromiumDiagnosticPath,
++  sha256: checkpoint.verificationSha256[chromiumDiagnosticPath],
++  engineEpoch,
++});
+ assert.deepEqual(pilotManifest.engineEpoch, engineEpoch);
+ assert.deepEqual(pilotManifest.chromiumDiagnostic, {
+   path: chromiumDiagnosticPath,
+@@ -286,6 +294,7 @@ const expectedPilotFileEntries = [128, 512, 1024].flatMap((size) => [
+ assert.deepEqual(pilotManifest.pageFiles?.map(({ arm, size, file }) => ({ arm, size, file })), expectedPilotFileEntries);
+ let pilotUserAgent = null;
+ let pilotPlatform = null;
++const recomputedPilotBrowser = [];
+ for (const filename of expectedPilotPages) {
+   const rawHash = await hashFile(filename);
+   assert.equal(rawHash, frozen.correctnessPilotPages[filename]);
+@@ -311,6 +320,7 @@ for (const filename of expectedPilotPages) {
+   pilotPlatform ??= raw.browser.platform;
+   assert.equal(raw.browser.platform, pilotPlatform);
+   assert.deepEqual(raw.browser?.viewport, { width: 1200, height: 900 });
++  recomputedPilotBrowser.push({ arm, size, userAgent: raw.browser.userAgent, platform: raw.browser.platform, viewport: raw.browser.viewport });
+   assert.deepEqual(raw.samples?.map(({ frame }) => frame), Array.from({ length: 60 }, (_, index) => index + 6));
+   assert.deepEqual(raw.samples?.filter(({ structural }) => structural).map(({ frame }) => frame), [35, 65]);
+   assert.deepEqual(raw.checks, { identity: true, lifecycle: true, order: true, output: true, visible: true });
+@@ -330,6 +340,12 @@ for (const filename of expectedPilotPages) {
+   const manifestEntry = pilotManifest.pageFiles.find(({ arm: itemArm, size: itemSize }) => itemArm === arm && itemSize === size);
+   assert.equal(manifestEntry?.sha256, rawHash);
+ }
++assert.deepEqual(frozen.pilotBuildAndEngine, {
++  productionSha256: productionHashes,
++  servedAssetSha256: productionHashes,
++  engineEpoch,
++  browser: recomputedPilotBrowser,
++});
+ 
+ // Recheck the earlier timing context, including the complete archive and every locked input.
+ const timing = await readJson(timingCheckpointPath);
+@@ -495,8 +511,8 @@ const expectedOutputNames = [
+ ];
+ const sequenceNames = outputNames.filter((name) => /^\d{2}-(?:react|native)-1024\.json$/.test(name));
+ assert.deepEqual(sequenceNames.sort(), ["20-react-1024.json", "21-native-1024.json"]);
+-assert(outputNames.every((name) => expectedOutputNames.includes(name) || name === "verification.json"),
+-  `Unexpected CPU profile output files: ${outputNames.filter((name) => !expectedOutputNames.includes(name) && name !== "verification.json").join(", ")}`);
++assert(outputNames.every((name) => expectedOutputNames.includes(name) || name === "verification.json" || name === "verification-v2.json"),
++  `Unexpected CPU profile output files: ${outputNames.filter((name) => !expectedOutputNames.includes(name) && name !== "verification.json" && name !== "verification-v2.json").join(", ")}`);
+ assert.deepEqual(outputNames.filter((name) => expectedOutputNames.includes(name)).sort(), expectedOutputNames.sort());
+ 
+ const pages = [];
+@@ -607,7 +623,7 @@ for (let pageIndex = 0; pageIndex < selected.length; pageIndex++) {
+ }
+ 
+ const verification = {
+-  schemaVersion: 1,
++  schemaVersion: 2,
+   status: "PASS",
+   study: prereg.study,
+   runId: prereg.runId,
+@@ -641,6 +657,16 @@ const verification = {
+     speedGate: priorVerification.gate,
+     archiveSha256: expectedTimingArchiveHash,
+   },
++  repairProvenance: {
++    originalVerifier: { path: verifierPath, sha256: frozen.inputLocks[verifierPath] },
++    originalFailureLog: { path: originalFailureLogPath, sha256: await hashFile(originalFailureLogPath) },
++    failure: {
++      cause: "The frozen verifier used category labels and categoryMethod text that differed from the collector’s recorded schema.",
++      correctedCategories: ["shared harness and runtime bundle", "native arm and runtime bundle", "React arm bundle"],
++    },
++    v2Verifier: { path: v2VerifierPath, sha256: await hashFile(v2VerifierPath) },
++    sameRun: { runId: prereg.runId, pageSequences: selected.map(({ sequence }) => sequence), reusedRawRecords: true },
++  },
+ };
+ await writeFile(verificationPath, `${JSON.stringify(verification, null, 2)}\n`);
+-console.log(`PASS independent stable-cell CPU evidence verification: ${pages.length} pages; whole-page sampled attribution only.`);
++console.log(`PASS independent compiled-owner-row CPU evidence verification: ${pages.length} pages; whole-page sampled attribution only.`);
