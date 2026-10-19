@@ -1,6 +1,8 @@
 # Native package integration
 
-## Current `@r3act/*` private-alpha workspace — 18 October 2026
+Use this guide to install local `@r3act/*` tarballs and configure the native compiler in a separate application. The packages are private alpha and unpublished. For the supported TSX syntax, see the [native authoring reference](docs/native-authoring-reference.md); for Three imports and ownership, see the [public Three host reference](docs/three-host-reference.md). The older `@compiled-ui/runtime` route is retained below as a dated milestone, not the current consumer setup.
+
+## Current `@r3act/*` private-alpha workspace
 
 The repository now builds five local tarballs with `pnpm package:r3act`:
 
@@ -81,9 +83,10 @@ export default defineConfig({ plugins: [nativeModulePlugin()] });
 Import native hooks and stores from `@r3act/core`; import `createDOMRoot` or
 `DOMVDOMHost` from `@r3act/host-dom`. A Three TSX file can select its host JSX
 types with `/** @jsxImportSource @r3act/host-three */`. Native hooks require the
-Rust/OXC transform; an uncompiled hook call fails explicitly. The supported
-syntax and generic fallback boundaries are in the [compiler tooling note](compiler-tooling.md)
-and [research guide](RESEARCH-GUIDE.md). Native module edits invalidate their
+Rust/OXC transform; an uncompiled hook call fails explicitly. The current
+[native authoring reference](docs/native-authoring-reference.md) documents syntax,
+diagnostics and generic fallback; the [compiler tooling note](compiler-tooling.md)
+and [research guide](RESEARCH-GUIDE.md) retain checkout research context. Native module edits invalidate their
 revision and trigger a conservative full-page reload; state-preserving HMR is
 not promised.
 
@@ -137,10 +140,13 @@ Cargo build. Checkout development still builds through Cargo. A supplied
 `nativeModulePlugin({ compilerBinary: "/path/to/compiler" })` remains an explicit
 caller-owned override outside the packaged manifest proof.
 
-Native build and fresh installed consumption are verified on **Darwin ARM64
-and GNU Linux ARM64**. The Linux case runs in Colima on the same Mac; it is not
-independent-device or hosted CI evidence. The [Linux delivery receipt](implementation/2026-10-18-linux-delivery/results.md)
-preserves the initial compiler-integrity failure and corrected 34-step gate.
+Fresh installed compiler/package execution has receipts on **Darwin ARM64 and
+GNU Linux ARM64**. The current 19 October source has later Darwin package gates;
+the Linux receipt predates the HMR, custom-host and const-arrow additions and
+does not establish current-source parity. The Linux case ran in Colima on the
+same Mac, so it is not independent-device or hosted CI evidence. The
+[Linux delivery receipt](implementation/2026-10-18-linux-delivery/results.md)
+preserves its initial compiler-integrity failure and corrected 34-step gate.
 Automatic Linux selection requires positive glibc proof; unknown/musl environments
 decline. Linux x64 and Windows native execution remain unverified. Each build
 supplies only its build target's executable; this is not a multi-platform tarball.
@@ -192,6 +198,9 @@ runtime-latency, equivalent-feature bundle-size or multi-platform qualification.
 See [raw evidence and remaining obligations](implementation/2026-10-18-compiler-artifacts/results.md).
 
 ## Historical `@compiled-ui/runtime` private integration — 12 October 2026
+
+This section preserves the earlier private package route and its original
+verification context. New consumers should use `@r3act/*` above.
 
 `pnpm package:native` builds a private `@compiled-ui/runtime` tarball at
 `.cache/compiled-ui-runtime.tgz`. The temporary name and version are integration
@@ -248,11 +257,14 @@ build writes a package hash and distribution footprint to
 `.cache/native-package-build/package-report.json`. These are installation and
 distribution checks, not comparative bundle-size or runtime-speed measurements.
 
-State-preserving HMR, automatic React Refresh composition, stateless TSX with no
-native import, broader compiler syntax, typed host registries, multi-platform
-packages and a selected React store/library bridge remain open. Existing HMR
-remount/cleanup tests cover the development application; this package fixture
-does not claim installed-package HMR coverage.
+At this historical checkpoint, state-preserving HMR, automatic React Refresh
+composition, stateless TSX with no native import, broader compiler syntax, typed
+host registries, multi-platform packages and a selected React store/library
+bridge were open. Later `@r3act/*` milestones add source-derived native/React
+composition and finite React island and Radix Dialog bridges, as described in
+the current sections above and below. The historical package fixture's HMR
+remount/cleanup tests do not establish installed-package HMR coverage; the
+current composition's installed browser HMR protocol remains unrun.
 
 ## Verification staging correction
 
@@ -271,7 +283,7 @@ for the current resource-boundary observation.
 
 For the selected dialog bridge, install `@radix-ui/react-dialog@1.3.1` beside the React/React DOM peers and import `@r3act/react-bridge/radix-dialog`. The Radix peer is optional because default bridge users do not need it; importing this subpath requires that peer. The native component and ordinary React view share one module graph with core's `react/radix-dialog` export. The fresh Darwin five-package consumer verifies the selected subpath, shared identity, positive React function-component children and negative native-VNode children. A source-locked headless keyboard/portal workload passes with finite scope; no earlier Linux receipt verifies this change. See the [Radix reference](docs/radix-dialog-reference.md).
 
-The browser workload aliases public package routes to checkout source and explicitly applies React Compiler to the wrapper. The package builder emits JavaScript through tsgo without precompiling that library with React Compiler. The installed consumer checks imports, identities, types and native execution; it does not render the installed Radix package in a browser. These browser timings therefore describe the source workload with its compiled wrapper, and do not qualify installed-package rendering or performance. Installed-browser package conformance remains open.
+The selected Radix keyboard/portal comparison aliases public package routes to checkout source and explicitly applies React Compiler to the wrapper. The package builder emits JavaScript through tsgo without precompiling that library with React Compiler. That Radix consumer check covers imports, identities, types and native execution; the source comparison does not render its installed Radix package. Its timings therefore do not qualify installed-package Radix rendering or performance. The separate installed DOM/Three/Dialog application below does verify finite installed browser rendering, without turning the earlier source comparison into an installed-package performance result.
 
 ## Installed DOM/Three/Dialog application — 19 October 2026
 

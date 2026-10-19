@@ -1,5 +1,7 @@
 # Public Three host (private alpha)
 
+> **Dated checkout-source guide (12–18 October 2026).** The imports and milestone statements below preserve the original private-source development context. For current `@r3act/*` consumer imports, JSX setup and host ownership, use the [public Three host reference](docs/three-host-reference.md) and [package installation guide](native-package-integration.md).
+
 All authored native TSX requires `nativeModulePlugin()` from
 `compiler/vite_native_plugin.ts`. It discovers native runtime imports and emits
 owner/source plans and JavaScript. See `src/browser/native_three_host.tsx` for

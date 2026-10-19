@@ -1,5 +1,11 @@
 # Implementation checkpoint
 
+## Full-plan audit and public documentation boundary — 19 October 2026
+
+The full first pass is incomplete. A source audit at `78227828` found a concrete late caller callback: frozen structural RuntimeElement Proxy props can be reread by a later grouped candidate's publish-time validation after an earlier root accepts. This path is source-reachable but has not yet been executed as a regression. Next reproduce it with actual compiled resource/forwarding code and close callback-bearing acceptance while preserving final live validation, exact acknowledgements, newer actions and generic fallback. Sequential publication alone did not establish the finding; staged collection acknowledgement is not its cause.
+
+Public documentation now routes installation, native syntax and Three lookup through current package references. The historical Three guide's body/private imports remain unchanged behind a dated banner. Current Darwin receipts are distinguished from older Linux ARM64 execution; installed HMR remains unrun. This boundary changes documentation only, with no new workload or timing. Full release/performance/device requirements, human participants zero, dense FAIL, exhausted Recording A and physical HOLD remain. No VM starts or memory increases; saved Apple defaults are one CPU, 256 MiB/container and 512 MiB/build, runtime-unverified behind Depot startup permissions. [Audit, outcome and next runtime contract](implementation/2026-10-19-first-pass-audit/results.md).
+
 ## Const-arrow authoring boundary — 19 October 2026
 
 Module-level capitalized synchronous const arrows now use the existing compiler owner/hook/revision model, including block and expression bodies and named exports. Lowering wraps the original initializer at its declaration point, preserving lexical this/arguments, const initialization order and inferred function names. A temporary named-property object adds one module-initialization allocation per component. Mutable, async, nested and multi-declarator hook arrows remain diagnostics; unsupported arrows referenced directly as JSX tags are diagnosed even without hooks. Existing function-only closed numeric/Store/resource/forwarding proofs conservatively decline arrows, preserving generic rendering. There is no new runtime identity/version/publication registry or traversal layout.
