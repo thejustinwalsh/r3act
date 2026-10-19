@@ -1,5 +1,17 @@
 # Implementation checkpoint
 
+## Closed const-arrow proof coverage — 19 October 2026
+
+Supported module const arrows now share existing finite Store/resource/forwarding proofs; numeric arrows require an output-only state-declaration body. Extra callbacks, setters and hidden reads remain generic. Original arrow initializers and runtime authorities remain; the separate host-leaf hint stays false. Closed JSX grammars elide only empty comments and ASCII indentation with line breaks, preserving meaningful spaces/entities/non-ASCII text. Compiler/metadata/initializer/retained-plan costs remain unqualified.
+
+Darwin-v2 passes 46/46 steps, 1031 runtime tests, 71 Rust tests, 30 actual compiled fixtures and thirteen fresh-package checks; 1077 runner inputs match with 1086 raw source/context files archived. V1's absolute-path versus emitted source_file retirement harness failure remains preserved; the exact emitted key fixes it without a product repair. Actual compiled execution covers schema-5 DOM/Three arrows, concise forwarding, generic lexical/text behavior, held independent updates, control invalidation, fork output, exact revision retirement and cleanup.
+
+Fresh five-tarball proof-v1 passes untimed production execution and cleanup. React NumericCounter/JointReveal/DialogSlot/App emit _c(2)/_c(12)/_c(16)/_c(15) with correct JSX; ReactPanel remains uncompiled in both arms. Twenty source rows, 1621 selected installed files, compiler, package report, transforms and assets are bound. The sole Native-first generic local-state click-to-MutationObserver pair observes 3.5/1.800000000745058 ms Native/React, with Native slower in this observation. Timer quantum is unmeasured; this is no speed, numeric-update, CPU/tail/cold/memory/presentation or independent-device qualification. Unminified JS is 3308583/1150070 bytes with different feature graphs.
+
+The full-plan first pass remains active. Current other-platform and authored realtime/lifecycle/cold/memory/presentation/independent-device gates remain open; human participants are zero with no maintenance claim. Historic wins, dense FAIL, Recording A unresolved and physical HOLD retain scope. No VM or server starts; saved Apple defaults remain one CPU, 256 MiB/container and 512 MiB/build, effective limits unverified behind Depot startup permissions.
+
+[Source, preserved failure, receipts and limits](implementation/2026-10-19-closed-arrow-authoring/results.md).
+
 ## Held Store reader boundary — 19 October 2026
 
 Independent generic Store/local/direct work now retains canonical Store-A-before-resource reader history while A advances. Cut-only suspended dependencies accept no selector values; real selector Maps keep identity. Exact owner/code/resource/hold/membership/epoch checks and whole-root/VDOM guards remain. Scoped resource reveal declines stale ancestor Store or pending local controls; separate replacement-tree requests keep the accepted-old-group reveal policy. Newer host-time A/B wake correctly, and failures retain old managed history/quarantine. Added allocation/inspection/traversal costs remain unqualified.

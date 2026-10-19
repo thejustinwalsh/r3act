@@ -102,7 +102,8 @@ const sourcePaths = async () => {
     "implementation/2026-10-19-arrow-components",
     "implementation/2026-10-19-publication-callbacks",
     "implementation/2026-10-19-hmr-completion",
-    "implementation/2026-10-19-held-reader-progress"]) {
+    "implementation/2026-10-19-held-reader-progress",
+    "implementation/2026-10-19-closed-arrow-authoring"]) {
     try { if ((await stat(path.join(root, relative))).isDirectory()) await walk(path.join(root, relative)); }
     catch (error) { if (error?.code !== "ENOENT") throw error; }
   }
@@ -425,7 +426,7 @@ try {
     "compiled_resource_transaction_test", "native_async_recovery_execution_test",
     "native_forked_transition_execution_test", "native_custom_host_execution_test",
     "native_arrow_components_execution_test", "compiled_publication_callbacks_execution_test",
-    "compiled_held_reader_progress_test"];
+    "compiled_held_reader_progress_test", "compiled_closed_arrow_authoring_test"];
   for (const [index, fixture] of fixtures.entries()) {
     const name = `compiled-${String(index + 1).padStart(2, "0")}`;
     const before = await compilerHash();

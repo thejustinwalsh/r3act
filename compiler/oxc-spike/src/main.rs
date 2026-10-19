@@ -9,7 +9,8 @@ use oxc_allocator::Allocator;
 use oxc_ast::{
     AstKind,
     ast::{
-        Argument, ArrayExpressionElement, BindingPattern, CallExpression, Declaration, Expression,
+        Argument, ArrayExpressionElement, ArrowFunctionBody, ArrowFunctionExpression,
+        BindingPattern, CallExpression, Declaration, Expression,
         FormalParameters, Function, FunctionBody, ImportDeclaration, ImportDeclarationSpecifier,
         ImportOrExportKind, JSXAttributeItem, JSXAttributeName, JSXAttributeValue, JSXChild,
         JSXElement, JSXElementName, JSXExpression, ModuleExportName, PropertyKey, Statement,
@@ -3935,6 +3936,28 @@ fn compile_native_component_module(
             .outside_state_reads
             .extend(outside_states.into_values());
     }
+    struct ClosedNumericArrowCollector<'s, 'a> {
+        components: &'s [ComponentStateSiteIr],
+        semantic: &'s Semantic<'a>,
+        eligible: BTreeSet<String>,
+    }
+    impl<'a> Visit<'a> for ClosedNumericArrowCollector<'_, 'a> {
+        fn visit_variable_declarator(&mut self, node: &VariableDeclarator<'a>) {
+            if let Some(Expression::ArrowFunctionExpression(arrow)) = node.init.as_ref()
+                && let Some(component) = self.components.iter().find(|component|
+                    component.arrow_initializer.as_ref().is_some_and(|at|
+                        at.start == arrow.span.start && at.end == arrow.span.end))
+                && closed_numeric_arrow_body(arrow, component, self.semantic)
+            {
+                self.eligible.insert(component.component_site_id.clone());
+            }
+            walk::walk_variable_declarator(self, node);
+        }
+    }
+    let mut numeric_arrows = ClosedNumericArrowCollector {
+        components: &state_plan.components, semantic: &semantic, eligible: BTreeSet::new(),
+    };
+    numeric_arrows.visit_program(&parsed.program);
     let mut classifications = Vec::with_capacity(usage.candidates.len());
     for (candidate_index, candidate) in usage.candidates.iter().enumerate() {
         let owner_component = state_plan.components.iter().find(|component| {
@@ -3992,7 +4015,9 @@ fn compile_native_component_module(
         let certified = !candidate.other_refs
             && derived_is_closed
             && owner_local
-            && owner_component.is_some_and(|component| component.arrow_initializer.is_none())
+            && owner_component.is_some_and(|component|
+                component.arrow_initializer.is_none() ||
+                numeric_arrows.eligible.contains(&component.component_site_id))
             && !state_plan
                 .components
                 .iter()
@@ -4319,20 +4344,128 @@ fn closed_resource_literal(expression: &Expression<'_>) -> Option<serde_json::Va
     }
 }
 
+fn closed_numeric_arrow_body(
+    arrow: &ArrowFunctionExpression<'_>, component: &ComponentStateSiteIr,
+    semantic: &Semantic<'_>,
+) -> bool {
+    if arrow.r#async || component.state_sites.is_empty() ||
+        !component.effect_sites.is_empty() || !component.store_sites.is_empty() ||
+        !component.collection_sites.is_empty() || arrow.params.rest.is_some() ||
+        arrow.params.items.len() > 1 || arrow.params.items.first().is_some_and(|parameter|
+            parameter.optional || parameter.initializer.is_some() ||
+            !matches!(&parameter.pattern, BindingPattern::BindingIdentifier(_))) {
+        return false;
+    }
+    let ArrowFunctionBody::FunctionBody(body) = &arrow.body else { return false; };
+    if !body.directives.is_empty() || body.statements.len() != component.state_sites.len() + 1 {
+        return false;
+    }
+    let mut values = BTreeSet::new();
+    for (statement, site) in body.statements.iter().zip(&component.state_sites) {
+        let Some(Declaration::VariableDeclaration(declaration)) = statement.as_declaration() else {
+            return false;
+        };
+        if declaration.kind != oxc_ast::ast::VariableDeclarationKind::Const ||
+            declaration.declarations.len() != 1 { return false; }
+        let declarator = &declaration.declarations[0];
+        let BindingPattern::ArrayPattern(pattern) = &declarator.id else { return false; };
+        if pattern.rest.is_some() || pattern.elements.len() != 1 { return false; }
+        let Some(Some(BindingPattern::BindingIdentifier(value))) = pattern.elements.first() else {
+            return false;
+        };
+        let Some(Expression::CallExpression(call)) = declarator.init.as_ref() else {
+            return false;
+        };
+        if call.span.start != site.call.start || call.span.end != site.call.end ||
+            call.arguments.len() != 1 || !call.arguments.first().and_then(Argument::as_expression)
+                .is_some_and(|initial| owner_update_program::visit_closed_primitive_expression(
+                    initial, owner_update_program::ClosedExpressionPolicy::Primitive,
+                    &mut |_| false,
+                )) { return false; }
+        let Some(symbol) = value.symbol_id.get() else { return false; };
+        values.insert(symbol);
+    }
+    let Some(Statement::ReturnStatement(statement)) = body.statements.last() else { return false; };
+    let Some(Expression::JSXElement(element)) = statement.argument.as_ref() else { return false; };
+    if !closed_jsx_children_empty(&element.children) ||
+        element.opening_element.attributes.len() > 33 ||
+        !matches!(&element.opening_element.name,
+            JSXElementName::Identifier(tag) if tag.name.as_str().bytes().next()
+                .is_some_and(|byte| byte.is_ascii_lowercase())) { return false; }
+    element.opening_element.attributes.iter().all(|item| {
+        let JSXAttributeItem::Attribute(attribute) = item else { return false; };
+        let JSXAttributeName::Identifier(name) = &attribute.name else { return false; };
+        if name.name == "key" {
+            return matches!(attribute.value.as_ref(), Some(JSXAttributeValue::StringLiteral(_)));
+        }
+        if matches!(name.name.as_str(), "ref" | "children") || name.name.starts_with("on") {
+            return false;
+        }
+        let Some(JSXAttributeValue::ExpressionContainer(container)) = attribute.value.as_ref()
+            else { return false; };
+        let Some(expression) = container.expression.as_expression() else { return false; };
+        owner_update_program::visit_closed_primitive_expression(
+            expression, owner_update_program::ClosedExpressionPolicy::PrimitiveOrArray,
+            &mut |identifier| reference_symbol(identifier, semantic)
+                .is_some_and(|symbol| values.contains(&symbol)),
+        )
+    })
+}
+
+struct ClosedCallable<'a, 'b> {
+    params: &'b FormalParameters<'a>,
+    statements: &'b [Statement<'a>],
+    concise: Option<&'b Expression<'a>>,
+    own_symbol: Option<SymbolId>,
+}
+
+impl<'a, 'b> ClosedCallable<'a, 'b> {
+    fn function(node: &'b Function<'a>) -> Option<Self> {
+        if node.r#async || node.generator { return None; }
+        let body = node.body.as_ref()?;
+        if !body.directives.is_empty() { return None; }
+        Some(Self { params: &node.params, statements: &body.statements, concise: None,
+            own_symbol: node.id.as_ref().and_then(|id| id.symbol_id.get()) })
+    }
+
+    fn arrow(node: &'b ArrowFunctionExpression<'a>, own_symbol: SymbolId) -> Option<Self> {
+        if node.r#async { return None; }
+        let (statements, concise) = match &node.body {
+            ArrowFunctionBody::FunctionBody(body) if body.directives.is_empty() =>
+                (body.statements.as_slice(), None),
+            ArrowFunctionBody::FunctionBody(_) => return None,
+            body => (&[][..], Some(body.as_expression()?)),
+        };
+        Some(Self { params: &node.params, statements, concise,
+            own_symbol: Some(own_symbol) })
+    }
+
+    fn return_expression(&self, preceding: usize) -> Option<&Expression<'a>> {
+        if let Some(expression) = self.concise {
+            return (preceding == 0).then_some(expression);
+        }
+        if self.statements.len() != preceding + 1 { return None; }
+        let Statement::ReturnStatement(statement) = self.statements.get(preceding)? else {
+            return None;
+        };
+        statement.argument.as_ref()
+    }
+}
+
 fn closed_resource_host_program(
-    node: &Function<'_>,
+    callable: &ClosedCallable<'_, '_>,
     component: &ComponentStateSiteIr,
     semantic: &Semantic<'_>,
     revision: &str,
 ) -> Option<serde_json::Value> {
-    if node.r#async || node.generator || node.params.items.len() != 1 || node.params.rest.is_some()
+    if callable.params.items.len() != 1 || callable.params.rest.is_some()
         || component.state_sites.len() != 0 || component.effect_sites.len() != 0
         || component.collection_sites.len() != 0 || component.store_sites.len() != 1
         || component.store_sites[0].hook_name != "use"
     {
         return None;
     }
-    let parameter = &node.params.items[0];
+    let parameter = &callable.params.items[0];
     if parameter.optional || parameter.initializer.is_some() { return None; }
     let (props_symbol, destructured) = match &parameter.pattern {
         BindingPattern::BindingIdentifier(identifier) => (identifier.symbol_id.get(), None),
@@ -4344,9 +4477,8 @@ fn closed_resource_host_program(
         }
         _ => return None,
     };
-    let body = node.body.as_ref()?;
-    if !body.directives.is_empty() || body.statements.len() != 2 { return None; }
-    let declaration = match body.statements.first()?.as_declaration()? {
+    if callable.statements.len() != 2 { return None; }
+    let declaration = match callable.statements.first()?.as_declaration()? {
         Declaration::VariableDeclaration(declaration)
             if declaration.kind == oxc_ast::ast::VariableDeclarationKind::Const && declaration.declarations.len() == 1 => declaration,
         _ => return None,
@@ -4369,14 +4501,14 @@ fn closed_resource_host_program(
     } else { return None; };
     if !resource_prop.bytes().next().is_some_and(|byte| byte.is_ascii_alphabetic() || byte == b'_' || byte == b'$')
         || !resource_prop.bytes().all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'$') { return None; }
-    let Statement::ReturnStatement(return_statement) = body.statements.get(1)? else { return None; };
-    let mut return_expression = return_statement.argument.as_ref()?;
+    let mut return_expression = callable.return_expression(1)?;
     while let Expression::ParenthesizedExpression(parenthesized) = return_expression {
         return_expression = &parenthesized.expression;
     }
     let Expression::JSXElement(element) = return_expression else { return None; };
     let JSXElementName::Identifier(tag) = &element.opening_element.name else { return None; };
-    if tag.name != "div" || element.opening_element.attributes.len() > 33 { return None; }
+    if tag.name != "div" || element.opening_element.attributes.len() > 33 ||
+        element.children.len() > 256 { return None; }
     let mut key = None;
     let mut props = Vec::<serde_json::Value>::new();
     let mut seen = BTreeSet::new();
@@ -4402,6 +4534,7 @@ fn closed_resource_host_program(
     let key = key?;
     let mut child_count = 0;
     for child in &element.children {
+        if closed_jsx_child_elided(child) { continue; }
         match child {
             JSXChild::ExpressionContainer(container) => {
                 let Expression::Identifier(identifier) = container.expression.as_expression()? else { return None; };
@@ -4444,6 +4577,24 @@ fn closed_host_style_name(name: &str) -> bool {
     !body.is_empty() && (body.as_bytes()[0].is_ascii_alphabetic() ||
         body.as_bytes()[0] == b'_') && body.bytes().all(|byte|
         byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-')
+}
+
+fn closed_jsx_child_elided(child: &JSXChild<'_>) -> bool {
+    match child {
+        JSXChild::ExpressionContainer(container) =>
+            matches!(&container.expression, JSXExpression::EmptyExpression(_)),
+        JSXChild::Text(text) => text.raw.as_ref().is_some_and(|raw| {
+            let raw = raw.as_str();
+            raw.bytes().any(|byte| matches!(byte, b'\r' | b'\n')) &&
+                raw.bytes().all(|byte| matches!(byte, b' ' | b'\t' | b'\r' | b'\n')) &&
+                text.value.as_str().bytes().all(|byte| matches!(byte, b' ' | b'\t' | b'\r' | b'\n'))
+        }),
+        _ => false,
+    }
+}
+
+fn closed_jsx_children_empty(children: &[JSXChild<'_>]) -> bool {
+    children.iter().all(closed_jsx_child_elided)
 }
 
 fn closed_host_aggregate_expression<'a>(
@@ -4539,6 +4690,7 @@ fn closed_subtree_host<'a>(
     let mut children = Vec::<serde_json::Value>::new();
     if element.children.len() > 256 { return None; }
     for child in &element.children {
+        if closed_jsx_child_elided(child) { continue; }
         match child {
             JSXChild::Element(nested) => {
                 let host = closed_subtree_host(nested, read, keys, count, depth + 1,
@@ -4558,14 +4710,14 @@ fn closed_subtree_host<'a>(
 }
 
 fn closed_resource_subtree_program<'a>(
-    node: &Function<'a>, component: &ComponentStateSiteIr,
+    callable: &ClosedCallable<'a, '_>, component: &ComponentStateSiteIr,
     semantic: &Semantic<'a>, source: &str, revision: &str,
 ) -> Option<serde_json::Value> {
-    if node.r#async || node.generator || node.params.items.len() != 1 || node.params.rest.is_some() ||
+    if callable.params.items.len() != 1 || callable.params.rest.is_some() ||
         !component.state_sites.is_empty() || !component.effect_sites.is_empty() ||
         !component.collection_sites.is_empty() || component.store_sites.len() != 1 ||
         component.store_sites[0].hook_name != "use" { return None; }
-    let parameter = &node.params.items[0];
+    let parameter = &callable.params.items[0];
     if parameter.optional || parameter.initializer.is_some() { return None; }
     let (props_symbol, destructured) = match &parameter.pattern {
         BindingPattern::BindingIdentifier(identifier) => (identifier.symbol_id.get(), None),
@@ -4577,9 +4729,8 @@ fn closed_resource_subtree_program<'a>(
         }
         _ => return None,
     };
-    let body = node.body.as_ref()?;
-    if !body.directives.is_empty() || body.statements.len() != 2 { return None; }
-    let declaration = match body.statements.first()?.as_declaration()? {
+    if callable.statements.len() != 2 { return None; }
+    let declaration = match callable.statements.first()?.as_declaration()? {
         Declaration::VariableDeclaration(declaration)
             if declaration.kind == oxc_ast::ast::VariableDeclarationKind::Const && declaration.declarations.len() == 1 => declaration,
         _ => return None,
@@ -4602,8 +4753,7 @@ fn closed_resource_subtree_program<'a>(
     } else { return None; };
     if !resource_prop.bytes().next().is_some_and(|byte| byte.is_ascii_alphabetic() || byte == b'_' || byte == b'$') ||
         !resource_prop.bytes().all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'$') { return None; }
-    let Statement::ReturnStatement(return_statement) = body.statements.get(1)? else { return None; };
-    let mut return_expression = return_statement.argument.as_ref()?;
+    let mut return_expression = callable.return_expression(1)?;
     while let Expression::ParenthesizedExpression(parenthesized) = return_expression {
         return_expression = &parenthesized.expression;
     }
@@ -4813,24 +4963,24 @@ impl<'s, 'a> StoreProjectionProof<'s, 'a> {
 }
 
 fn closed_store_host_program<'a>(
-    node: &Function<'a>, component: &ComponentStateSiteIr,
+    callable: &ClosedCallable<'a, '_>, component: &ComponentStateSiteIr,
     semantic: &Semantic<'a>, source: &str, revision: &str,
 ) -> Option<(serde_json::Value, Vec<SourceSpan>)> {
-    closed_store_host_program_inner(node, component, semantic, source, revision, false)
-        .or_else(|| closed_store_host_program_inner(node, component, semantic, source, revision, true))
+    closed_store_host_program_inner(callable, component, semantic, source, revision, false)
+        .or_else(|| closed_store_host_program_inner(callable, component, semantic, source, revision, true))
 }
 
 fn closed_store_host_program_inner<'a>(
-    node: &Function<'a>, component: &ComponentStateSiteIr,
+    callable: &ClosedCallable<'a, '_>, component: &ComponentStateSiteIr,
     semantic: &Semantic<'a>, source: &str, revision: &str, projected: bool,
 ) -> Option<(serde_json::Value, Vec<SourceSpan>)> {
     let input_count = component.store_sites.len();
-    if node.r#async || node.generator || node.params.items.len() != 1 ||
-        node.params.rest.is_some() || !component.state_sites.is_empty() ||
+    if callable.params.items.len() != 1 ||
+        callable.params.rest.is_some() || !component.state_sites.is_empty() ||
         !component.effect_sites.is_empty() || !component.collection_sites.is_empty() ||
         !(1..=8).contains(&input_count) || component.store_sites.iter().any(|site| site.hook_name != "use")
     { return None; }
-    let parameter = &node.params.items[0];
+    let parameter = &callable.params.items[0];
     if parameter.optional || parameter.initializer.is_some() { return None; }
     let (props_symbol, destructured) = match &parameter.pattern {
         BindingPattern::BindingIdentifier(identifier) => (identifier.symbol_id.get(), BTreeMap::new()),
@@ -4846,15 +4996,14 @@ fn closed_store_host_program_inner<'a>(
         }
         _ => return None,
     };
-    let body = node.body.as_ref()?;
-    if !body.directives.is_empty() || body.statements.len() != input_count + 1 { return None; }
+    if callable.statements.len() != input_count + 1 { return None; }
     let mut value_sites = BTreeMap::new();
     let mut projected_bindings = BTreeMap::new();
     let mut source_sites = Vec::new();
     let mut inputs = Vec::<serde_json::Value>::new();
     let mut used_destructured = BTreeSet::new();
     for index in 0..input_count {
-        let declaration = match body.statements.get(index)?.as_declaration()? {
+        let declaration = match callable.statements.get(index)?.as_declaration()? {
             Declaration::VariableDeclaration(declaration)
                 if declaration.kind == oxc_ast::ast::VariableDeclarationKind::Const &&
                     declaration.declarations.len() == 1 => declaration,
@@ -4888,8 +5037,7 @@ fn closed_store_host_program_inner<'a>(
         }));
     }
     if props_symbol.is_none() && used_destructured.len() != destructured.len() { return None; }
-    let Statement::ReturnStatement(return_statement) = body.statements.get(input_count)? else { return None; };
-    let mut return_expression = return_statement.argument.as_ref()?;
+    let mut return_expression = callable.return_expression(input_count)?;
     while let Expression::ParenthesizedExpression(parenthesized) = return_expression {
         return_expression = &parenthesized.expression;
     }
@@ -4914,7 +5062,7 @@ fn closed_store_host_program_inner<'a>(
         }), tuple_spans));
     }
     let shared_tree = || {
-        if element.children.is_empty() && !element.opening_element.attributes.iter().any(|item| {
+        if closed_jsx_children_empty(&element.children) && !element.opening_element.attributes.iter().any(|item| {
             matches!(item, JSXAttributeItem::Attribute(attribute)
                 if matches!(&attribute.name, JSXAttributeName::Identifier(name) if name.name == "name") &&
                     matches!(attribute.value.as_ref(), Some(JSXAttributeValue::StringLiteral(_))))
@@ -4936,12 +5084,13 @@ fn closed_store_host_program_inner<'a>(
             "host": host,
         }), tuple_spans))
     };
-    if !element.children.is_empty() { return shared_tree(); }
+    if !closed_jsx_children_empty(&element.children) { return shared_tree(); }
     let legacy_leaf = (|| {
         let JSXElementName::Identifier(tag) = &element.opening_element.name else { return None; };
         let tag = tag.name.as_str();
         if !matches!(tag, "mesh" | "group" | "div" | "span" | "output") ||
-            !element.children.is_empty() || element.opening_element.attributes.len() > 33 { return None; }
+            element.children.len() > 256 || !closed_jsx_children_empty(&element.children) ||
+            element.opening_element.attributes.len() > 33 { return None; }
         let mut key = None;
         let mut props = Vec::<serde_json::Value>::new();
         let mut seen = BTreeSet::new();
@@ -5019,7 +5168,8 @@ impl<'a> Visit<'a> for ClosedStoreHostCollector<'_, 'a> {
         if let Some(component) = self.components.iter().find(|component|
             component.declaration.start == node.span.start &&
             component.declaration.end == node.span.end)
-            && let Some((program, tuple_spans)) = closed_store_host_program(node, component,
+            && let Some(callable) = ClosedCallable::function(node)
+            && let Some((program, tuple_spans)) = closed_store_host_program(&callable, component,
                 self.semantic, self.source, self.revision)
         {
             if !tuple_spans.is_empty() {
@@ -5028,6 +5178,25 @@ impl<'a> Visit<'a> for ClosedStoreHostCollector<'_, 'a> {
             self.programs.insert(component.component_site_id.clone(), program);
         }
         walk::walk_function(self, node, flags);
+    }
+
+    fn visit_variable_declarator(&mut self, node: &VariableDeclarator<'a>) {
+        if let BindingPattern::BindingIdentifier(binding) = &node.id
+            && let Some(symbol) = binding.symbol_id.get()
+            && let Some(Expression::ArrowFunctionExpression(arrow)) = node.init.as_ref()
+            && let Some(component) = self.components.iter().find(|component|
+                component.arrow_initializer.as_ref().is_some_and(|at|
+                    at.start == arrow.span.start && at.end == arrow.span.end))
+            && let Some(callable) = ClosedCallable::arrow(arrow, symbol)
+            && let Some((program, tuple_spans)) = closed_store_host_program(&callable, component,
+                self.semantic, self.source, self.revision)
+        {
+            if !tuple_spans.is_empty() {
+                self.tuple_spans.insert(component.component_site_id.clone(), tuple_spans);
+            }
+            self.programs.insert(component.component_site_id.clone(), program);
+        }
+        walk::walk_variable_declarator(self, node);
     }
 }
 struct ClosedResourceHostCollector<'p, 'a> {
@@ -5041,12 +5210,29 @@ struct ClosedResourceHostCollector<'p, 'a> {
 impl<'a> Visit<'a> for ClosedResourceHostCollector<'_, 'a> {
     fn visit_function(&mut self, node: &Function<'a>, flags: ScopeFlags) {
         if let Some(component) = self.components.iter().find(|component| component.declaration.start == node.span.start && component.declaration.end == node.span.end)
-            && let Some(program) = closed_resource_host_program(node, component, self.semantic, self.revision)
-                .or_else(|| closed_resource_subtree_program(node, component, self.semantic, self.source, self.revision))
+            && let Some(callable) = ClosedCallable::function(node)
+            && let Some(program) = closed_resource_host_program(&callable, component, self.semantic, self.revision)
+                .or_else(|| closed_resource_subtree_program(&callable, component, self.semantic, self.source, self.revision))
         {
             self.programs.insert(component.component_site_id.clone(), program);
         }
         walk::walk_function(self, node, flags);
+    }
+
+    fn visit_variable_declarator(&mut self, node: &VariableDeclarator<'a>) {
+        if let BindingPattern::BindingIdentifier(binding) = &node.id
+            && let Some(symbol) = binding.symbol_id.get()
+            && let Some(Expression::ArrowFunctionExpression(arrow)) = node.init.as_ref()
+            && let Some(component) = self.components.iter().find(|component|
+                component.arrow_initializer.as_ref().is_some_and(|at|
+                    at.start == arrow.span.start && at.end == arrow.span.end))
+            && let Some(callable) = ClosedCallable::arrow(arrow, symbol)
+            && let Some(program) = closed_resource_host_program(&callable, component, self.semantic, self.revision)
+                .or_else(|| closed_resource_subtree_program(&callable, component, self.semantic, self.source, self.revision))
+        {
+            self.programs.insert(component.component_site_id.clone(), program);
+        }
+        walk::walk_variable_declarator(self, node);
     }
 }
 
@@ -5083,18 +5269,18 @@ fn closed_forward_literal(expression: &Expression<'_>) -> Option<serde_json::Val
 }
 
 fn closed_component_forward_edge<'a>(
-    node: &Function<'a>, component: &ComponentStateSiteIr, semantic: &Semantic<'a>,
+    callable: &ClosedCallable<'a, '_>, component: &ComponentStateSiteIr, semantic: &Semantic<'a>,
     symbols: &BTreeMap<SymbolId, (String, String)>, source: &str, revision: &str,
 ) -> Option<ClosedForwardEdge> {
-    if node.r#async || node.generator || node.params.items.len() > 1 ||
-        node.params.rest.is_some() || !component.state_sites.is_empty() ||
+    if callable.params.items.len() > 1 ||
+        callable.params.rest.is_some() || !component.state_sites.is_empty() ||
         !component.effect_sites.is_empty() || !component.store_sites.is_empty() ||
         !component.collection_sites.is_empty() { return None; }
-    let own_symbol = node.id.as_ref()?.symbol_id.get()?;
+    let own_symbol = callable.own_symbol?;
     if symbols.get(&own_symbol)?.0 != component.name { return None; }
     let mut props_symbol = None;
     let mut destructured = BTreeMap::<SymbolId, String>::new();
-    if let Some(parameter) = node.params.items.first() {
+    if let Some(parameter) = callable.params.items.first() {
         if parameter.optional || parameter.initializer.is_some() { return None; }
         match &parameter.pattern {
             BindingPattern::BindingIdentifier(identifier) => props_symbol = identifier.symbol_id.get(),
@@ -5110,15 +5296,13 @@ fn closed_component_forward_edge<'a>(
             _ => return None,
         }
     }
-    let body = node.body.as_ref()?;
-    if !body.directives.is_empty() || body.statements.len() != 1 { return None; }
-    let Statement::ReturnStatement(statement) = &body.statements[0] else { return None; };
-    let mut output = statement.argument.as_ref()?;
+    let mut output = callable.return_expression(0)?;
     while let Expression::ParenthesizedExpression(parenthesized) = output {
         output = &parenthesized.expression;
     }
     let Expression::JSXElement(element) = output else { return None; };
-    if !element.children.is_empty() || element.opening_element.attributes.len() > 33 { return None; }
+    if element.children.len() > 256 || !closed_jsx_children_empty(&element.children) ||
+        element.opening_element.attributes.len() > 33 { return None; }
     let JSXElementName::IdentifierReference(target) = &element.opening_element.name else { return None; };
     let child_symbol = reference_symbol(target, semantic)?;
     let (child_name, child_site) = symbols.get(&child_symbol)?;
@@ -5207,6 +5391,24 @@ fn closed_component_forward_programs<'a>(
             }
             walk::walk_function(self, node, flags);
         }
+        fn visit_variable_declarator(&mut self, node: &VariableDeclarator<'a>) {
+            if let BindingPattern::BindingIdentifier(binding) = &node.id
+                && let Some(symbol) = binding.symbol_id.get()
+                && let Some(Expression::ArrowFunctionExpression(arrow)) = node.init.as_ref()
+                && let Some(component) = self.components.iter().find(|component|
+                    component.arrow_initializer.as_ref().is_some_and(|at|
+                        at.start == arrow.span.start && at.end == arrow.span.end))
+                && self.semantic.scoping().symbol_scope_id(symbol) ==
+                    self.semantic.scoping().root_scope_id()
+                && self.semantic.scoping().symbol_declarations(symbol).count() == 1
+                && self.semantic.scoping().get_resolved_references(symbol).all(|reference|
+                    !reference.is_write())
+            {
+                self.names.insert(symbol,
+                    (component.name.clone(), component.component_site_id.clone()));
+            }
+            walk::walk_variable_declarator(self, node);
+        }
         fn visit_call_expression(&mut self, node: &CallExpression<'a>) {
             let mut callee = &node.callee;
             while let Expression::ParenthesizedExpression(parenthesized) = callee {
@@ -5234,12 +5436,28 @@ fn closed_component_forward_programs<'a>(
             if let Some(component) = self.components.iter().find(|component|
                 component.declaration.start == node.span.start &&
                 component.declaration.end == node.span.end)
-                && let Some(edge) = closed_component_forward_edge(node, component,
+                && let Some(callable) = ClosedCallable::function(node)
+                && let Some(edge) = closed_component_forward_edge(&callable, component,
                     self.semantic, self.names, self.source, self.revision)
             {
                 self.edges.insert(component.component_site_id.clone(), edge);
             }
             walk::walk_function(self, node, flags);
+        }
+        fn visit_variable_declarator(&mut self, node: &VariableDeclarator<'a>) {
+            if let BindingPattern::BindingIdentifier(binding) = &node.id
+                && let Some(symbol) = binding.symbol_id.get()
+                && let Some(Expression::ArrowFunctionExpression(arrow)) = node.init.as_ref()
+                && let Some(component) = self.components.iter().find(|component|
+                    component.arrow_initializer.as_ref().is_some_and(|at|
+                        at.start == arrow.span.start && at.end == arrow.span.end))
+                && let Some(callable) = ClosedCallable::arrow(arrow, symbol)
+                && let Some(edge) = closed_component_forward_edge(&callable, component,
+                    self.semantic, self.names, self.source, self.revision)
+            {
+                self.edges.insert(component.component_site_id.clone(), edge);
+            }
+            walk::walk_variable_declarator(self, node);
         }
     }
     let mut collector = Edges { semantic, components, names: &symbols.names, source, revision,
@@ -9274,6 +9492,124 @@ const Plain = () => <output />;
         let code = plan.component_module.unwrap();
         assert!(code.contains("export const ArrowRow = __nativeDefineComponent(\"expression-arrow.tsx#component:ArrowRow\", ({ ArrowRow: ({ value }: { value: number }) => <output>{value}</output> }).ArrowRow, { propOnlySites:"), "{code}");
         assert!(code.contains("const Plain = __nativeDefineComponent(\"expression-arrow.tsx#component:Plain\", ({ Plain: () => <output /> }).Plain, { propOnlySites:"), "{code}");
+    }
+
+    #[test]
+    fn closed_const_arrows_share_function_proofs_and_keep_original_initializers() {
+        let source = r#"import { use, useState } from "native_runtime_api.ts";
+export function NamedCounter() { const [n] = useState(1); return <div data-n={n + 1}/>; }
+export const ArrowCounter = () => { const [n] = useState(1); return <div data-n={n + 1}/>; };
+export function NamedStore(props) { const value = use(props.store); return <div key="named-store" data-value={value}/>; }
+export const ArrowStore = (props) => { const value = use(props.store); return <div key="arrow-store" data-value={value}/>; };
+export function NamedResource(props) { const value = use(props.resource); return <div key="named-resource">{value}</div>; }
+export const ArrowResource = (props) => { const value = use(props.resource); return <div key="arrow-resource">{value}</div>; };
+export function NamedForward(props) { return <ArrowStore key="named-forward" store={props.store}/>; }
+export const ArrowForward = (props) => <ArrowStore key="arrow-forward" store={props.store}/>;
+"#;
+        let response = compile_state("closed-arrows.tsx", source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let plan = response.plan.unwrap();
+        let components = plan.components.as_ref().unwrap();
+        let get = |name: &str| components.iter().find(|component| component.name == name).unwrap();
+        let named_counter = get("NamedCounter");
+        let arrow_counter = get("ArrowCounter");
+        assert_eq!(named_counter.numeric_sinks.len(), arrow_counter.numeric_sinks.len());
+        assert!(!arrow_counter.numeric_sinks.is_empty());
+        assert_eq!(named_counter.state_layout.as_ref().unwrap().slots.len(),
+            arrow_counter.state_layout.as_ref().unwrap().slots.len());
+        for (named, arrow, schema) in [
+            ("NamedStore", "ArrowStore", 1),
+            ("NamedResource", "ArrowResource", 1),
+        ] {
+            let named = get(named);
+            let arrow = get(arrow);
+            let (named_program, arrow_program) = if named.name.contains("Store") {
+                (named.closed_store_host_program.as_ref().unwrap(),
+                    arrow.closed_store_host_program.as_ref().unwrap())
+            } else {
+                (named.closed_resource_host_program.as_ref().unwrap(),
+                    arrow.closed_resource_host_program.as_ref().unwrap())
+            };
+            assert_eq!(named_program["schemaVersion"], schema);
+            assert_eq!(arrow_program["schemaVersion"], schema);
+            assert_eq!(arrow_program["moduleRevision"], plan.module_revision);
+            assert_eq!(arrow_program["componentProgramId"], arrow.component_site_id);
+            assert_eq!(arrow.store_sites[0].site_id,
+                format!("closed-arrows.tsx#component:{}#store:0", arrow.name));
+        }
+        for name in ["NamedForward", "ArrowForward"] {
+            let component = get(name);
+            let forward = component.closed_component_forward_program.as_ref().unwrap();
+            assert_eq!(forward["childComponentProgramId"], get("ArrowStore").component_site_id);
+            assert_eq!(forward["moduleRevision"], plan.module_revision);
+        }
+        let code = plan.component_module.unwrap();
+        assert!(code.contains("export const ArrowForward = __nativeDefineComponent("), "{code}");
+        assert!(code.contains("({ ArrowForward: (props) => <ArrowStore"), "{code}");
+    }
+
+    #[test]
+    fn closed_arrow_jsx_elides_only_cooked_empty_children() {
+        let source = "import { use } from \"native_runtime_api.ts\";\r\n\
+export const Resource = (props) => { const value = use(props.resource); return <div key=\"resource\">\r\n\
+  {/* empty */}\r\n  {value}\r\n</div>; };\r\n\
+export const Store = (props) => { const value = use(props.store); return <div key=\"store\" data-value={value}>\r\n\
+  {/* empty */}\r\n</div>; };\r\n\
+export const Forward = (props) => (\r\n  <Store key=\"forward\" store={props.store}>\r\n\
+    {/* empty */}\r\n  </Store>\r\n);";
+        let response = compile_state("closed-arrow-whitespace.tsx", source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let components = response.plan.unwrap().components.unwrap();
+        let get = |name: &str| components.iter().find(|component| component.name == name).unwrap();
+        assert!(get("Resource").closed_resource_host_program.is_some());
+        assert!(get("Store").closed_store_host_program.is_some());
+        assert!(get("Forward").closed_component_forward_program.is_some());
+        for child in [" ", "\t", "&nbsp;", "hello", "\u{a0}", "\u{2028}"] {
+            let source = format!("import {{ use }} from \"native_runtime_api.ts\"; export const Bad = (props) => {{ const value = use(props.resource); return <div key=\"bad\">{child}{{value}}</div>; }};");
+            let response = compile_state("closed-arrow-text.tsx", &source);
+            assert!(response.error.is_none(), "{child}: {:?}", response.error);
+            assert!(response.plan.unwrap().components.unwrap()[0]
+                .closed_resource_host_program.is_none(), "{child} unexpectedly elided");
+        }
+    }
+
+    #[test]
+    fn closed_arrows_decline_hidden_effects_captures_and_unsafe_forwarding() {
+        for expression in [
+            "other", "helper(value)", "this.value", "arguments[0]",
+            "props.hidden", "({ get x() { return value; } }).x",
+        ] {
+            let source = format!("import {{ use }} from \"native_runtime_api.ts\"; const other = 1; export const Bad = (props) => {{ const value = use(props.store); return <div key=\"bad\" data-value={{{expression}}}/>; }};");
+            let response = compile_state("unsafe-arrow-store.tsx", &source);
+            assert!(response.error.is_none(), "{expression}: {:?}", response.error);
+            assert!(response.plan.unwrap().components.unwrap()[0]
+                .closed_store_host_program.is_none(), "{expression} unexpectedly closed");
+        }
+        for output in [
+            "<Leaf key=\"x\" store={choose(props.store)}/>",
+            "<Leaf key=\"x\" store={this.store}/>",
+            "<Leaf key=\"x\" store={arguments[0]}/>",
+            "<Leaf key=\"x\" store={captured}/>",
+            "<Leaf key=\"x\" store={props.store} onClick={() => 1}/>",
+        ] {
+            let source = format!("import {{ use }} from \"native_runtime_api.ts\"; const captured = 1; const Leaf = (props) => {{ const value = use(props.store); return <div key=\"leaf\" data-value={{value}}/>; }}; export const Bad = (props) => {output};");
+            let response = compile_state("unsafe-arrow-forward.tsx", &source);
+            assert!(response.error.is_none(), "{output}: {:?}", response.error);
+            let components = response.plan.unwrap().components.unwrap();
+            assert!(components.iter().find(|component| component.name == "Bad").unwrap()
+                .closed_component_forward_program.is_none(), "{output} unexpectedly closed");
+        }
+        for body in [
+            "const [n] = useState(0); trace.push(n); return <output data-n={n + 1}/>;",
+            "const [n, setN] = useState(0); return <button data-n={n + 1} onClick={() => setN(1)}/>;",
+            "const [n] = useState(0); return <output data-n={n + helper()}/>;",
+        ] {
+            let source = format!("import {{ useState }} from \"native_runtime_api.ts\"; const trace = []; export const Bad = () => {{ {body} }};");
+            let response = compile_state("unsafe-arrow-numeric.tsx", &source);
+            assert!(response.error.is_none(), "{body}: {:?}", response.error);
+            assert!(response.plan.unwrap().components.unwrap()[0].numeric_sinks.is_empty(),
+                "{body} unexpectedly certified");
+        }
     }
 
     #[test]
