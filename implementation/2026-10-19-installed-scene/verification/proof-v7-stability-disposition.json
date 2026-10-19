@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "status": "ACCEPTED_WITH_EXPLICIT_CROSS_INSTALL_NORMALIZATION",
+  "priorEvidence": "proof-v6-stability.json",
+  "disposition": "Preserve the original cross-install raw-hash mismatch report. Primary source review determined that all three production JS bundles are byte-identical after removing only generated //#region comment lines that encode pnpm temporary consumer/proof paths. The 54-package graph differs only in seven generated node_modules/.bin shim payloads that encode temporary consumer paths: rolldown (1), nanoid (1), vite (2), @r3act/vite (2), and postcss (1). Package payloads and transformed application code are unchanged. This disposition does not rewrite or relabel the prior raw-hash failure report; exact within-proof hashes remain strict.",
+  "crossInstallComparison": {
+    "sceneBundle": "equal-after-removing-only-generated-region-comment-lines",
+    "nativeBundle": "equal-after-removing-only-generated-region-comment-lines",
+    "reactBundle": "equal-after-removing-only-generated-region-comment-lines",
+    "generatedBinShims": {
+      "rolldown": 1,
+      "nanoid": 1,
+      "vite": 2,
+      "@r3act/vite": 2,
+      "postcss": 1,
+      "total": 7
+    },
+    "packagePayloadsAndTransforms": "unchanged"
+  },
+  "proofV7": {
+    "buildProof": "implementation/2026-10-19-installed-scene/proof-v7/build-proof.json",
+    "pairProof": "implementation/2026-10-19-installed-scene/proof-v7/pair-proof.json",
+    "browserConformance": "implementation/2026-10-19-installed-scene/proof-v7/browser-conformance.json",
+    "withinProofIntegrity": "PASS",
+    "pairBeforeRows": 20,
+    "pairAfterRows": 20,
+    "browserBeforeRows": 25,
+    "browserAfterRows": 25,
+    "mismatches": 0
+  }
+}

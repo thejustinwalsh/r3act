@@ -208,3 +208,5 @@ The executable contract is implemented in [native runtime API](../src/native_run
 
 
 The [joint-input boundary](../implementation/2026-10-18-joint-inputs/results.md) verifies actual Rust/OXC output and grouped DOM/Three execution, including mixed Store/local/keyed cuts, stale joint reads, newer actions, owner reuse and reader retirement. It establishes the supported semantic subset; its one browser observation was slower than React Compiler and supplies no speed or presentation qualification.
+
+A named self-closing Three Store leaf such as a keyed mesh with literal name and a closed position tuple can reuse the schema-4 subtree proof when the legacy leaf grammar declines it. Successful legacy schemas retain their earlier output. Dynamic names, calls, spreads and untracked prop reads remain generic. The [installed multi-host example](../examples/installed-scene/README.md) verifies the resulting post-reveal grouped Store cut beside pending health; this is finite compiler coverage, not a general syntax or speed claim.

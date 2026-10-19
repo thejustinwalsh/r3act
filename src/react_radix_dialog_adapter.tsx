@@ -24,7 +24,7 @@ export function ReactRadixDialog(props: RadixDialogProps): ReactNode {
       <Dialog.Trigger>{props.triggerLabel}</Dialog.Trigger>
       <Dialog.Portal container={props.portalContainer ?? undefined}>
         <Dialog.Overlay className={props.overlayClassName} />
-        <Dialog.Content className={props.className} style={props.style}>
+        <Dialog.Content aria-modal="true" className={props.className} style={props.style}>
           <Dialog.Title>{props.title}</Dialog.Title>
           <Dialog.Description>{props.description}</Dialog.Description>
           {props.children}

@@ -1,0 +1,14 @@
+# Final installed-scene audit
+
+Final audit status: **PASS_WITH_PRESERVED_FAILURES**. The exact seven owned consumers were removed after immediate manifest revalidation; their pre-removal file hashes are retained in the cleanup receipt. This audit performs no tests, builds, browser checks or measurements.
+
+- Darwin v5: **37/37 steps**, **1003 runtime tests**, **64 Rust tests**, 24 artifact checks, 23 compiled execution steps, two separate source proofs, seven Three cases, both retention checks and ten package-consumer checks. Its 893 input rows match before/after; the 901-file pre-command archive matches every recorded hash.
+- Post-gate current drift is exactly `consumer-build.mjs`, `verify-browser.mjs` and `source-review.md`. The harness changes are captured by proof-v7; compiler, product package and installed-example source inputs remain gate-bound.
+- Proof-v7 build, untimed pair, eight-stage browser conformance and one Native-first measured pair pass. The pair is 307.044041/536.435875 ms Native/React. Timed transforms/assets match proof; all pair and browser raw-input hashes match before/after.
+- The proof archives five tarballs, 54 installed packages (2,510 file rows), a Darwin ARM64 compiler and 20 source records. Fourteen consumer copies hash-match before cleanup.
+- The earlier v6 cross-install raw-byte failure remains preserved. Its separate reviewed disposition explains only fresh pnpm path-bearing region comments and seven generated `.bin` shims; it does not relax strict within-proof hashes.
+- All 312 local links in the audited final documents resolve. The notebook preserves its 207 prior cells and root metadata and adds one Markdown cell.
+- The 176 tracked `.cache/native-package-build` files match `HEAD`, match the package-report size inventory and have last modification times before the gate. The distinct `.cache/r3act-package-build` has ten archived before/after generated differences; all 510 current files match the archived after snapshot.
+- The seven exact proof-owned temporary consumers (6,116 files each) were removed after every saved pre-removal entry/hash was revalidated. [owned-consumer-cleanup-receipt.json](owned-consumer-cleanup-receipt.json) records the complete manifests and confirms all seven paths are absent; raw proof inputs remain on Depot.
+
+The initial audit-script attempt exited 1 because Python 3.14 rejects the `stdout` parameter passed to `check_output`; this read-only audit error is preserved at [final-audit-script-attempt-1.json](final-audit-script-attempt-1.json). The corrected audit completed without changing source or evidence. Historical launch, PATH, SQLite, typecheck, browser-assumption and stability failures remain separate and unrelabeled. Native build warnings are distinct from the browser receipt, whose error lists are empty.

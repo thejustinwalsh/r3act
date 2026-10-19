@@ -79,6 +79,8 @@ The checkout now has five `@r3act/*` workspace packages and a local tarball buil
 
 **These artifacts are unpublished; the namespace is unreserved.** The older private `@compiled-ui/runtime` package route and its dated evidence are preserved. The new host and bridge packages re-export core so they do not create additional World instances. See [package installation and configuration](native-package-integration.md) for tarball paths, setup, platform limits and the consumer gate.
 
+The [installed DOM/Three/Dialog example](examples/installed-scene/README.md) demonstrates shared state, declared publication groups, independent resources and a bounded React island using public package imports. Its [verified scope and failures](implementation/2026-10-19-installed-scene/results.md) remain separate from performance and release qualification.
+
 ## Origins
 
 This work grew from game and realtime-UI needs, Koota-based behavior experiments, and conversations around Cody Jason Bennett's [react-nylon](https://github.com/CodyJasonBennett/react-nylon). It draws on Preact's smaller-runtime precedent and Xi editor's [Rope Science](https://xi-editor.io/docs/rope_science_00.html) approach to incremental computation. Those are influences, not endorsements or a claim that this repository is their implementation.

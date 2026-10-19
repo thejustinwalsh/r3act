@@ -4832,7 +4832,12 @@ fn closed_store_host_program_inner<'a>(
             "host": host,
         }), tuple_spans));
     }
-    if !element.children.is_empty() {
+    let shared_tree = || {
+        if element.children.is_empty() && !element.opening_element.attributes.iter().any(|item| {
+            matches!(item, JSXAttributeItem::Attribute(attribute)
+                if matches!(&attribute.name, JSXAttributeName::Identifier(name) if name.name == "name") &&
+                    matches!(attribute.value.as_ref(), Some(JSXAttributeValue::StringLiteral(_))))
+        }) { return None; }
         let mut keys = BTreeSet::new();
         let mut count = 0;
         let mut has_aggregate = false;
@@ -4842,77 +4847,81 @@ fn closed_store_host_program_inner<'a>(
         let host = closed_subtree_host(element, &mut read,
             &mut keys, &mut count, 0, &mut has_aggregate,
             &mut tuple_spans)?;
-        return Some((serde_json::json!({
+        Some((serde_json::json!({
             "schemaVersion": 4,
             "componentProgramId": component.component_site_id,
             "moduleRevision": revision,
             "inputs": inputs,
             "host": host,
-        }), tuple_spans));
-    }
-    let JSXElementName::Identifier(tag) = &element.opening_element.name else { return None; };
-    let tag = tag.name.as_str();
-    if !matches!(tag, "mesh" | "group" | "div" | "span" | "output") ||
-        !element.children.is_empty() || element.opening_element.attributes.len() > 33 { return None; }
-    let mut key = None;
-    let mut props = Vec::<serde_json::Value>::new();
-    let mut seen = BTreeSet::new();
-    let mut tuple_spans = Vec::new();
-    let mut has_aggregate = false;
-    for attribute in &element.opening_element.attributes {
-        let JSXAttributeItem::Attribute(attribute) = attribute else { return None; };
-        let JSXAttributeName::Identifier(name) = &attribute.name else { return None; };
-        let name = name.name.as_str();
-        if name == "key" {
-            if key.is_some() { return None; }
-            let Some(JSXAttributeValue::StringLiteral(value)) = attribute.value.as_ref() else { return None; };
-            if value.value.is_empty() || value.value.chars().any(|ch| matches!(ch, '&' | '\n' | '\r' | '\t')) { return None; }
-            key = Some(value.value.to_string());
-        } else {
-            let aggregate = (matches!(tag, "mesh" | "group") &&
-                matches!(name, "position" | "rotation" | "scale")) ||
-                (matches!(tag, "div" | "span" | "output") && name == "style");
-            if (!aggregate && !closed_store_host_property_name(tag, name)) ||
-                !seen.insert(name.to_owned()) { return None; }
-            let JSXAttributeValue::ExpressionContainer(container) = attribute.value.as_ref()? else { return None; };
-            let expression = container.expression.as_expression()?;
-            let program = if aggregate {
-                let mut read = |expression: &Expression<'a>| closed_store_host_expression(expression,
-                    &value_sites, &source_sites, semantic, source);
-                let program = closed_host_aggregate_expression(expression, tag, name,
-                    &mut read)?;
-                has_aggregate = true;
-                if program.get("kind").and_then(serde_json::Value::as_str) == Some("tuple") {
-                    let expression_span = expression.span();
-                    tuple_spans.push(span(expression_span.start, expression_span.end));
-                }
-                program
+        }), tuple_spans))
+    };
+    if !element.children.is_empty() { return shared_tree(); }
+    let legacy_leaf = (|| {
+        let JSXElementName::Identifier(tag) = &element.opening_element.name else { return None; };
+        let tag = tag.name.as_str();
+        if !matches!(tag, "mesh" | "group" | "div" | "span" | "output") ||
+            !element.children.is_empty() || element.opening_element.attributes.len() > 33 { return None; }
+        let mut key = None;
+        let mut props = Vec::<serde_json::Value>::new();
+        let mut seen = BTreeSet::new();
+        let mut tuple_spans = Vec::new();
+        let mut has_aggregate = false;
+        for attribute in &element.opening_element.attributes {
+            let JSXAttributeItem::Attribute(attribute) = attribute else { return None; };
+            let JSXAttributeName::Identifier(name) = &attribute.name else { return None; };
+            let name = name.name.as_str();
+            if name == "key" {
+                if key.is_some() { return None; }
+                let Some(JSXAttributeValue::StringLiteral(value)) = attribute.value.as_ref() else { return None; };
+                if value.value.is_empty() || value.value.chars().any(|ch| matches!(ch, '&' | '\n' | '\r' | '\t')) { return None; }
+                key = Some(value.value.to_string());
             } else {
-                closed_store_host_expression(expression, &value_sites,
-                    &source_sites, semantic, source)?
-            };
-            props.push(serde_json::json!([name, program]));
+                let aggregate = (matches!(tag, "mesh" | "group") &&
+                    matches!(name, "position" | "rotation" | "scale")) ||
+                    (matches!(tag, "div" | "span" | "output") && name == "style");
+                if (!aggregate && !closed_store_host_property_name(tag, name)) ||
+                    !seen.insert(name.to_owned()) { return None; }
+                let JSXAttributeValue::ExpressionContainer(container) = attribute.value.as_ref()? else { return None; };
+                let expression = container.expression.as_expression()?;
+                let program = if aggregate {
+                    let mut read = |expression: &Expression<'a>| closed_store_host_expression(expression,
+                        &value_sites, &source_sites, semantic, source);
+                    let program = closed_host_aggregate_expression(expression, tag, name,
+                        &mut read)?;
+                    has_aggregate = true;
+                    if program.get("kind").and_then(serde_json::Value::as_str) == Some("tuple") {
+                        let expression_span = expression.span();
+                        tuple_spans.push(span(expression_span.start, expression_span.end));
+                    }
+                    program
+                } else {
+                    closed_store_host_expression(expression, &value_sites,
+                        &source_sites, semantic, source)?
+                };
+                props.push(serde_json::json!([name, program]));
+            }
         }
-    }
-    if props.is_empty() || (tag == "span" && !has_aggregate) { return None; }
-    let key = key?;
-    let mut program = serde_json::json!({
-        "componentProgramId": component.component_site_id,
-        "moduleRevision": revision,
-        "host": { "tag": tag, "key": key, "props": props, "child": null }
-    });
-    if has_aggregate {
-        program["schemaVersion"] = serde_json::json!(3);
-        program["inputs"] = serde_json::json!(inputs);
-    } else if input_count == 1 {
-        program["schemaVersion"] = serde_json::json!(1);
-        program["storeUseSiteId"] = inputs[0]["storeUseSiteId"].clone();
-        program["storeProp"] = inputs[0]["storeProp"].clone();
-    } else {
-        program["schemaVersion"] = serde_json::json!(2);
-        program["inputs"] = serde_json::json!(inputs);
-    }
-    Some((program, tuple_spans))
+        if props.is_empty() || (tag == "span" && !has_aggregate) { return None; }
+        let key = key?;
+        let mut program = serde_json::json!({
+            "componentProgramId": component.component_site_id,
+            "moduleRevision": revision,
+            "host": { "tag": tag, "key": key, "props": props, "child": null }
+        });
+        if has_aggregate {
+            program["schemaVersion"] = serde_json::json!(3);
+            program["inputs"] = serde_json::json!(inputs);
+        } else if input_count == 1 {
+            program["schemaVersion"] = serde_json::json!(1);
+            program["storeUseSiteId"] = inputs[0]["storeUseSiteId"].clone();
+            program["storeProp"] = inputs[0]["storeProp"].clone();
+        } else {
+            program["schemaVersion"] = serde_json::json!(2);
+            program["inputs"] = serde_json::json!(inputs);
+        }
+        Some((program, tuple_spans))
+    })();
+    legacy_leaf.or_else(shared_tree)
 }
 
 struct ClosedStoreHostCollector<'p, 'a> {
@@ -8766,6 +8775,47 @@ export function ExistingTree(props) { const x = use(props.store); return <div ke
         let code = plan.component_module.unwrap();
         assert_eq!(code.matches("closedStoreHostProgram:").count(), 4);
         assert!(code.contains("closedStoreHostProgram: {"));
+    }
+
+    #[test]
+    fn named_three_store_leaf_uses_shared_closed_tree_without_widening_dynamic_name() {
+        let source = "import { use } from \"native_runtime_api.ts\"; \
+            export function Cursor(props) { const x = use(props.point); \
+            return <mesh key=\"cursor\" name=\"cursor\" position={[x, 0, 0]} />; }";
+        let response = compile_state("named-three-store-leaf.tsx", source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let plan = response.plan.unwrap();
+        let component = &plan.components.as_ref().unwrap()[0];
+        let program = component.closed_store_host_program.as_ref().unwrap();
+        assert_eq!(program["schemaVersion"], 4);
+        assert_eq!(program["inputs"][0]["storeProp"], "point");
+        assert_eq!(program["host"]["tag"], "mesh");
+        assert_eq!(program["host"]["key"], "cursor");
+        assert_eq!(program["host"]["props"][0], serde_json::json!([
+            "name", {"kind":"literal", "value":"cursor"}
+        ]));
+        assert_eq!(program["host"]["props"][1][0], "position");
+        assert_eq!(program["host"]["props"][1][1]["kind"], "tuple");
+        assert_eq!(program["host"]["props"][1][1]["items"][0],
+            serde_json::json!({"kind":"input", "index":0}));
+        let code = plan.component_module.unwrap();
+        assert!(code.contains("stabilizeHostTuple as __nativeStabilizeHostTuple"));
+        assert!(code.contains("position={__nativeStabilizeHostTuple([x, 0, 0])}"));
+        for (name, attributes) in [
+            ("dynamic-name", "name={x} position={[x, 0, 0]}"),
+            ("name-call", "name={helper(x)} position={[x, 0, 0]}"),
+            ("spread", "name=\"cursor\" position={[x, 0, 0]} {...props}"),
+            ("position-call", "name=\"cursor\" position={[x, helper(), 0]}"),
+            ("position-getter", "name=\"cursor\" position={[x, props.value, 0]}"),
+        ] {
+            let source = format!("import {{ use }} from \"native_runtime_api.ts\"; \
+                export function Candidate(props) {{ const x = use(props.point); \
+                return <mesh key=\"cursor\" {attributes} />; }}");
+            let response = compile_state(&format!("named-three-{name}.tsx"), &source);
+            assert!(response.error.is_none(), "{name}: {:?}", response.error);
+            let component = &response.plan.unwrap().components.unwrap()[0];
+            assert!(component.closed_store_host_program.is_none(), "{name} unexpectedly closed");
+        }
     }
 
     #[test]

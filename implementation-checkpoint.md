@@ -1,5 +1,19 @@
 # Implementation checkpoint
 
+## Installed multi-host application boundary — 19 October 2026
+
+The installed multi-host example now executes native DOM/Three roots sharing one World, Stores and declared reveal/position groups, plus an independent health boundary and controlled Radix portal. It uses fresh installed tarballs and the copied public Vite configuration, without checkout aliases. Actual output exposed a named Three Store leaf missing its program; the compiler now reuses the strict schema-4 subtree proof on literal-name legacy decline while preserving earlier successful schemas. The finite modal bridge explicitly emits aria-modal=true.
+
+Current Darwin correctness passes 37/37 steps, 1003 runtime tests, 64 Rust tests, 23 actual compiled executions plus two separate source proofs, seven Three cases, both retention checks and ten fresh consumer checks. All 893 inputs match; 901 raw source/context files are preserved before commands. Final installed type/build/browser proofs pass. Eight browser stages verify independent progress, joint reveal 3:5, native grouped position 3:3 beside pending health, keyboard/form/keyed retention and disposal. React body lifetimes balance 3/3, Three owned resources 2/2, borrowed resources survive host cleanup then retire once, and DOM owners/pending work return to zero. Installed wrapper bytes remain uncompiled by React Compiler; ordinary React comparator Dialog has _c(2).
+
+The sole Native-first fresh-process installed build pair observes 307.044041/536.435875 ms Native/React, with 1,297,092/808,605 unminified JavaScript bytes. Timed transforms/assets equal the proof; exact input checks pass. Common harness startup and potentially warm caches are included. These are not runtime, cold-cache, median/p95, equivalent-feature-size, physical presentation or independent-device results. Native use-client build warnings remain preserved; browser errors are zero.
+
+Startup/PATH/store failures, the exact-source consumer supplement, type/proof/program gaps, Chromium launch failure, modal annotation and verifier-field failures remain preserved. Fresh-install region comments and seven generated .bin shims explain the rejected cross-install byte screen; strict within-proof hashes remain. Final harness-only corrections follow the full product gate and are separately source-bound. Earlier Linux receipts predate this source. Full async/structural, installed HMR/platform, cold/memory/lifecycle, presentation and independent-device obligations remain open; human participants remain zero, with no maintenance advantage. Historic wins, qualified dense FAIL, exhausted Recording A and physical HOLD retain scope. No VM or memory increase occurs; saved 256/512 MiB Apple defaults remain runtime-unverified while Depot launch permissions block startup.
+
+See [source, receipts, failures and limits](implementation/2026-10-19-installed-scene/results.md).
+
+The full-plan first-pass goal remains active. This is one completed integrated delivery/compiler slice, not release qualification.
+
 ## Selected Radix Dialog boundary — 19 October 2026
 
 The optional `@r3act/react-bridge/radix-dialog` entry now supplies a controlled modal backed by exact Radix Dialog 1.3.1, with the same React view available to ordinary React roots. Compiled native Store/state props enter an opaque persistent island through existing owner/ref/publication authority. React owns portals, contexts, focus and its separate commit. The finite API requires accessible title/description, controls open state through a callback and accepts React children and a caller-owned portal container. Default core/bridge imports remain Radix-free; native core imports without React. A boundary-local type correction permits React function-component children without widening native RuntimeNode or changing generic native component types.

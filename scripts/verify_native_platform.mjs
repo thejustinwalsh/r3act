@@ -72,6 +72,8 @@ const sourcePaths = async () => {
     "implementation/2026-10-18-component-forwarding/source-review.md",
     "implementation/2026-10-18-authored-lifecycle/design.md",
     "implementation/2026-10-18-authored-lifecycle/source-review.md",
+    ...["design.md", "source-review.md", "prepare-build.mjs", "consumer-build.mjs", "verify-browser.mjs", "run-build-pair.mjs", "README.md"].map((name) =>
+      `implementation/2026-10-19-installed-scene/${name}`),
     "implementation/2026-10-19-radix-dialog/design.md",
     "implementation/2026-10-19-radix-dialog/source-review.md",
     ...["native_arm.tsx", "react_arm.tsx", "dialog_body.tsx", "entry.ts", "index.html",
@@ -91,6 +93,10 @@ const sourcePaths = async () => {
       "vite.config.ts", "build-gate.mjs", "run-pairs.mjs", "README.md"].map((name) =>
       `implementation/2026-10-18-authored-lifecycle/workload/${name}`)]) {
     try { if ((await stat(path.join(root, relative))).isFile()) files.push(relative); }
+    catch (error) { if (error?.code !== "ENOENT") throw error; }
+  }
+  for (const relative of ["examples/installed-scene", "implementation/2026-10-19-installed-scene/comparison"]) {
+    try { if ((await stat(path.join(root, relative))).isDirectory()) await walk(path.join(root, relative)); }
     catch (error) { if (error?.code !== "ENOENT") throw error; }
   }
   const linux = path.join(root, "implementation/2026-10-18-native-platforms/linux");
