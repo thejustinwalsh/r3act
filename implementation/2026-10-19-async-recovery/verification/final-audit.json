@@ -1,0 +1,82 @@
+{
+  "schemaVersion": "async-recovery-final-audit-v1",
+  "measuredRun": {
+    "status": "PASS_ONE_DESCRIPTIVE_PAIR",
+    "receipt": "implementation/2026-10-19-async-recovery/proof-v2/browser-measured-one-shot.json",
+    "sha256": "7db8fc6521cdaa61105659a44549faf613b7ed4a0d94858fb135a768e2d46807",
+    "authorizationSha256": "e79ff6fc4268c0470f73ebc70d70e308f4447c159a67743563bd874037ab58de",
+    "buildProofSha256": "37e7849a3cd78d2eb1c3fcd6f2fe8c0e4de3ec45792a745a97accc6b4afcaccc",
+    "behaviorReceiptSha256": "452de0e610290b0ed6b3eab189cee2c8d793be884c24f5bca3bb8ea435601c91",
+    "sourceLockSha256": "8b5b156364fb7c8b97af9a463d208743ac5f609008742ec54690f9d376aa26bf",
+    "browserVersion": "153.0.8010.12",
+    "fixedOrder": ["native", "react"],
+    "native": { "status": "PASS", "settlementToMutationObserverMs": 0.9, "timerQuantumMs": 0.1 },
+    "react": { "status": "PASS", "settlementToMutationObserverMs": 0.9, "timerQuantumMs": 0.1 },
+    "observations": {
+      "bothOutputsEqual": true,
+      "output": { "value": "recovered", "x": "7", "urgent": "2", "staleVisible": false },
+      "firstStatus": "committed",
+      "staleStatus": "cancelled",
+      "retryStatus": "committed",
+      "urgentWhilePending": true,
+      "acceptedErrorRetained": true,
+      "cancelledLateDiscarded": true,
+      "lifeBeforeDisposal": { "readyMounts": 2, "readyCleanups": 1, "errorMounts": 1, "errorCleanups": 1 },
+      "lifeAfterDisposal": { "readyMounts": 2, "readyCleanups": 2, "errorMounts": 1, "errorCleanups": 1 },
+      "errors": [],
+      "blockedRequests": [],
+      "requestFailures": [],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "browserClosed": true
+    },
+    "timingScope": "One descriptive prepaint Native-first pair; final retry provider resolution to first matching MutationObserver, including scheduling and observer delivery, excluding paint. Not CPU, tails, cold, memory, or device qualification."
+  },
+  "darwinV3Gate": {
+    "status": "PASS",
+    "receipt": "implementation/2026-10-19-async-recovery/verification/darwin-v3/receipt.json",
+    "passedSteps": 38,
+    "failedSteps": 0,
+    "runtimeTests": 1007,
+    "rustTests": 64,
+    "compiledFixtures": 24,
+    "sourceArchiveEntries": 913,
+    "archiveCopyMismatches": 0,
+    "sourceBeforeEntries": 905,
+    "sourceAfterEntries": 905,
+    "snapshotMismatches": 0,
+    "sourceAfterCurrentExceptions": ["implementation/2026-10-19-async-recovery/comparison/react_arm.tsx"]
+  },
+  "proofV2": {
+    "buildStatus": "BUILD_CAPTURED_PENDING_PRIMARY_REVIEW",
+    "buildProofSha256": "37e7849a3cd78d2eb1c3fcd6f2fe8c0e4de3ec45792a745a97accc6b4afcaccc",
+    "behaviorStatus": "PASS_UNTIMED_BEHAVIOR",
+    "behaviorReceiptSha256": "452de0e610290b0ed6b3eab189cee2c8d793be884c24f5bca3bb8ea435601c91",
+    "sourceLockSha256": "8b5b156364fb7c8b97af9a463d208743ac5f609008742ec54690f9d376aa26bf",
+    "sourceDrift": 0,
+    "compilerSha256BeforeAfter": "52c0021bd5bffa67de3472a0139c85159483ae20f1482dd7f8ac8c6f4160ea7f",
+    "reactMemo": { "Ready": [4], "App": [12] },
+    "reactHotMemo": true,
+    "nativeSemanticPlanComplete": true,
+    "nativeDefinitionsFound": ["ReadDom", "UrgentDom", "ErrorDom", "AppDom", "ReadThree", "UrgentThree", "AppThree"],
+    "nativeClosedProgram": false
+  },
+  "preservedEarlierFailures": {
+    "darwinV1": { "directoryPresent": true, "denoFull": "FAIL", "compiled06": "FAIL", "compiled24": "FAIL" },
+    "darwinV2": { "directoryPresent": true, "denoFull": "FAIL", "compiledFixturesPassed": 24 }
+  },
+  "workspaceAudit": {
+    "notebook": "research.ipynb",
+    "notebookCells": 208,
+    "notebookDiffFromHead": false,
+    "trackedSourceDiffFromHead": ["src/component_state_runtime.ts"],
+    "trackedAllDiffFromHead": [
+      "docs/native-authoring-reference.md",
+      "examples/installed-scene/README.md",
+      "examples/installed-scene/main.tsx",
+      "scripts/verify_native_platform.mjs",
+      "src/component_state_runtime.ts"
+    ],
+    "priorDenseAndLegacySourcesChanged": false
+  }
+}

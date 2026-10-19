@@ -1,5 +1,17 @@
 # Implementation checkpoint
 
+## Accepted error recovery boundary — 19 October 2026
+
+Native Suspense now records its accepted error output in existing boundary history, so pending retries retain that error without resurrecting older successful content. Candidate discard and enclosing-boundary rollback preserve accepted retention; manual pending candidates remain publishable. Expected cancellation during installed-example disposal no longer throws. No new identity/version/cache authority or physical layout is introduced.
+
+Consolidated Darwin-v3 passes 38/38 steps, 1007 runtime tests, 64 Rust tests, 24 actual compiled fixtures, two separate source proofs, seven Three cases, both retention checks and fresh five-package consumption. All 905 inputs match; 913 raw source/context files are archived before commands. Actual compiled DOM/Three plus a second DOM consumer share one World and verify error/retry/cancel/urgent/late-settlement/lifetime behavior; a selected primitive resource rejection releases its hold for generic error rendering. Divergent fork frontiers are not separately proved here.
+
+The initial two failed gates remain preserved. They rejected the primary's proposed fallback policy and exposed that rendering cancellation never undoes dispatched Store actions. The workload now passes resource identities through queued tree props with independent urgent Store state. A rejected first build proof lacked actual React App memo output. The comparator-only layout-effect handoff after v3 yields Ready _c(4), App _c(12); final proof binds that source separately. Native/runtime/compiler/example remain v3-identical. Untimed browser behavior and the sole Native-first pair pass with identical output and balanced cleanup, 492 matching before/after integrity rows and zero browser errors.
+
+The sole settlement-to-MutationObserver pair observes 0.9/0.9 ms Native/React at about 0.1 ms timer quantum. This is generic prepaint scheduling/observer evidence, with no speed, CPU, tails, cold/memory, presentation or independent-device qualification. Full-plan first-pass remains active: broader async/structural authoring, installed HMR/platform and lifecycle/independent-device gates remain open; human participants remain zero, with no maintenance advantage. Earlier Linux/installed-browser receipts predate this source. Historic wins, qualified dense FAIL, exhausted Recording A and physical HOLD retain scope. No VM or memory increase occurs; saved one-CPU 256 MiB/container and 512 MiB/builder Apple defaults remain runtime-unverified while Depot startup permissions block service launch.
+
+See [source, preserved failures and results](implementation/2026-10-19-async-recovery/results.md).
+
 ## Installed multi-host application boundary — 19 October 2026
 
 The installed multi-host example now executes native DOM/Three roots sharing one World, Stores and declared reveal/position groups, plus an independent health boundary and controlled Radix portal. It uses fresh installed tarballs and the copied public Vite configuration, without checkout aliases. Actual output exposed a named Three Store leaf missing its program; the compiler now reuses the strict schema-4 subtree proof on literal-name legacy decline while preserving earlier successful schemas. The finite modal bridge explicitly emits aria-modal=true.

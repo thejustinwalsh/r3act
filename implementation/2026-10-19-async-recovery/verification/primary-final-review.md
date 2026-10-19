@@ -1,0 +1,9 @@
+# Primary integration disposition
+
+Accepted for local integration within the finite recovery scope. The runtime uses existing boundary history and journal authority to retain accepted error output without older-success resurrection. Existing manual candidate and compiled error contracts pass; discard, nested rollback, cancellation, urgency and lifetime checks are covered. The optional installed example cancellation correction is source-reviewed; no installed-browser cancellation rerun is implied.
+
+Darwin-v3 passes all 38 steps on unchanged Native/runtime/compiler/example code. The final comparator-only layout-effect handoff is independently bound by proof-v2. Primary inspected exact Native registrations and React Ready/App memo output, both untimed arms, and authorized one hash-bound descriptive pair. It passes 0.9/0.9 ms before paint with exact output, 492 matching integrity rows and balanced teardown. No speed, CPU, population-tail, cold/memory, presentation, independent-device or maintenance advantage follows.
+
+Both failed gates and the rejected first production proof retain their raw source/logs. The final archive audit passes; the post-documentation audit preserves the original 208 notebook cells and metadata and identifies the expected comparator/review differences. Primary independently confirms no preexisting tracked root cache, dense qualified result or prior installed-scene evidence changed. New generated cache evidence is preserved, alongside raw gate/proof archives.
+
+No VM or memory increase occurs. Apple defaults remain one CPU, 256 MiB/container and 512 MiB/builder, with service startup/effective limits still unverified behind Depot permissions. The full-plan first-pass goal remains active; all unclosed product and evidence requirements retain their scope.

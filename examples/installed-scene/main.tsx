@@ -124,6 +124,7 @@ export function mountInstalledScene(host: HTMLElement, portal: HTMLElement) {
       { root: domRoot, stores: [domain.point] },
       { root: three.root, stores: [domain.point] },
     ], onSettled(outcome) {
+      if (outcome.status === "cancelled") return;
       if (outcome.status !== "committed") throw new Error(`Joint position ${outcome.status}`);
       positionCallbacks++;
       positionView = `${host.querySelector('[data-point]')?.getAttribute("data-point") ?? "missing"}:${scene.getObjectByName("cursor")?.position.x ?? "missing"}`;
@@ -147,6 +148,7 @@ export function mountInstalledScene(host: HTMLElement, portal: HTMLElement) {
       { root: domRoot, resources: [domain.detail] },
       { root: three.root, resources: [domain.signal] },
     ], onSettled(outcome) {
+      if (outcome.status === "cancelled") return;
       if (outcome.status !== "committed") throw new Error(`Joint reveal ${outcome.status}`);
       revealCallbacks++;
       revealView = `${host.querySelector('[data-detail]')?.getAttribute("data-detail") ?? "missing"}:${scene.getObjectByName("signal-ready")?.position.x ?? "missing"}`;

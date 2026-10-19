@@ -8633,6 +8633,12 @@ export class ComponentStateRoot<H, Parent = H> {
           protectedBranch,
           boundaryOwner,
         );
+        if (error instanceof ResourceRejection && boundaryPrimaries) {
+          const snapshot: BoundaryPrimary = { tree: fallback };
+          if (expansionJournal) {
+            expansionJournal.set(boundaryPrimaries, boundaryKey, snapshot);
+          } else boundaryPrimaries.set(boundaryKey, snapshot);
+        }
         return recordBoundaryOutput(
           expandedFallback,
           isPendingResource(error) ? error.resource : undefined,
