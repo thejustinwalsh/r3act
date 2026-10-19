@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
 import {mkdir,writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
@@ -8,6 +9,7 @@ import {createNativeRoot} from '../src/native_runtime_api.ts';
 import {MemoryVDOMHost} from '../src/vdom_snapshot_runtime.ts';
 import {jsx} from '../src/jsx_binding_runtime.ts';
 const directory=path.resolve('.');const nativeImport=pathToFileURL(path.join(directory,'src/native_runtime_api.ts')).href;
+const artifact=path.join(directory,'.cache',`native-collection-execution-${randomUUID()}`);
 const authored=`/** @jsxRuntime classic */
 /** @jsx jsx */
 // @native-ui
@@ -22,16 +24,17 @@ export function Row({row}:{row:{id:string,label:string}}){
  if(row.label==='BAD')throw new Error('row candidate failed');
  return <li data-row={row.id} data-tick={tick}><button onClick={()=>setTick(previous=>previous+1)}>Tick</button><input value={draft} onInput={(event:any)=>setDraft(event.value)}/><span>{row.label}</span></li>;
 }
-export function Rows(){return <ul>{rows.map(row=><Row key={row.id} row={row}/>)}</ul>;}
+export function Rows(){return <ul>{rows.map(row=><Row row={row}/>)}</ul>;}
 export const tiny=createKeyedCollection([{id:'tinyA',label:'A'},{id:'tinyB',label:'B'}],row=>row.id);
 export function HostChild({id}:{id:string}){const [value,setValue]=useState(0);return <button data-child={id} onClick={()=>setValue(previous=>previous+1)}>{value}</button>;}
 export function CountHost(){return <section><output data-count="yes">{tiny.size}v{tiny.version}</output><ul>{tiny.map(row=><li key={row.id}><HostChild id={row.id}/></li>)}</ul></section>;}
 export function App({title='initial'}:{title?:string}){return <section><h1>{title}</h1><Rows/></section>;}
 `;
-const plugin=nativeModuleCompilerPlugin({root:directory});const context={addWatchFile(){},error(message){throw new Error(String(message))}};let root;
+const plugin=nativeModuleCompilerPlugin({root:directory,compilerBinary:path.join(directory,'compiler/oxc-spike/target/debug/ui-graph-compiler-spike')});const context={addWatchFile(){},error(message){throw new Error(String(message))}};let root;
 try{
- const transformed=await plugin.transform.call(context,authored,path.join(directory,'.cache/native-collection-execution.tsx'));assert.ok(transformed.code.includes('renderCollectionAt'),'Collection map was not compiled');
- const emitted=await transformWithOxc(transformed.code,'.cache/native-collection-execution.tsx',{lang:'tsx',jsx:{runtime:'classic'}});await mkdir('.cache',{recursive:true});const filename=path.join(directory,'.cache/native-collection-execution.mjs');await writeFile(filename,emitted.code);const app=await import(pathToFileURL(filename).href+'?test='+Date.now());
+ await mkdir(artifact);await writeFile(path.join(artifact,'authored.tsx'),authored,{flag:'wx'});
+ const transformed=await plugin.transform.call(context,authored,path.join(artifact,'authored.tsx'));assert.ok(transformed.code.includes('renderCollectionAt'),'Collection map was not compiled');
+ const emitted=await transformWithOxc(transformed.code,path.join(artifact,'authored.tsx'),{lang:'tsx',jsx:{runtime:'classic',pragma:'jsx',pragmaFrag:'Fragment'}});const filename=path.join(artifact,'emitted.mjs');await writeFile(filename,emitted.code,{flag:'wx'});const app=await import(pathToFileURL(filename).href);
  const host=new MemoryVDOMHost();const container=host.createContainer();let counters={};root=createNativeRoot(host,container,{scheduleCommit(){},profileCounter(next){counters=next}});root.mount(jsx(app.App,{}));
  const walk=(node,predicate)=>predicate(node)?node:node.children.map(child=>walk(child,predicate)).find(Boolean);const row=id=>walk(container,node=>node.props['data-row']===id);const list=()=>walk(container,node=>node.tag==='ul');const input=node=>node.children.find(child=>child.tag==='input');const button=node=>node.children.find(child=>child.tag==='button');const text=node=>(node.text??'')+node.children.map(text).join('');
  assert.equal(app.trace.mounts,1000);assert.equal(list().children.length,1000);const retained=row('5');input(retained).props.onInput({value:'Retained draft'});root.flush();button(retained).props.onClick();root.flush();assert.equal(row('5').props['data-tick'],1);

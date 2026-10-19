@@ -492,6 +492,13 @@ const cloneMountedElementVNode = (
   return copy;
 };
 
+const sameMountedElementHeader = (left: VNode, right: VNode): boolean =>
+  left.kind === "element" && right.kind === "element" &&
+  left.tag === right.tag && left.key === right.key &&
+  left.props === right.props &&
+  left.keyedRegionId === right.keyedRegionId &&
+  left.scopedSourceProps === right.scopedSourceProps;
+
 const mountedChildren = <H>(node: MountedNode<H>): MountedNode<H>[] =>
   node.keyedChildren
     ? [...node.keyedChildren.entries()].map((entry) => entry.value)
@@ -1192,6 +1199,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
   #publicationFailed = false;
   #acceptedVersion = 0;
   #acceptedSnapshot: readonly VNode[] | null = null;
+  #keyedVNodeRetentionParents = new Set<MountedNode<H>>();
   #nodesByKey = new Map<string, Set<MountedNode<H>>>();
   #nodesByKeyedRegion = new Map<string, Set<MountedNode<H>>>();
   // Set membership gives structural detach O(1) even when thousands of rows
@@ -1376,6 +1384,14 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     this.#publicationToken = {};
   }
 
+  #releaseKeyedVNodeAncestorChildren(parent: MountedNode<H>) {
+    for (let ancestor = parent.parent; ancestor; ancestor = ancestor.parent) {
+      if (ancestor.vnode.kind === "element" && ancestor.vnode.children.length) {
+        ancestor.vnode = cloneMountedElementVNode(ancestor.vnode, { children: [] });
+      }
+    }
+  }
+
   publishAccepted() {
     if (!this.#publicationToken) {
       throw new Error("No VDOM publication is active");
@@ -1395,6 +1411,10 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     this.#publicationFailed = false;
     this.#acceptedVersion = this.#version;
     this.#acceptedSnapshot = null;
+    for (const parent of this.#keyedVNodeRetentionParents) {
+      this.#releaseKeyedVNodeAncestorChildren(parent);
+    }
+    this.#keyedVNodeRetentionParents.clear();
   }
 
   failPublication() {
@@ -1403,6 +1423,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       this.#publicationToken = null;
       acceptedJournalByHost.delete(this.#renderHost as object);
       this.#publicationFailed = true;
+      this.#keyedVNodeRetentionParents.clear();
     }
   }
 
@@ -1412,6 +1433,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     acceptedJournalByHost.delete(this.#renderHost as object);
     this.#acceptedJournal = null;
     this.#acceptedSnapshot = null;
+    this.#keyedVNodeRetentionParents.clear();
   }
 
   #effectiveLastValue(group: BoundPropGroup<H>): unknown {
@@ -2069,11 +2091,13 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         this.#attachScalarBindingSubtree(region.get(operation.key)!);
       }
     }
-    // The mounted bucket owns row order; drop the initial child array and snapshot
-    // so removed rows are released immediately.
+    // The mounted bucket owns row order; accepted publication retires
+    // ancestor child arrays after post-host validation.
     acceptedJournal?.capture(parent);
     const releasedChildVNodeCount = parent.vnode.children.length;
     parent.vnode = cloneMountedElementVNode(parent.vnode, { children: [] });
+    if (this.#publicationToken) this.#keyedVNodeRetentionParents.add(parent);
+    else this.#releaseKeyedVNodeAncestorChildren(parent);
     this.#snapshot = [];
     this.#snapshotDirty = true;
     if (incrementVersion) this.#version++;
@@ -2117,6 +2141,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     deferVersion: boolean,
     postHostStore: PreparedStorePropDelta | null = null,
   ): PreparedKeyedVDOMProgram | null {
+    const baseVersion = this.#version;
     const scoped = options.scoped === true;
     deferVersion &&= scoped;
     const methodNames = ["createElement", "createText", "setText", "setProp",
@@ -2145,7 +2170,6 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       (scoped && (deltas.length === 0 || regions.length > 0 ||
         !deltas.some((delta) => delta.operations.length > 0)))
     ) return null;
-    const baseVersion = this.#version;
     const hasLeafRegions = regions.length > 0;
     type PreparedDelta = {
       parentKey: string;
@@ -2155,6 +2179,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       operations: readonly KeyedRegionDeltaOperation[];
       nodes: Map<KeyedRegionDeltaOperation, VNode>;
       bucket: KeyedRegionBuckets<MountedNode<H>>;
+      bucketRevision: number;
       parentVNode: VNode;
       keyedFootprint: Map<string, MountedNode<H> | null>;
     };
@@ -2257,7 +2282,9 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           }
         }
         deltaParents.add(parent);
+        if (scoped && this.#version !== baseVersion) return null;
         const bucket = parent.keyedChildren!;
+        const bucketRevision = bucket.structuralRevision;
         const parentVNode = parent.vnode;
         const keyedFootprint = new Map<string, MountedNode<H> | null>();
         const captureKey = (key: string | null) => {
@@ -2340,6 +2367,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           operations,
           nodes,
           bucket,
+          bucketRevision,
           parentVNode,
           keyedFootprint,
         });
@@ -2426,7 +2454,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       }>;
     }> | null = null;
     const validateTargets = () => preparedDeltas.every(
-      ({ root, parent, parentKey, regionId, bucket, parentVNode, keyedFootprint }) => {
+      ({ root, parent, parentKey, regionId, bucket, bucketRevision, parentVNode, keyedFootprint }) => {
         const entries = this.#nodesByKey.get(parentKey);
         if (
           root.hostDisposed || parent.hostDisposed || entries?.size !== 1 ||
@@ -2442,7 +2470,14 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         }
         if (found !== 1) return false;
         if (!scoped) return true;
-        if (parent.vnode !== parentVNode || parent.keyedChildren !== bucket) {
+        if (
+          parent.keyedChildren !== bucket ||
+          bucket.structuralRevision !== bucketRevision ||
+          (parent.vnode !== parentVNode &&
+            (parent.vnode.kind !== "element" ||
+              parent.vnode.children.length !== 0 ||
+              !sameMountedElementHeader(parent.vnode, parentVNode)))
+        ) {
           return false;
         }
         for (const [key, node] of keyedFootprint) {
@@ -5538,6 +5573,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       acceptedJournalByHost.delete(this.#renderHost as object);
       this.#acceptedJournal = null;
       this.#acceptedSnapshot = null;
+      this.#keyedVNodeRetentionParents.clear();
       this.#mounted = [];
       this.#snapshot = [];
       this.#snapshotDirty = false;

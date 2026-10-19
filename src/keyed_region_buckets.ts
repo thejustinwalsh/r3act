@@ -39,6 +39,7 @@ export class KeyedRegionBuckets<T> {
   #bucketSlotReads = 0;
   #bucketSlotWrites = 0;
   #bucketCount = 0;
+  #structuralRevision = 0;
 
   constructor(entries: readonly KeyedRegionEntry<T>[], bucketCapacity = 128) {
     if (!Number.isSafeInteger(bucketCapacity) || bucketCapacity < 4) {
@@ -59,6 +60,10 @@ export class KeyedRegionBuckets<T> {
 
   get bucketCount() {
     return this.#bucketCount;
+  }
+
+  get structuralRevision() {
+    return this.#structuralRevision;
   }
 
   has(key: string) {
@@ -90,6 +95,7 @@ export class KeyedRegionBuckets<T> {
     if (newKey !== oldKey && this.#byKey.has(newKey)) {
       throw new Error(`Duplicate keyed-region key: ${newKey}`);
     }
+    this.#requireRevisionRoom(1);
     this.#bucketSlotReads++;
     const replacement: Entry<T> = {
       key: newKey,
@@ -101,15 +107,19 @@ export class KeyedRegionBuckets<T> {
     this.#bucketSlotWrites++;
     this.#byKey.delete(oldKey);
     this.#byKey.set(newKey, replacement);
+    this.#structuralRevision++;
   }
 
   insertBefore(anchorKey: string | null, key: string, value: T): void {
     if (this.#byKey.has(key)) {
       throw new Error(`Duplicate keyed-region key: ${key}`);
     }
+    if (anchorKey !== null) this.#require(anchorKey);
+    this.#requireRevisionRoom(1);
     if (this.#size === 0) {
       const bucket = this.#newBucket(null, null);
       this.#insertInto(bucket, 0, key, value);
+      this.#structuralRevision++;
       return;
     }
     if (anchorKey === null) {
@@ -120,6 +130,7 @@ export class KeyedRegionBuckets<T> {
       } else {
         this.#insertInto(bucket, bucket.entries.length, key, value);
       }
+      this.#structuralRevision++;
       return;
     }
     const anchor = this.#require(anchorKey);
@@ -134,10 +145,12 @@ export class KeyedRegionBuckets<T> {
       }
     }
     this.#insertInto(bucket, offset, key, value);
+    this.#structuralRevision++;
   }
 
   remove(key: string): T {
     const entry = this.#require(key);
+    this.#requireRevisionRoom(1);
     const { bucket, offset } = entry;
     const [removed] = bucket.entries.splice(offset, 1);
     this.#bucketSlotReads++;
@@ -150,13 +163,23 @@ export class KeyedRegionBuckets<T> {
     } else {
       this.#rebalance(bucket);
     }
+    this.#structuralRevision++;
     return removed.value;
   }
 
   moveBefore(key: string, anchorKey: string | null): void {
     if (key === anchorKey) return;
+    if (this.afterKey(key) === anchorKey) return;
+    if (anchorKey !== null) this.#require(anchorKey);
+    this.#requireRevisionRoom(2);
     const value = this.remove(key);
     this.insertBefore(anchorKey, key, value);
+  }
+
+  #requireRevisionRoom(steps: number) {
+    if (this.#structuralRevision > Number.MAX_SAFE_INTEGER - steps) {
+      throw new RangeError("Keyed-region structural revision exhausted");
+    }
   }
 
   *entries(): IterableIterator<KeyedRegionEntry<T>> {

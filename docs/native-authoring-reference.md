@@ -44,6 +44,10 @@ The runtime identifies a store source by a callable `read` method, after checkin
 
 `createKeyedCollection(initial, keyOf)` requires a nonempty string key for each item and rejects duplicates. Its payloads are retained by reference, so callers must treat them as immutable. The collection supports versioned `insert`, `remove`, `move`, and `replace` operations; stale or unavailable history can fall back to a generic snapshot.
 
+Native `.map` lowering uses the collection's snapshot contract. Replacing collection methods is not an extension API; changed canonical methods disable scoped admission. Automatic authored insert/replace uses generic preparation because a pure mapper does not establish that its row component is pure. Supported move/remove deltas retain keyed state and host identity.
+
+Removing and reinserting a key creates a new row lifetime, even in one batch or after reader history expires. Moves and value replacement preserve surviving row state; an authored host-key change still replaces that host.
+
 The specialized TSX form is a direct `.map` on a collection binding with one inline, synchronous, one-parameter arrow returning JSX:
 
 ```tsx
@@ -52,11 +56,17 @@ import { createKeyedCollection } from "@r3act/core";
 const rows = createKeyedCollection([{ id: "a", label: "Alpha" }], (row) => row.id);
 
 export function Rows() {
-  return <ul>{rows.map((row) => <li key={row.id}>{row.label}</li>)}</ul>;
+  return <ul>{rows.map((row) => <Row row={row} />)}</ul>;
+}
+
+function Row({ row }) {
+  return <li data-row={row.id}>{row.label}</li>;
 }
 ```
 
-An index parameter, `thisArg`, mapper alias, or non-JSX mapper is diagnosed for a native collection map. Ordinary array maps remain generic JavaScript. Recognition of a collection map does **not** prove the row renderer or child components pure. Existing-row move/remove work has a bounded scoped preparation path; authored insert/replace and opaque row/component callbacks retain generic owner rendering.
+The runtime supplies each mapped element's collection key for compiler-lowered maps. Forwarding the row into a stable component avoids reading a caller-owned key property in the mapper. An explicit `key={row.id}` remains legal, but `row.id` can invoke an arbitrary getter, so that mapper keeps generic owner rendering. Freezing a caller object or adding a TypeScript type does not prove those reads pure. Maps outside collection recognition retain ordinary JavaScript/JSX key rules.
+
+An index parameter, `thisArg`, mapper alias, or non-JSX mapper is diagnosed for a native collection map. Ordinary array maps remain generic JavaScript. Skipping a collection owner requires a finite proof of its whole body and mapper, plus runtime admission of its original owned inputs. Opaque sibling output, helpers, getters and unsupported captures keep the owner generic. Recognition of a map alone does not prove the row component pure. Existing-row move/remove work has a bounded scoped preparation path; authored insert/replace with opaque component callbacks retain generic preparation. Low-level `renderCollectionAt` is a caller-declared capability; supplying its metadata is not a compiler purity proof.
 
 ## Tasks, resources, and transitions
 

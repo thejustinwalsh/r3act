@@ -239,6 +239,8 @@ struct NativeComponentMetadata {
     closed_component_forward_program: Option<serde_json::Value>,
     #[serde(default)]
     collection_sites: Vec<NativeCollectionSiteMetadata>,
+    #[serde(rename = "closedCollectionSites", default, skip_serializing_if = "Vec::is_empty")]
+    closed_collection_sites: Vec<String>,
     numeric_sinks: Vec<NativeNumericSinkMetadata>,
     opaque_sinks: Vec<String>,
 }
@@ -3662,9 +3664,36 @@ fn compile_native_component_module(
         })
         .map(|read| read.symbol)
         .collect();
+    let collection_components: Vec<_> = collector.components.values().collect();
+    let mut collection_tags = ClosedCollectionTagCollector {
+        components: &collection_components,
+        semantic: &semantic,
+        symbols: BTreeSet::new(),
+        direct_eval: false,
+    };
+    collection_tags.visit_program(&parsed.program);
+    let stable_collection_tags = if collection_tags.direct_eval { BTreeSet::new() }
+        else { collection_tags.symbols.into_iter().filter(|symbol|
+            semantic.scoping().symbol_declarations(*symbol).filter(|node|
+                !matches!(semantic.nodes().kind(*node),
+                    AstKind::TSTypeAliasDeclaration(_) | AstKind::TSInterfaceDeclaration(_))
+            ).count() == 1 &&
+            semantic.scoping().get_resolved_references(*symbol).all(|reference| !reference.is_write())
+        ).collect() };
+    let mut collection_proofs = ClosedCollectionOwnerCollector {
+        components: &collection_components,
+        semantic: &semantic,
+        stable_tags: &stable_collection_tags,
+        symbols: collector.keyed_collection_symbols.union(&collector.keyed_collection_alias_symbols)
+            .copied().collect(),
+        eligible: BTreeSet::new(),
+    };
+    collection_proofs.visit_program(&parsed.program);
+    let eligible_collection_owners = collection_proofs.eligible;
     for component in collector.components.values_mut() {
         for site in &mut component.collection_sites {
-            site.requires_owner_render = outside_collection_reads.contains(&site.collection_symbol);
+            site.requires_owner_render = outside_collection_reads.contains(&site.collection_symbol)
+                || !eligible_collection_owners.contains(&component.component_site_id);
         }
     }
     if let Some(at) = collector.unsupported_collection_factory_import.as_ref() {
@@ -4351,6 +4380,9 @@ fn compile_native_component_module(
                     requires_owner_render: collection.requires_owner_render,
                 })
                 .collect(),
+            closed_collection_sites: component.collection_sites.iter()
+                .filter(|site| !site.requires_owner_render)
+                .map(|site| site.site_id.clone()).collect(),
             numeric_sinks: numeric_programs.iter()
                 .filter(|sink| sink.owner_program_id == component.component_site_id)
                 .map(|sink| NativeNumericSinkMetadata {
@@ -4702,6 +4734,248 @@ fn closed_numeric_owner_body(
     let Expression::JSXElement(element) = result else { return false; };
     closed_numeric_jsx(element, &values, &setters, props_symbol,
         &prop_bindings, required_props, semantic, stable_refs, certified_spans, 0)
+}
+
+fn closed_collection_row_jsx(
+    element: &JSXElement<'_>, row: SymbolId, semantic: &Semantic<'_>,
+    stable_tags: &BTreeSet<SymbolId>, depth: usize,
+) -> bool {
+    if depth >= 8 || element.opening_element.attributes.len() > 64 || element.children.len() > 64 ||
+        !match &element.opening_element.name {
+            JSXElementName::Identifier(tag) => tag.name.as_str().bytes().next()
+                .is_some_and(|byte| byte.is_ascii_lowercase()),
+            JSXElementName::IdentifierReference(tag) => reference_symbol(tag, semantic)
+                .is_some_and(|symbol| stable_tags.contains(&symbol)),
+            _ => false,
+        } {
+        return false;
+    }
+    for item in &element.opening_element.attributes {
+        let JSXAttributeItem::Attribute(attribute) = item else { return false; };
+        let JSXAttributeName::Identifier(name) = &attribute.name else { return false; };
+        let name = name.name.as_str();
+        if name == "ref" || name == "children" || name.starts_with("on") { return false; }
+        match attribute.value.as_ref() {
+            None | Some(JSXAttributeValue::StringLiteral(_)) => {}
+            Some(JSXAttributeValue::ExpressionContainer(container)) => {
+                let Some(expression) = container.expression.as_expression() else { return false; };
+                if !closed_numeric_value(expression, &BTreeSet::new(), semantic) &&
+                    !(name != "key" && matches!(expression, Expression::Identifier(identifier)
+                        if reference_symbol(identifier, semantic) == Some(row))) {
+                    return false;
+                }
+            }
+            _ => return false,
+        }
+    }
+    element.children.iter().all(|child| match child {
+        JSXChild::Text(_) => true,
+        JSXChild::Element(child) => closed_collection_row_jsx(child, row, semantic, stable_tags, depth + 1),
+        JSXChild::ExpressionContainer(container) =>
+            matches!(&container.expression, JSXExpression::EmptyExpression(_)) ||
+            container.expression.as_expression().is_some_and(|expression|
+                closed_numeric_value(expression, &BTreeSet::new(), semantic) ||
+                matches!(expression, Expression::Identifier(identifier)
+                    if reference_symbol(identifier, semantic) == Some(row))),
+        _ => false,
+    })
+}
+
+fn closed_collection_callback(call: &CallExpression<'_>, semantic: &Semantic<'_>,
+    stable_tags: &BTreeSet<SymbolId>) -> bool {
+    if call.optional || call.arguments.len() != 1 { return false; }
+    let Some(Argument::ArrowFunctionExpression(callback)) = call.arguments.first() else { return false; };
+    if callback.r#async || callback.params.rest.is_some() || callback.params.items.len() != 1 { return false; }
+    let parameter = &callback.params.items[0];
+    if parameter.optional || parameter.initializer.is_some() { return false; }
+    let BindingPattern::BindingIdentifier(row) = &parameter.pattern else { return false; };
+    let Some(row) = row.symbol_id.get() else { return false; };
+    let Some(mut result) = callback.body.as_expression() else { return false; };
+    while let Expression::ParenthesizedExpression(parenthesized) = result {
+        result = &parenthesized.expression;
+    }
+    matches!(result, Expression::JSXElement(element)
+        if closed_collection_row_jsx(element, row, semantic, stable_tags, 0))
+}
+
+fn closed_collection_owner_jsx(
+    element: &JSXElement<'_>, sites: &[CollectionSiteIr],
+    semantic: &Semantic<'_>, stable_tags: &BTreeSet<SymbolId>,
+    seen: &mut BTreeSet<(u32, u32)>, depth: usize,
+) -> bool {
+    if depth >= 8 || element.opening_element.attributes.len() > 64 || element.children.len() > 64 ||
+        !matches!(&element.opening_element.name, JSXElementName::Identifier(tag)
+            if tag.name.as_str().bytes().next().is_some_and(|byte| byte.is_ascii_lowercase())) {
+        return false;
+    }
+    for item in &element.opening_element.attributes {
+        let JSXAttributeItem::Attribute(attribute) = item else { return false; };
+        let JSXAttributeName::Identifier(name) = &attribute.name else { return false; };
+        if name.name.as_str() == "ref" || name.name.as_str() == "children" || name.name.as_str().starts_with("on") {
+            return false;
+        }
+        match attribute.value.as_ref() {
+            None | Some(JSXAttributeValue::StringLiteral(_)) => {}
+            Some(JSXAttributeValue::ExpressionContainer(container)) => {
+                if !container.expression.as_expression().is_some_and(|expression|
+                    closed_numeric_value(expression, &BTreeSet::new(), semantic)) { return false; }
+            }
+            _ => return false,
+        }
+    }
+    element.children.iter().all(|child| match child {
+        JSXChild::Text(_) => true,
+        JSXChild::Element(child) => closed_collection_owner_jsx(child, sites, semantic, stable_tags, seen, depth + 1),
+        JSXChild::ExpressionContainer(container) => {
+            if matches!(&container.expression, JSXExpression::EmptyExpression(_)) { return true; }
+            let Some(mut expression) = container.expression.as_expression() else { return false; };
+            while let Expression::ParenthesizedExpression(parenthesized) = expression {
+                expression = &parenthesized.expression;
+            }
+            if let Expression::CallExpression(call) = expression {
+                if sites.iter().any(|site| site.call.start == call.span.start && site.call.end == call.span.end)
+                    && closed_collection_callback(call, semantic, stable_tags) {
+                    return seen.insert((call.span.start, call.span.end));
+                }
+            }
+            closed_numeric_value(expression, &BTreeSet::new(), semantic)
+        }
+        _ => false,
+    })
+}
+
+fn closed_collection_owner_body(
+    callable: &ClosedCallable<'_, '_>, component: &ComponentStateSiteIr,
+    semantic: &Semantic<'_>, collection_symbols: &BTreeSet<SymbolId>,
+    stable_tags: &BTreeSet<SymbolId>,
+) -> bool {
+    if component.collection_sites.is_empty() || !component.store_sites.is_empty() ||
+        !component.effect_sites.is_empty() ||
+        callable.params.rest.is_some() || callable.params.items.len() > 1 ||
+        callable.statements.len() > 65 { return false; }
+    if callable.params.items.iter().any(|parameter| {
+        if parameter.optional || parameter.initializer.is_some() { return true; }
+        match &parameter.pattern {
+            BindingPattern::BindingIdentifier(_) => false,
+            BindingPattern::ObjectPattern(pattern) => pattern.rest.is_some() ||
+                pattern.properties.len() > 32 || pattern.properties.iter().any(|property|
+                    property.computed || type_property_name(&property.key).is_none() ||
+                    !matches!(&property.value, BindingPattern::BindingIdentifier(_))),
+            _ => true,
+        }
+    }) { return false; }
+    let preceding = if callable.concise.is_some() { 0 } else { callable.statements.len().saturating_sub(1) };
+    let mut state_calls = BTreeSet::new();
+    for statement in callable.statements.iter().take(preceding) {
+        if let Some(Declaration::VariableDeclaration(declaration)) = statement.as_declaration() {
+            if declaration.kind != oxc_ast::ast::VariableDeclarationKind::Const ||
+                declaration.declarations.len() != 1 { return false; }
+            let declarator = &declaration.declarations[0];
+            let Some(initializer) = declarator.init.as_ref() else { return false; };
+            if let Expression::CallExpression(call) = initializer
+                && let Some((index, _)) = component.state_sites.iter().enumerate().find(|(_, site)|
+                    site.call.start == call.span.start && site.call.end == call.span.end) {
+                let BindingPattern::ArrayPattern(pattern) = &declarator.id else { return false; };
+                if !state_calls.insert(index) || pattern.rest.is_some() ||
+                    !(1..=2).contains(&pattern.elements.len()) ||
+                    pattern.elements.iter().any(|item| item.as_ref().is_some_and(|binding|
+                        !matches!(binding, BindingPattern::BindingIdentifier(_)))) ||
+                    call.optional || call.arguments.len() != 1 ||
+                    !call.arguments.first().and_then(Argument::as_expression).is_some_and(|value|
+                        closed_numeric_value(value, &BTreeSet::new(), semantic)) { return false; }
+            } else {
+                let BindingPattern::BindingIdentifier(_) = &declarator.id else { return false; };
+                let Expression::Identifier(identifier) = initializer else { return false; };
+                if !reference_symbol(identifier, semantic).is_some_and(|symbol|
+                    collection_symbols.contains(&symbol)) {
+                    return false;
+                }
+            }
+        } else { return false; }
+    }
+    if state_calls.len() != component.state_sites.len() {
+        return false;
+    }
+    let Some(mut result) = callable.return_expression(preceding) else { return false; };
+    while let Expression::ParenthesizedExpression(parenthesized) = result {
+        result = &parenthesized.expression;
+    }
+    let Expression::JSXElement(element) = result else { return false; };
+    let mut seen = BTreeSet::new();
+    closed_collection_owner_jsx(element, &component.collection_sites, semantic, stable_tags, &mut seen, 0) &&
+        seen.len() == component.collection_sites.len()
+}
+
+struct ClosedCollectionTagCollector<'s, 'a> {
+    components: &'s [&'s ComponentStateSiteIr],
+    semantic: &'s Semantic<'a>,
+    symbols: BTreeSet<SymbolId>,
+    direct_eval: bool,
+}
+
+impl<'a> Visit<'a> for ClosedCollectionTagCollector<'_, 'a> {
+    fn visit_function(&mut self, node: &Function<'a>, flags: ScopeFlags) {
+        if self.components.iter().any(|component|
+            component.arrow_initializer.is_none() && component.declaration.start == node.span.start &&
+            component.declaration.end == node.span.end)
+            && let Some(symbol) = node.id.as_ref().and_then(|id| id.symbol_id.get())
+            && self.semantic.scoping().symbol_scope_id(symbol) == self.semantic.scoping().root_scope_id() {
+            self.symbols.insert(symbol);
+        }
+        walk::walk_function(self, node, flags);
+    }
+
+    fn visit_variable_declarator(&mut self, node: &VariableDeclarator<'a>) {
+        if let Some(Expression::ArrowFunctionExpression(arrow)) = node.init.as_ref()
+            && self.components.iter().any(|component| component.arrow_initializer.as_ref()
+                .is_some_and(|at| at.start == arrow.span.start && at.end == arrow.span.end))
+            && let Some(symbol) = node.id.get_binding_identifier().and_then(|id| id.symbol_id.get())
+            && self.semantic.scoping().symbol_scope_id(symbol) == self.semantic.scoping().root_scope_id() {
+            self.symbols.insert(symbol);
+        }
+        walk::walk_variable_declarator(self, node);
+    }
+
+    fn visit_call_expression(&mut self, node: &CallExpression<'a>) {
+        if matches!(&node.callee, Expression::Identifier(identifier) if identifier.name == "eval") {
+            self.direct_eval = true;
+        }
+        walk::walk_call_expression(self, node);
+    }
+}
+
+struct ClosedCollectionOwnerCollector<'s, 'a> {
+    components: &'s [&'s ComponentStateSiteIr],
+    semantic: &'s Semantic<'a>,
+    stable_tags: &'s BTreeSet<SymbolId>,
+    symbols: BTreeSet<SymbolId>,
+    eligible: BTreeSet<String>,
+}
+
+impl<'a> Visit<'a> for ClosedCollectionOwnerCollector<'_, 'a> {
+    fn visit_function(&mut self, node: &Function<'a>, flags: ScopeFlags) {
+        if let Some(component) = self.components.iter().find(|component|
+            component.arrow_initializer.is_none() && component.declaration.start == node.span.start &&
+            component.declaration.end == node.span.end)
+            && let Some(callable) = ClosedCallable::function(node)
+            && closed_collection_owner_body(&callable, component, self.semantic, &self.symbols, self.stable_tags) {
+            self.eligible.insert(component.component_site_id.clone());
+        }
+        walk::walk_function(self, node, flags);
+    }
+
+    fn visit_variable_declarator(&mut self, node: &VariableDeclarator<'a>) {
+        if let Some(Expression::ArrowFunctionExpression(arrow)) = node.init.as_ref()
+            && let Some(component) = self.components.iter().find(|component|
+                component.arrow_initializer.as_ref().is_some_and(|at|
+                    at.start == arrow.span.start && at.end == arrow.span.end))
+            && let Some(symbol) = node.id.get_binding_identifier().and_then(|id| id.symbol_id.get())
+            && let Some(callable) = ClosedCallable::arrow(arrow, symbol)
+            && closed_collection_owner_body(&callable, component, self.semantic, &self.symbols, self.stable_tags) {
+            self.eligible.insert(component.component_site_id.clone());
+        }
+        walk::walk_variable_declarator(self, node);
+    }
 }
 
 struct ClosedCallable<'a, 'b> {
@@ -5944,8 +6218,14 @@ fn transform_native_component_source(
             .get(&component.component_site_id)
             .map(|index| format!(", ownerUpdateProgram: {}[{index}]", aliases[9]))
             .unwrap_or_default();
+        let closed_collection_option = component.collection_sites.iter()
+            .filter(|site| !site.requires_owner_render)
+            .map(|site| serde_json::to_string(&site.site_id).unwrap_or_default())
+            .collect::<Vec<_>>();
+        let closed_collection_option = if component.collection_sites.is_empty() { String::new() }
+            else { format!(", closedCollectionSites: [{}]", closed_collection_option.join(", ")) };
         let options = format!(
-            "{{ propOnlySites: [{}]{}{}{}{}{}{}{} }}",
+            "{{ propOnlySites: [{}]{}{}{}{}{}{}{}{} }}",
             sites,
             primitive_props_option,
             if component.host_leaf_output {
@@ -5958,6 +6238,7 @@ fn transform_native_component_source(
             closed_resource_option,
             closed_store_option,
             closed_forward_option,
+            closed_collection_option,
         );
         if let Some(arrow) = &component.arrow_initializer {
             edits.push(TextEdit {
@@ -10039,12 +10320,8 @@ export function Board({ items, records }: { items: NativeRows<Row>; records: Nat
             .find(|component| component.name == "Board")
             .unwrap();
         assert_eq!(component.collection_sites.len(), 2);
-        assert!(
-            component
-                .collection_sites
-                .iter()
-                .all(|site| !site.requires_owner_render)
-        );
+        assert!(component.collection_sites.iter().all(|site| site.requires_owner_render),
+            "row.id can be an arbitrary getter and must retain the owner render");
         let component_module = positive.component_module.unwrap();
         assert!(component_module.contains(
             "__nativeRenderCollectionAt(\"typed-keyed-collection.tsx#component:Board#collection:0\", rowsAlias"
@@ -10097,6 +10374,78 @@ export function Board({ items, records }: { items: NativeRows<Row>; records: Nat
                 "{name} must remain generic"
             );
         }
+    }
+
+    #[test]
+    fn collection_owner_proof_covers_whole_owner_and_row_callback() {
+        let cases = [
+            ("safe function", "export function Board({ rows }: { rows: KeyedCollection<Row> }) { return <ul className=\"rows\">{rows.map(row => <Row row={row} />)}</ul>; }", true),
+            ("safe arrow", "export const Board = ({ rows }: { rows: KeyedCollection<Row> }) => <ul>{rows.map(row => <Row row={row} />)}</ul>;", true),
+            ("safe alias", "export function Board({ rows }: { rows: KeyedCollection<Row> }) { const direct = rows; return <ul>{direct.map(row => <Row row={row} />)}</ul>; }", true),
+            ("safe static sibling", "export function Board({ rows }: { rows: KeyedCollection<Row> }) { return <ul><li>heading</li>{rows.map(row => <Row row={row} />)}</ul>; }", true),
+            ("safe unused state", "export function Board({ rows }: { rows: KeyedCollection<Row> }) { const [count] = useState(0); return <ul>{rows.map(row => <Row row={row} />)}</ul>; }", true),
+            ("destructuring default", "export function Board({ rows, ignored = readOpaque() }: { rows: KeyedCollection<Row>; ignored?: number }) { return <ul>{rows.map(row => <Row row={row} />)}</ul>; }", false),
+            ("destructuring rest", "export function Board({ rows, ...rest }: { rows: KeyedCollection<Row> }) { return <ul>{rows.map(row => <Row row={row} />)}</ul>; }", false),
+            ("state binding default", "export function Board({ rows }: { rows: KeyedCollection<Row> }) { const [ignored = readOpaque()] = useState(undefined); return <ul>{rows.map(row => <Row row={row} />)}</ul>; }", false),
+            ("effect registration", "export function Board({ rows }: { rows: KeyedCollection<Row> }) { useEffect(() => {}); return <ul>{rows.map(row => <Row row={row} />)}</ul>; }", false),
+            ("opaque sibling", "export function Board({ rows }: { rows: KeyedCollection<Row> }) { return <ul>{rows.map(row => <Row row={row} />)}<output>{readOpaque()}</output></ul>; }", false),
+            ("opaque initializer", "export function Board({ rows }: { rows: KeyedCollection<Row> }) { const current = readOpaque(); return <ul>{rows.map(row => <Row row={row} />)}</ul>; }", false),
+            ("getter sibling", "export function Board({ rows }: { rows: KeyedCollection<Row> }) { return <ul data-value={opaque.value}>{rows.map(row => <Row row={row} />)}</ul>; }", false),
+            ("row getter", "export function Board({ rows }: { rows: KeyedCollection<Row> }) { return <ul>{rows.map(row => <Row key={row.id} row={row} />)}</ul>; }", false),
+            ("row member prop", "export function Board({ rows }: { rows: KeyedCollection<Row> }) { return <ul>{rows.map(row => <Row id={row.id} />)}</ul>; }", false),
+            ("callback helper", "export function Board({ rows }: { rows: KeyedCollection<Row> }) { return <ul>{rows.map(row => <Row row={helper(row)} />)}</ul>; }", false),
+            ("captured prop", "export function Board({ rows, label }: { rows: KeyedCollection<Row>; label: string }) { return <ul>{rows.map(row => <Row row={row} label={label} />)}</ul>; }", false),
+            ("captured state", "export function Board({ rows }: { rows: KeyedCollection<Row> }) { const [count] = useState(0); return <ul>{rows.map(row => <Row row={row} count={count} />)}</ul>; }", false),
+            ("state sibling", "export function Board({ rows }: { rows: KeyedCollection<Row> }) { const [count] = useState(0); return <ul data-count={count}>{rows.map(row => <Row row={row} />)}</ul>; }", false),
+            ("conditional control", "export function Board({ rows, show }: { rows: KeyedCollection<Row>; show: boolean }) { return show ? <ul>{rows.map(row => <Row row={row} />)}</ul> : null; }", false),
+            ("event closure", "export function Board({ rows }: { rows: KeyedCollection<Row> }) { return <ul onClick={() => activate()}>{rows.map(row => <Row row={row} />)}</ul>; }", false),
+            ("row event", "export function Board({ rows }: { rows: KeyedCollection<Row> }) { return <ul>{rows.map(row => <Row row={row} onClick={() => activate(row)} />)}</ul>; }", false),
+            ("native activation", "export function Board({ rows }: { rows: KeyedCollection<Row> }) { return <ul ref={activate}>{rows.map(row => <Row row={row} />)}</ul>; }", false),
+            ("mutable tag", "let Current = Row; export function Board({ rows }: { rows: KeyedCollection<Row> }) { return <ul>{rows.map(row => <Current row={row} />)}</ul>; }", false),
+            ("imported tag", "import { Foreign } from './foreign.ts'; export function Board({ rows }: { rows: KeyedCollection<Row> }) { return <ul>{rows.map(row => <Foreign row={row} />)}</ul>; }", false),
+            ("parameter tag", "export function Board({ rows, Current }: { rows: KeyedCollection<Row>; Current: typeof Row }) { return <ul>{rows.map(row => <Current row={row} />)}</ul>; }", false),
+            ("shadowed tag", "export function Board({ rows }: { rows: KeyedCollection<Row> }) { const Current = Row; return <ul>{rows.map(row => <Current row={row} />)}</ul>; }", false),
+            ("direct eval", "function unrelated() { eval('Row = null'); } export function Board({ rows }: { rows: KeyedCollection<Row> }) { return <ul>{rows.map(row => <Row row={row} />)}</ul>; }", false),
+        ];
+        let mut failures = Vec::new();
+        for (name, body, closed) in cases {
+            let source = format!("import {{ useState, useEffect }} from 'native_runtime_api.ts'; import type {{ KeyedCollection }} from '@compiled-ui/runtime/core'; type Row = {{ id: number }}; function Row({{ row }}: {{ row: Row }}) {{ return <li>{{row.id}}</li>; }} {body}");
+            let response = compile_state("collection-owner-proof.tsx", &source);
+            let result = (|| -> Result<(), String> {
+                if let Some(error) = response.error { return Err(error); }
+                let plan = response.plan.ok_or_else(|| "missing native module plan".to_owned())?;
+                let board = plan.components.as_ref()
+                    .and_then(|components| components.iter().find(|component| component.name == "Board"))
+                    .ok_or_else(|| "missing Board metadata".to_owned())?;
+                let code = plan.component_module.as_ref()
+                    .ok_or_else(|| "missing transformed module".to_owned())?;
+                if name == "destructuring rest" {
+                    if !board.collection_sites.is_empty() || !board.closed_collection_sites.is_empty() ||
+                        code.contains("closedCollectionSites:") ||
+                        !code.contains("rows.map(row => <Row row={row} />)") {
+                        return Err("rest-pattern collection must retain generic `.map` without a compiler site".to_owned());
+                    }
+                    return Ok(());
+                }
+                if board.collection_sites.len() != 1 {
+                    return Err(format!("expected one lowered collection site, got {}", board.collection_sites.len()));
+                }
+                if board.collection_sites[0].requires_owner_render != !closed {
+                    return Err(format!("requires_owner_render={}, expected {}", board.collection_sites[0].requires_owner_render, !closed));
+                }
+                if (board.closed_collection_sites.len() == 1) != closed {
+                    return Err(format!("closed_collection_sites={:?}, expected eligible={closed}", board.closed_collection_sites));
+                }
+                if !code.contains("closedCollectionSites: [") ||
+                    code.contains("closedCollectionSites: []") != !closed ||
+                    code.contains("requiresOwnerRender: true") != !closed {
+                    return Err("transformed collection policy does not match eligibility".to_owned());
+                }
+                Ok(())
+            })();
+            if let Err(error) = result { failures.push(format!("{name}: {error}")); }
+        }
+        assert!(failures.is_empty(), "{}", failures.join("\n"));
     }
 
     #[test]

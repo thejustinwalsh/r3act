@@ -1,9 +1,8 @@
 /**
  * A keyed, insertion-ordered collection for compiler-proven sparse edits.
  *
- * The collection deliberately has no `map` method: arbitrary array transforms
- * cannot safely be represented as keyed deltas. `snapshot()` is an explicit
- * O(N) materialization for initial iteration or a generic fallback.
+ * `.map` takes an O(N) snapshot. Compiler lowering uses that same snapshot
+ * contract for generic renders; arbitrary method replacement is unsupported.
  */
 export type KeyedCollectionEntry<T> = Readonly<{ key: string; value: T }>;
 
@@ -51,6 +50,7 @@ export type KeyedCollectionStats = Readonly<{
 }>;
 
 type Entry<T> = {
+  readonly token: object;
   key: string;
   value: T;
   previous: Entry<T> | null;
@@ -82,12 +82,46 @@ export type KeyedCollectionReader<T> = Readonly<{
 
 type ReaderAcknowledgement = (version: number) => (() => boolean) | null;
 const readerAcknowledgements = new WeakMap<object, ReaderAcknowledgement>();
-const collectionVersions = new WeakMap<object, () => number>();
+type CanonicalCollection = {
+  getVersion(): number;
+  entryForKey(key: string): object | undefined;
+  descriptors: ReadonlyMap<PropertyKey, PropertyDescriptor>;
+};
+const collectionVersions = new WeakMap<object, CanonicalCollection>();
 
 /** @internal Read the creator-owned collection version without public getters. */
 export const canonicalCollectionVersion = (collection: unknown): number | null =>
   typeof collection === "object" && collection !== null
-    ? collectionVersions.get(collection)?.() ?? null : null;
+    ? collectionVersions.get(collection)?.getVersion() ?? null : null;
+
+/** @internal Opaque creator-owned entry identity for a live key. */
+export const canonicalCollectionEntry = (
+  collection: unknown,
+  key: string,
+): object | undefined =>
+  typeof collection === "object" && collection !== null
+    ? collectionVersions.get(collection)?.entryForKey(key) : undefined;
+
+/** @internal Verify public methods without executing caller-replaceable getters. */
+export const canonicalCollectionApiIntact = (collection: unknown): boolean => {
+  if (typeof collection !== "object" || collection === null) return false;
+  const record = collectionVersions.get(collection);
+  if (!record) return false;
+  const keys = Reflect.ownKeys(collection);
+  if (keys.length !== record.descriptors.size) return false;
+  return keys.every((key) => {
+    const initial = record.descriptors.get(key);
+    const now = Object.getOwnPropertyDescriptor(collection, key);
+    if (!initial || !now || initial.configurable !== now.configurable ||
+      initial.enumerable !== now.enumerable) return false;
+    if ("value" in initial) {
+      return "value" in now && initial.writable === now.writable &&
+        Object.is(initial.value, now.value);
+    }
+    return !("value" in now) && initial.get === now.get &&
+      initial.set === now.set;
+  });
+};
 
 /** @internal Stage exact acceptance; the callback reports whether the reader caught up. */
 export function prepareCollectionReaderAcknowledgement(
@@ -141,7 +175,9 @@ export function createKeyedCollection<T>(
       throw new TypeError("keyOf must return a non-empty string");
     }
     if (byKey.has(key)) throw new Error(`Duplicate keyed-collection key: ${key}`);
-    const entry: Entry<T> = { key, value, previous: tail, next: null };
+    const entry: Entry<T> = {
+      token: Object.freeze({}), key, value, previous: tail, next: null,
+    };
     if (tail) tail.next = entry;
     else head = entry;
     tail = entry;
@@ -304,6 +340,7 @@ export function createKeyedCollection<T>(
             return { ok: false, reason: "invalid-operation", version };
           }
           const entry: Entry<T> = {
+            token: Object.freeze({}),
             key: operation.key,
             value: operation.value,
             previous: null,
@@ -501,7 +538,13 @@ export function createKeyedCollection<T>(
       listenerErrors = 0;
     },
   };
-  collectionVersions.set(collection, () => version);
+  collectionVersions.set(collection, {
+    getVersion: () => version,
+    entryForKey: (key) => byKey.get(key)?.token,
+    descriptors: new Map<PropertyKey, PropertyDescriptor>(Reflect.ownKeys(collection).map((key) => [
+      key, Object.getOwnPropertyDescriptor(collection, key)!,
+    ])),
+  });
   return collection;
 }
 

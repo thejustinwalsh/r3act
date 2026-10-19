@@ -106,6 +106,8 @@ import {
   type DerivedRegionGraph,
 } from "./derived_region_runtime.ts";
 import {
+  canonicalCollectionApiIntact,
+  canonicalCollectionEntry,
   canonicalCollectionVersion,
   prepareCollectionReaderAcknowledgement,
   type KeyedCollection,
@@ -289,9 +291,12 @@ type PreparedRender = {
 type ComponentCache = {
   type: RuntimeElement["type"];
   hostKeyScope: OwnerKey;
+  readonly scopeExplicitHostKeys?: boolean;
   props: Record<string, unknown>;
   readonly numericPropsAdmitted?: boolean;
   readonly numericStateAdmitted?: boolean;
+  readonly collectionPropsOwned?: boolean;
+  readonly collectionEntry?: object;
   result: RuntimeNode;
   expandedResult: RuntimeNode;
   subtreeOwners: ReadonlySet<OwnerId>;
@@ -371,9 +376,10 @@ type CollectionRegionDescriptor<T = unknown> = {
   componentSiteId?: string;
   collection: KeyedCollection<T>;
   renderRow: (value: T) => RuntimeNode;
-  rows: Map<string, RuntimeNode>;
+  rows: Map<string, Readonly<{ node: RuntimeNode; entry?: object }>>;
   snapshotVersion: number;
   requiresOwnerRender: boolean;
+  ownerInputsAdmitted: boolean;
 };
 type CollectionRegionCache = CollectionRegionDescriptor<any> & {
   parentOwner: OwnerId;
@@ -394,6 +400,9 @@ type ActiveOwner = {
   owner: OwnerId;
   stateLayout?: CompiledStateLayout;
   numericStateReadsPrimitive: boolean;
+  collectionPropsOwned?: boolean;
+  collectionProps?: Record<string, unknown>;
+  collectionSites?: readonly string[];
   registerEffect: (siteId: string, setup: EffectSetup) => void;
   propBoundSites: Set<string>;
   readStore: <T>(siteId: string, source: StoreSource<T>) => T;
@@ -478,6 +487,7 @@ export const defineComponent = <P extends Record<string, unknown>>(
   metadata?: {
     readonly propOnlySites: readonly string[];
     readonly numericPrimitiveProps?: readonly string[];
+    readonly closedCollectionSites?: readonly string[];
     /** Compiler proof that every render result is a single intrinsic host root. */
     readonly hostLeafOutput?: boolean;
     readonly stateLayout?: CompiledStateLayout;
@@ -517,6 +527,15 @@ export const defineComponent = <P extends Record<string, unknown>>(
     )) {
       throw new Error("Component numeric primitive prop metadata is invalid");
     }
+    if (metadata?.closedCollectionSites !== undefined &&
+      !Array.isArray(metadata.closedCollectionSites)) {
+      throw new Error("Component collection site metadata is invalid");
+    }
+    const closedCollectionSites = metadata?.closedCollectionSites === undefined
+      ? undefined : [...metadata.closedCollectionSites];
+    if (closedCollectionSites?.some((site) =>
+      typeof site !== "string" || !site
+    )) throw new Error("Component collection site metadata is invalid");
     let stateLayout: CompiledStateLayout | undefined;
     if (metadata?.stateLayout !== undefined) {
       const layout = metadata.stateLayout;
@@ -583,6 +602,9 @@ export const defineComponent = <P extends Record<string, unknown>>(
         ...(numericPrimitiveProps
           ? { numericPrimitiveProps: Object.freeze(numericPrimitiveProps) }
           : {}),
+        ...(closedCollectionSites
+          ? { closedCollectionSites: Object.freeze(closedCollectionSites) }
+          : {}),
         hostLeafOutput: metadata?.hostLeafOutput === true,
         ...(revision ? { revision } : {}),
         ...(stateLayout ? { stateLayout } : {}),
@@ -602,6 +624,7 @@ type ComponentMetadata = {
   readonly revision?: CompiledSemanticRevisionToken;
   readonly propOnlySites: readonly string[];
   readonly numericPrimitiveProps?: readonly string[];
+  readonly closedCollectionSites?: readonly string[];
   readonly hostLeafOutput?: boolean;
   readonly stateLayout?: CompiledStateLayout;
   readonly closedResourceHostProgram?: ClosedResourceHostProgram;
@@ -737,6 +760,61 @@ const ownNumericOwnerProps = (
     Object.isFrozen(source.props)) Object.freeze(props);
   return props;
 };
+
+const closedCollectionSitesFor = (component: unknown): readonly string[] | undefined =>
+  typeof component === "function"
+    ? definedComponents.get(component)?.metadata?.closedCollectionSites
+    : undefined;
+
+const ownCollectionOwnerProps = (
+  component: unknown,
+  source: RuntimeElement,
+  props: Record<string, unknown>,
+): boolean => {
+  if (!closedCollectionSitesFor(component)?.length ||
+    !isRuntimeOwnedElement(source) || !Object.isFrozen(source.props)) return false;
+  Object.freeze(props);
+  return true;
+};
+
+const collectionOwnerInputsAdmitted = (
+  active: ActiveOwner,
+  siteId: string,
+  collection: KeyedCollection<unknown>,
+): boolean => {
+  if (active.collectionSites === undefined) return true;
+  if (!active.collectionPropsOwned ||
+    !active.collectionSites?.includes(siteId) ||
+    canonicalCollectionVersion(collection) === null ||
+    !canonicalCollectionApiIntact(collection)) return false;
+  const props = active.collectionProps;
+  if (!props || !Object.isFrozen(props)) return false;
+  for (const key of Reflect.ownKeys(props)) {
+    const descriptor = Object.getOwnPropertyDescriptor(props, key);
+    if (!descriptor) return false;
+    if (!("value" in descriptor)) return false;
+    const value = descriptor.value;
+    if (value === collection || value === null || value === undefined ||
+      typeof value === "string" || typeof value === "number" ||
+      typeof value === "boolean") continue;
+    return false;
+  }
+  return true;
+};
+
+const collectionOwnerApiAdmitted = (
+  region: CollectionRegionCache,
+  cache: ComponentCache,
+): boolean => closedCollectionSitesFor(cache.type) === undefined ||
+  canonicalCollectionApiIntact(region.collection);
+
+const collectionOwnerNeedsGenericRows = (
+  cache: ComponentCache,
+  batches: readonly KeyedCollectionBatch<unknown>[],
+): boolean => closedCollectionSitesFor(cache.type) !== undefined &&
+  batches.some((batch) => batch.operations.some((operation) =>
+    operation.type === "insert" || operation.type === "replace"
+  ));
 
 const numericOwnerCacheAdmitted = (cache: ComponentCache): boolean =>
   cache.numericPropsAdmitted === true && cache.numericStateAdmitted === true;
@@ -1091,10 +1169,18 @@ export const renderCollectionAt = <T>(
       "renderCollectionAt requires a site, collection, and row renderer",
     );
   }
+  const ownerInputsAdmitted = collectionOwnerInputsAdmitted(
+    activeOwners[activeOwners.length - 1], siteId, collection,
+  );
   const snapshotVersion = collection.version;
-  const rows = new Map<string, RuntimeNode>();
+  const rows = new Map<string, Readonly<{ node: RuntimeNode; entry?: object }>>();
   let componentSiteId: string | undefined;
-  const children = collection.snapshot().map(({ key, value }) => {
+  const snapshot = collection.snapshot();
+  const entries = canonicalCollectionApiIntact(collection)
+    ? snapshot.map(({ key }) => canonicalCollectionEntry(collection, key))
+    : undefined;
+  const children = snapshot.map(({ key, value }, index) => {
+    const entry = entries?.[index] ?? canonicalCollectionEntry(collection, key);
     const rendered = renderRow(value);
     if (
       !rendered || Array.isArray(rendered) || typeof rendered !== "object" ||
@@ -1120,10 +1206,11 @@ export const renderCollectionAt = <T>(
     }
     const props = { ...rendered.props, key };
     const owned = isRuntimeOwnedElement(rendered as unknown);
-    rows.set(key, owned
+    const node = owned
       ? copyRuntimeElement(rendered.type, props)
-      : { ...rendered, props });
-    return rows.get(key)!;
+      : { ...rendered, props };
+    rows.set(key, { node: null, entry });
+    return node;
   });
   const version = createKeyedOwnerVersion();
   const marked = keyedOwnerChildren(siteId, children, version);
@@ -1135,6 +1222,7 @@ export const renderCollectionAt = <T>(
     rows,
     snapshotVersion,
     requiresOwnerRender: options.requiresOwnerRender === true,
+    ownerInputsAdmitted,
   });
   return marked;
 };
@@ -1195,6 +1283,7 @@ const carryHostKeys = (
   componentKey: OwnerKey,
   path = "0",
   onVisit?: () => void,
+  scopeExplicitHostKeys = false,
 ): RuntimeNode => {
   onVisit?.();
   if (
@@ -1205,7 +1294,7 @@ const carryHostKeys = (
     return copyKeyedOwnerMetadata(
       node,
       node.map((child, index) =>
-        carryHostKeys(child, componentKey, `${path}.${index}`, onVisit)
+        carryHostKeys(child, componentKey, `${path}.${index}`, onVisit, scopeExplicitHostKeys)
       ),
     );
   }
@@ -1217,12 +1306,15 @@ const carryHostKeys = (
         componentKey,
         path,
         onVisit,
+        scopeExplicitHostKeys,
       ),
     });
   }
   const existingKey = node.props.key;
   const key = existingKey == null
     ? `${String(componentKey)}:${path}`
+    : scopeExplicitHostKeys
+    ? `${String(componentKey)}\u0000${String(existingKey)}`
     : String(existingKey);
   return copyRuntimeElement(node.type, { ...node.props, key });
 };
@@ -5249,6 +5341,9 @@ export class ComponentStateRoot<H, Parent = H> {
       world: options.preparation ?? this.world,
       owner,
       numericStateReadsPrimitive: true,
+      collectionPropsOwned: cached.collectionPropsOwned,
+      collectionProps: cached.props,
+      collectionSites: closedCollectionSitesFor(cached.type),
       stateLayout: numericOwnerCacheAdmitted(cached)
         ? compiledStateLayoutFor(cached.type) : undefined,
       propBoundSites,
@@ -5308,6 +5403,7 @@ export class ComponentStateRoot<H, Parent = H> {
       cached.hostKeyScope,
       "0",
       options.onOutputNode,
+      cached.scopeExplicitHostKeys === true,
     );
     if (this.#profile) {
       this.#profile("owner.render-and-key", performance.now() - renderStarted);
@@ -6318,7 +6414,11 @@ export class ComponentStateRoot<H, Parent = H> {
         if (
           !region || !region.reader || !parentCache || !ownerRegion ||
           ownerRegion.collection !== region || !region.parentHostKey ||
-          region.requiresOwnerRender ||
+          region.requiresOwnerRender || !region.ownerInputsAdmitted ||
+          (closedCollectionSitesFor(parentCache.type) !== undefined &&
+            parentCache.collectionPropsOwned !== true) ||
+          !collectionOwnerApiAdmitted(region, parentCache) ||
+          !componentCodeCurrent(parentCache.type) ||
           (options.scopedStructural &&
             !this.#pendingCollectionRegionKeys.has(regionKey))
         ) {
@@ -6327,6 +6427,10 @@ export class ComponentStateRoot<H, Parent = H> {
         }
         const read = region.reader.read();
         if (read.status !== "available") {
+          preparationFailed = true;
+          break;
+        }
+        if (collectionOwnerNeedsGenericRows(parentCache, read.batches)) {
           preparationFailed = true;
           break;
         }
@@ -6358,7 +6462,7 @@ export class ComponentStateRoot<H, Parent = H> {
 
       const rowFor = (stage: RegionStage, key: string): CandidateRow | null => {
         if (stage.rows.has(key)) return stage.rows.get(key) ?? null;
-        const node = stage.region.rows.get(key);
+        const node = stage.region.rows.get(key)?.node;
         const componentSiteId = stage.region.componentSiteId ??
           (node && typeof node === "object" && !Array.isArray(node) &&
               typeof node.type === "function"
@@ -6398,6 +6502,12 @@ export class ComponentStateRoot<H, Parent = H> {
         if (authoredKey != null && String(authoredKey) !== key) return null;
         const { key: _key, ref: _ref, ...props } = rendered.props;
         ownNumericOwnerProps(rendered.type, rendered, props);
+        const collectionPropsOwned = ownCollectionOwnerProps(
+          rendered.type, rendered, props,
+        );
+        const priorCache = previous?.owner === owner ? previous.cache : undefined;
+        const hostKeyScope = priorCache?.hostKeyScope ?? key;
+        const scopeExplicitHostKeys = priorCache?.scopeExplicitHostKeys === true;
         if (previous?.privateOwner && previous.owner === owner) {
           stores.dropReaders(
             [...stores.readers.keys()].filter((id) =>
@@ -6416,6 +6526,9 @@ export class ComponentStateRoot<H, Parent = H> {
           world: preparation,
           owner,
           numericStateReadsPrimitive: true,
+          collectionPropsOwned,
+          collectionProps: props,
+          collectionSites: closedCollectionSitesFor(rendered.type),
           stateLayout: numericOwnerPropsAdmitted(
             rendered.type, props, isRuntimeOwnedElement(rendered),
           )
@@ -6464,17 +6577,22 @@ export class ComponentStateRoot<H, Parent = H> {
           activeOwners.pop();
         }
         if (resourceWasRead) return null;
-        result = carryHostKeys(result, key);
+        result = carryHostKeys(
+          result, hostKeyScope, "0", undefined, scopeExplicitHostKeys,
+        );
         const hostKey = singleHostRootKey(result);
         if (hostKey === null || hasNestedComponent(result)) return null;
         const cache: ComponentCache = {
           type: rendered.type,
-          hostKeyScope: key,
+          hostKeyScope,
+          scopeExplicitHostKeys,
+          collectionPropsOwned,
           props,
           numericPropsAdmitted: numericOwnerPropsAdmitted(
             rendered.type, props, isRuntimeOwnedElement(rendered),
           ),
           numericStateAdmitted: activeOwner.numericStateReadsPrimitive,
+          collectionEntry: canonicalCollectionEntry(stage.region.collection, key),
           result,
           expandedResult: result,
           subtreeOwners: new Set([owner]),
@@ -6927,16 +7045,19 @@ export class ComponentStateRoot<H, Parent = H> {
       let collectionAcknowledgements: Array<() => boolean> = [];
       const validateCollections = () =>
         touchedCollections.every((stage) =>
+          collectionOwnerApiAdmitted(stage.region, stage.parentCache) &&
           stage.region.collection.version === stage.read.toVersion
         );
       const validatePostHostCollections = () =>
         touchedCollections.every((stage) =>
+          collectionOwnerApiAdmitted(stage.region, stage.parentCache) &&
           stage.region.collection.version >= stage.read.toVersion
         );
       const validatePostHostCollectionsCanonical = () =>
         touchedCollections.every((stage) => {
           const version = canonicalCollectionVersion(stage.region.collection);
-          return version === null || version >= stage.read.toVersion;
+          return collectionOwnerApiAdmitted(stage.region, stage.parentCache) &&
+            (version === null || version >= stage.read.toVersion);
         });
       const validateScopedCachePrivate = () => !options.scopedStructural ||
         !hasScopedStoreReaderConflict() &&
@@ -7145,7 +7266,10 @@ export class ComponentStateRoot<H, Parent = H> {
                 }
                 continue;
               }
-              stage.region.rows.set(key, candidate.node);
+              stage.region.rows.set(key, {
+                node: candidate.node,
+                entry: candidate.cache.collectionEntry,
+              });
               stage.region.hostKeysByCollectionKey.set(key, candidate.hostKey);
               const previous = stage.previousRows.get(key);
               this.#componentCache.set(candidate.owner, candidate.cache);
@@ -7362,7 +7486,11 @@ export class ComponentStateRoot<H, Parent = H> {
     if (
       !region || !region.reader || !parentCache || !ownerRegion ||
       ownerRegion.collection !== region || parentHostKey === null ||
-      region.requiresOwnerRender
+      region.requiresOwnerRender || !region.ownerInputsAdmitted ||
+      (closedCollectionSitesFor(parentCache.type) !== undefined &&
+        parentCache.collectionPropsOwned !== true) ||
+      !collectionOwnerApiAdmitted(region, parentCache) ||
+      !componentCodeCurrent(parentCache.type)
     ) return false;
 
     const read = region.reader.read();
@@ -7370,6 +7498,7 @@ export class ComponentStateRoot<H, Parent = H> {
       this.#count("collection.delta.reader-expired");
       return false;
     }
+    if (collectionOwnerNeedsGenericRows(parentCache, read.batches)) return false;
     if (read.batches.length === 0) {
       if (!region.reader.acknowledge(read.toVersion)) return false;
       this.#pendingCollectionRegionKeys.delete(regionKey);
@@ -7396,7 +7525,7 @@ export class ComponentStateRoot<H, Parent = H> {
     > = [];
     const rowFor = (key: string): CandidateRow | null => {
       if (overlay.has(key)) return overlay.get(key) ?? null;
-      const node = region.rows.get(key);
+      const node = region.rows.get(key)?.node;
       const componentSiteId = region.componentSiteId ??
         (node && typeof node === "object" && !Array.isArray(node) &&
             typeof node.type === "function"
@@ -7468,6 +7597,14 @@ export class ComponentStateRoot<H, Parent = H> {
 
       const { key: _key, ref: _ref, ...props } = rendered.props;
       ownNumericOwnerProps(rendered.type, rendered, props);
+      const collectionPropsOwned = ownCollectionOwnerProps(
+        rendered.type, rendered, props,
+      );
+      const priorCache = !staged && existingOwner !== undefined
+        ? this.#componentCache.get(existingOwner)
+        : undefined;
+      const hostKeyScope = priorCache?.hostKeyScope ?? key;
+      const scopeExplicitHostKeys = priorCache?.scopeExplicitHostKeys === true;
       const ownEffects = new Map<string, EffectRegistration>();
       const propBoundSites = new Set<string>();
       const storeTransaction = new StoreRenderTransaction(this.#rootId);
@@ -7475,6 +7612,9 @@ export class ComponentStateRoot<H, Parent = H> {
         world: this.world,
         owner,
         numericStateReadsPrimitive: true,
+        collectionPropsOwned,
+        collectionProps: props,
+        collectionSites: closedCollectionSitesFor(rendered.type),
         stateLayout: numericOwnerPropsAdmitted(
           rendered.type, props, isRuntimeOwnedElement(rendered),
         )
@@ -7512,17 +7652,22 @@ export class ComponentStateRoot<H, Parent = H> {
       preparedStores.push(storeTransaction);
       if (storeTransaction.stores.size > 0) return null;
       storeTransaction.discard();
-      result = carryHostKeys(result, key);
+      result = carryHostKeys(
+        result, hostKeyScope, "0", undefined, scopeExplicitHostKeys,
+      );
       const hostKey = singleHostRootKey(result);
       if (hostKey === null || hasNestedComponent(result)) return null;
       const cache: ComponentCache = {
         type: rendered.type,
-        hostKeyScope: key,
+        hostKeyScope,
+        scopeExplicitHostKeys,
+        collectionPropsOwned,
         props,
         numericPropsAdmitted: numericOwnerPropsAdmitted(
           rendered.type, props, isRuntimeOwnedElement(rendered),
         ),
         numericStateAdmitted: activeOwner.numericStateReadsPrimitive,
+        collectionEntry: canonicalCollectionEntry(region.collection, key),
         result,
         expandedResult: result,
         subtreeOwners: new Set([owner]),
@@ -7656,6 +7801,7 @@ export class ComponentStateRoot<H, Parent = H> {
       return false;
     }
     if (
+      !collectionOwnerApiAdmitted(region, parentCache) ||
       region.collection.version !== read.toVersion ||
       this.#storeNotificationGeneration !== storeGenerationAtPrepare ||
       this.#pendingChanges.size > 0
@@ -7702,6 +7848,9 @@ export class ComponentStateRoot<H, Parent = H> {
     const effectErrors: unknown[] = [];
     const deferredEffects: Array<() => void> = [];
     try {
+      if (!collectionOwnerApiAdmitted(region, parentCache)) {
+        throw new Error("Collection public API changed during host application");
+      }
       const acknowledge = prepareCollectionReaderAcknowledgement(
         region.reader,
         read.toVersion,
@@ -7801,7 +7950,10 @@ export class ComponentStateRoot<H, Parent = H> {
             }
           }
         }
-        region.rows.set(key, candidate.node);
+        region.rows.set(key, {
+          node: candidate.node,
+          entry: candidate.cache.collectionEntry,
+        });
         region.hostKeysByCollectionKey.set(key, candidate.hostKey);
         region.componentSiteId = getComponentSiteId(candidate.cache.type);
         ownerRegion.outputsByKey.set(key, candidate.cache.expandedResult);
@@ -8901,6 +9053,7 @@ export class ComponentStateRoot<H, Parent = H> {
     boundaryState?: BoundaryRenderState,
     protectedBranch = false,
     boundaryHostScope?: OwnerId,
+    collectionEntry?: object,
   ): RuntimeNode {
     if (
       node == null || node === false || typeof node === "string" ||
@@ -8974,6 +9127,9 @@ export class ComponentStateRoot<H, Parent = H> {
             expansionJournal,
             boundaryPrimaries,
             boundaryState,
+            false,
+            undefined,
+            collectionDescriptor?.rows.get(collectionKeys[index])?.entry,
           );
         } catch (error) {
           if (
@@ -9064,8 +9220,16 @@ export class ComponentStateRoot<H, Parent = H> {
         collectionDescriptor.rows.size === children.length
       ) {
         const hostKeysByCollectionKey = new Map<string, string>();
+        const liveRows = new Map<string, Readonly<{
+          node: RuntimeNode;
+          entry?: object;
+        }>>();
         let index = 0;
         for (const collectionKey of collectionDescriptor.rows.keys()) {
+          liveRows.set(collectionKey, {
+            node: node[index],
+            entry: collectionDescriptor.rows.get(collectionKey)?.entry,
+          });
           const hostKey = singleHostRootKey(children[index++] ?? null);
           if (hostKey !== null) {
             hostKeysByCollectionKey.set(collectionKey, hostKey);
@@ -9073,6 +9237,7 @@ export class ComponentStateRoot<H, Parent = H> {
         }
         collectedCollection = {
           ...collectionDescriptor,
+          rows: liveRows,
           parentOwner,
           parentHostKey: null,
           hostKeysByCollectionKey,
@@ -9418,7 +9583,7 @@ export class ComponentStateRoot<H, Parent = H> {
       const ownerKey = keyedIdentity(node, siteId, ordinal);
       // Scope host keys only at native boundaries. Ordinary owner keys must
       // remain canonical so sparse keyed-region commits target the same hosts.
-      const key = boundaryHostScope === undefined
+      let key = boundaryHostScope === undefined
         ? String(ownerKey)
         : `${boundaryHostScope}\u0000${String(ownerKey)}`;
       const ownerSite = collectionOwnerScope
@@ -9429,6 +9594,17 @@ export class ComponentStateRoot<H, Parent = H> {
           siteId,
         )
         : siteId;
+      const acceptedOwner = collectionOwnerScope && collectionEntry &&
+          ownerPreparation
+        ? ownerPreparation.findOwner(parentOwner, ownerSite, ownerKey)
+        : undefined;
+      const acceptedEntry = acceptedOwner === undefined
+        ? undefined
+        : this.#componentCache.get(acceptedOwner)?.collectionEntry;
+      if (
+        acceptedEntry !== undefined && collectionEntry !== undefined &&
+        acceptedEntry !== collectionEntry
+      ) ownerPreparation?.replaceOwner(parentOwner, ownerSite, ownerKey);
       const priorOwner = ownerPreparation ? undefined : this.world.findOwner(
         parentOwner,
         ownerSite,
@@ -9471,12 +9647,26 @@ export class ComponentStateRoot<H, Parent = H> {
       }
       const { key: _key, ref: _ref, ...componentProps } = node.props;
       ownNumericOwnerProps(node.type, node, componentProps);
+      const collectionPropsOwned = ownCollectionOwnerProps(
+        node.type, node, componentProps,
+      );
       const numericPropsAdmitted = numericOwnerPropsAdmitted(
         node.type, componentProps, isRuntimeOwnedElement(node),
       );
       const cached = this.#componentCache.get(owner);
+      const scopeExplicitHostKeys = cached?.scopeExplicitHostKeys === true ||
+        (collectionEntry !== undefined && acceptedOwner !== undefined &&
+          acceptedOwner !== owner);
+      if (collectionEntry !== undefined) {
+        if (cached?.hostKeyScope !== undefined) {
+          key = String(cached.hostKeyScope);
+        } else if (acceptedOwner !== undefined && acceptedOwner !== owner) {
+          key = `${key}\u0000owner:${owner}`;
+        }
+      }
       const propsUnchanged = cached !== undefined &&
         cached.numericPropsAdmitted === numericPropsAdmitted &&
+        cached.collectionPropsOwned === collectionPropsOwned &&
         shallowEqual(cached.props, componentProps);
       const shouldRender = forceRender || dirtyOwners.has(owner) || !cached ||
         cached.invalidatedByCollection === true ||
@@ -9535,7 +9725,9 @@ export class ComponentStateRoot<H, Parent = H> {
           new Set();
         let numericStateAdmitted = cached?.numericStateAdmitted === true;
         if (shouldRender) {
-          const prepared = cached?.numericPropsAdmitted === numericPropsAdmitted
+          const prepared = cached?.numericPropsAdmitted === numericPropsAdmitted &&
+            cached?.collectionPropsOwned === collectionPropsOwned &&
+            (cached?.collectionPropsOwned !== true || propsUnchanged)
             ? this.#preparedRenders.get(owner) ?? null : null;
           if (prepared) {
             result = prepared.result;
@@ -9555,6 +9747,9 @@ export class ComponentStateRoot<H, Parent = H> {
               world: ownerPreparation ?? this.world,
               owner,
               numericStateReadsPrimitive: true,
+              collectionPropsOwned,
+              collectionProps: componentProps,
+              collectionSites: closedCollectionSitesFor(node.type),
               stateLayout: numericOwnerPropsAdmitted(
                 node.type, componentProps, isRuntimeOwnedElement(node),
               )
@@ -9603,7 +9798,13 @@ export class ComponentStateRoot<H, Parent = H> {
               activeOwners.pop();
             }
             numericStateAdmitted = activeOwner.numericStateReadsPrimitive;
-            result = carryHostKeys(result, key);
+            result = carryHostKeys(
+              result,
+              key,
+              "0",
+              undefined,
+              scopeExplicitHostKeys,
+            );
           }
         } else if (ownEffects) {
           for (const [registeredKey, effect] of ownEffects) {
@@ -9672,9 +9873,12 @@ export class ComponentStateRoot<H, Parent = H> {
         const componentCache: ComponentCache = {
           type: node.type,
           hostKeyScope: key,
+          scopeExplicitHostKeys,
           props: componentProps,
           numericPropsAdmitted,
           numericStateAdmitted,
+          collectionEntry,
+          collectionPropsOwned,
           result: result ?? null,
           expandedResult,
           subtreeOwners: subtreeOwnersByOwner.get(owner) ?? new Set([owner]),

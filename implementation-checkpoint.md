@@ -1,5 +1,18 @@
 # Implementation checkpoint
 
+## Collection owner effect and lifetime boundary — 19 October 2026
+
+Whole-owner and mapper proofs now gate automatic collection skipping. Opaque helpers/getters/captures and unsafe inputs retain generic evaluation; runtime-owned scalar inputs and unchanged canonical collection APIs are admitted before callbacks. Automatic insert/replace stays generic. Captured Entry stamps and private owner replacement preserve remove/reinsert lifetimes even after history expiry. Immutable descriptors retain stamps only; mounted ancestor child arrays retire after acceptance. Canonical keyed-bucket revision replaces VNode identity as the scoped region generation marker, preserving independent nested moves and rejecting same-region/getter reentry. Exact acknowledgements, newer actions, fork history, live ownership, journal snapshots and whole-tree guards remain. New allocation/admission/revision/fallback costs are unqualified.
+
+Darwin-v7 passes 50/50 steps, 1037 runtime tests, 80 Rust tests, 33 actual compiled fixtures, three retention checks and thirteen package checks, with 1129 unchanged inputs and 1138 archived raw/context files. Six failed gates and the supervisor launch error remain preserved. The unchanged compiled GC check collects removed row/payload with a mounted root, live controls and balanced cleanup; this is not a retained-heap budget.
+
+Fresh five-tarball proof-v1 passes fourteen untimed DOM/Three stages, keyed state/identity, opaque refresh, independent [4,0,0] reveal and empty cleanup. Seventeen plus two source rows, 1612 selected installed files, compiler, package report, transforms and assets are bound. Actual React Row/SafeCollection/SceneReveal/App emit _c(7)/_c(5)/_c(3)/_c(5); only the impure opaque control opts out. The sole Native-first two-row move click-to-observer pair is 2/1.7000000029802322 ms, Native slower in this observation. Timer quantum is unmeasured; no speed/CPU/tail/cold/memory/presentation/independent-device qualification follows. Unequal graph JS sizes are 2627866/1052881 bytes.
+
+The full-plan first pass remains active. Other-platform and authored realtime/lifecycle/performance/independent-device gates remain open; human participants stay zero with no maintenance claim. Historic wins, dense FAIL, exhausted Recording A and physical HOLD retain scope. No VM/server or memory increase occurs; saved Apple limits remain one CPU, 256 MiB/container and 512 MiB/build, effective limits unverified behind Depot startup permissions.
+
+[Source, preserved failures, receipts and limits](implementation/2026-10-19-collection-owner-effects/results.md).
+
+
 ## Numeric owner effect boundary — 19 October 2026
 
 The archived old compiler/current-runtime diagnostic reproduces stale opaque sibling output and a suppressed getter exception on local invalidation. Functions/arrows now share a finite whole-owner proof; individual pure bindings remain available without granting owner skipping. Existing cache/prepared records capture actual primitive state reads, current World checks and immutable owned primitive props; keyed copies preserve existing JSX ownership. Unknown inputs/effects keep generic rendering, with VDOM token preflight, exact acknowledgements, root history and lifetime authorities retained. Added analysis/admission/copy/retention and lost-specialization costs remain unqualified.

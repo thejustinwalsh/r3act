@@ -1,0 +1,23 @@
+# Collection owner and callback effect boundary
+
+Source basis: clean main `b2f13a10e0f06ab1cca07bb028deb011e9cc8bb5`; remote HEAD/main remain initial publication `a694d72959970eca750d2fa09c91d0b64ae5494a`. The preceding memory-settings turn made no implementation progress. This unit follows master §§5, 8, 16–17 and closes another compiler soundness boundary before product qualification. Recording A remains exhausted/unresolved and physical selection stays HOLD.
+
+## Replaced mechanism and authority
+
+`compiler/oxc-spike/src/main.rs` sets `requires_owner_render` from collection-symbol references outside the mapped region. That does not establish whether skipping the enclosing owner also skips an unrelated getter, opaque call, initializer, sibling output or control input. `ComponentStateRoot.#flushCollectionDelta` and mixed collection preparation honor that bit and reuse the stored row callback. This is source-reachable; baseline execution has not yet established the observed behavior.
+
+Replace collection-reference-only eligibility with a finite owner/callback proof using the existing resolved component AST, collection/site identities and module revision. A typed or frozen caller object is not proof of an effect-free read. In particular, collection payloads are retained by reference, so `row.id` may invoke a getter or Proxy trap. Safe direct row forwarding can use the canonical collection key supplied by the runtime without evaluating a caller key getter. Unknown body/callback behavior keeps generic reconciliation and authored evaluation order. Existing source-reference analysis still detects extra collection dependencies.
+
+Runtime admission must capture any ownership assumptions from the original accepted inputs before user callbacks. Existing cache/owner/collection records remain the authority; no additional mutable identity/version world, whole-tree copy or speculative storage layout is introduced. Preserve complete read/control invalidation, whole-tree/VDOM bases, exact captured acknowledgements, newer reentrant actions, forked accepted histories, live writer/code/owner checks, resource lifetime and partial-failure quarantine. Low-level caller-declared runtime capabilities are not described as compiler purity.
+
+## Integrated acceptance
+
+Sol medium agents own disjoint compiler, runtime and actual authored fixture/installed consumer files. They perform source implementation only. The primary reviews and integrates; Luna stays idle until release of the coherent slice.
+
+An immutable copy of the prior packaged compiler and report lives in `baseline/`. The diagnostic executes that compiler against the current runtime, preserving exactly what occurs; it is not an old full-product or timing baseline. Fixed execution must distinguish generic opaque owners/callbacks from a safe closed keyed control, preserve keyed local state/host identity and activation lifetimes, propagate exceptions before host publication, retain newer work and independent pending DOM/Three branches, revoke stale revisions and dispose completely. No old assertion is weakened merely to obtain a pass; any changed expectation needs a source-grounded semantic explanation.
+
+After source review, one consolidated frozen correctness gate and fresh five-package installed type/build/untimed browser proof precede one hash-bound Native-first matched structural interaction against actual React Compiler. Preserve failed attempts and do not retry measurements favorably. Headless browser work is bounded to 90 seconds, interruptible and GPU-off. Offline HTTPS interception needs no project server; a real server requires the Portless skill and HTTPS. No VM or memory increase is planned.
+
+Added compiler analysis, ownership admission, lost specialization, generic execution, allocation/setup and retained callback/cache costs are unqualified. Falsifiers include stale opaque output after stated collection invalidation, suppressed getter exceptions, unsafe input admitted as closed, loss of the safe keyed delta, stale callback control values, changed identity/state/ref/effect semantics, lost newer actions, fork corruption or leaked owners/readers/resources. The one observer interval cannot qualify CPU, population tails, cold/memory, presentation or independent-device performance.
+
+The full finish line remains active, including authored realtime/lifecycle/performance and independent-device requirements. Historic stable-binding wins and qualified dense FAIL retain their source and scope. Human participants remain zero; no maintenance advantage is claimed. Saved Apple limits remain one CPU, 256 MiB/container and 512 MiB/build; effective VM limits remain unverified and no VM starts.
