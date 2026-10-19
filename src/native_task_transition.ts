@@ -390,28 +390,29 @@ export class NativeTaskTransitionQueue {
         const priorMatches = priorGroups.filter((prior) =>
           group.roots.some((root) => prior.rootIds.has(root.root.rootId))
         );
-        if (priorMatches.length === 1) {
+        const equalPrior = priorMatches.find((prior) =>
+          sameValues(prior.values, group.values)
+        );
+        if (equalPrior) {
+          group.execution = equalPrior.execution;
+          retainedExecutions.add(equalPrior.execution);
+        } else if (priorMatches.length === 1) {
           const prior = priorMatches[0];
-          if (sameValues(prior.values, group.values)) {
-            group.execution = prior.execution;
-            retainedExecutions.add(prior.execution);
-          } else {
-            const inputsChanged = changedKeys(prior.values, group.values);
-            group.execution = createTaskExecution(
-              operation.tasks,
-              group.values,
-              {
-                maxConcurrency: operation.options.maxConcurrency,
-                reuseCompleted: prior.completed.length
-                  ? {
-                    values: prior.completedValues,
-                    completed: prior.completed,
-                    changedInputs: inputsChanged,
-                  }
-                  : undefined,
-              },
-            );
-          }
+          const inputsChanged = changedKeys(prior.values, group.values);
+          group.execution = createTaskExecution(
+            operation.tasks,
+            group.values,
+            {
+              maxConcurrency: operation.options.maxConcurrency,
+              reuseCompleted: prior.completed.length
+                ? {
+                  values: prior.completedValues,
+                  completed: prior.completed,
+                  changedInputs: inputsChanged,
+                }
+                : undefined,
+            },
+          );
         }
         group.execution ??= createTaskExecution(
           operation.tasks,
@@ -844,7 +845,7 @@ export class NativeTaskTransitionQueue {
       owned.roots.set(root.rootId, root);
       owned.unsubs.set(
         root.rootId,
-        root.onDispose(() => {
+        root.onRetire(() => {
           const current = this.#ownedExecutions.get(execution);
           if (!current) return;
           current.roots.delete(root.rootId);

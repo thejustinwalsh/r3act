@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 1,
+  "status": "FAIL",
+  "kind": "bounded-correctness-fixture-observation",
+  "startedAtUtc": "2026-10-19T18:31:22Z",
+  "finishedAtUtc": "2026-10-19T18:31:35Z",
+  "command": [
+    "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+    "--experimental-transform-types",
+    "compiler/native_forked_transition_execution_test.mjs"
+  ],
+  "executionKind": "native-host",
+  "nodeVersion": "v24.18.0",
+  "exitCode": 1,
+  "rawLog": "raw.log",
+  "rawLogSha256": "9a7476d57546cbdc7b14511cc52588fc579a1199e0f2be1158beb7775edb2a8a",
+  "sourceHashLock": "source-hash-lock.json",
+  "sourceHashLockSha256": "2e8bf7537b9f453de6f2698c8dd71e59a91a6299af2000572577aa73e813aed1",
+  "sourceCopyIntegrity": "MATCH",
+  "sourceFilesCopied": 326,
+  "gitHead": "4b05cd4daff59842f2e53f12bb4dd45c31514a0a",
+  "debugCompiler": {
+    "sha256Before": "52c0021bd5bffa67de3472a0139c85159483ae20f1482dd7f8ac8c6f4160ea7f",
+    "sha256After": "52c0021bd5bffa67de3472a0139c85159483ae20f1482dd7f8ac8c6f4160ea7f",
+    "stable": true
+  },
+  "fixtureReport": {
+    "task": {
+      "status": "failed",
+      "generation": 4,
+      "taskIds": [
+        "detail",
+        "catalog",
+        "panel"
+      ],
+      "roots": [
+        "compiled-fork-primary",
+        "compiled-fork-three",
+        "compiled-fork-inspector"
+      ],
+      "started": [
+        "detail",
+        "catalog"
+      ],
+      "completed": [],
+      "reused": []
+    },
+    "resolution": {
+      "status": "failed",
+      "transitionId": "compiled-detail",
+      "roots": [
+        "compiled-fork-primary",
+        "compiled-fork-three",
+        "compiled-fork-inspector"
+      ],
+      "reason": "Candidate preparation failed",
+      "error": {
+        "name": "Error",
+        "message": "Cannot prepare while a native root candidate is publishing",
+        "stack": "Error: Cannot prepare while a native root candidate is publishing\n    at ComponentStateRoot.#assertNoPublicationBarrier (/Volumes/Depot/Developer/r3act/src/component_state_runtime.ts:7492:13)\n    at ComponentStateRoot.#prepareCandidate (/Volumes/Depot/Developer/r3act/src/component_state_runtime.ts:2873:37)\n    at ComponentStateRoot.prepare (/Volumes/Depot/Developer/r3act/src/component_state_runtime.ts:1383:34)\n    at <anonymous> (/Volumes/Depot/Developer/r3act/src/native_root_work_queue.ts:150:45)\n    at Object.prepare (/Volumes/Depot/Developer/r3act/src/native_root_work_queue.ts:321:33)\n    at RootWorkQueue.#commitReady (/Volumes/Depot/Developer/r3act/src/root_work_queue.ts:494:33)\n    at RootWorkQueue.#drain (/Volumes/Depot/Developer/r3act/src/root_work_queue.ts:460:59)\n    at RootWorkQueue.enqueue (/Volumes/Depot/Developer/r3act/src/root_work_queue.ts:279:16)\n    at <anonymous> (/Volumes/Depot/Developer/r3act/src/native_root_work_queue.ts:299:34)\n    at NativeRootWorkQueue.#invoke (/Volumes/Depot/Developer/r3act/src/native_root_work_queue.ts:620:14)"
+      }
+    },
+    "trace": [
+      "start:B",
+      "start:A",
+      "abort:A",
+      "abort:B"
+    ],
+    "queryHead": "C",
+    "stores": {
+      "query": {
+        "roots": 3,
+        "listeners": 3,
+        "readers": 3,
+        "retainedActions": 0,
+        "transitions": 0
+      },
+      "urgent": {
+        "roots": 3,
+        "listeners": 3,
+        "readers": 3,
+        "retainedActions": 0,
+        "transitions": 0
+      }
+    },
+    "projected": [
+      {
+        "rootId": "compiled-fork-primary",
+        "query": "C",
+        "native": {
+          "version": 5,
+          "ownerCount": 3,
+          "pendingChangeCount": 0,
+          "sourceValueSyncVisits": 0,
+          "disposed": false
+        }
+      },
+      {
+        "rootId": "compiled-fork-three",
+        "query": "C",
+        "native": {
+          "version": 5,
+          "ownerCount": 3,
+          "pendingChangeCount": 0,
+          "sourceValueSyncVisits": 0,
+          "disposed": false
+        }
+      },
+      {
+        "rootId": "compiled-fork-inspector",
+        "query": "C",
+        "native": {
+          "version": 5,
+          "ownerCount": 3,
+          "pendingChangeCount": 0,
+          "sourceValueSyncVisits": 0,
+          "disposed": false
+        }
+      }
+    ]
+  }
+}

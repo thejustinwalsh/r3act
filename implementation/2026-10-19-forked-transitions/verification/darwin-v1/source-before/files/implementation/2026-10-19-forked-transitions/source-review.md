@@ -1,0 +1,29 @@
+# Forked transition integration review
+
+Source basis: main `4b05cd4daff59842f2e53f12bb4dd45c31514a0a`. The previous goal turn committed an offline HMR checkpoint with 40 passing gates and installed build proofs; its real Vite/browser gate and matched observation remain pending the missing Portless skill replacement. This independent slice does not relabel that boundary complete.
+
+The primary rereads AGENTS, checkpoint, complete master guide, handoff and relevant research guide/paper/notebook material. Notebook cell 185 and the historical async-transition-stress protocol describe the old coarse coordinator and source-only target. Cell 208 and the accepted recovery receipt explicitly leave divergent accepted fork frontiers unproved. Current NativeTaskTransitionQueue already supports per-root Store captures and grouping; historical claims are not current source authority.
+
+## Mechanisms and authority
+
+The authored successor uses public native TSX, actual Rust compilation, one World/Store model, queued DOM/Three publication and an independent DOM fork. Dependencies select work; explicit transition/root intent selects coherent acceptance. A fork may retain A while the primary group accepts B. Urgent actions replay against each projection, and later catch-up is explicit. Managed accepted history stays distinct from Store head and candidate inputs. Ordinary opaque authoring stays generic; no numeric optimization is required for this interaction.
+
+Source review identifies a concrete task-group gap: a multi-prior convergence always starts a fresh execution, even when one prior execution's complete captured input record matches the converged group. Replace that forced restart with existing exact-input reuse inside the same operation, retaining changed-input invalidation and cancelling unretained prior executions. StoreRenderTransaction remains the input authority; NativeRootWorkQueue remains the publication authority. No global task cache, identity/version registry or whole-root guard removal is introduced.
+
+A related lifetime crossing is confirmed: owned pending executions from already committed operations observe onDispose, while active operations now observe onRetire. The fix uses the existing root retirement event for owned execution lifetimes too. Optional unfinished task work retires when its last owning root retires; a still-live fork retains its shared execution. Accepted host trees remain caller-owned until disposal. The new tests exercise both operation states instead of assuming every declared task blocks publication.
+
+## Integration and falsifiers
+
+Sol medium agents own disjoint queue/runtime tests, public example/compiled execution fixture, and comparator/harness source. The primary owns shared root/Store fixes if evidence requires them, gate registration and checkpoint. Agents author source only. Luna stays idle until the integrated source is reviewed, then runs consolidated correctness and one bounded matched comparison after untimed actual-output/behavior proof. Failures remain preserved.
+
+The app and comparator must cover divergent accepted frontiers, grouped DOM/Three agreement, urgent progress, pending input convergence without duplicate providers, changed input and late stale settlement, explicit fork catch-up, cancellation and balanced early/final teardown. The comparator has equal provider knowledge/preloading and actual React Compiler output. Source/compiler/transforms/assets are locked before execution. A stale reveal, lost urgent action, duplicate matching provider, premature cancellation of a live fork's execution, leaked observer/resource, or advanced accepted pointer after failed host work falsifies the slice.
+
+Primary review closes the B action scope in the queued primary/Three publication while preserving the fork's pending participation. Leaving the action scope open would hide B from ordinary task input capture in every root; committed host output is not permission to relabel the captured inputs. Requested query and retained result are visibly distinguished by a local pending marker. Post-publication async controller continuations stop on expected disposal instead of starting new tasks, while genuine host failures remain errors. The consolidated package consumer additionally copies and typechecks the actual example/controller/Vite configuration against fresh installed public packages, rather than substituting a handwritten API-shaped fixture.
+
+The browser harness uses exact static assets through offline request interception, as the accepted recovery harness does; it starts no project server. Browser execution is headless, GPU-off, interruptible and bounded. The sole eventual observer interval includes scheduling/delivery and excludes paint; no CPU, replicated tails, cold/memory, presentation or independent-device qualification follows. No per-helper measurements or physical-layout changes are authorized.
+
+No VM starts or memory increases are needed. Apple defaults remain one CPU and 256 MiB/container, 512 MiB/builder, runtime-unverified behind Depot startup permissions. Historical stable-binding wins, qualified dense FAIL, exhausted Recording A, physical HOLD and zero human participants retain scope. The full-plan goal remains active.
+
+Primary final review also closes the first runtime regression's action scope before contrasting accepted fork inputs. Browser assertions retain accepted DOM nodes, component mount/activation counts and Three mesh/resource identity through A→C; React value effects may rerun. The measured observer waits for complete matching text/status in both roots and Three, with cancellation and immediate disposal checked separately outside that interval.
+
+Status: integrated source reviewed and released to Luna for consolidated correctness. No new correctness, behavior or performance result is claimed yet.

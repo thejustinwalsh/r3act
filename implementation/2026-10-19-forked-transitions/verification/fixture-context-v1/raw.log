@@ -1,0 +1,25 @@
+(node:87518) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+file:///Volumes/Depot/Developer/r3act/compiler/native_forked_transition_execution_test.mjs:254
+  if (primaryError || errors.length) throw new AggregateError(
+                                           ^
+
+AggregateError: Compiled forked transition fixture failed
+    at file:///Volumes/Depot/Developer/r3act/compiler/native_forked_transition_execution_test.mjs:254:44 {
+  [errors]: [
+    AssertionError [ERR_ASSERTION]: {"task":{"status":"failed","generation":4,"taskIds":["detail","catalog","panel"],"roots":["compiled-fork-primary","compiled-fork-three","compiled-fork-inspector"],"started":["detail","catalog"],"completed":[],"reused":[]},"resolution":{"status":"failed","transitionId":"compiled-detail","roots":["compiled-fork-primary","compiled-fork-three","compiled-fork-inspector"],"reason":"Candidate preparation failed","error":{"name":"Error","message":"Cannot prepare while a native root candidate is publishing","stack":"Error: Cannot prepare while a native root candidate is publishing\n    at ComponentStateRoot.#assertNoPublicationBarrier (/Volumes/Depot/Developer/r3act/src/component_state_runtime.ts:7492:13)\n    at ComponentStateRoot.#prepareCandidate (/Volumes/Depot/Developer/r3act/src/component_state_runtime.ts:2873:37)\n    at ComponentStateRoot.prepare (/Volumes/Depot/Developer/r3act/src/component_state_runtime.ts:1383:34)\n    at <anonymous> (/Volumes/Depot/Developer/r3act/src/native_root_work_queue.ts:150:45)\n    at Object.prepare (/Volumes/Depot/Developer/r3act/src/native_root_work_queue.ts:321:33)\n    at RootWorkQueue.#commitReady (/Volumes/Depot/Developer/r3act/src/root_work_queue.ts:494:33)\n    at RootWorkQueue.#drain (/Volumes/Depot/Developer/r3act/src/root_work_queue.ts:460:59)\n    at RootWorkQueue.enqueue (/Volumes/Depot/Developer/r3act/src/root_work_queue.ts:279:16)\n    at <anonymous> (/Volumes/Depot/Developer/r3act/src/native_root_work_queue.ts:299:34)\n    at NativeRootWorkQueue.#invoke (/Volumes/Depot/Developer/r3act/src/native_root_work_queue.ts:620:14)"}},"trace":["start:B","start:A","abort:A","abort:B"],"queryHead":"C","stores":{"query":{"roots":3,"listeners":3,"readers":3,"retainedActions":0,"transitions":0},"urgent":{"roots":3,"listeners":3,"readers":3,"retainedActions":0,"transitions":0}},"projected":[{"rootId":"compiled-fork-primary","query":"C","native":{"version":5,"ownerCount":3,"pendingChangeCount":0,"sourceValueSyncVisits":0,"disposed":false}},{"rootId":"compiled-fork-three","query":"C","native":{"version":5,"ownerCount":3,"pendingChangeCount":0,"sourceValueSyncVisits":0,"disposed":false}},{"rootId":"compiled-fork-inspector","query":"C","native":{"version":5,"ownerCount":3,"pendingChangeCount":0,"sourceValueSyncVisits":0,"disposed":false}}]}
+    
+    0 !== 1
+    
+        at file:///Volumes/Depot/Developer/r3act/compiler/native_forked_transition_execution_test.mjs:193:10 {
+      generatedMessage: false,
+      code: 'ERR_ASSERTION',
+      actual: 0,
+      expected: 1,
+      operator: 'strictEqual',
+      diff: 'simple'
+    }
+  ]
+}
+
+Node.js v24.18.0

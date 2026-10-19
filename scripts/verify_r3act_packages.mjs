@@ -261,6 +261,20 @@ export const invalidDialogChild = <RadixDialog {...dialogProps} children={validI
   run("pnpm", ["exec", "tsgo", "-p", "tsconfig.json"]);
   record.checks.push("installed core/Three JSX, both React bridge directions and controlled Radix dialog props typecheck authored TSX");
 
+  const example = path.join(root, "examples/forked-transitions");
+  const copiedExample = path.join(consumer, "forked-transitions");
+  await mkdir(copiedExample);
+  record.forkedExampleSources = [];
+  for (const filename of ["app.tsx", "scene.tsx", "main.ts", "vite.config.ts", "tsconfig.json"]) {
+    const bytes = await readFile(path.join(example, filename));
+    const copied = path.join(copiedExample, filename);
+    await writeFile(copied, bytes);
+    assert.equal(hash(await readFile(copied)), hash(bytes));
+    record.forkedExampleSources.push({ path: `examples/forked-transitions/${filename}`, sha256: hash(bytes) });
+  }
+  run("pnpm", ["exec", "tsgo", "-p", "forked-transitions/tsconfig.json"]);
+  record.checks.push("actual forked-transition DOM/Three example and Vite config typecheck against fresh installed public packages");
+
   const { nativeModulePlugin } = await import(pathToFileURL(path.join(installed("vite"), "dist/compiler/vite_native_plugin.js")).href);
   const { build: viteBuild } = await import(pathToFileURL(path.join(consumer, "node_modules/vite/dist/node/index.js")).href);
   const blocker = path.join(consumer, "blocked-tools");

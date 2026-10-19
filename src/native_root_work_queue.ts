@@ -469,24 +469,30 @@ export class NativeRootWorkQueue {
             }
           }
           try {
+            // Store listeners may prepare work in another queue; drain them only
+            // after every candidate releases its publication barrier.
             batchStorePublication(() => {
-              for (const [store, byTransition] of byStore) {
-                for (const [id, roots] of byTransition) {
-                  store.commitTransitionRoots(id, roots, {
-                    finish: finishTransitions,
-                  });
+              try {
+                for (const [store, byTransition] of byStore) {
+                  for (const [id, roots] of byTransition) {
+                    store.commitTransitionRoots(id, roots, {
+                      finish: finishTransitions,
+                    });
+                  }
+                }
+              } catch (error) {
+                errors.push(error);
+              }
+              for (const { value } of candidates) {
+                try {
+                  value.runEffects();
+                } catch (error) {
+                  errors.push(error);
                 }
               }
             });
           } catch (error) {
             errors.push(error);
-          }
-          for (const { value } of candidates) {
-            try {
-              value.runEffects();
-            } catch (error) {
-              errors.push(error);
-            }
           }
           if (errors.length) {
             throw new AggregateError(
