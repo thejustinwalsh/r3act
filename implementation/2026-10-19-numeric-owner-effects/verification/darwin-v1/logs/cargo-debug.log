@@ -1,0 +1,30 @@
+   Compiling ui-graph-compiler-spike v0.1.0 (/Volumes/Depot/Developer/r3act/compiler/oxc-spike)
+error[E0716]: temporary value dropped while borrowed
+    --> src/main.rs:4571:52
+     |
+4570 |                         !closed_numeric_array_value(expression,
+     |                          -------------------------- borrow later used by call
+4571 |                             if constructor_args { &BTreeSet::new() } else { values },
+     |                                                    ^^^^^^^^^^^^^^-
+     |                                                    |             |
+     |                                                    |             temporary value is freed at the end of this statement
+     |                                                    creates a temporary value which is freed while still in use
+     |
+     = note: consider using a `let` binding to create a longer lived value
+
+error[E0716]: temporary value dropped while borrowed
+    --> src/main.rs:4573:52
+     |
+4570 |                         !closed_numeric_array_value(expression,
+     |                          -------------------------- borrow later used by call
+...
+4573 |                             if constructor_args { &BTreeMap::new() } else { prop_bindings },
+     |                                                    ^^^^^^^^^^^^^^-
+     |                                                    |             |
+     |                                                    |             temporary value is freed at the end of this statement
+     |                                                    creates a temporary value which is freed while still in use
+     |
+     = note: consider using a `let` binding to create a longer lived value
+
+For more information about this error, try `rustc --explain E0716`.
+error: could not compile `ui-graph-compiler-spike` (bin "ui-graph-compiler-spike") due to 2 previous errors

@@ -18,29 +18,37 @@ const resultPath = path.join(cacheDirectory, `compiled-owner-row-proof-${attempt
 const failurePath = path.join(cacheDirectory, `compiled-owner-row-failure-${attemptId}.json`);
 const runtimeUrl = pathToFileURL(path.join(projectRoot, "src/native_runtime_api.ts")).href;
 
-const authored = `import { createKeyedCollection, useState } from ${JSON.stringify(runtimeUrl)};
+const authored = `import { createKeyedCollection, useEffect, useState } from ${JSON.stringify(runtimeUrl)};
 export const rows = createKeyedCollection([{ id: "a" }, { id: "b" }], row => row.id);
-export const trace = { renders: {}, controls: {}, candidateMutationKey: null, candidateMutations: 0 };
+export const trace = { controls: {}, candidateMutationKey: null, candidateMutations: 0 };
 
-export function Row({ row }) {
-  trace.renders[row.id] = (trace.renders[row.id] ?? 0) + 1;
+export function Row({ id }) {
   const [x, setX] = useState(0);
   const [y, setY] = useState(0);
   const [z, setZ] = useState(0);
-  trace.controls[row.id] = { x: setX, y: setY, z: setZ };
-  if (trace.candidateMutationKey === row.id) {
-    trace.candidateMutations++;
-    setX(999);
-  }
-  return <i data-row={row.id} position={[z, x, y]} data-repeat={x + x} style={{
+  useEffect(() => { trace.controls[id] = { x: setX, y: setY, z: setZ }; });
+  return <i data-row={id} position={[z, x, y]} data-repeat={x + x} style={{
     left: \`\${x}px\`,
     top: \`\${y}px\`,
     opacity: z,
   }} />;
 }
 
+export function CandidateProbe() {
+  const [value, setValue] = useState(0);
+  if (trace.candidateMutationKey !== null) {
+    trace.candidateMutations++;
+    setValue(999);
+  }
+  return <span data-candidate={value} />;
+}
+
 export function Board() {
-  return <ul>{rows.map(row => <Row key={row.id} row={row} />)}</ul>;
+  const children = rows.map(row => <Row key={row.id} id={row.id} />);
+  if (trace.candidateMutationKey !== null) {
+    return <ul>{children}<CandidateProbe key="candidate" /></ul>;
+  }
+  return <ul>{children}</ul>;
 }`;
 
 const plugin = nativeModulePlugin({ root: projectRoot,
@@ -216,9 +224,9 @@ try {
   assert.equal(layoutMatch[1], rowSite, "layout programId equals defineComponent's first argument");
   const layoutEntries = [...layoutMatch[3].matchAll(/\{\s*siteId:\s*"([^"]+)",\s*slot:\s*(\d+)\s*\}/g)];
   assert.deepEqual(layoutEntries.map((entry) => [entry[1], Number(entry[2])]), stateSites.map((site, slot) => [site, slot]));
-  const descriptors = compiledNumericDescriptors(transformed.code);
+  const descriptors = compiledNumericDescriptors(transformed.code)
+    .filter((entry) => entry.ownerProgramId === rowSite);
   assert.equal(descriptors.length, 5, "vector, repeat, and three unary style sinks each have a compiled descriptor");
-  assert.ok(descriptors.every((entry) => entry.ownerProgramId === rowSite), "each descriptor belongs to the Row component");
   assert.ok(descriptors.every((entry) => entry.sinkId && entry.sourceSites), "every owner descriptor contains an explicit source list");
   assert.equal(descriptors.filter((entry) => entry.closedExpressionKinds.length).length, descriptors.length - 1,
     "all primitive sinks have closed expressions while the vector keeps fallback");
@@ -238,11 +246,15 @@ try {
 
   const host = new MemoryVDOMHost();
   const container = host.createContainer();
+  const renderFrames = [];
   root = createNativeRoot(host, container, {
     rootId: `compiled-owner-row-${attemptId}`,
     scheduleCommit() {},
+    profileCounter(frame) { renderFrames.push(frame); },
   });
   root.mount(jsx(app.Board, {}));
+  const componentRenders = () => renderFrames.reduce((sum, frame) => sum +
+    (frame["owner.component-renders"] ?? 0), 0);
   const rootOwner = root.world.findOwner(null, `@component-root:${root.rootId}`);
   assert.notEqual(rootOwner, undefined, "root owner is live");
   const boardOwner = root.world.findOwner(rootOwner, boardSite, `@slot:${boardSite}:0`);
@@ -268,7 +280,10 @@ try {
   assert.ok(nodeA && nodeB, "initial host rows are mounted");
   assertAuthoredOutput(nodeA, { x: 0, y: 0, z: 0 }, "initial row a");
   assertAuthoredOutput(nodeB, { x: 0, y: 0, z: 0 }, "initial row b");
-  const initialRenders = { ...app.trace.renders };
+  const initialRenders = componentRenders();
+  assert.deepEqual(Object.keys(app.trace.controls).sort(), ["a", "b"],
+    "both authored row controls activate at mount");
+  assert.equal(initialRenders, 0, "mount does not emit flush profile frames");
 
   unsubscribeDirty = root.world.subscribeDirtyCells((handle, version) => dirtyCells.push({ handle, version }));
   const eligibleCaptureBaseline = metrics.nonemptyPendingCaptures;
@@ -282,7 +297,7 @@ try {
   assertAuthoredOutput(nodeA, { x: 13, y: 0, z: 0 }, "sparse row a");
   assert.equal(addressesA[0].column.values[addressesA[0].row], 13);
   assert.equal(addressesA[1].column.values[addressesA[1].row], 0);
-  assert.deepEqual(app.trace.renders, initialRenders, "eligible sparse update does not rerender rows");
+  assert.equal(componentRenders(), initialRenders, "eligible sparse update does not rerender rows");
   const xChange = dirtyCells.find(({ handle }) => handle.owner === ownerA && handle.site === stateSites[0]);
   assert.ok(xChange, "World publishes sparse x cell");
 
@@ -301,7 +316,7 @@ try {
     [addressesA, addressesB].flatMap((addresses) => addresses.map(({ column, row }) => column.values[row])),
     [21, 22, 23, 31, 32, 33],
   );
-  assert.deepEqual(app.trace.renders, initialRenders, "eligible dense update does not rerender rows");
+  assert.equal(componentRenders(), initialRenders, "eligible dense update does not rerender rows");
   const numericRowCalls = metrics.rowCalls.slice();
   assert.deepEqual(numericRowCalls.map(({ count }) => count), [1, 6], "sparse and dense cuts use one row program path");
   assert.ok(numericRowCalls.every(({ tokensLength, valuesLength, count, changedRowIndices, changedRowIndicesType, changedSlotsType }) =>
@@ -373,6 +388,7 @@ try {
   const candidate = root.prepare(jsx(app.Board, {}));
   assert.ok(app.trace.candidateMutations > 0, "candidate render attempts a private setter");
   const candidateValid = candidate.validate();
+  assert.equal(candidateValid, false, "private render-time setter rejects candidate");
   for (let index = 0; index < columns.length; index++) {
     assert.equal(columns[index].values, savedArrays[index], "candidate keeps committed column allocations");
     assert.deepEqual([...columns[index].values], savedValues[index], "candidate does not write committed columns");
@@ -390,11 +406,12 @@ try {
   assert.equal(root.world.numericLane(ownerA, stateSites[0]), addressesA[0]);
   assert.equal(root.world.numericLane(ownerC, stateSites[0]), addressesC[0]);
 
-  const prePromotionRenders = app.trace.renders.a;
+  const prePromotionRenders = componentRenders();
   assert.equal(app.trace.controls.a.x("wide"), true, "string promotion setter is accepted");
   assert.equal(app.trace.controls.a.y(undefined), true, "undefined promotion setter is accepted");
   assert.equal(root.flush(), true, "promoted values reconcile through safe fallback");
-  assert.ok(app.trace.renders.a > prePromotionRenders, "unsupported promoted values rerender the owner");
+  assert.equal(componentRenders() - prePromotionRenders, 1,
+    "unsupported promoted values rerender only the affected owner");
   assert.equal(nodeFor(container, "a"), nodeA, "promotion retains keyed host identity");
   assertAuthoredOutput(nodeA, { x: "wide", y: undefined, z: 23 }, "promoted row a");
   assert.equal(nodeA.props["data-repeat"], "widewide", "string addition retains authored JavaScript semantics");

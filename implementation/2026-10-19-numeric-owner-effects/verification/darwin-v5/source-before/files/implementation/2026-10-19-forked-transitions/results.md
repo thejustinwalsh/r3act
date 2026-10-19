@@ -1,0 +1,42 @@
+# Forked transition integration — 19 October 2026
+
+The authored native DOM/Three/fork sequence now passes actual compiled execution, fresh-package typechecking and headless browser conformance. Converging task input groups reuse an exactly matching execution within the same operation. Optional pending tasks retire with their last live root. Grouped Store notifications wait until every candidate releases its publication barrier, allowing another queue's task observer to prepare safely.
+
+Source basis is local main `4b05cd4daff59842f2e53f12bb4dd45c31514a0a` plus the exact archived working tree. The remote main still points to the initial published commit. No push or PR is part of this slice. [Source contracts and review](source-review.md) describe the retired mechanisms, sole authorities and falsifiers. Whole-tree guards, per-root accepted histories, exact acknowledgements, live ownership, generic fallback and partial-host failure rules remain.
+
+## Correctness and preserved failures
+
+Final [Darwin-v4 receipt](verification/darwin-v4/receipt.json) passes **41/41 steps**, **1017 runtime tests**, **64 Rust tests**, **25 actual compiled execution fixtures**, two separate source proofs, two plugin checks, 24 artifact checks, seven Three cases, both bounded retention checks and fresh five-package consumption. The eleven consumer checks include copying and typechecking the actual example app, scene, controller and Vite configuration against installed public packages. All **949 runner inputs** match before/after; the pre-command archive preserves those inputs and eight context files (**957 files**).
+
+| Attempt | Preserved result and correction |
+| --- | --- |
+| [Darwin-v1](verification/darwin-v1/receipt.json) | 39/41. The fixture's classic JSX lowering lacked its factory binding; both controller and fixture incorrectly used a root-work `completion` property. The executable adapter now imports its factory explicitly, hashes those executable bytes and awaits the actual `onSettled` callback. Host errors remain intact. |
+| [Darwin-v2](verification/darwin-v2/receipt.json) | 40/41. Fresh package checks pass; the actual compiled sequence fails to start C after convergence and urgent work. |
+| [One context replay](verification/fixture-context-v1/receipt.json) | Same failing assertion with task/error/projection context; task generation 4 fails because another queue prepares while root publication barriers remain active. Its 326-file source lock matches. No timing qualification. |
+| [Darwin-v3](verification/darwin-v3/receipt.json) | 41/41 after extending the existing Store batch through candidate effect/cleanup. The added three-root regression verifies the crossing. |
+| [Untimed proof-v1](proof-v1/build-proof.json) | Rejected: the plain controller was named `.tsx`, importing a JSX factory without declaring components. It is now `main.ts` with byte-identical contents; compiler/component semantics are unchanged. |
+| [Darwin-v4](verification/darwin-v4/receipt.json) | 41/41 with the final filename, package-copy references and reviewed browser-only assertions. |
+
+Before any browser run, primary review also corrects the immediate-disposal assertion to compare component/effect lifetimes while permitting intentional late provider bookkeeping. Aggregate failures expose original stacks and retain their cause objects. No behavior expectation is relaxed. No performance retry ran.
+
+The unchanged debug compiler SHA-256 is `52c0021bd5bffa67de3472a0139c85159483ae20f1482dd7f8ac8c6f4160ea7f`. The packaged `aarch64-apple-darwin` executable is `6d727e1351ccb44ee29caf26f91fd0ef3ed7de4f40f41ccc1da435aed7857750`. Tooling uses pinned Node 24.18.0, one Cargo job and the selected frozen Deno runtime lock; historical manifests are not rewritten for portability.
+
+## Actual build and browser evidence
+
+[Proof-v2](proof-v2/build-proof.json) passes actual Rust/OXC transformation of DomApp, Result, ThreeApp and ThreeResult, with complete module revision/site plans. All four remain generic (`closedProgram=false`). Actual React Compiler output has Projection `_c(14)`, Result `_c(14)` and App `_c(23)`, with CompileSuccess events. All 498 source inputs match; exact compiler bytes, five transform/event outputs and three assets are archived. Shared minified JavaScript is **1,315,970 bytes**, including both arms; this is not equivalent-feature per-arm package size.
+
+[Untimed browser conformance](proof-v2/browser-behavior.json) and the [sole measured Native-first pair](proof-v2/browser-measured-one-shot.json) pass these seven stages: initial A; primary DOM/Three B while fork retains A; fork B catch-up without duplicate B work; two urgent increments during pending detail; grouped C; ignored late A/B; accepted C. Visible text, attributes, pending status and Three object state match exactly, with output SHA-256 `883ce94866798ed46781c55cf17ae5e2d09857c639d9617445007cc49a2525e8`.
+
+Both arms retain their own DOM result nodes, component mount/activation lifetimes, and Three mesh/geometry/material identities through A→C. Native starts B/A once, cancels A on convergence, starts C and cancels B, then reuses the independent catalog. React has equal preloaded provider knowledge and records logical retirement separately from actual abort. Startup fallback never reappears. Separate untimed cases cancel pending B and dispose synchronously during `beginB`, then settle late providers without host/effect activity. Native effects balance 2/2; React effects balance 4/4 with one mount/cleanup per DOM root. Owned resources balance; borrowed resources survive host cleanup and then dispose once at caller teardown. Root owners, pending work, Store interests, DOM children and scene children return to zero.
+
+The only measured interval is final C provider resolution to the first MutationObserver matching both complete DOM views and Three object state: **0.90 ms Native / 1.10 ms React**, at approximately **0.10 ms** timer quantum. Scheduling and observer delivery are included; paint is excluded. All **507 integrity rows** match before and after each browser phase (**1014 observations per phase**), with zero page, console, request or integrity errors. The hash-bound primary authorization names the passed build and behavior receipts. The owned headless, GPU-disabled browser closes cleanly. Exact static assets are intercepted at a synthetic HTTPS origin; no project server, network/TLS route or focus change occurs.
+
+This one fixed-order pair gives no CPU, population median/p95, cold/setup/retained-memory, physical-input/presentation, independent-device or general speed qualification. Three is an object tree without a WebGL renderer. The browser comparison uses checkout aliases; fresh-package checks typecheck this actual example but do not establish its installed-browser rendering. Arbitrary host mutations remain non-rollbackable and cross-renderer visual atomicity is not claimed.
+
+The [read-only evidence audit](verification/darwin-v4/final-audit.json) checks all raw source, fixture, package and build artifacts plus receipt/authorization hashes. Its initial live-source screen precedes final primary document updates; the [document supplement](verification/darwin-v4/final-doc-supplement.json) distinguishes that expected evidence/checkpoint drift from immutable archived bytes and unchanged runtime/compiler/example source. Neither audit runs another workload.
+
+## Remaining scope and machine limits
+
+This completes one finite async/fork implementation slice. The full-plan first-pass goal remains active. The separate installed-HMR browser gate still awaits the required missing Portless skill resolution. Current Linux/other-platform evidence, lifecycle/cold/memory budgets, presentation and independent-device qualification remain open; older platform receipts predate these changes. Human participants remain zero, with no maintenance advantage claimed. Historical stable-binding wins, qualified integrated dense FAIL, exhausted Recording A and physical HOLD retain their original scope.
+
+No VM starts or memory increases occur. Saved Apple Container defaults remain **one CPU, 256 MiB per container, 512 MiB for builds**, with tooling/data on Depot. A read-only service check reports that its API server is not running or registered with launchd; effective workload limits remain runtime-unverified behind the existing Depot startup-permission issue. Only one owned VM should run at a time, with increases justified by actual workload need.

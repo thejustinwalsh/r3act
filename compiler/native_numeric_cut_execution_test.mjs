@@ -9,15 +9,12 @@ import { jsx } from "../src/jsx_binding_runtime.ts";
 
 const directory = process.cwd();
 const nativeImport = pathToFileURL(path.join(directory, "src/native_runtime_api.ts")).href;
-const source = `import { useState } from ${JSON.stringify(nativeImport)};
+const source = `import { useState, useEffect } from ${JSON.stringify(nativeImport)};
 export const control: Record<string, (value: number) => boolean> = {};
-export const trace = { renders: 0 };
 export function Output() {
-  trace.renders++;
   const [a, setA] = useState(1);
   const [b, setB] = useState(1);
-  control.a = setA;
-  control.b = setB;
+  useEffect(() => { control.a = setA; control.b = setB; });
   return <output data-a={a} data-b={b} data-sum={a + b} />;
 }`;
 const plugin = nativeModulePlugin();
@@ -57,6 +54,12 @@ try {
     profileCounter(frame) { counterFrames.push(frame); },
   });
   root.mount(jsx(app.Output, {}));
+  const renderCount = () => counterFrames.reduce((sum, frame) => sum +
+    (frame["owner.component-renders"] ?? 0), 0);
+  const initialRenderCount = renderCount();
+  assert.equal(initialRenderCount, 0, "mount does not emit flush profile frames");
+  assert.equal(typeof app.control.a, "function", "first setter activates at mount");
+  assert.equal(typeof app.control.b, "function", "second setter activates at mount");
   app.control.a(2);
   app.control.b(3);
   host.reenter = true;
@@ -65,7 +68,7 @@ try {
   assert.deepEqual(values(), [2, 3, 5], "one captured cut must drive all compiled props");
   root.flush();
   assert.deepEqual(values(), [2, 9, 11], "reentrant writes must survive for the next commit");
-  assert.equal(app.trace.renders, 1, "coherent numeric writes must not rerun the component");
+  assert.equal(renderCount(), initialRenderCount, "coherent numeric writes must not rerun the component");
   assert.equal(counterFrames.reduce((sum, frame) => sum + (frame["numeric.compiled-site-cache-constructions"] ?? 0), 0), 1, "compiled owner eligibility is interpreted once");
   assert.equal(counterFrames.reduce((sum, frame) => sum + (frame["numeric.compiled-site-metadata-inspections"] ?? 0), 0), 2, "both compiled state sites are interpreted once");
   assert.equal(counterFrames[1]["numeric.compiled-site-metadata-inspections"] ?? 0, 0, "reentrant retry reuses the compiled eligibility");

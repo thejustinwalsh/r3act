@@ -45,6 +45,9 @@ export const trace = {
   setShowObserver: null,
   setObserverKey: null,
   setShowHot: null,
+  closedControls: null,
+  closedEffectSetups: 0,
+  closedEffectCleanups: 0,
 };
 
 export function captureHot(node) {
@@ -76,6 +79,22 @@ export function Hot() {
       style={{ left: \`\${frame + x}px\`, opacity: (x + y) / 100 }} />;
   }
   return <output ref={captureHot} data-hot="yes" data-value={x}
+    style={{ left: \`\${frame + x}px\`, opacity: (x + y) / 100 }} />;
+}
+
+export function ClosedHot() {
+  const [x, setX] = useState(2);
+  const [y, setY] = useState(4);
+  const [frame, setFrame] = useState(0);
+  useEffect(() => {
+    trace.closedEffectSetups++;
+    trace.closedControls = { setX, setY, setFrame };
+    return () => {
+      trace.closedEffectCleanups++;
+      if (trace.closedControls?.setX === setX) trace.closedControls = null;
+    };
+  });
+  return <output data-closed-hot="yes" data-value={x}
     style={{ left: \`\${frame + x}px\`, opacity: (x + y) / 100 }} />;
 }
 
@@ -112,6 +131,7 @@ export function App() {
   trace.setShowHot = setShowHot;
   return <section>
     <StoreProbe />
+    <ClosedHot key="closed-hot" />
     {showHot ? <Hot key="hot" /> : null}
     {showObserver ? <Observer key={observerKey} /> : null}
   </section>;
@@ -181,8 +201,11 @@ try {
   };
   const storeNode = () => find((node) => "data-store" in node.props);
   const observerNode = () => find((node) => node.props["data-observer"] === "yes");
+  const closedHotNode = () => find((node) => node.props["data-closed-hot"] === "yes");
   const hot = app.refs.hot;
+  const closedHot = closedHotNode();
   assert.ok(hot, "Hot ref was not published at mount");
+  assert.ok(closedHot, "closed numeric control did not mount");
   trackingHost.trackedNode = hot;
   assert.equal(hot.props["data-value"], 2);
   assert.equal(hot.props.style.left, "2px");
@@ -193,6 +216,25 @@ try {
   assert.equal(app.trace.storeRenders, 1);
   assert.equal(storeNode().props["data-store"], 0);
   assert.equal(observerNode(), undefined);
+
+  trackingHost.trackedNode = closedHot;
+  trackingHost.writes.length = 0;
+  const closedCounters = countersAfter(() => {
+    assert.equal(app.trace.closedControls.setX(4), true);
+    assert.equal(app.trace.closedControls.setY(6), true);
+    assert.equal(app.trace.closedControls.setFrame(2), true);
+    root.flush();
+  });
+  assertNoBindingIndexRebuild("closed numeric control", closedCounters);
+  assertBindingGroupWork("closed numeric control", closedCounters, 0, 0);
+  assert.equal(closedCounters["owner.component-renders"] ?? 0, 0, "closed numeric control reran an owner");
+  assert.equal(closedHotNode(), closedHot, "closed numeric control replaced its host");
+  assert.equal(closedHot.props["data-value"], 4);
+  assert.equal(closedHot.props.style.left, "6px");
+  assert.equal(closedHot.props.style.opacity, 0.1);
+  assert.deepEqual(trackingHost.writes.map(write => `${write.kind}:${write.name}`), ["prop:data-value", "style:left", "style:opacity"]);
+  trackingHost.trackedNode = hot;
+  trackingHost.writes.length = 0;
 
   // A store read and a structural observer mount share a root commit with all
   // three live numeric bindings. The effect reads the committed host instance.
@@ -208,7 +250,7 @@ try {
   assertNoBindingIndexRebuild("first direct/store/structural batch", firstBatchCounters);
   assertBindingGroupWork("first direct/store/structural batch", firstBatchCounters, 0, 0);
   assert.equal(app.refs.hot, hot, "numeric publication replaced the host instance");
-  assert.equal(app.trace.hotRenders, rendersBeforeFirstBatch, "compiled scalar updates reran Hot");
+  assert.equal(app.trace.hotRenders, rendersBeforeFirstBatch + 1, "opaque Hot did not re-execute for its state changes");
   assert.equal(hot.props["data-value"], 4);
   assert.equal(hot.props.style.left, "6px");
   assert.equal(hot.props.style.opacity, 0.1);
@@ -240,7 +282,7 @@ try {
   });
   assertNoBindingIndexRebuild("old-source scalar update", detachedSourceCounters);
   assertBindingGroupWork("old-source scalar update", detachedSourceCounters, 0, 0);
-  assert.equal(app.trace.hotRenders, rendersAfterSourceSwitch, "old-source write reran the binding owner");
+  assert.equal(app.trace.hotRenders, rendersAfterSourceSwitch + 1, "opaque Hot did not re-execute for its old-source style change");
   assert.equal(hot.props["data-value"], 6, "detached x source still wrote the switched data prop");
   assert.equal(hot.props.style.left, "9px", "x source stopped updating its still-live style binding");
   assert.equal(hot.props.style.opacity, 0.13, "x source stopped updating the still-live combined style binding");
@@ -254,7 +296,7 @@ try {
   });
   assertNoBindingIndexRebuild("post-switch scalar/store/observer batch", freshEffectCounters);
   assertBindingGroupWork("post-switch scalar/store/observer batch", freshEffectCounters, 0, 0);
-  assert.equal(app.trace.hotRenders, rendersAfterSourceSwitch, "post-switch scalar writes reran the binding owner");
+  assert.equal(app.trace.hotRenders, rendersAfterSourceSwitch + 2, "opaque Hot did not re-execute for its post-switch changes");
   assert.equal(hot.props["data-value"], 8, "active y binding missed its post-switch write");
   assert.equal(hot.props.style.left, "10px", "frame/x style binding missed a post-switch write");
   assert.equal(hot.props.style.opacity, 0.15, "x/y style binding missed a post-switch write");
@@ -292,8 +334,6 @@ try {
     root.flush();
   });
   assertNoBindingIndexRebuild("Hot removal with pending scalar writes", hotRemovalCounters);
-  // Direct writer ownership has separate left/opacity style fields and the
-  // data-value property, so removal must detach all three groups.
   assertBindingGroupWork("Hot removal with pending scalar writes", hotRemovalCounters, 3, 0);
   assert.equal(app.refs.hot, null, "removed Hot ref remained current");
   assert.equal(hot.parent, null, "removed Hot host stayed attached");
@@ -305,12 +345,14 @@ try {
   root.dispose();
   assert.equal(root.diagnostics().disposed, true);
   assert.equal(app.trace.hotEffectSetups, app.trace.hotEffectCleanups, "Hot effect cleanup count did not balance");
+  assert.equal(app.trace.closedEffectSetups, app.trace.closedEffectCleanups, "closed numeric control cleanup count did not balance");
   assert.equal(app.trace.observerEffectSetups, app.trace.observerEffectCleanups, "Observer effect cleanup count did not balance");
   assert.deepEqual(app.version.diagnostics(), { roots: 0, listeners: 0, readers: 0, retainedActions: 0, transitions: 0 });
 
   console.log("Compiled binding-index lifecycle PASS:", JSON.stringify({
-    semantics: "three numeric prop/style writers, source switch, coherent store/structural effects, detached-sink suppression, stable host identity, exact cleanup",
+    semantics: "opaque Hot source switch and ref lifetime, separate closed numeric writers, coherent effects and exact cleanup",
     counters: {
+      closed: closedCounters,
       firstBatch: firstBatchCounters,
       sourceSwitch: sourceSwitchCounters,
       oldSourceWrite: detachedSourceCounters,

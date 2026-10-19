@@ -25,24 +25,23 @@ const runtimeUrl = pathToFileURL(
   path.join(projectRoot, "src/native_runtime_api.ts"),
 ).href;
 
-const authored = `import { useState } from ${JSON.stringify(runtimeUrl)};
+const authored = `import { useState, useEffect } from ${JSON.stringify(runtimeUrl)};
 export const controls: Record<number, {
   x: (value: number) => boolean;
   y: (value: number) => boolean;
   label: (value: string) => boolean;
 }> = {};
-export const trace = { renders: Array.from({ length: 32 }, () => 0), appRenders: 0 };
+export const trace = { appRenders: 0 };
 export let showLast: (value: boolean) => boolean;
 const ids = Array.from({ length: 32 }, (_, index) => index);
 
 export function Row({ id }: { id: number }) {
-  trace.renders[id]++;
   const [x, setX] = useState(0);
   const [y, setY] = useState(0);
   const [label, setLabel] = useState("row-" + id);
-  controls[id] = { x: setX, y: setY, label: setLabel };
+  useEffect(() => { controls[id] = { x: setX, y: setY, label: setLabel }; });
   return <div data-row={id} data-x={x} data-y={y} data-sum={x + y}
-    style={{ left: \`\${x}px\`, top: \`\${y}px\`, width: "7px" }}>{label}</div>;
+    style={{ left: \`\${x}px\`, top: \`\${y}px\`, width: "7px" }}>{\`\${label}\`}</div>;
 }
 
 export function App() {
@@ -146,7 +145,11 @@ try {
       });
     }
   };
-  assert.equal(app.trace.renders.reduce((sum, value) => sum + value, 0), 32);
+  const componentRenders = () => aggregate(counterFrames)["owner.component-renders"] ?? 0;
+  const initialComponentRenders = componentRenders();
+  assert.equal(Object.keys(app.controls).length, 32,
+    "all authored row controls activate at mount");
+  assert.equal(initialComponentRenders, 0, "mount does not emit flush profile frames");
 
   // Eligible native cuts must bypass both snapshot arrays and generic source
   // normalization. The compiler emits the static programs from ordinary TSX.
@@ -177,11 +180,8 @@ try {
     assert.equal(counters["numeric.program-source-updates"], density * 2);
     assert.equal(counters["numeric.program-projections"], density * 5);
     assert.equal(counters["numeric.program-writes"], density * 5);
-    assert.equal(
-      app.trace.renders.reduce((sum, value) => sum + value, 0),
-      32,
-      "eligible numeric-only frames rerendered a component",
-    );
+    assert.equal(componentRenders(), initialComponentRenders,
+      "eligible numeric-only frames rerendered a component");
     numericFrames.push({ density, counters });
   }
   assert.equal(captureCalls, 0, "eligible frames materialized independent state snapshots");
@@ -197,12 +197,42 @@ try {
     return snapshot;
   };
   VDOMSnapshotRoot.prototype.setSources = originalSetSources;
-  const rendersBeforeLabel = app.trace.renders[0];
+  const rendersBeforeLabel = componentRenders();
   assert.equal(app.controls[0].label("changed-label"), true);
   assert.equal(root.flush(), true);
   assert.equal(row(0).children[0].text, "changed-label");
-  assert.ok(app.trace.renders[0] > rendersBeforeLabel);
+  assert.equal(componentRenders() - rendersBeforeLabel, 1,
+    "unsupported label update rerenders only its row");
   assert.ok(captureCalls > 0, "unsupported state did not take snapshot fallback");
+
+  let labelCoercions = 0;
+  const opaqueLabel = {
+    toString() { labelCoercions++; return "opaque-label"; },
+  };
+  assert.equal(app.controls[0].label(opaqueLabel), true);
+  assert.equal(root.flush(), true, "object label promotes through generic render");
+  assert.equal(row(0).children[0].text, "opaque-label");
+  const coercionsBeforeNumeric = labelCoercions;
+  const rendersBeforeOpaqueNumeric = componentRenders();
+  assert.equal(app.controls[0].x(7), true);
+  oracle[0][0] = 7;
+  assert.equal(root.flush(), true, "numeric update with object sibling uses generic render");
+  assertRows();
+  assert.equal(row(0).children[0].text, "opaque-label");
+  assert.equal(componentRenders() - rendersBeforeOpaqueNumeric, 1,
+    "object sibling revokes owner skip after numeric eligibility was cached");
+  assert.ok(labelCoercions > coercionsBeforeNumeric,
+    "generic render observes object label coercion on numeric invalidation");
+  assert.equal(app.controls[0].label("restored-label"), true);
+  assert.equal(root.flush(), true);
+  assert.equal(row(0).children[0].text, "restored-label");
+  const rendersBeforeRestoredNumeric = componentRenders();
+  assert.equal(app.controls[0].x(8), true);
+  oracle[0][0] = 8;
+  assert.equal(root.flush(), true);
+  assertRows();
+  assert.equal(componentRenders(), rendersBeforeRestoredNumeric,
+    "primitive sibling restores eligible numeric owner cuts");
 
   // Combine a certified numeric cut with structural App state. This must use
   // the coherent full candidate path, while both state values remain visible.
@@ -243,7 +273,7 @@ try {
     fallbackCaptureArrays: fallbackSnapshots.length,
     finalRows: list().children.length,
     finalNumeric: [row(0).props["data-x"], row(0).props["data-y"], row(0).props["data-sum"]],
-    finalRenders: app.trace.renders,
+    profiledFlushComponentRenders: componentRenders(),
     finalAppRenders: app.trace.appRenders,
   };
   root.dispose();

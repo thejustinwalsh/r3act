@@ -11,11 +11,10 @@ const directory = process.cwd();
 const nativeImport = pathToFileURL(path.join(directory, "src/native_runtime_api.ts")).href;
 const authored = `import { useState, useEffect } from ${JSON.stringify(nativeImport)};
 export const control: Record<number, { x: (value: number) => boolean; y: (value: number) => boolean }> = {};
-export const trace = { renders: 0, mounts: 0, cleanups: 0 };
+export const trace = { mounts: 0, cleanups: 0 };
 export let showLast: (value: boolean) => boolean;
 const ids = Array.from({ length: 32 }, (_, index) => index);
 export function Row(props: { id: number }) {
-  trace.renders++;
   const [x, setX] = useState(0);
   const [y, setY] = useState(0);
   useEffect(() => {
@@ -69,6 +68,8 @@ try {
     for (const frame of frames) for (const [key, value] of Object.entries(frame)) result[key] = (result[key] ?? 0) + value;
     return result;
   };
+  const renderCount = () => aggregate(counterFrames)["owner.component-renders"] ?? 0;
+  const mountedRenderCount = renderCount();
   const assertRows = () => {
     for (let id = 0; id < 32; id++) {
       const row = findRow(id);
@@ -79,7 +80,8 @@ try {
       assert.deepEqual(row.props.style, { left: `${x}px`, top: `${y}px`, width: "7px" });
     }
   };
-  assert.equal(app.trace.renders, 32);
+  assert.equal(app.trace.mounts, 32, "all authored row effects activate at mount");
+  assert.equal(mountedRenderCount, 0, "mount does not emit flush profile frames");
   // If the compiled fast path falls back, fail at the actual generic entry point.
   VDOMSnapshotRoot.prototype.setSources = function () { throw new Error("Compiled program called generic setSources normalization"); };
   for (const [frame, density] of [[1, 1], [2, 4], [3, 32]]) {
@@ -96,7 +98,7 @@ try {
     assert.equal(counters["numeric.program-source-updates"], density * 2);
     assert.equal(counters["numeric.program-projections"], density * 5, "compound sink evaluates once for two dirty inputs");
     assert.equal(counters["numeric.program-writes"], density * 5);
-    assert.equal(app.trace.renders, 32, "program updates do not re-execute components");
+    assert.equal(renderCount(), mountedRenderCount, "program updates do not re-execute components");
     results.push({ density, counters });
   }
   // Keep the sum equal while changing both inputs: primitive equality skips it.
@@ -111,13 +113,17 @@ try {
   VDOMSnapshotRoot.prototype.setSources = legacySetSources;
   const staleSetter = app.control[31].x;
   app.showLast(false); root.flush();
+  const rendersAfterRemoval = renderCount();
+  assert.equal(rendersAfterRemoval - mountedRenderCount, 1, "only App rerenders for row removal");
   assert.equal(findRow(31), undefined);
   assert.throws(() => staleSetter(99), /not alive/);
   assert.equal(app.trace.cleanups, 1);
   app.showLast(true); root.flush();
   retained[31] = findRow(31); oracle[31] = [0, 0];
   assertRows();
-  assert.equal(app.trace.renders, 33, "only reinserted row rerenders after topology changes");
+  assert.equal(app.trace.mounts, 33, "only the reinserted row activates a new effect");
+  assert.equal(renderCount() - rendersAfterRemoval, 2,
+    "only App and the reinserted row render for insertion");
   VDOMSnapshotRoot.prototype.setSources = function () { throw new Error("Reinserted compiled sink used generic normalization"); };
   app.control[31].x(7); oracle[31] = [7, 0]; root.flush(); assertRows();
   VDOMSnapshotRoot.prototype.setSources = legacySetSources;

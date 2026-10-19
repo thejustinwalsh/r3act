@@ -46,7 +46,14 @@ export const trace = {
   setShow: null,
   setKey: null,
   setVisible: null,
+  setClosed: null,
 };
+
+export function ClosedHot() {
+  const [value, setValue] = useState(1);
+  useEffect(() => { trace.setClosed = setValue; });
+  return <output data-closed={value} style={{ opacity: value }} />;
+}
 
 export function captureHot(node) {
   if (node == null) return;
@@ -113,6 +120,7 @@ export function ReplaceApp() {
 let compiledRoot;
 let structureRoot;
 let replacementRoot;
+let closedRoot;
 try {
   await mkdir(cacheDirectory, { recursive: true });
   const transformed = await plugin.transform.call(context, source, sourceId);
@@ -161,7 +169,8 @@ try {
   assert.equal(app.storeB.dispatch(true), true);
   assert.equal(app.trace.setHot(2), true);
   compiledRoot.flush();
-  assert.equal(app.trace.hotRenders, beforeCombinedHotRenders, "combined store and numeric update reran Hot");
+  assert.equal(app.trace.hotRenders - beforeCombinedHotRenders, 1,
+    "opaque ref owner rerenders once for its numeric update");
   assert.equal(app.trace.badgeRenders - beforeCombinedBadgeRenders, 1, "selector Badge did not render exactly once");
   assert.equal(firstHot.props["data-value"], 2, "numeric data prop was not written before effects");
   assert.equal(firstHot.props.style.opacity, 2, "numeric style prop was not written before effects");
@@ -179,7 +188,8 @@ try {
   assert.equal(app.storeB.dispatch(false), true);
   assert.equal(app.trace.setHot(3), true);
   compiledRoot.flush();
-  assert.equal(app.trace.hotRenders, beforeHideHotRenders, "storeB removal reran the unrelated numeric Hot owner");
+  assert.equal(app.trace.hotRenders - beforeHideHotRenders, 1,
+    "opaque ref owner rerenders once while the observer is removed");
   assert.equal(firstHot.props["data-value"], 3);
   assert.equal(summaryNode(first.container).props["data-summary"], "2:false", "selector retained a stale source version");
   assert.equal(observerNode(first.container), undefined);
@@ -190,7 +200,8 @@ try {
   assert.equal(app.storeB.dispatch(true), true);
   assert.equal(app.trace.setHot(4), true);
   compiledRoot.flush();
-  assert.equal(app.trace.hotRenders, beforeRemountHotRenders, "observer remount reran the unrelated numeric Hot owner");
+  assert.equal(app.trace.hotRenders - beforeRemountHotRenders, 1,
+    "opaque ref owner rerenders once while the observer remounts");
   assert.equal(summaryNode(first.container).props["data-summary"], "3:true", "selector missed the latest paired source history");
   assert.equal(app.refs.hot, firstHot);
   assert.deepEqual(app.trace.observations.map(({ value }) => value), [2, 4], "effects did not observe the newest committed Hot values");
@@ -220,7 +231,8 @@ try {
   assert.equal(app.trace.setHot(2), true);
   assert.equal(app.trace.setShow(true), true);
   structureRoot.flush();
-  assert.equal(app.trace.hotRenders, hotRendersBeforeLocalToggle, "no-store structural mount reran Hot");
+  assert.equal(app.trace.hotRenders - hotRendersBeforeLocalToggle, 1,
+    "opaque ref owner rerenders once for local numeric state");
   assert.equal(structureHot.props["data-value"], 2);
   assert.equal(app.refs.hot, structureHot);
   assert.equal(app.trace.observations[observationCountBeforeStructureRoot].value, 2, "new no-store structural effect missed numeric publication");
@@ -229,7 +241,8 @@ try {
   assert.equal(app.trace.setHot(3), true);
   assert.equal(app.trace.setShow(false), true);
   structureRoot.flush();
-  assert.equal(app.trace.hotRenders, hotRendersBeforeLocalToggle);
+  assert.equal(app.trace.hotRenders - hotRendersBeforeLocalToggle, 2,
+    "opaque ref owner rerenders once for each local numeric update");
   assert.equal(structureHot.props["data-value"], 3);
   assert.equal(app.trace.observerCleanups, observerCleanupsBeforeLocalToggle + 1);
   structureRoot.dispose();
@@ -282,11 +295,29 @@ try {
   assert.deepEqual(app.storeA.diagnostics(), { roots: 0, listeners: 0, readers: 0, retainedActions: 0, transitions: 0 });
   assert.deepEqual(app.storeB.diagnostics(), { roots: 0, listeners: 0, readers: 0, retainedActions: 0, transitions: 0 });
 
+  const closedFrames = [];
+  const closedHost = new MemoryVDOMHost();
+  const closedContainer = closedHost.createContainer();
+  closedRoot = createNativeRoot(closedHost, closedContainer, {
+    rootId: "numeric-commit-closed-control", scheduleCommit() {},
+    profileCounter(frame) { closedFrames.push(frame); },
+  });
+  closedRoot.mount(jsx(app.ClosedHot, {}));
+  assert.equal(typeof app.trace.setClosed, "function");
+  assert.equal(app.trace.setClosed(7), true);
+  assert.equal(closedRoot.flush(), true);
+  assert.equal(find(closedContainer, node => node.props["data-closed"] === 7)?.props.style.opacity, 7);
+  assert.equal(closedFrames.reduce((sum, frame) => sum + (frame["owner.component-renders"] ?? 0), 0), 0,
+    "closed numeric owner retains the no-rerender contract");
+  closedRoot.dispose();
+  closedRoot = undefined;
+
   console.log("Compiled numeric commit seam PASS: same-batch store/prop publication before observer effects; stable numeric owner/host; selector history; no-store structural effect publication; keyed replacement/removal releases refs, effects, and stale writers.");
 } finally {
   compiledRoot?.dispose();
   structureRoot?.dispose();
   replacementRoot?.dispose();
+  closedRoot?.dispose();
   try {
     await unlink(outputPath);
   } catch (error) {

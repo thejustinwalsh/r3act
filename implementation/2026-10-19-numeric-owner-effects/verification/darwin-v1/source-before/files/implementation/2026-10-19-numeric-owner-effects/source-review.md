@@ -1,0 +1,33 @@
+# Numeric owner effect source review
+
+Source basis: clean main `98b15bf94291d6b7f4c699a0d064ff7cfdd2c927`. Origin is the requested GitHub repository; actual remote main/HEAD remain initial `a694d72959970eca750d2fa09c91d0b64ae5494a`. AGENTS, checkpoint, complete master guide, detailed handoff, relevant research guide/native-state milestone/numeric-program publication, paper/notebook and prior closed-arrow evidence govern this unit. The previous goal turn made progress; full finish-line scope remains active.
+
+## Concrete source gap
+
+`compile_native_component_module` currently treats `arrow_initializer.is_none()` as owner eligibility after proving a numeric expression and outside-state reads. `NativeStateUsageCollector` tracks state references, not every unrelated owner effect. A named body can read local state only in one proven prop, call an opaque helper into a sibling prop, and receive `propOnlySites` despite that helper. An opaque sibling with no state reference contributes no ineligible numeric state site. Root `#tryFlushNativeCellCut` admits row/lane/source programs and acknowledges the state without invoking the owner. A stale sibling output or suppressed exception follows from this source path; actual baseline execution remains pending.
+
+The previous arrow slice caught this risk and uses a finite arrow-only body guard. The named function path still auto-admits. `hostLeafOutput` describes output shape and is not whole-body purity. It remains outside the selected change.
+
+## Runtime input and fixture contracts
+
+Normal expansion makes `{key,ref,...componentProps}` before calling/caching a component; owner preparation reuses that cache. Closed forwarding also builds an internal plain props object. Some row paths call the original rendered props directly, and generic public Proxy inputs must preserve their getter/exception order. `Object.freeze` or descriptor shape on an arbitrary Proxy does not establish ownership.
+
+The shared finite owner proof may emit required direct primitive prop names in existing revisioned metadata. Runtime admission must use owned immutable copies or owned JSX props, validate actual primitive fields, and disable row/layout/compiled-site skipping for unknown inputs. Freezing is confined to runtime-created copies; it cannot mutate a caller-owned Proxy. No parallel identity/version/provenance registry is introduced. Nested `row.id` cannot be justified by a top-level primitive proof.
+
+Live execution fixtures currently include `trace.renders++`, render-time setter exports and a conditional candidate-time setter while asserting owner bypass. Those are intrusive instrumentation or explicitly opaque work. They cannot be whitelisted as pure. Move counts to existing runtime profiling and control capture to native activation effects; separate the generic candidate mutation case while preserving its rejection assertion. Keep all output/identity/failure/acknowledgement assertions and historical archives. Any changed compiler expectation must identify why the old semantic premise was unsafe, rather than weaken a gate.
+
+Compiler Sol owns main.rs and its corpus; runtime Sol owns the root runtime and existing live execution fixtures; authored Sol owns only new fixture/harness/baseline/installed consumer. Primary reviews/integrates/documents; Luna remains idle until the coherent boundary. No tests/builds/browser or comparison have run for this unit. The immutable old packaged compiler will characterize the suspected gap later without replacing historical evidence.
+
+## Integrated admission review
+
+Primitive-prop admission is captured before invocation in the existing ComponentCache record. An unowned copy cannot acquire this fact when an activation effect mutates and later freezes it. Same-valued owned-to-unowned replacements invalidate cache reuse; row, lane, retry and source paths check the accepted admission/site authority. Generic propBoundSites membership remains intact because it also governs fallback binding/history semantics. The flag is an immutable derived cache fact, not another identity/version registry.
+
+Primary source review found mount profiling is not enabled by owner.component-renders (only flush is profiled). Live fixtures therefore retain exact mount/effect/host assertions and use profiler deltas for numeric updates, rather than inventing mount counter values. Mixed numeric and string-state output remains the same owner, with the string dirty path generic. Original opaque ref/branch probes retain their lifecycle/output cases alongside separate closed controls where necessary.
+
+Actual VDOM ref publication compares previous.ref and nextRef by identity and does no callback work when equal. A same-module immutable ref binding with no direct eval can therefore preserve that lifecycle during numeric skipping; the callback itself is not declared pure. Fresh inline refs, mutable/imported live bindings and props/member ref expressions decline. This bounded extension preserves the existing lane/cell lifecycle fixtures without hiding their ref/reentry obligations. Execution and consolidated verification remain pending.
+
+The final seam separates sink purity from whole-owner skipping. A pure `n + 1` prop may retain its existing compiled binding even when an opaque sibling requires owner execution. Only whole-owner proof grants propOnlySites/layout/ownerUpdateProgram; generic binding membership and exact source history remain. This retires the false implication from one closed sink to a skippable owner without unnecessarily removing useful binding/index work. Opaque source-switch/ref probes keep their per-prop semantic checks, while independent pure controls verify no owner execution.
+
+The copied old compiler will execute against the current runtime as an isolated compiler-metadata diagnostic. It is not a frozen full-product baseline and supplies no timing comparison. Its receipt binds both compiler bytes and current runtime source; original historical manifests are unchanged.
+
+Final review also found that scalar initializers do not prove future state values: a sibling string state can later contain an object/function with observable coercion. Numeric admission must check both the primitive values actually read by the accepted render and current committed World cells. A current-head-only check is insufficient for forked accepted histories. These facts belong on the existing render/cache records and canonical World state, with no second state-site registry. The mixed same-owner scalar case remains supported; opaque promotions return to generic rendering. Verification remains pending.

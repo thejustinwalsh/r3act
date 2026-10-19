@@ -18,11 +18,10 @@ const runtimeUrl = pathToFileURL(path.join(projectRoot, "src/native_runtime_api.
 
 const authored = `import { useEffect, useState } from ${JSON.stringify(runtimeUrl)};
 export const trace = {
-  initializers: 0, renders: 0, events: [], node: null, setValue: null,
+  initializers: 0, events: [], node: null, setValue: null,
 };
 export function resetTrace() {
   trace.initializers = 0;
-  trace.renders = 0;
   trace.events.length = 0;
   trace.node = null;
   trace.setValue = null;
@@ -38,10 +37,9 @@ export function captureNode(node) {
   }
 }
 export function Row() {
-  trace.renders++;
   const [value, setValue] = useState(2);
-  trace.setValue = setValue;
   useEffect(() => {
+    trace.setValue = setValue;
     trace.events.push({ kind: "effect", left: trace.node?.props.style?.left });
     return () => {
       trace.events.push({ kind: "effect-cleanup", left: trace.node?.props.style?.left });
@@ -80,6 +78,9 @@ const originalExecuteSourceProgram = VDOMSnapshotRoot.prototype.executeSourcePro
 const metrics = { snapshotCapturesWithPending: 0, laneBatches: [], sourceProgramBatches: 0 };
 let root;
 let app;
+const renderFrames = [];
+const componentRenderCount = () => renderFrames.reduce((sum, frame) =>
+  sum + (frame["owner.component-renders"] ?? 0), 0);
 
 class LifecycleHost extends MemoryVDOMHost {
   onStyleWrite;
@@ -108,7 +109,11 @@ VDOMSnapshotRoot.prototype.executeSourceProgram = function (...args) {
 
 const makeRoot = (host, label) => {
   const container = host.createContainer();
-  const next = createNativeRoot(host, container, { rootId: `lane-lifecycle-${label}-${attemptId}`, scheduleCommit() {} });
+  const next = createNativeRoot(host, container, {
+    rootId: `lane-lifecycle-${label}-${attemptId}`,
+    scheduleCommit() {},
+    profileCounter(frame) { renderFrames.push(frame); },
+  });
   next.mount(jsx(app.App, {}));
   return { root: next, container, node: app.trace.node };
 };
@@ -122,6 +127,8 @@ try {
   assert.doesNotMatch(authored, /@native-ui|@jsx|\bjsx\s*[,}]/, "fixture uses no author marker, pragma, or jsx factory");
   assert.match(transformed.code, /__nativeBindStatePropAt\(/, "authored style state is compiler bound");
   assert.match(transformed.code, /stateLayout:\s*\{\s*schemaVersion:\s*1/, "Row receives compiler layout metadata");
+  assert.match(transformed.code, /propOnlySites:\s*\[[^\]]*#component:Row#state:0/,
+    "stable module ref owner remains eligible for numeric cuts");
   assert.match(transformed.code, /sourceSites:\s*\[[^\]]*#component:Row#state:0/, "unary numeric program is emitted for Row");
   await writeFile(emittedPath, transformed.code, { flag: "wx" });
   app = await import(`${pathToFileURL(emittedPath).href}?attempt=${attemptId}`);
@@ -161,6 +168,7 @@ try {
   assert.deepEqual(metrics.laneBatches.map(({ count }) => count), [1, 1]);
   assert.equal(metrics.snapshotCapturesWithPending, 0, "supported numeric lane cuts avoid generic StateChange snapshots");
   assert.equal(metrics.sourceProgramBatches, 0, "live lane does not use the scalar source-program route");
+  assert.equal(componentRenderCount(), 0, "eligible numeric cuts do not rerender the owner");
 
   // Promotion out of number uses ordinary authored projection. Returning to
   // number stays off the World lane and uses the compiler source program.
@@ -191,9 +199,10 @@ try {
   assert.equal(metrics.laneBatches.length, laneCountBeforeReturn, "numeric return remains off World lane after rebinding");
   assert.equal(metrics.sourceProgramBatches, sourceProgramBeforeReturn + 1, "sticky-off numeric update uses scalar source program");
   assert.equal(metrics.snapshotCapturesWithPending, captureBeforeStickyNumeric, "native numeric source-program fallback remains snapshot-free");
-  const renderCountAfterPromotion = app.trace.renders;
   assert.equal(app.trace.initializers, 1);
-  assert.equal(renderCountAfterPromotion, 4, "string/undefined/first numeric promotion each rerenders the authored component once");
+  assert.equal(componentRenderCount(), 3,
+    "string, undefined and first numeric return each rerender the owner once");
+  const profiledFlushComponentRendersAtPromotionEnd = componentRenderCount();
 
   const oldSetter = setReentryValue;
   root.dispose();
@@ -204,6 +213,7 @@ try {
   // Host failure while writing the actual numeric lane is terminal, but the
   // owner/effect cleanup path still releases the authored setter.
   app.resetTrace();
+  renderFrames.length = 0;
   const throwingHost = new LifecycleHost();
   const throwing = makeRoot(throwingHost, "host-failure");
   root = throwing.root;
@@ -244,7 +254,7 @@ try {
       effectObservesCommittedValues: true,
       deadSetterRejectedOnDispose: true,
       hostWriteFailureCleanup: true,
-      rendersAtPromotionEnd: renderCountAfterPromotion,
+      profiledFlushComponentRendersAtPromotionEnd,
     },
     hostFailure: { terminalFlushThrows: true, priorOutputRetained: true, cleanupCompleted: true },
     boundary: "Compiled TSX numeric lane lifecycle and fallback correctness proof; no browser, row-writer integration, or latency claim.",
@@ -260,7 +270,7 @@ try {
     metrics,
     trace: app ? {
       initializers: app.trace.initializers,
-      renders: app.trace.renders,
+      profiledFlushComponentRenders: componentRenderCount(),
       events: app.trace.events,
       hasNode: Boolean(app.trace.node),
       hasSetter: Boolean(app.trace.setValue),

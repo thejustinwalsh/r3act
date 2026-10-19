@@ -223,6 +223,8 @@ struct NativeComponentMetadata {
     name: String,
     component_site_id: String,
     prop_only_sites: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    numeric_primitive_props: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     state_layout: Option<NativeStateLayoutMetadata>,
     host_leaf_output: bool,
@@ -347,66 +349,64 @@ struct NativeDerivedLocalCollector<'p, 'a> {
     locals: BTreeMap<SymbolId, NativeDerivedLocal>,
 }
 
+fn collect_native_derived_locals<'a>(
+    statements: &[Statement<'a>], component: &ComponentStateSiteIr,
+    semantic: &Semantic<'a>, locals: &mut BTreeMap<SymbolId, NativeDerivedLocal>,
+) {
+    for statement in statements {
+        let Some(Declaration::VariableDeclaration(declaration)) = statement.as_declaration() else {
+            continue;
+        };
+        if declaration.kind != oxc_ast::ast::VariableDeclarationKind::Const { continue; }
+        for declarator in &declaration.declarations {
+            let (BindingPattern::BindingIdentifier(identifier), Some(initializer)) =
+                (&declarator.id, declarator.init.as_ref()) else { continue; };
+            let Some(symbol) = identifier.symbol_id.get() else { continue; };
+            let mut reference_collector = ExpressionReferenceCollector {
+                semantic, references: Vec::new(),
+            };
+            reference_collector.visit_expression(initializer);
+            let initializer_syntax_supported = owner_update_program::visit_closed_primitive_expression(
+                initializer, owner_update_program::ClosedExpressionPolicy::Primitive,
+                &mut |_| true,
+            ) && !matches!(identifier.name.as_str(), "undefined" | "NaN" | "Infinity");
+            let mut node_counter = ExpressionNodeCounter::default();
+            node_counter.visit_expression(initializer);
+            locals.insert(symbol, NativeDerivedLocal {
+                owner_program_id: component.component_site_id.clone(),
+                reserved_identifier: matches!(identifier.name.as_str(), "undefined" | "NaN" | "Infinity"),
+                declaration_start: declarator.span.start,
+                initializer_span: span(initializer.span().start, initializer.span().end),
+                initializer_references: reference_collector.references,
+                initializer_syntax_supported,
+                initializer_node_count: node_counter.0,
+            });
+        }
+    }
+}
+
 impl<'a> Visit<'a> for NativeDerivedLocalCollector<'_, 'a> {
     fn visit_function(&mut self, node: &Function<'a>, flags: ScopeFlags) {
         let component = self.components.iter().find(|component| {
-            component.declaration.start == node.span.start
+            component.arrow_initializer.is_none() && component.declaration.start == node.span.start
                 && component.declaration.end == node.span.end
         });
         if let (Some(component), Some(body)) = (component, node.body.as_ref()) {
-            for statement in &body.statements {
-                let Some(Declaration::VariableDeclaration(declaration)) =
-                    statement.as_declaration()
-                else {
-                    continue;
-                };
-                if declaration.kind != oxc_ast::ast::VariableDeclarationKind::Const {
-                    continue;
-                }
-                for declarator in &declaration.declarations {
-                    let (BindingPattern::BindingIdentifier(identifier), Some(initializer)) =
-                        (&declarator.id, declarator.init.as_ref())
-                    else {
-                        continue;
-                    };
-                    let Some(symbol) = identifier.symbol_id.get() else {
-                        continue;
-                    };
-                    let mut reference_collector = ExpressionReferenceCollector {
-                        semantic: self.semantic,
-                        references: Vec::new(),
-                    };
-                    reference_collector.visit_expression(initializer);
-                    let initializer_syntax_supported =
-                        owner_update_program::visit_closed_primitive_expression(
-                            initializer,
-                            owner_update_program::ClosedExpressionPolicy::Primitive,
-                            &mut |_| true,
-                        ) && !matches!(identifier.name.as_str(), "undefined" | "NaN" | "Infinity");
-                    let mut node_counter = ExpressionNodeCounter::default();
-                    node_counter.visit_expression(initializer);
-                    self.locals.insert(
-                        symbol,
-                        NativeDerivedLocal {
-                            owner_program_id: component.component_site_id.clone(),
-                            reserved_identifier: matches!(
-                                identifier.name.as_str(),
-                                "undefined" | "NaN" | "Infinity"
-                            ),
-                            declaration_start: declarator.span.start,
-                            initializer_span: span(
-                                initializer.span().start,
-                                initializer.span().end,
-                            ),
-                            initializer_references: reference_collector.references,
-                            initializer_syntax_supported,
-                            initializer_node_count: node_counter.0,
-                        },
-                    );
-                }
-            }
+            collect_native_derived_locals(&body.statements, component, self.semantic, &mut self.locals);
         }
         walk::walk_function(self, node, flags);
+    }
+
+    fn visit_variable_declarator(&mut self, node: &VariableDeclarator<'a>) {
+        if let Some(Expression::ArrowFunctionExpression(arrow)) = node.init.as_ref()
+            && let ArrowFunctionBody::FunctionBody(body) = &arrow.body
+            && let Some(component) = self.components.iter().find(|component|
+                component.arrow_initializer.as_ref().is_some_and(|at|
+                    at.start == arrow.span.start && at.end == arrow.span.end))
+        {
+            collect_native_derived_locals(&body.statements, component, self.semantic, &mut self.locals);
+        }
+        walk::walk_variable_declarator(self, node);
     }
 }
 
@@ -3936,28 +3936,100 @@ fn compile_native_component_module(
             .outside_state_reads
             .extend(outside_states.into_values());
     }
-    struct ClosedNumericArrowCollector<'s, 'a> {
+    struct StableModuleRefs<'s, 'a> {
+        semantic: &'s Semantic<'a>,
+        symbols: BTreeSet<SymbolId>,
+        direct_eval: bool,
+    }
+    impl<'a> Visit<'a> for StableModuleRefs<'_, 'a> {
+        fn visit_function(&mut self, node: &Function<'a>, flags: ScopeFlags) {
+            if let Some(symbol) = node.id.as_ref().and_then(|id| id.symbol_id.get())
+                && self.semantic.scoping().symbol_scope_id(symbol) == self.semantic.scoping().root_scope_id()
+            {
+                self.symbols.insert(symbol);
+            }
+            walk::walk_function(self, node, flags);
+        }
+
+        fn visit_variable_declaration(&mut self, node: &VariableDeclaration<'a>) {
+            if node.kind == oxc_ast::ast::VariableDeclarationKind::Const {
+                for declarator in &node.declarations {
+                    if let BindingPattern::BindingIdentifier(binding) = &declarator.id
+                        && let Some(symbol) = binding.symbol_id.get()
+                        && self.semantic.scoping().symbol_scope_id(symbol) == self.semantic.scoping().root_scope_id()
+                        && matches!(declarator.init.as_ref(),
+                            Some(Expression::FunctionExpression(_) | Expression::ArrowFunctionExpression(_)))
+                    {
+                        self.symbols.insert(symbol);
+                    }
+                }
+            }
+            walk::walk_variable_declaration(self, node);
+        }
+
+        fn visit_call_expression(&mut self, node: &CallExpression<'a>) {
+            let mut callee = &node.callee;
+            while let Expression::ParenthesizedExpression(parenthesized) = callee {
+                callee = &parenthesized.expression;
+            }
+            if matches!(callee, Expression::Identifier(identifier) if identifier.name == "eval") {
+                self.direct_eval = true;
+            }
+            walk::walk_call_expression(self, node);
+        }
+    }
+    let mut refs = StableModuleRefs {
+        semantic: &semantic, symbols: BTreeSet::new(), direct_eval: false,
+    };
+    refs.visit_program(&parsed.program);
+    let stable_refs = if refs.direct_eval { BTreeSet::new() } else {
+        refs.symbols.into_iter().filter(|symbol|
+            semantic.scoping().symbol_declarations(*symbol).count() == 1 &&
+            semantic.scoping().get_resolved_references(*symbol).all(|reference|
+                !reference.is_write())
+        ).collect::<BTreeSet<_>>()
+    };
+    struct ClosedNumericOwnerCollector<'s, 'a> {
         components: &'s [ComponentStateSiteIr],
         semantic: &'s Semantic<'a>,
-        eligible: BTreeSet<String>,
+        stable_refs: &'s BTreeSet<SymbolId>,
+        certified_spans: &'s BTreeSet<(u32, u32)>,
+        eligible: BTreeMap<String, BTreeSet<String>>,
     }
-    impl<'a> Visit<'a> for ClosedNumericArrowCollector<'_, 'a> {
+    impl<'a> Visit<'a> for ClosedNumericOwnerCollector<'_, 'a> {
+        fn visit_function(&mut self, node: &Function<'a>, flags: ScopeFlags) {
+            if let Some(component) = self.components.iter().find(|component|
+                component.arrow_initializer.is_none() &&
+                component.declaration.start == node.span.start &&
+                component.declaration.end == node.span.end)
+                && let Some(callable) = ClosedCallable::function(node)
+            {
+                let mut required_props = BTreeSet::new();
+                if closed_numeric_owner_body(&callable, component, self.semantic,
+                    self.stable_refs, self.certified_spans, &mut required_props) {
+                    self.eligible.insert(component.component_site_id.clone(), required_props);
+                }
+            }
+            walk::walk_function(self, node, flags);
+        }
+
         fn visit_variable_declarator(&mut self, node: &VariableDeclarator<'a>) {
             if let Some(Expression::ArrowFunctionExpression(arrow)) = node.init.as_ref()
                 && let Some(component) = self.components.iter().find(|component|
                     component.arrow_initializer.as_ref().is_some_and(|at|
                         at.start == arrow.span.start && at.end == arrow.span.end))
-                && closed_numeric_arrow_body(arrow, component, self.semantic)
+                && let Some(symbol) = node.id.get_binding_identifier().and_then(|id| id.symbol_id.get())
+                && let Some(callable) = ClosedCallable::arrow(arrow, symbol)
             {
-                self.eligible.insert(component.component_site_id.clone());
+                let mut required_props = BTreeSet::new();
+                if closed_numeric_owner_body(&callable, component, self.semantic,
+                    self.stable_refs, self.certified_spans, &mut required_props) {
+                    self.eligible.insert(component.component_site_id.clone(), required_props);
+                }
             }
             walk::walk_variable_declarator(self, node);
         }
     }
-    let mut numeric_arrows = ClosedNumericArrowCollector {
-        components: &state_plan.components, semantic: &semantic, eligible: BTreeSet::new(),
-    };
-    numeric_arrows.visit_program(&parsed.program);
     let mut classifications = Vec::with_capacity(usage.candidates.len());
     for (candidate_index, candidate) in usage.candidates.iter().enumerate() {
         let owner_component = state_plan.components.iter().find(|component| {
@@ -4015,9 +4087,6 @@ fn compile_native_component_module(
         let certified = !candidate.other_refs
             && derived_is_closed
             && owner_local
-            && owner_component.is_some_and(|component|
-                component.arrow_initializer.is_none() ||
-                numeric_arrows.eligible.contains(&component.component_site_id))
             && !state_plan
                 .components
                 .iter()
@@ -4047,6 +4116,17 @@ fn compile_native_component_module(
             ineligible_numeric_sites.extend(classification.site_ids.iter().cloned());
         }
     }
+    let certified_spans = usage.candidates.iter().zip(&classifications)
+        .filter(|(_, classification)| classification.certified &&
+            classification.site_ids.iter().all(|site| !ineligible_numeric_sites.contains(site)))
+        .map(|(candidate, _)| (candidate.span.start, candidate.span.end))
+        .collect::<BTreeSet<_>>();
+    let mut numeric_owners = ClosedNumericOwnerCollector {
+        components: &state_plan.components, semantic: &semantic,
+        stable_refs: &stable_refs, certified_spans: &certified_spans,
+        eligible: BTreeMap::new(),
+    };
+    numeric_owners.visit_program(&parsed.program);
     for (candidate_index, (candidate, classification)) in
         usage.candidates.iter().zip(&classifications).enumerate()
     {
@@ -4138,11 +4218,12 @@ fn compile_native_component_module(
         .components
         .iter()
         .map(|component| {
+            let owner_closed = numeric_owners.eligible.contains_key(&component.component_site_id);
             let sites = component
                 .state_sites
                 .iter()
                 .filter(|state| {
-                    prop_sites.contains(&state.site_id)
+                    owner_closed && prop_sites.contains(&state.site_id)
                         && !usage.outside_state_reads.contains(&state.site_id)
                 })
                 .map(|state| state.site_id.clone())
@@ -4174,6 +4255,9 @@ fn compile_native_component_module(
             (component.component_site_id.clone(), slots)
         })
         .collect();
+    let numeric_primitive_props: BTreeMap<_, _> = numeric_owners.eligible.into_iter()
+        .filter(|(owner, _)| component_prop_sites.get(owner).is_some_and(|sites| !sites.is_empty()))
+        .collect();
     let (transformed, edits) = transform_native_component_source(
         path,
         source,
@@ -4182,6 +4266,7 @@ fn compile_native_component_module(
         &prop_edits,
         &numeric_programs,
         &component_prop_sites,
+        &numeric_primitive_props,
         &component_state_layouts,
         &closed_resource_programs,
         &closed_store_programs,
@@ -4201,6 +4286,8 @@ fn compile_native_component_module(
                 .flatten()
                 .cloned()
                 .collect(),
+            numeric_primitive_props: numeric_primitive_props
+                .get(&component.component_site_id).into_iter().flatten().cloned().collect(),
             state_layout: component_state_layouts
                 .get(&component.component_site_id)
                 .filter(|slots| !slots.is_empty())
@@ -4344,72 +4431,277 @@ fn closed_resource_literal(expression: &Expression<'_>) -> Option<serde_json::Va
     }
 }
 
-fn closed_numeric_arrow_body(
-    arrow: &ArrowFunctionExpression<'_>, component: &ComponentStateSiteIr,
-    semantic: &Semantic<'_>,
+fn closed_numeric_value(
+    expression: &Expression<'_>, values: &BTreeSet<SymbolId>, semantic: &Semantic<'_>,
 ) -> bool {
-    if arrow.r#async || component.state_sites.is_empty() ||
-        !component.effect_sites.is_empty() || !component.store_sites.is_empty() ||
-        !component.collection_sites.is_empty() || arrow.params.rest.is_some() ||
-        arrow.params.items.len() > 1 || arrow.params.items.first().is_some_and(|parameter|
-            parameter.optional || parameter.initializer.is_some() ||
-            !matches!(&parameter.pattern, BindingPattern::BindingIdentifier(_))) {
+    owner_update_program::visit_closed_primitive_expression(
+        expression, owner_update_program::ClosedExpressionPolicy::Primitive,
+        &mut |identifier| reference_symbol(identifier, semantic)
+            .is_some_and(|symbol| values.contains(&symbol)),
+    )
+}
+
+fn closed_numeric_owner_value(
+    expression: &Expression<'_>, values: &BTreeSet<SymbolId>,
+    props_symbol: Option<SymbolId>, prop_bindings: &BTreeMap<SymbolId, String>,
+    required_props: &mut BTreeSet<String>, semantic: &Semantic<'_>,
+) -> bool {
+    if let Expression::StaticMemberExpression(member) = expression
+        && let Expression::Identifier(object) = &member.object
+        && props_symbol.is_some_and(|symbol| reference_symbol(object, semantic) == Some(symbol))
+    {
+        let name = member.property.name.as_str();
+        if matches!(name, "key" | "ref") { return false; }
+        required_props.insert(name.to_string());
+        return true;
+    }
+    owner_update_program::visit_closed_primitive_expression(
+        expression, owner_update_program::ClosedExpressionPolicy::Primitive,
+        &mut |identifier| {
+            let Some(symbol) = reference_symbol(identifier, semantic) else { return false; };
+            if let Some(name) = prop_bindings.get(&symbol) {
+                if matches!(name.as_str(), "key" | "ref") { return false; }
+                required_props.insert(name.clone());
+                true
+            } else { values.contains(&symbol) }
+        },
+    )
+}
+
+fn closed_numeric_array_value(
+    expression: &Expression<'_>, values: &BTreeSet<SymbolId>,
+    props_symbol: Option<SymbolId>, prop_bindings: &BTreeMap<SymbolId, String>,
+    required_props: &mut BTreeSet<String>, semantic: &Semantic<'_>,
+) -> bool {
+    let Expression::ArrayExpression(array) = expression else { return false; };
+    !array.elements.is_empty() && array.elements.len() <= 4 &&
+        array.elements.iter().all(|item| item.as_expression().is_some_and(|value|
+            closed_numeric_owner_value(value, values, props_symbol,
+                prop_bindings, required_props, semantic)))
+}
+
+fn closed_numeric_setter_event(
+    expression: &Expression<'_>, setters: &BTreeSet<SymbolId>, semantic: &Semantic<'_>,
+) -> bool {
+    let Expression::ArrowFunctionExpression(handler) = expression else { return false; };
+    if handler.r#async || handler.params.rest.is_some() || !handler.params.items.is_empty() {
         return false;
     }
-    let ArrowFunctionBody::FunctionBody(body) = &arrow.body else { return false; };
-    if !body.directives.is_empty() || body.statements.len() != component.state_sites.len() + 1 {
+    let Some(Expression::CallExpression(call)) = handler.body.as_expression() else { return false; };
+    let Expression::Identifier(callee) = &call.callee else { return false; };
+    if !reference_symbol(callee, semantic).is_some_and(|symbol| setters.contains(&symbol)) ||
+        call.optional || call.arguments.len() != 1 { return false; }
+    let Some(value) = call.arguments.first().and_then(Argument::as_expression) else { return false; };
+    if closed_numeric_value(value, &BTreeSet::new(), semantic) { return true; }
+    let Expression::ArrowFunctionExpression(updater) = value else { return false; };
+    if updater.r#async || updater.params.rest.is_some() || updater.params.items.len() != 1 {
         return false;
     }
-    let mut values = BTreeSet::new();
-    for (statement, site) in body.statements.iter().zip(&component.state_sites) {
-        let Some(Declaration::VariableDeclaration(declaration)) = statement.as_declaration() else {
-            return false;
-        };
-        if declaration.kind != oxc_ast::ast::VariableDeclarationKind::Const ||
-            declaration.declarations.len() != 1 { return false; }
-        let declarator = &declaration.declarations[0];
-        let BindingPattern::ArrayPattern(pattern) = &declarator.id else { return false; };
-        if pattern.rest.is_some() || pattern.elements.len() != 1 { return false; }
-        let Some(Some(BindingPattern::BindingIdentifier(value))) = pattern.elements.first() else {
-            return false;
-        };
-        let Some(Expression::CallExpression(call)) = declarator.init.as_ref() else {
-            return false;
-        };
-        if call.span.start != site.call.start || call.span.end != site.call.end ||
-            call.arguments.len() != 1 || !call.arguments.first().and_then(Argument::as_expression)
-                .is_some_and(|initial| owner_update_program::visit_closed_primitive_expression(
-                    initial, owner_update_program::ClosedExpressionPolicy::Primitive,
-                    &mut |_| false,
-                )) { return false; }
-        let Some(symbol) = value.symbol_id.get() else { return false; };
-        values.insert(symbol);
-    }
-    let Some(Statement::ReturnStatement(statement)) = body.statements.last() else { return false; };
-    let Some(Expression::JSXElement(element)) = statement.argument.as_ref() else { return false; };
-    if !closed_jsx_children_empty(&element.children) ||
-        element.opening_element.attributes.len() > 33 ||
-        !matches!(&element.opening_element.name,
-            JSXElementName::Identifier(tag) if tag.name.as_str().bytes().next()
-                .is_some_and(|byte| byte.is_ascii_lowercase())) { return false; }
-    element.opening_element.attributes.iter().all(|item| {
+    let parameter = &updater.params.items[0];
+    let BindingPattern::BindingIdentifier(identifier) = &parameter.pattern else { return false; };
+    if parameter.optional || parameter.initializer.is_some() { return false; }
+    let Some(symbol) = identifier.symbol_id.get() else { return false; };
+    let Some(body) = updater.body.as_expression() else { return false; };
+    closed_numeric_value(body, &BTreeSet::from([symbol]), semantic)
+}
+
+fn closed_numeric_jsx(
+    element: &JSXElement<'_>, values: &BTreeSet<SymbolId>,
+    setters: &BTreeSet<SymbolId>, props_symbol: Option<SymbolId>,
+    prop_bindings: &BTreeMap<SymbolId, String>, required_props: &mut BTreeSet<String>,
+    semantic: &Semantic<'_>, stable_refs: &BTreeSet<SymbolId>,
+    certified_spans: &BTreeSet<(u32, u32)>, depth: usize,
+) -> bool {
+    let JSXElementName::Identifier(tag) = &element.opening_element.name else { return false; };
+    if depth >= 8 || !tag.name.as_str().bytes().next().is_some_and(|byte| byte.is_ascii_lowercase()) ||
+        element.opening_element.attributes.len() > 256 || element.children.len() > 64 { return false; }
+    for item in &element.opening_element.attributes {
         let JSXAttributeItem::Attribute(attribute) = item else { return false; };
         let JSXAttributeName::Identifier(name) = &attribute.name else { return false; };
-        if name.name == "key" {
-            return matches!(attribute.value.as_ref(), Some(JSXAttributeValue::StringLiteral(_)));
+        let name = name.name.as_str();
+        if name == "key" {
+            match attribute.value.as_ref() {
+                Some(JSXAttributeValue::StringLiteral(_)) => {}
+                Some(JSXAttributeValue::ExpressionContainer(container)) => {
+                    let Some(expression) = container.expression.as_expression() else { return false; };
+                    if !closed_numeric_owner_value(expression, &BTreeSet::new(), props_symbol,
+                        prop_bindings, required_props, semantic) { return false; }
+                }
+                _ => return false,
+            }
+            continue;
         }
-        if matches!(name.name.as_str(), "ref" | "children") || name.name.starts_with("on") {
-            return false;
+        if name == "ref" {
+            let Some(JSXAttributeValue::ExpressionContainer(container)) = attribute.value.as_ref()
+                else { return false; };
+            let Some(Expression::Identifier(identifier)) = container.expression.as_expression()
+                else { return false; };
+            if !reference_symbol(identifier, semantic).is_some_and(|symbol| stable_refs.contains(&symbol)) {
+                return false;
+            }
+            continue;
         }
-        let Some(JSXAttributeValue::ExpressionContainer(container)) = attribute.value.as_ref()
-            else { return false; };
-        let Some(expression) = container.expression.as_expression() else { return false; };
-        owner_update_program::visit_closed_primitive_expression(
-            expression, owner_update_program::ClosedExpressionPolicy::PrimitiveOrArray,
-            &mut |identifier| reference_symbol(identifier, semantic)
-                .is_some_and(|symbol| values.contains(&symbol)),
-        )
+        if name == "children" { return false; }
+        let event = name.starts_with("on") &&
+            name.as_bytes().get(2).is_some_and(|byte| byte.is_ascii_uppercase());
+        if event {
+            if !matches!(tag.name.as_str(), "button" | "div" | "span" | "output" | "input" | "a") {
+                return false;
+            }
+            let Some(JSXAttributeValue::ExpressionContainer(container)) = attribute.value.as_ref()
+                else { return false; };
+            if !container.expression.as_expression().is_some_and(|expression|
+                closed_numeric_setter_event(expression, setters, semantic)) { return false; }
+            continue;
+        }
+        match attribute.value.as_ref() {
+            Some(JSXAttributeValue::StringLiteral(_)) | None => {}
+            Some(JSXAttributeValue::ExpressionContainer(container)) => {
+                let Some(expression) = container.expression.as_expression() else { return false; };
+                if name == "style" {
+                    if !matches!(tag.name.as_str(), "div" | "span" | "output" | "button" | "input" | "a" | "i" | "li") {
+                        return false;
+                    }
+                    let Expression::ObjectExpression(object) = expression else { return false; };
+                    if object.properties.len() > 32 || !object.properties.iter().all(|item| {
+                        let oxc_ast::ast::ObjectPropertyKind::ObjectProperty(property) = item else { return false; };
+                        !property.computed && !property.method && !property.shorthand &&
+                            property.kind == oxc_ast::ast::PropertyKind::Init &&
+                            matches!(&property.key, PropertyKey::StaticIdentifier(_) | PropertyKey::StringLiteral(_)) &&
+                            closed_numeric_owner_value(&property.value, values, props_symbol,
+                                prop_bindings, required_props, semantic)
+                    }) { return false; }
+                } else if !closed_numeric_owner_value(expression, values, props_symbol,
+                    prop_bindings, required_props, semantic) {
+                    let tuple = matches!(tag.name.as_str(), "mesh" | "group") &&
+                        matches!(name, "position" | "rotation" | "scale");
+                    let data = matches!(tag.name.as_str(), "div" | "span" | "output" | "button" | "input" | "a") &&
+                        name.starts_with("data-");
+                    let constructor_args = name == "args" && matches!(tag.name.as_str(),
+                        "boxGeometry" | "sphereGeometry" | "planeGeometry" |
+                        "cylinderGeometry" | "coneGeometry" | "torusGeometry");
+                    let certified_position = matches!(expression, Expression::ArrayExpression(_)) &&
+                        name == "position" &&
+                        matches!(tag.name.as_str(), "i" | "li") &&
+                        certified_spans.contains(&(expression.span().start, expression.span().end));
+                    let empty_values = BTreeSet::new();
+                    let empty_bindings = BTreeMap::new();
+                    if !(tuple || data || constructor_args || certified_position) ||
+                        !(certified_position || closed_numeric_array_value(expression,
+                            if constructor_args { &empty_values } else { values },
+                            if constructor_args { None } else { props_symbol },
+                            if constructor_args { &empty_bindings } else { prop_bindings },
+                            required_props, semantic)) { return false; }
+                }
+            }
+            _ => return false,
+        }
+    }
+    element.children.iter().all(|child| match child {
+        JSXChild::Text(_) => true,
+        JSXChild::Element(child) => closed_numeric_jsx(child, values, setters, props_symbol,
+            prop_bindings, required_props, semantic, stable_refs, certified_spans, depth + 1),
+        JSXChild::ExpressionContainer(container) =>
+            matches!(&container.expression, JSXExpression::EmptyExpression(_)) ||
+            container.expression.as_expression().is_some_and(|expression|
+                closed_numeric_owner_value(expression, values, props_symbol,
+                    prop_bindings, required_props, semantic)),
+        _ => false,
     })
+}
+
+fn closed_numeric_owner_body(
+    callable: &ClosedCallable<'_, '_>, component: &ComponentStateSiteIr,
+    semantic: &Semantic<'_>, stable_refs: &BTreeSet<SymbolId>,
+    certified_spans: &BTreeSet<(u32, u32)>,
+    required_props: &mut BTreeSet<String>,
+) -> bool {
+    if component.state_sites.is_empty() || !component.store_sites.is_empty() ||
+        !component.collection_sites.is_empty() || callable.params.rest.is_some() ||
+        callable.params.items.len() > 1 ||
+        callable.statements.len() > 65 { return false; }
+    let mut props_symbol = None;
+    let mut prop_bindings = BTreeMap::new();
+    if let Some(parameter) = callable.params.items.first() {
+        if parameter.optional || parameter.initializer.is_some() { return false; }
+        match &parameter.pattern {
+            BindingPattern::BindingIdentifier(identifier) => {
+                props_symbol = identifier.symbol_id.get();
+                if props_symbol.is_none() { return false; }
+            }
+            BindingPattern::ObjectPattern(pattern) if pattern.rest.is_none() &&
+                pattern.properties.len() <= 32 => {
+                for property in &pattern.properties {
+                    let BindingPattern::BindingIdentifier(local) = &property.value else { return false; };
+                    if property.computed { return false; }
+                    let Some(name) = type_property_name(&property.key) else { return false; };
+                    if matches!(name, "key" | "ref") { return false; }
+                    let Some(symbol) = local.symbol_id.get() else { return false; };
+                    prop_bindings.insert(symbol, name.to_owned());
+                    required_props.insert(name.to_owned());
+                }
+            }
+            _ => return false,
+        }
+    }
+    let mut values = BTreeSet::new();
+    let mut setters = BTreeSet::new();
+    let mut state_calls = BTreeSet::new();
+    let mut effect_calls = BTreeSet::new();
+    let preceding = callable.statements.len().saturating_sub(1);
+    for statement in callable.statements.iter().take(preceding) {
+        if let Some(Declaration::VariableDeclaration(declaration)) = statement.as_declaration() {
+            if declaration.kind != oxc_ast::ast::VariableDeclarationKind::Const ||
+                declaration.declarations.len() != 1 { return false; }
+            let declarator = &declaration.declarations[0];
+            let Some(initializer) = declarator.init.as_ref() else { return false; };
+            if let Expression::CallExpression(call) = initializer
+                && let Some((index, _)) = component.state_sites.iter().enumerate().find(|(_, site)|
+                    site.call.start == call.span.start && site.call.end == call.span.end)
+            {
+                let BindingPattern::ArrayPattern(pattern) = &declarator.id else { return false; };
+                if !state_calls.insert(index) || call.optional || pattern.rest.is_some() ||
+                    !(1..=2).contains(&pattern.elements.len()) || call.arguments.len() != 1 ||
+                    !call.arguments.first().and_then(Argument::as_expression).is_some_and(|initial|
+                        closed_numeric_owner_value(initial, &BTreeSet::new(), props_symbol,
+                            &prop_bindings, required_props, semantic)) { return false; }
+                let Some(Some(BindingPattern::BindingIdentifier(value))) = pattern.elements.first()
+                    else { return false; };
+                let Some(symbol) = value.symbol_id.get() else { return false; };
+                values.insert(symbol);
+                if let Some(second) = pattern.elements.get(1) {
+                    let Some(BindingPattern::BindingIdentifier(setter)) = second else { return false; };
+                    let Some(symbol) = setter.symbol_id.get() else { return false; };
+                    setters.insert(symbol);
+                }
+                continue;
+            }
+            let BindingPattern::BindingIdentifier(local) = &declarator.id else { return false; };
+            let Some(symbol) = local.symbol_id.get() else { return false; };
+            if !closed_numeric_owner_value(initializer, &values, props_symbol,
+                &prop_bindings, required_props, semantic) { return false; }
+            values.insert(symbol);
+        } else if let Statement::ExpressionStatement(statement) = statement {
+            let Expression::CallExpression(call) = &statement.expression else { return false; };
+            let Some((index, _)) = component.effect_sites.iter().enumerate().find(|(_, site)|
+                site.call.start == call.span.start && site.call.end == call.span.end)
+                else { return false; };
+            if !effect_calls.insert(index) || call.optional || call.arguments.len() != 1 ||
+                !call.arguments.first().and_then(Argument::as_expression).is_some_and(|setup|
+                    matches!(setup, Expression::ArrowFunctionExpression(_) | Expression::FunctionExpression(_))) {
+                return false;
+            }
+        } else { return false; }
+    }
+    if state_calls.len() != component.state_sites.len() ||
+        effect_calls.len() != component.effect_sites.len() { return false; }
+    let Some(mut result) = callable.return_expression(preceding) else { return false; };
+    while let Expression::ParenthesizedExpression(parenthesized) = result {
+        result = &parenthesized.expression;
+    }
+    let Expression::JSXElement(element) = result else { return false; };
+    closed_numeric_jsx(element, &values, &setters, props_symbol,
+        &prop_bindings, required_props, semantic, stable_refs, certified_spans, 0)
 }
 
 struct ClosedCallable<'a, 'b> {
@@ -5498,6 +5790,7 @@ fn transform_native_component_source(
     )],
     numeric_programs: &[Sink],
     prop_sites: &BTreeMap<String, BTreeSet<String>>,
+    numeric_primitive_props: &BTreeMap<String, BTreeSet<String>>,
     state_layouts: &BTreeMap<String, Vec<NativeStateLayoutSlotMetadata>>,
     closed_resource_programs: &BTreeMap<String, serde_json::Value>,
     closed_store_programs: &BTreeMap<String, serde_json::Value>,
@@ -5603,6 +5896,13 @@ fn transform_native_component_source(
             .map(|site| serde_json::to_string(site).unwrap_or_default())
             .collect::<Vec<_>>()
             .join(", ");
+        let primitive_props_option = numeric_primitive_props
+            .get(&component.component_site_id)
+            .filter(|props| !props.is_empty())
+            .map(|props| format!(", numericPrimitiveProps: [{}]", props.iter()
+                .map(|name| serde_json::to_string(name).unwrap_or_default())
+                .collect::<Vec<_>>().join(", ")))
+            .unwrap_or_default();
         let state_layout_option = state_layouts
             .get(&component.component_site_id)
             .filter(|slots| !slots.is_empty())
@@ -5645,8 +5945,9 @@ fn transform_native_component_source(
             .map(|index| format!(", ownerUpdateProgram: {}[{index}]", aliases[9]))
             .unwrap_or_default();
         let options = format!(
-            "{{ propOnlySites: [{}]{}{}{}{}{}{} }}",
+            "{{ propOnlySites: [{}]{}{}{}{}{}{}{} }}",
             sites,
+            primitive_props_option,
             if component.host_leaf_output {
                 ", hostLeafOutput: true"
             } else {
@@ -8353,25 +8654,18 @@ export function Conditional({ enabled }: { enabled: boolean }) {
         assert!(second.error.is_none(), "{:?}", second.error);
         let first_plan = first.plan.unwrap();
         let second_plan = second.plan.unwrap();
-        let first_layout = first_plan.components.as_ref().unwrap()[0]
-            .state_layout
-            .as_ref()
-            .unwrap();
-        let second_layout = second_plan.components.as_ref().unwrap()[0]
-            .state_layout
-            .as_ref()
-            .unwrap();
-        assert_eq!(first_layout.slots.len(), 1);
-        assert_eq!(
-            first_layout.slots[0].site_id,
-            "state-layout-conditional.tsx#component:Conditional#state:1"
-        );
-        assert_eq!(first_layout.slots[0].slot, 0);
-        assert_eq!(
-            first_layout.slots[0].site_id,
-            second_layout.slots[0].site_id
-        );
-        assert_eq!(first_layout.slots[0].slot, second_layout.slots[0].slot);
+        let first_component = &first_plan.components.as_ref().unwrap()[0];
+        let second_component = &second_plan.components.as_ref().unwrap()[0];
+        assert!(first_component.state_layout.is_none());
+        assert!(first_component.prop_only_sites.is_empty());
+        assert_eq!(first_component.state_sites.len(), 2);
+        for (index, site) in first_component.state_sites.iter().enumerate() {
+            assert_eq!(site.site_id,
+                format!("state-layout-conditional.tsx#component:Conditional#state:{index}"));
+            assert_eq!(site.site_id, second_component.state_sites[index].site_id);
+        }
+        assert!(first_plan.component_module.unwrap().contains(
+            "__nativeBindStatePropAt(\"state-layout-conditional.tsx#component:Conditional#state:1\""));
 
         let mut declarations = String::new();
         let mut props = String::new();
@@ -8471,18 +8765,22 @@ export function Collision() { const [x] = useState(0); return <div style={{ left
             .iter()
             .find(|component| component.name == "ProductMixedRow")
             .expect("ordinary product TSX row component");
+        assert_eq!(row.numeric_primitive_props, vec!["id", "session"]);
         let slots = &row.state_layout.as_ref().unwrap().slots;
         assert_eq!(slots.len(), 3);
-        for (index, slot) in slots.iter().enumerate() {
-            assert_eq!(slot.slot, index);
+        assert_eq!(row.state_sites.len(), 3);
+        for (index, site) in row.state_sites.iter().enumerate() {
+            assert_eq!(slots[index].slot, index);
+            assert_eq!(slots[index].site_id, site.site_id);
             assert_eq!(
-                slot.site_id,
+                site.site_id,
                 format!(
                     "src/browser/native_product_mixed_arm.tsx#component:ProductMixedRow#state:{index}"
                 )
             );
         }
         let code = product.component_module.unwrap();
+        assert!(code.contains("numericPrimitiveProps: [\"id\", \"session\"]"));
         assert_eq!(
             code.matches("sinkId: \"src/browser/native_product_mixed_arm.tsx#numeric-sink:")
                 .count(),
@@ -9601,7 +9899,6 @@ export const Forward = (props) => (\r\n  <Store key=\"forward\" store={props.sto
         }
         for body in [
             "const [n] = useState(0); trace.push(n); return <output data-n={n + 1}/>;",
-            "const [n, setN] = useState(0); return <button data-n={n + 1} onClick={() => setN(1)}/>;",
             "const [n] = useState(0); return <output data-n={n + helper()}/>;",
         ] {
             let source = format!("import {{ useState }} from \"native_runtime_api.ts\"; const trace = []; export const Bad = () => {{ {body} }};");
@@ -9803,7 +10100,7 @@ export function Board({ items, records }: { items: NativeRows<Row>; records: Nat
     }
 
     #[test]
-    fn optimizes_only_moving_dot_numeric_cells_in_the_real_native_demo() {
+    fn keeps_conditional_effect_demo_owner_generic() {
         let source = include_str!("../../../src/browser/native_state_props.tsx");
         let response = compile_state("src/browser/native_state_props.tsx", source);
         assert!(response.error.is_none(), "{:?}", response.error);
@@ -9815,15 +10112,12 @@ export function Board({ items, records }: { items: NativeRows<Row>; records: Nat
             .iter()
             .find(|component| component.name == "MovingDot")
             .unwrap();
-        assert_eq!(
-            moving.prop_only_sites.len(),
-            3,
-            "x/y/tint feed only numeric props; moving remains generic due to branch/text reads"
-        );
+        assert!(moving.prop_only_sites.is_empty(),
+            "conditional effect and opaque event branch require the owner render");
+        assert!(moving.state_layout.is_none());
         let code = plan.component_module.unwrap();
-        assert!(code.contains("__nativeBindStatePropAt(\"src/browser/native_state_props.tsx#component:MovingDot#state:0\", (x) => (x), __nativeNumericPrograms["));
-        assert!(code.contains("__nativeBindStatePropAt(\"src/browser/native_state_props.tsx#component:MovingDot#state:1\", (y) => (y), __nativeNumericPrograms["));
-        assert!(code.contains("__nativeBindStatePropAt(\"src/browser/native_state_props.tsx#component:MovingDot#state:2\", (tint) => (tint), __nativeNumericPrograms["));
+        assert!(code.contains("__nativeBindStatePropAt(\"src/browser/native_state_props.tsx#component:MovingDot#state:"),
+            "pure MovingDot sinks retain bindings while its owner stays generic");
     }
 
     #[test]
@@ -9898,6 +10192,195 @@ export function Row() {
         assert!(code.contains("nested=${`${x}-${y}`}"), "{code}");
         assert!(code.contains("escaped=\\\\n"), "{code}");
         assert!(code.contains("schemaVersion: 2, ownerProgramId:"), "{code}");
+    }
+
+    #[test]
+    fn numeric_owner_proof_requires_the_entire_named_or_arrow_render_to_be_closed() {
+        let good = [
+            "export function Counter() { const [n, setN] = useState(0); useEffect(() => { trace.set = setN; return cleanup; }); const plus = n + 1; return <output data-n={plus} />; }",
+            "export const Counter = () => { const [n] = useState(0); const plus = n + 1; return <output data-n={plus} />; };",
+        ];
+        for body in good {
+            let source = format!("import {{ useEffect, useState }} from \"native_runtime_api.ts\"; {body}");
+            let response = compile_state("numeric-owner-closed.tsx", &source);
+            assert!(response.error.is_none(), "{:?}", response.error);
+            let plan = response.plan.unwrap();
+            assert_eq!(plan.components.as_ref().unwrap()[0].prop_only_sites.len(), 1);
+            assert!(plan.component_module.unwrap().contains("__nativeNumericPrograms"));
+        }
+        let unsafe_bodies = [
+            "trace.renders++;",
+            "const opaque = readOpaque();",
+            "const opaque = object.value;",
+            "const opaque = n + readOpaque();",
+            "const opaque = [1];",
+            "useEffect(makeEffect());",
+        ];
+        for statement in unsafe_bodies {
+            let source = format!("import {{ useEffect, useState }} from \"native_runtime_api.ts\"; export function Counter() {{ const [n] = useState(0); {statement} return <output data-n={{n + 1}} />; }}");
+            let response = compile_state("numeric-owner-opaque.tsx", &source);
+            assert!(response.error.is_none(), "{:?}", response.error);
+            let plan = response.plan.unwrap();
+            assert!(plan.components.as_ref().unwrap()[0].prop_only_sites.is_empty(), "{source}");
+        }
+        let source = "import { useState } from \"native_runtime_api.ts\"; export function Counter() { const [n] = useState(0); const opaque = readOpaque(); return <output data-n={n + 1} data-opaque={opaque} />; }";
+        let response = compile_state("numeric-owner-sibling.tsx", source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let plan = response.plan.unwrap();
+        assert!(plan.components.as_ref().unwrap()[0].prop_only_sites.is_empty());
+        assert!(plan.component_module.unwrap().contains("__nativeNumericPrograms"));
+        for sibling in ["object.value", "readOpaque()", "this.value", "arguments[0]"] {
+            let source = format!("import {{ useState }} from \"native_runtime_api.ts\"; export function Counter() {{ const [n] = useState(0); return <output data-n={{n + 1}} data-opaque={{{sibling}}} />; }}");
+            let response = compile_state("numeric-owner-sibling-read.tsx", &source);
+            assert!(response.error.is_none(), "{:?}", response.error);
+            let plan = response.plan.unwrap();
+            assert!(plan.components.as_ref().unwrap()[0].prop_only_sites.is_empty(), "{source}");
+        }
+    }
+
+    #[test]
+    fn numeric_owner_event_proof_accepts_only_owner_setter_callbacks() {
+        for body in [
+            "export function Counter() { const [n, setN] = useState(0); return <button data-n={n + 1} onClick={() => setN(previous => previous + 1)} />; }",
+            "export const Counter = () => { const [n, setN] = useState(0); return <button data-n={n + 1} onClick={() => setN(1)} />; };",
+        ] {
+            let source = format!("import {{ useState }} from \"native_runtime_api.ts\"; {body}");
+            let response = compile_state("numeric-owner-event.tsx", &source);
+            assert!(response.error.is_none(), "{:?}", response.error);
+            assert_eq!(response.plan.unwrap().components.unwrap()[0].prop_only_sites.len(), 1);
+        }
+        for callback in ["() => report(n)", "() => object.call()", "() => setN(n + 1)", "() => setN(previous => globalValue + previous)"] {
+            let source = format!("import {{ useState }} from \"native_runtime_api.ts\"; export function Counter() {{ const [n, setN] = useState(0); return <button data-n={{n + 1}} onClick={{{callback}}} />; }}");
+            let response = compile_state("numeric-owner-event-opaque.tsx", &source);
+            assert!(response.error.is_none(), "{:?}", response.error);
+            assert!(response.plan.unwrap().components.unwrap()[0].prop_only_sites.is_empty(), "{source}");
+        }
+    }
+
+    #[test]
+    fn numeric_owner_ref_proof_requires_a_stable_module_local_binding() {
+        for binding in [
+            "export function captureNode(node) { return () => {}; }",
+            "export const captureNode = node => () => {};",
+        ] {
+            let source = format!("import {{ useState }} from \"native_runtime_api.ts\"; {binding} export function Counter() {{ const [n] = useState(0); return <output ref={{captureNode}} data-n={{n + 1}} />; }}");
+            let response = compile_state("numeric-owner-stable-ref.tsx", &source);
+            assert!(response.error.is_none(), "{:?}", response.error);
+            assert_eq!(response.plan.unwrap().components.unwrap()[0].prop_only_sites.len(), 1, "{source}");
+        }
+        for (binding, reference) in [
+            ("let captureNode = node => () => {}; captureNode = node => () => {};", "captureNode"),
+            ("const refHolder = { captureNode(node) {} };", "refHolder.captureNode"),
+            ("", "node => captureNode(node)"),
+            ("import { captureNode } from './ref.ts';", "captureNode"),
+        ] {
+            let source = format!("import {{ useState }} from \"native_runtime_api.ts\"; {binding} export function Counter() {{ const [n] = useState(0); return <output ref={{{reference}}} data-n={{n + 1}} />; }}");
+            let response = compile_state("numeric-owner-unstable-ref.tsx", &source);
+            assert!(response.error.is_none(), "{:?}", response.error);
+            assert!(response.plan.unwrap().components.unwrap()[0].prop_only_sites.is_empty(), "{source}");
+        }
+        let source = "import { useState } from 'native_runtime_api.ts'; function captureNode(node) {} function unrelated() { eval('captureNode = null'); } export function Counter() { const [n] = useState(0); return <output ref={captureNode} data-n={n + 1} />; }";
+        let response = compile_state("numeric-owner-eval-ref.tsx", source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        assert!(response.plan.unwrap().components.unwrap()[0].prop_only_sites.is_empty());
+    }
+
+    #[test]
+    fn numeric_owner_dom_position_arrays_reuse_only_certified_sink_spans() {
+        for tag in ["i", "li"] {
+            let source = format!("import {{ useState }} from 'native_runtime_api.ts'; export function Row() {{ const [x] = useState(1); const [y] = useState(2); const [z] = useState(3); return <{tag} position={{[z, x, y]}} style={{{{ left: `${{x}}px` }}}} />; }}");
+            let response = compile_state("numeric-owner-dom-vector.tsx", &source);
+            assert!(response.error.is_none(), "{:?}", response.error);
+            let plan = response.plan.unwrap();
+            assert_eq!(plan.components.as_ref().unwrap()[0].prop_only_sites.len(), 3, "{source}");
+            let code = plan.component_module.unwrap();
+            assert!(code.contains("position={__nativeBindStatePropsAt("), "{code}");
+            assert!(code.contains("=> ([z, x, y])"), "{code}");
+        }
+        for position in ["[1, 2, 3]", "[z, opaque(), y]"] {
+            let source = format!("import {{ useState }} from 'native_runtime_api.ts'; export function Row() {{ const [x] = useState(1); const [y] = useState(2); const [z] = useState(3); return <i position={{{position}}} data-n={{x + 1}} />; }}");
+            let response = compile_state("numeric-owner-dom-vector-opaque.tsx", &source);
+            assert!(response.error.is_none(), "{:?}", response.error);
+            let plan = response.plan.unwrap();
+            assert!(plan.components.as_ref().unwrap()[0].prop_only_sites.is_empty(), "{source}");
+        }
+    }
+
+    #[test]
+    fn numeric_owner_key_proof_accepts_immutable_props_but_not_state() {
+        let source = "import { useState } from 'native_runtime_api.ts'; export function Item({ id }) { const [n] = useState(0); return <li key={id} data-n={n + 1} />; }";
+        let response = compile_state("numeric-owner-prop-key.tsx", source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let plan = response.plan.unwrap();
+        let item = &plan.components.as_ref().unwrap()[0];
+        assert_eq!(item.prop_only_sites.len(), 1);
+        assert_eq!(item.numeric_primitive_props, vec!["id"]);
+        let source = "import { useState } from 'native_runtime_api.ts'; export function Item() { const [n] = useState(0); return <li key={n} data-n={n + 1} />; }";
+        let response = compile_state("numeric-owner-state-key.tsx", source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        assert!(response.plan.unwrap().components.unwrap()[0].prop_only_sites.is_empty());
+    }
+
+    #[test]
+    fn numeric_owner_direct_primitive_props_are_guarded_and_nested_reads_decline() {
+        let cases = [
+            ("export function Counter(props) { const [n] = useState(0); return <output data-id={props.id} data-n={n + 1} />; }", true),
+            ("export const Counter = ({ id }) => { const [n] = useState(0); return <output data-id={id} data-n={n + 1} />; };", true),
+            ("export function Counter({ row }) { const [n] = useState(0); return <output data-id={row.id} data-n={n + 1} />; }", false),
+            ("export function Counter(props) { const [n] = useState(0); return <output data-id={props.row.id} data-n={n + 1} />; }", false),
+        ];
+        for (body, eligible) in cases {
+            let source = format!("import {{ useState }} from \"native_runtime_api.ts\"; {body}");
+            let response = compile_state("numeric-owner-props.tsx", &source);
+            assert!(response.error.is_none(), "{:?}", response.error);
+            let plan = response.plan.unwrap();
+            let component = &plan.components.as_ref().unwrap()[0];
+            assert_eq!(component.prop_only_sites.len() == 1, eligible, "{source}");
+            assert_eq!(component.numeric_primitive_props.first().map(String::as_str) == Some("id") &&
+                component.numeric_primitive_props.len() == 1, eligible, "{source}");
+            let code = plan.component_module.unwrap();
+            assert_eq!(code.contains("numericPrimitiveProps: [\"id\"]"), eligible, "{code}");
+        }
+    }
+
+    #[test]
+    fn numeric_owner_captures_unused_destructuring_and_declines_reserved_props() {
+        let source = "import { useState } from 'native_runtime_api.ts'; export function Counter({ unused }) { const [n] = useState(0); const [label] = useState('ready'); return <output data-n={n + 1}>{label}</output>; }";
+        let response = compile_state("numeric-owner-all-inputs.tsx", source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let plan = response.plan.unwrap();
+        let component = &plan.components.as_ref().unwrap()[0];
+        assert_eq!(component.numeric_primitive_props, vec!["unused"]);
+        let code = plan.component_module.unwrap();
+        assert!(code.contains("numericPrimitiveProps: [\"unused\"]"), "{code}");
+        for parameter in ["{ key }", "{ ref }"] {
+            let source = format!("import {{ useState }} from 'native_runtime_api.ts'; export function Counter({parameter}) {{ const [n] = useState(0); return <output data-n={{n + 1}} />; }}");
+            let response = compile_state("numeric-owner-reserved-prop.tsx", &source);
+            assert!(response.error.is_none(), "{:?}", response.error);
+            assert!(response.plan.unwrap().components.unwrap()[0].prop_only_sites.is_empty());
+        }
+        for property in ["key", "ref"] {
+            let source = format!("import {{ useState }} from 'native_runtime_api.ts'; export function Counter(props) {{ const [n] = useState(0); return <output data-n={{n + 1}} data-reserved={{props.{property}}} />; }}");
+            let response = compile_state("numeric-owner-reserved-read.tsx", &source);
+            assert!(response.error.is_none(), "{:?}", response.error);
+            assert!(response.plan.unwrap().components.unwrap()[0].prop_only_sites.is_empty());
+        }
+    }
+
+    #[test]
+    fn numeric_owner_keeps_independent_primitive_text_generic_and_static_three_args_closed() {
+        let cases = [
+            ("mixed-text.tsx", "export function Row() { const [x] = useState(0); const [label] = useState(\"ready\"); return <div data-x={x}><span>{label}</span></div>; }"),
+            ("static-three-args.tsx", "export function Scene() { const [x] = useState(0); return <mesh position={[x, 0, 0]}><boxGeometry args={[1, 2, 3]} /><meshStandardMaterial roughness={x / 10} /></mesh>; }"),
+        ];
+        for (path, body) in cases {
+            let source = format!("import {{ useState }} from \"native_runtime_api.ts\"; {body}");
+            let response = compile_state(path, &source);
+            assert!(response.error.is_none(), "{:?}", response.error);
+            let plan = response.plan.unwrap();
+            assert_eq!(plan.components.as_ref().unwrap()[0].prop_only_sites.len(), 1, "{source}");
+            assert!(plan.component_module.unwrap().contains("__nativeNumericPrograms"), "{source}");
+        }
     }
 
     #[test]

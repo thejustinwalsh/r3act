@@ -20,17 +20,19 @@ const resultPath = path.join(cacheDirectory, `compiled-three-owner-row-proof-${a
 const failurePath = path.join(cacheDirectory, `compiled-three-owner-row-failure-${attemptId}.json`);
 const runtimeUrl = pathToFileURL(path.join(projectRoot, "src/native_runtime_api.ts")).href;
 
-const authored = `import { useState } from ${JSON.stringify(runtimeUrl)};
-export const trace = { renders: 0, controls: null };
+const authored = `import { useState, useEffect } from ${JSON.stringify(runtimeUrl)};
+export const trace = { controls: null, activations: 0 };
 
 export function SceneComponent() {
-  trace.renders++;
   const [x, setX] = useState(0);
   const [y, setY] = useState(0);
   const [z, setZ] = useState(0);
   const [r, setR] = useState(0);
   const [rough, setRough] = useState(0.2);
-  trace.controls = { x: setX, y: setY, z: setZ, r: setR, rough: setRough };
+  useEffect(() => {
+    trace.controls = { x: setX, y: setY, z: setZ, r: setR, rough: setRough };
+    trace.activations++;
+  });
   const parity = x % 2;
   return <mesh position={[x, y + parity, z]} rotation={[r, 0, 0]}>
     <boxGeometry args={[1, 2, 3]} />
@@ -192,12 +194,16 @@ try {
     "emitted layout and registered semantic plan share one module revision");
   const scene = new THREE.Scene();
   const rootId = `compiled-owner-three-${attemptId}`;
+  const renderFrames = [];
   rootBundle = createThreeNativeRoot(scene, {
     namespace: THREE,
-    rootOptions: { rootId, scheduleCommit() {} },
+    rootOptions: { rootId, scheduleCommit() {}, profileCounter(frame) { renderFrames.push(frame); } },
   });
   const threeHost = rootBundle.host;
   rootBundle.root.mount(jsx(app.SceneComponent, {}));
+  const componentRenders = () => renderFrames.reduce((sum, frame) => sum +
+    (frame["owner.component-renders"] ?? 0), 0);
+  const initialComponentRenders = componentRenders();
   const mesh = scene.children.find((child) => child instanceof THREE.Mesh);
   assert.ok(mesh, "actual Three Mesh is attached to the supplied Scene");
   assert.ok(mesh.geometry instanceof THREE.BufferGeometry, "actual Three geometry is attached");
@@ -212,7 +218,8 @@ try {
   let materialDisposals = 0;
   geometry.dispose = () => { geometryDisposals++; geometryDispose(); };
   material.dispose = () => { materialDisposals++; materialDispose(); };
-  assert.equal(app.trace.renders, 1, "initial authored component render occurs once");
+  assert.equal(app.trace.activations, 1, "initial authored component activates once");
+  assert.equal(initialComponentRenders, 0, "mount does not emit flush profile frames");
   assert.deepEqual(positionObject.toArray(), [0, 0, 0]);
   assert.deepEqual([rotationObject.x, rotationObject.y, rotationObject.z], [0, 0, 0]);
   assert.equal(material.roughness, 0.2);
@@ -244,7 +251,7 @@ try {
     assert.equal(mesh.material, material, `frame ${frame} preserves material identity`);
   }
 
-  assert.equal(app.trace.renders, 1, "all eligible frame batches update Three objects without rerendering the component");
+  assert.equal(componentRenders(), initialComponentRenders, "all eligible frame batches update Three objects without rerendering the component");
   const rowCalls = metrics.rowCalls.slice();
   assert.equal(rowCalls.length, 240, "each setter batch executes exactly one owner-row numeric cut");
   assert.ok(rowCalls.every(({ count, tokensLength, changedRowIndicesType, changedSlotsType, valuesLength }) =>
@@ -307,7 +314,7 @@ try {
       genericSourceProgramCalls: metrics.sourceProgramCalls - sourceProgramBaseline,
     },
     threeObjectIdentity: {
-      componentRenders: app.trace.renders,
+      profiledFlushComponentRenders: componentRenders(),
       ...identitiesAfterBatches,
       geometryDisposals,
       materialDisposals,

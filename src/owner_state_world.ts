@@ -2208,6 +2208,18 @@ export class OwnerStateWorld {
     return this.#owners.has(owner);
   }
 
+  /** Check canonical committed state without creating or dispatching a cell. */
+  ownerStateValuesArePrimitive(owner: OwnerId): boolean {
+    if (!this.#owners.has(owner) || this.#stagedOwners.has(owner)) return false;
+    for (const cell of this.#stateByOwner.get(owner)?.values() ?? []) {
+      const value = cell.value;
+      if (value !== null && value !== undefined &&
+        typeof value !== "string" && typeof value !== "number" &&
+        typeof value !== "boolean") return false;
+    }
+    return true;
+  }
+
   isWithin(owner: OwnerId, ancestor: OwnerId): boolean {
     if (!this.#owners.has(owner) || !this.#owners.has(ancestor)) return false;
     let current: OwnerId | null = owner;

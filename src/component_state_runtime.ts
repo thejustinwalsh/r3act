@@ -284,11 +284,14 @@ type PreparedRender = {
   result: RuntimeNode;
   ownEffects: Map<string, EffectRegistration>;
   propBoundSites: ReadonlySet<string>;
+  readonly numericStateAdmitted: boolean;
 };
 type ComponentCache = {
   type: RuntimeElement["type"];
   hostKeyScope: OwnerKey;
   props: Record<string, unknown>;
+  readonly numericPropsAdmitted?: boolean;
+  readonly numericStateAdmitted?: boolean;
   result: RuntimeNode;
   expandedResult: RuntimeNode;
   subtreeOwners: ReadonlySet<OwnerId>;
@@ -390,6 +393,7 @@ type ActiveOwner = {
   world: Pick<OwnerStateWorld, "useState" | "scalarSource">;
   owner: OwnerId;
   stateLayout?: CompiledStateLayout;
+  numericStateReadsPrimitive: boolean;
   registerEffect: (siteId: string, setup: EffectSetup) => void;
   propBoundSites: Set<string>;
   readStore: <T>(siteId: string, source: StoreSource<T>) => T;
@@ -473,6 +477,7 @@ export const defineComponent = <P extends Record<string, unknown>>(
   render: ComponentType<P>,
   metadata?: {
     readonly propOnlySites: readonly string[];
+    readonly numericPrimitiveProps?: readonly string[];
     /** Compiler proof that every render result is a single intrinsic host root. */
     readonly hostLeafOutput?: boolean;
     readonly stateLayout?: CompiledStateLayout;
@@ -500,6 +505,17 @@ export const defineComponent = <P extends Record<string, unknown>>(
       throw new Error(
         "Component prop-only metadata contains an invalid state site ID",
       );
+    }
+    if (metadata?.numericPrimitiveProps !== undefined &&
+      !Array.isArray(metadata.numericPrimitiveProps)) {
+      throw new Error("Component numeric primitive prop metadata is invalid");
+    }
+    const numericPrimitiveProps = metadata?.numericPrimitiveProps === undefined
+      ? undefined : [...metadata.numericPrimitiveProps];
+    if (numericPrimitiveProps?.some((name) =>
+      typeof name !== "string" || !name || name === "key" || name === "ref"
+    )) {
+      throw new Error("Component numeric primitive prop metadata is invalid");
     }
     let stateLayout: CompiledStateLayout | undefined;
     if (metadata?.stateLayout !== undefined) {
@@ -564,6 +580,9 @@ export const defineComponent = <P extends Record<string, unknown>>(
     }
     normalizedMetadata = Object.freeze({
         propOnlySites: Object.freeze(propOnlySites),
+        ...(numericPrimitiveProps
+          ? { numericPrimitiveProps: Object.freeze(numericPrimitiveProps) }
+          : {}),
         hostLeafOutput: metadata?.hostLeafOutput === true,
         ...(revision ? { revision } : {}),
         ...(stateLayout ? { stateLayout } : {}),
@@ -582,6 +601,7 @@ const emptyCompiledPropSites: ReadonlySet<string> = new Set();
 type ComponentMetadata = {
   readonly revision?: CompiledSemanticRevisionToken;
   readonly propOnlySites: readonly string[];
+  readonly numericPrimitiveProps?: readonly string[];
   readonly hostLeafOutput?: boolean;
   readonly stateLayout?: CompiledStateLayout;
   readonly closedResourceHostProgram?: ClosedResourceHostProgram;
@@ -683,6 +703,43 @@ const compiledStateLayoutFor = (
   typeof component === "function"
     ? definedComponents.get(component)?.metadata?.stateLayout
     : undefined;
+
+const numericOwnerPropsAdmitted = (
+  component: unknown,
+  props: Record<string, unknown>,
+  owned: boolean,
+): boolean => {
+  const names = typeof component === "function"
+    ? definedComponents.get(component)?.metadata?.numericPrimitiveProps
+    : undefined;
+  if (!names?.length) return true;
+  if (!owned || !Object.isFrozen(props)) return false;
+  for (const name of names) {
+    const descriptor = Object.getOwnPropertyDescriptor(props, name);
+    if (!descriptor || !("value" in descriptor) ||
+      (descriptor.value !== null && descriptor.value !== undefined &&
+        typeof descriptor.value !== "string" &&
+        typeof descriptor.value !== "number" &&
+        typeof descriptor.value !== "boolean")) return false;
+  }
+  return true;
+};
+
+const ownNumericOwnerProps = (
+  component: unknown,
+  source: RuntimeElement,
+  props: Record<string, unknown>,
+): Record<string, unknown> => {
+  const names = typeof component === "function"
+    ? definedComponents.get(component)?.metadata?.numericPrimitiveProps
+    : undefined;
+  if (names?.length && isRuntimeOwnedElement(source) &&
+    Object.isFrozen(source.props)) Object.freeze(props);
+  return props;
+};
+
+const numericOwnerCacheAdmitted = (cache: ComponentCache): boolean =>
+  cache.numericPropsAdmitted === true && cache.numericStateAdmitted === true;
 
 const closedResourceHostProgramFor = (
   component: unknown,
@@ -945,9 +1002,14 @@ export const useStateAt = <T>(
       "useStateAt must run while an owner-aware component is rendering",
     );
   }
-  return active.stateLayout
+  const result = active.stateLayout
     ? active.world.useState(active.owner, siteId, initial, active.stateLayout)
     : active.world.useState(active.owner, siteId, initial);
+  const value = result[0];
+  if (value !== null && value !== undefined &&
+    typeof value !== "string" && typeof value !== "number" &&
+    typeof value !== "boolean") active.numericStateReadsPrimitive = false;
+  return result;
 };
 
 /** Register an effect by compiler site ID; setup runs after commit, cleanup on deactivation or owner removal. */
@@ -1056,7 +1118,11 @@ export const renderCollectionAt = <T>(
         }`,
       );
     }
-    rows.set(key, { ...rendered, props: { ...rendered.props, key } });
+    const props = { ...rendered.props, key };
+    const owned = isRuntimeOwnedElement(rendered as unknown);
+    rows.set(key, owned
+      ? copyRuntimeElement(rendered.type, props)
+      : { ...rendered, props });
     return rows.get(key)!;
   });
   const version = createKeyedOwnerVersion();
@@ -2541,7 +2607,7 @@ export class ComponentStateRoot<H, Parent = H> {
       if (
         !source || version === null || !cache ||
         !this.#liveOwners.has(handle.owner) ||
-        !this.#compiledPropSitesForCache(cache).has(handle.site)
+        !this.#compiledPropSitesForCache(handle.owner, cache).has(handle.site)
       ) return null;
       if (sources.has(source)) continue;
       sources.add(source);
@@ -3005,6 +3071,7 @@ export class ComponentStateRoot<H, Parent = H> {
           expandedResult: result,
           ownEffects: prepared.ownEffects,
           propBoundSites: prepared.propBoundSites,
+          numericStateAdmitted: prepared.numericStateAdmitted,
         });
         regions.push({ key: readerKeys.get(owner)!, tree: result });
         this.#count("store.sparse.reader-owner-renders");
@@ -4002,7 +4069,7 @@ export class ComponentStateRoot<H, Parent = H> {
     for (const change of capturedChanges) {
       const cache = this.#componentCache.get(change.owner);
       const approvedSites = cache
-        ? this.#compiledPropSitesForCache(cache)
+        ? this.#compiledPropSitesForCache(change.owner, cache)
         : undefined;
       const source = this.world.scalarSourceForChange(change);
       const approved = !!cache &&
@@ -4899,10 +4966,15 @@ export class ComponentStateRoot<H, Parent = H> {
         for (const [name, descriptor] of Object.entries(step.descriptors)) {
           if (name !== "key" && name !== "ref") componentProps[name] = descriptor.value;
         }
+        ownNumericOwnerProps(step.type, step.node, componentProps);
         preparedCaches.set(preparedOwners[index], {
           type: step.type,
           hostKeyScope: step.hostKeyScope,
           props: componentProps,
+          numericPropsAdmitted: numericOwnerPropsAdmitted(
+            step.type, componentProps, isRuntimeOwnedElement(step.node),
+          ),
+          numericStateAdmitted: true,
           result: steps[index + 1]?.node ?? generated,
           expandedResult: generated,
           subtreeOwners: new Set(preparedOwners.slice(index)),
@@ -5176,7 +5248,9 @@ export class ComponentStateRoot<H, Parent = H> {
     const activeOwner: ActiveOwner = {
       world: options.preparation ?? this.world,
       owner,
-      stateLayout: compiledStateLayoutFor(cached.type),
+      numericStateReadsPrimitive: true,
+      stateLayout: numericOwnerCacheAdmitted(cached)
+        ? compiledStateLayoutFor(cached.type) : undefined,
       propBoundSites,
       readStore: (siteId, source) =>
         storeTransaction.read(source, `${owner}\u0000${siteId}`),
@@ -5238,7 +5312,8 @@ export class ComponentStateRoot<H, Parent = H> {
     if (this.#profile) {
       this.#profile("owner.render-and-key", performance.now() - renderStarted);
     }
-    return { owner, result, ownEffects, propBoundSites };
+    return { owner, result, ownEffects, propBoundSites,
+      numericStateAdmitted: activeOwner.numericStateReadsPrimitive };
   }
 
   #commitPartialOwnerRender(
@@ -5253,6 +5328,7 @@ export class ComponentStateRoot<H, Parent = H> {
       subtreeOwners: new Set([prepared.owner]),
       ownEffects: prepared.ownEffects,
       propBoundSites: prepared.propBoundSites,
+      numericStateAdmitted: prepared.numericStateAdmitted,
     });
     this.#syncOwnerSourceValues(
       prepared.owner,
@@ -5371,6 +5447,7 @@ export class ComponentStateRoot<H, Parent = H> {
               expandedResult,
               ownEffects: prepared.ownEffects,
               propBoundSites: prepared.propBoundSites,
+              numericStateAdmitted: prepared.numericStateAdmitted,
             });
             this.#syncOwnerSourceValues(
               owner,
@@ -5488,6 +5565,7 @@ export class ComponentStateRoot<H, Parent = H> {
       subtreeOwners: ownSubtreeOwners,
       ownEffects: prepared.ownEffects,
       propBoundSites: prepared.propBoundSites,
+      numericStateAdmitted: prepared.numericStateAdmitted,
       ...(structuralKeyedRegions?.get(owner)
         ? { keyedRegion: structuralKeyedRegions.get(owner) }
         : {}),
@@ -5527,6 +5605,7 @@ export class ComponentStateRoot<H, Parent = H> {
             result: candidate.result,
             ownEffects: candidate.ownEffects,
             propBoundSites: candidate.propBoundSites,
+            numericStateAdmitted: candidate.numericStateAdmitted === true,
           });
         }
       }
@@ -5783,6 +5862,7 @@ export class ComponentStateRoot<H, Parent = H> {
           subtreeOwners: new Set([item.owner]),
           ownEffects: item.ownEffects,
           propBoundSites: item.propBoundSites,
+          numericStateAdmitted: item.numericStateAdmitted,
         });
         this.#syncOwnerSourceValues(
           item.owner,
@@ -5979,8 +6059,12 @@ export class ComponentStateRoot<H, Parent = H> {
     );
   }
 
-  #compiledPropSitesForCache(cache: ComponentCache): ReadonlySet<string> {
+  #compiledPropSitesForCache(owner: OwnerId, cache: ComponentCache): ReadonlySet<string> {
     if (cache.propBoundSites.size === 0) return emptyCompiledPropSites;
+    if (!numericOwnerCacheAdmitted(cache) ||
+      !this.world.ownerStateValuesArePrimitive(owner)) {
+      return emptyCompiledPropSites;
+    }
     const cached = this.#compiledPropSitesByCache.get(cache);
     if (cached) return cached;
     const metadata = typeof cache.type === "function"
@@ -5994,6 +6078,16 @@ export class ComponentStateRoot<H, Parent = H> {
     }
     this.#compiledPropSitesByCache.set(cache, eligible);
     return eligible;
+  }
+
+  #compiledOwnerSiteCertified(
+    owner: OwnerId, cache: ComponentCache, site: string,
+  ): boolean {
+    if (!numericOwnerCacheAdmitted(cache) ||
+      !this.world.ownerStateValuesArePrimitive(owner)) return false;
+    const metadata = typeof cache.type === "function"
+      ? definedComponents.get(cache.type)?.metadata : undefined;
+    return metadata?.propOnlySites.includes(site) === true;
   }
 
   #refreshDirectKeyedRegionOutput(owner: OwnerId, sparseStore = false) {
@@ -6303,6 +6397,7 @@ export class ComponentStateRoot<H, Parent = H> {
         const authoredKey = rendered.props.key;
         if (authoredKey != null && String(authoredKey) !== key) return null;
         const { key: _key, ref: _ref, ...props } = rendered.props;
+        ownNumericOwnerProps(rendered.type, rendered, props);
         if (previous?.privateOwner && previous.owner === owner) {
           stores.dropReaders(
             [...stores.readers.keys()].filter((id) =>
@@ -6317,10 +6412,14 @@ export class ComponentStateRoot<H, Parent = H> {
         }
         const ownEffects = new Map<string, EffectRegistration>();
         const propBoundSites = new Set<string>();
-        activeOwners.push({
+        const activeOwner: ActiveOwner = {
           world: preparation,
           owner,
-          stateLayout: compiledStateLayoutFor(rendered.type),
+          numericStateReadsPrimitive: true,
+          stateLayout: numericOwnerPropsAdmitted(
+            rendered.type, props, isRuntimeOwnedElement(rendered),
+          )
+            ? compiledStateLayoutFor(rendered.type) : undefined,
           propBoundSites,
           readStore: (siteId, source) =>
             stores.read(source, `${owner}\u0000${siteId}`),
@@ -6349,7 +6448,8 @@ export class ComponentStateRoot<H, Parent = H> {
             }
             ownEffects.set(effectId, { owner, siteId, setup });
           },
-        });
+        };
+        activeOwners.push(activeOwner);
         let result: RuntimeNode;
         try {
           if (this.#activeCounters) {
@@ -6371,6 +6471,10 @@ export class ComponentStateRoot<H, Parent = H> {
           type: rendered.type,
           hostKeyScope: key,
           props,
+          numericPropsAdmitted: numericOwnerPropsAdmitted(
+            rendered.type, props, isRuntimeOwnedElement(rendered),
+          ),
+          numericStateAdmitted: activeOwner.numericStateReadsPrimitive,
           result,
           expandedResult: result,
           subtreeOwners: new Set([owner]),
@@ -6676,6 +6780,7 @@ export class ComponentStateRoot<H, Parent = H> {
                 expandedResult: prepared.result,
                 ownEffects: prepared.ownEffects,
                 propBoundSites: prepared.propBoundSites,
+                numericStateAdmitted: prepared.numericStateAdmitted,
               });
               leafPreviousCaches.set(owner, cache);
               leafRegions.push({ key, tree: prepared.result });
@@ -6701,7 +6806,7 @@ export class ComponentStateRoot<H, Parent = H> {
         const cache = this.#componentCache.get(change.owner);
         const source = this.world.scalarSourceForChange(change);
         const approvedSites = cache
-          ? this.#compiledPropSitesForCache(cache)
+          ? this.#compiledPropSitesForCache(change.owner, cache)
           : undefined;
         const previous = source
           ? this.#lastSourceValues.get(source)
@@ -7362,13 +7467,18 @@ export class ComponentStateRoot<H, Parent = H> {
       else if (existingOwner === undefined) newlyAllocatedOwners.push(owner);
 
       const { key: _key, ref: _ref, ...props } = rendered.props;
+      ownNumericOwnerProps(rendered.type, rendered, props);
       const ownEffects = new Map<string, EffectRegistration>();
       const propBoundSites = new Set<string>();
       const storeTransaction = new StoreRenderTransaction(this.#rootId);
-      activeOwners.push({
+      const activeOwner: ActiveOwner = {
         world: this.world,
         owner,
-        stateLayout: compiledStateLayoutFor(rendered.type),
+        numericStateReadsPrimitive: true,
+        stateLayout: numericOwnerPropsAdmitted(
+          rendered.type, props, isRuntimeOwnedElement(rendered),
+        )
+          ? compiledStateLayoutFor(rendered.type) : undefined,
         propBoundSites,
         readStore: (siteId, source) =>
           storeTransaction.read(source, `${owner}\u0000${siteId}`),
@@ -7384,7 +7494,8 @@ export class ComponentStateRoot<H, Parent = H> {
           }
           ownEffects.set(effectId, { owner, siteId, setup });
         },
-      });
+      };
+      activeOwners.push(activeOwner);
       let result: RuntimeNode;
       try {
         if (this.#activeCounters) {
@@ -7408,6 +7519,10 @@ export class ComponentStateRoot<H, Parent = H> {
         type: rendered.type,
         hostKeyScope: key,
         props,
+        numericPropsAdmitted: numericOwnerPropsAdmitted(
+          rendered.type, props, isRuntimeOwnedElement(rendered),
+        ),
+        numericStateAdmitted: activeOwner.numericStateReadsPrimitive,
         result,
         expandedResult: result,
         subtreeOwners: new Set([owner]),
@@ -8390,12 +8505,18 @@ export class ComponentStateRoot<H, Parent = H> {
     let accepted = false;
     try {
       for (let index = 0; index < count; index++) {
+        const handle = this.#nativeCellHandles[index]!;
+        const cache = this.#componentCache.get(handle.owner);
+        if (!cache) return null;
         const view = this.world.numericRowForCell(
-          this.#nativeCellHandles[index]!,
+          handle,
           this.#nativeCellVersions[index],
         );
         if (!view || !view.layout.programId) return null;
         let prepared = this.#nativeRowPrograms.get(view.rowIdentity);
+        if (!this.#compiledOwnerSiteCertified(handle.owner, cache, handle.site)) {
+          return null;
+        }
         if (!prepared) {
           const token = this.#vdom.prepareNumericRowProgram(view);
           if (!token) return null;
@@ -8435,8 +8556,13 @@ export class ComponentStateRoot<H, Parent = H> {
         // A binding edit can stale a cached VDOM token. Recheck the entire
         // World cut before rebuilding any row token; never recapture values.
         for (let index = 0; index < count; index++) {
+          const handle = this.#nativeCellHandles[index]!;
+          const cache = this.#componentCache.get(handle.owner);
+          if (!cache || !this.#compiledOwnerSiteCertified(handle.owner, cache, handle.site)) {
+            return null;
+          }
           const current = this.world.numericRowForCell(
-            this.#nativeCellHandles[index]!,
+            handle,
             this.#nativeCellVersions[index],
           );
           const prior = this.#nativeRowViews[this.#nativeChangedRows[index]]!;
@@ -8497,12 +8623,17 @@ export class ComponentStateRoot<H, Parent = H> {
     try {
       for (let index = 0; index < count; index++) {
         const handle = this.#nativeCellHandles[index]!;
+        const cache = this.#componentCache.get(handle.owner);
+        if (!cache) return null;
         const lane = this.world.numericLaneForCell(
           handle,
           this.#nativeCellVersions[index],
         );
         if (!lane) return null;
         let prepared = this.#nativeLanePrograms.get(lane);
+        if (!this.#compiledOwnerSiteCertified(handle.owner, cache, handle.site)) {
+          return null;
+        }
         if (!prepared) {
           const source = this.world.scalarSourceForCell(handle);
           if (!source) return null;
@@ -8540,6 +8671,10 @@ export class ComponentStateRoot<H, Parent = H> {
         // the same captured values.
         for (let index = 0; index < count; index++) {
           const handle = this.#nativeCellHandles[index]!;
+          const cache = this.#componentCache.get(handle.owner);
+          if (!cache || !this.#compiledOwnerSiteCertified(handle.owner, cache, handle.site)) {
+            return null;
+          }
           const lane = this.world.numericLaneForCell(
             handle,
             this.#nativeCellVersions[index],
@@ -8631,7 +8766,7 @@ export class ComponentStateRoot<H, Parent = H> {
         const source = this.world.scalarSourceForCell(handle);
         const currentVersion = this.world.versionForCell(handle);
         if (
-          !cache || !this.#compiledPropSitesForCache(cache)?.has(handle.site) ||
+          !cache || !this.#compiledPropSitesForCache(handle.owner, cache).has(handle.site) ||
           !source || !this.#lastSourceValues.has(source) ||
           !this.#vdom.hasSourceProgram(source) || currentVersion !== version
         ) return false;
@@ -9335,8 +9470,13 @@ export class ComponentStateRoot<H, Parent = H> {
         }
       }
       const { key: _key, ref: _ref, ...componentProps } = node.props;
+      ownNumericOwnerProps(node.type, node, componentProps);
+      const numericPropsAdmitted = numericOwnerPropsAdmitted(
+        node.type, componentProps, isRuntimeOwnedElement(node),
+      );
       const cached = this.#componentCache.get(owner);
       const propsUnchanged = cached !== undefined &&
+        cached.numericPropsAdmitted === numericPropsAdmitted &&
         shallowEqual(cached.props, componentProps);
       const shouldRender = forceRender || dirtyOwners.has(owner) || !cached ||
         cached.invalidatedByCollection === true ||
@@ -9393,12 +9533,15 @@ export class ComponentStateRoot<H, Parent = H> {
         let ownEffects = cached?.ownEffects;
         let propBoundSites: ReadonlySet<string> = cached?.propBoundSites ??
           new Set();
+        let numericStateAdmitted = cached?.numericStateAdmitted === true;
         if (shouldRender) {
-          const prepared = this.#preparedRenders.get(owner) ?? null;
+          const prepared = cached?.numericPropsAdmitted === numericPropsAdmitted
+            ? this.#preparedRenders.get(owner) ?? null : null;
           if (prepared) {
             result = prepared.result;
             ownEffects = prepared.ownEffects;
             propBoundSites = prepared.propBoundSites;
+            numericStateAdmitted = prepared.numericStateAdmitted;
             for (const [registeredKey, effect] of ownEffects) {
               if (expansionJournal) {
                 expansionJournal.set(nextEffects, registeredKey, effect);
@@ -9408,10 +9551,14 @@ export class ComponentStateRoot<H, Parent = H> {
             ownEffects = new Map<string, EffectRegistration>();
             const nextPropBoundSites = new Set<string>();
             propBoundSites = nextPropBoundSites;
-            activeOwners.push({
+            const activeOwner: ActiveOwner = {
               world: ownerPreparation ?? this.world,
               owner,
-              stateLayout: compiledStateLayoutFor(node.type),
+              numericStateReadsPrimitive: true,
+              stateLayout: numericOwnerPropsAdmitted(
+                node.type, componentProps, isRuntimeOwnedElement(node),
+              )
+                ? compiledStateLayoutFor(node.type) : undefined,
               propBoundSites: nextPropBoundSites,
               readStore: (storeSiteId, source) =>
                 storeTransaction.read(
@@ -9447,13 +9594,15 @@ export class ComponentStateRoot<H, Parent = H> {
                 } else nextEffects.set(key, registration);
                 ownEffects!.set(key, registration);
               },
-            });
+            };
+            activeOwners.push(activeOwner);
             try {
               if (this.#activeCounters) this.#count("owner.component-renders");
               result = node.type(componentProps);
             } finally {
               activeOwners.pop();
             }
+            numericStateAdmitted = activeOwner.numericStateReadsPrimitive;
             result = carryHostKeys(result, key);
           }
         } else if (ownEffects) {
@@ -9524,6 +9673,8 @@ export class ComponentStateRoot<H, Parent = H> {
           type: node.type,
           hostKeyScope: key,
           props: componentProps,
+          numericPropsAdmitted,
+          numericStateAdmitted,
           result: result ?? null,
           expandedResult,
           subtreeOwners: subtreeOwnersByOwner.get(owner) ?? new Set([owner]),

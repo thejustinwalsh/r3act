@@ -10,14 +10,13 @@ import { compiledNumericDescriptors } from "./compiled_numeric_descriptor_test_h
 
 const projectRoot = path.resolve(".");
 const runtimeUrl = pathToFileURL(path.join(projectRoot, "src/native_runtime_api.ts")).href;
-const authored = `import { useState } from ${JSON.stringify(runtimeUrl)};
-export const trace = { renders: 0, controls: {} };
+const authored = `import { useEffect, useState } from ${JSON.stringify(runtimeUrl)};
+export const trace = { controls: {}, activations: 0 };
 export function Scene() {
-  trace.renders++;
   const [position, setPosition] = useState(1);
   const [camera, setCamera] = useState(10);
   const [health, setHealth] = useState(100);
-  trace.controls = { position: setPosition, camera: setCamera, health: setHealth };
+  useEffect(() => { trace.controls = { position: setPosition, camera: setCamera, health: setHealth }; trace.activations++; });
   return <output data-position={position} data-joint={position + camera}
     data-conditional={position ? camera : 0} data-label={\`x=\${position}\`}
     data-health={health} />;
@@ -37,6 +36,7 @@ const context = {
 const attempt = `${Date.now()}-${randomUUID()}`;
 const directory = path.join(projectRoot, ".cache/compiled-retained-transaction");
 let root;
+let restoreHookObserver = () => {};
 try {
   await mkdir(directory, { recursive: true });
   const sourcePath = path.join(directory, `scene-${attempt}.tsx`);
@@ -56,11 +56,41 @@ try {
   const app = await import(`${pathToFileURL(outputPath).href}?attempt=${attempt}`);
   const host = new MemoryVDOMHost();
   const container = host.createContainer();
+  const renderFrames = [];
   root = createNativeRoot(host, container, {
     rootId: `compiled-retained-${attempt}`,
     scheduleCommit() {},
+    profileCounter(frame) { renderFrames.push(frame); },
   });
+  let sceneFirstHookReads = 0;
+  const originalUseState = root.world.useState;
+  const originalBeginPreparation = root.world.beginPreparation;
+  const countSceneHook = (_owner, site) => {
+    if (site.endsWith("#component:Scene#state:0")) sceneFirstHookReads++;
+  };
+  root.world.useState = function (...args) {
+    countSceneHook(args[0], args[1]);
+    return originalUseState.apply(this, args);
+  };
+  root.world.beginPreparation = function (...args) {
+    const preparation = originalBeginPreparation.apply(this, args);
+    const useState = preparation.useState;
+    preparation.useState = function (...stateArgs) {
+      countSceneHook(stateArgs[0], stateArgs[1]);
+      return useState.apply(this, stateArgs);
+    };
+    return preparation;
+  };
+  restoreHookObserver = () => {
+    root.world.useState = originalUseState;
+    root.world.beginPreparation = originalBeginPreparation;
+  };
   root.mount(jsx(app.Scene, {}));
+  const componentRenders = () => renderFrames.reduce((sum, frame) =>
+    sum + (frame["owner.component-renders"] ?? 0), 0);
+  assert.equal(app.trace.activations, 1, "Scene controls activate once at mount");
+  assert.equal(sceneFirstHookReads, 1, "Scene executes exactly once at mount");
+  assert.equal(componentRenders(), 0, "mount does not emit flush profile frames");
   const node = container.children[0];
   assert.deepEqual(
     [node.props["data-position"], node.props["data-joint"],
@@ -78,6 +108,7 @@ try {
   const camera = root.world.cellHandle(position.owner,
     position.site.replace(/#state:0$/, "#state:1"));
   assert.ok(camera, "unchanged joint input has a live cell handle");
+  const hookReadsBeforeCandidates = sceneFirstHookReads;
   assert.equal(root.prepareRetained([position]), null,
     "joint output declines an incomplete input footprint");
   const positionCut = root.prepareRetained([position, camera]);
@@ -108,10 +139,13 @@ try {
     [2, 12, 10, "x=2", 101],
     "retained primitive outputs share the captured position/camera cut",
   );
-  assert.equal(app.trace.renders, 1, "retained cuts do not rerender Scene");
+  assert.equal(componentRenders(), 0, "retained cuts do not rerender Scene");
+  assert.equal(sceneFirstHookReads, hookReadsBeforeCandidates,
+    "manual retained candidates do not execute Scene hooks");
   unsubscribe();
   console.log("PASS compiled retained transaction: actual TSX closed AST, complete joint footprint, unrelated accepted cut, primitive outputs, and no rerender.");
 } finally {
+  restoreHookObserver();
   root?.dispose();
   await plugin.closeBundle();
 }

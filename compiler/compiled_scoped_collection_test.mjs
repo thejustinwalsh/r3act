@@ -27,7 +27,6 @@ export const rightRows = createKeyedCollection([
 ], row => row.id);
 export const trace = {
   appRenders: 0,
-  rowRenders: Object.create(null),
   setters: Object.create(null),
   mounts: Object.create(null),
   cleanups: Object.create(null),
@@ -35,32 +34,32 @@ export const trace = {
   refCleanups: Object.create(null),
 };
 
-export function Item({ row }) {
-  trace.rowRenders[row.id] = (trace.rowRenders[row.id] || 0) + 1;
+export function captureItemNode(node) {
+  if (!node) return;
+  const id = node.props["data-row"];
+  trace.refAttachments[id] = (trace.refAttachments[id] || 0) + 1;
+  return () => { trace.refCleanups[id] = (trace.refCleanups[id] || 0) + 1; };
+}
+
+export function Item({ id }) {
   const [count, setCount] = useState(0);
-  trace.setters[row.id] = setCount;
   useEffect(() => {
-    trace.mounts[row.id] = (trace.mounts[row.id] || 0) + 1;
+    trace.setters[id] = setCount;
+    trace.mounts[id] = (trace.mounts[id] || 0) + 1;
     return () => {
-      trace.cleanups[row.id] = (trace.cleanups[row.id] || 0) + 1;
+      trace.cleanups[id] = (trace.cleanups[id] || 0) + 1;
     };
   });
-  return <li key={row.id} data-row={row.id} data-count={count}
-    ref={node => {
-      if (!node) return;
-      trace.refAttachments[row.id] = (trace.refAttachments[row.id] || 0) + 1;
-      return () => {
-        trace.refCleanups[row.id] = (trace.refCleanups[row.id] || 0) + 1;
-      };
-    }}>{row.id}</li>;
+  return <li key={id} data-row={id} data-count={count}
+    ref={captureItemNode}>{id}</li>;
 }
 
 export function List({ side }) {
   return side === "left"
     ? <ul key="left-list" data-side="left">{renderCollectionAt("compiled-scoped-left", leftRows,
-        row => <Item key={row.id} row={row} />)}</ul>
+        row => <Item key={row.id} id={row.id} />)}</ul>
     : <ul key="right-list" data-side="right">{renderCollectionAt("compiled-scoped-right", rightRows,
-        row => <Item key={row.id} row={row} />)}</ul>;
+        row => <Item key={row.id} id={row.id} />)}</ul>;
 }
 
 export function App() {
@@ -96,6 +95,7 @@ let root;
 let app;
 let failure;
 let proof;
+let restoreHookObserver = () => {};
 try {
   await mkdir(directory, { recursive: true });
   await writeFile(sourcePath, authored, { flag: "wx" });
@@ -112,16 +112,51 @@ try {
   app = await import(`${pathToFileURL(outputPath).href}?attempt=${attempt}`);
   const host = new MemoryVDOMHost();
   const container = host.createContainer();
+  const renderFrames = [];
   root = createNativeRoot(host, container, {
     rootId: `compiled-scoped-${attempt}`,
     scheduleCommit() {},
+    profileCounter(frame) { renderFrames.push(frame); },
   });
+  const itemHookReads = new Map();
+  const originalUseState = root.world.useState;
+  const originalBeginPreparation = root.world.beginPreparation;
+  const countItemHook = (owner, site) => {
+    if (site.endsWith("#component:Item#state:0")) {
+      itemHookReads.set(owner, (itemHookReads.get(owner) ?? 0) + 1);
+    }
+  };
+  root.world.useState = function (...args) {
+    countItemHook(args[0], args[1]);
+    return originalUseState.apply(this, args);
+  };
+  root.world.beginPreparation = function (...args) {
+    const preparation = originalBeginPreparation.apply(this, args);
+    const useState = preparation.useState;
+    preparation.useState = function (...stateArgs) {
+      countItemHook(stateArgs[0], stateArgs[1]);
+      return useState.apply(this, stateArgs);
+    };
+    return preparation;
+  };
+  restoreHookObserver = () => {
+    root.world.useState = originalUseState;
+    root.world.beginPreparation = originalBeginPreparation;
+  };
   root.mount(jsx(app.App, {}));
+  const componentRenders = () => renderFrames.reduce((sum, frame) =>
+    sum + (frame["owner.component-renders"] ?? 0), 0);
   const section = container.children[0];
   const left = section.children[0];
   const right = section.children[1];
   assert.deepEqual(order(left), ["a", "b", "c"]);
   assert.deepEqual(order(right), ["d", "e", "f"]);
+  assert.deepEqual(Object.keys(app.trace.setters).sort(), ["a", "b", "c", "d", "e", "f"],
+    "all authored Item controls activate at mount");
+  assert.equal(itemHookReads.size, 6, "each Item reads its first hook at mount");
+  assert.ok([...itemHookReads.values()].every((count) => count === 1),
+    "each Item executes exactly once at mount");
+  assert.equal(componentRenders(), 0, "mount does not emit flush profile frames");
   const a = rowNode(left, "a");
   const b = rowNode(left, "b");
   const c = rowNode(left, "c");
@@ -131,8 +166,10 @@ try {
   assert.equal(root.flush(), true);
   assert.equal(rowNode(left, "b"), b, "local state update remounted b");
   assert.equal(b.props["data-count"], 7);
-  const rendersBeforeCut = { ...app.trace.rowRenders };
+  const rendersBeforeCut = componentRenders();
+  const hookReadsBeforeCut = new Map(itemHookReads);
   const appRendersBeforeCut = app.trace.appRenders;
+  const mountsBeforeCut = { ...app.trace.mounts };
   const versionBeforeCut = root.publicationVersion;
 
   assert.equal(app.trace.setters.c(9), true, "numeric input did not become dirty");
@@ -162,10 +199,14 @@ try {
     "structural cut consumed an independent pending numeric input");
   assert.equal(root.diagnostics().pendingChangeCount, 1,
     "structural cuts acknowledged an unrelated numeric input");
-  assert.deepEqual({ ...app.trace.rowRenders }, rendersBeforeCut,
-    "move/remove rerendered a retained row");
+  assert.equal(componentRenders(), rendersBeforeCut,
+    "scoped move/remove does not enter a flush owner render");
+  assert.deepEqual(itemHookReads, hookReadsBeforeCut,
+    "manual scoped move/remove does not execute retained Item hooks");
   assert.equal(app.trace.appRenders, appRendersBeforeCut,
-    "move/remove rerendered common App");
+    "manual scoped move/remove does not execute common App");
+  assert.deepEqual({ ...app.trace.mounts }, mountsBeforeCut,
+    "move/remove remounted a retained row");
   assert.equal(app.trace.cleanups.f, 1, "removed f effect did not clean once");
   assert.equal(app.trace.refCleanups.f, 1, "removed f ref did not clean once");
   assert.equal(root.flush(), true, "pending numeric input did not flush");
@@ -173,18 +214,37 @@ try {
   assert.equal(rowNode(left, "c"), c, "numeric flush remounted moved row");
   assert.equal(root.diagnostics().pendingChangeCount, 0);
 
-  const rendersBeforeDecline = { ...app.trace.rowRenders };
+  const rendersBeforeDecline = componentRenders();
+  const hookReadsBeforeDecline = new Map(itemHookReads);
+  const appRendersBeforeDecline = app.trace.appRenders;
+  const mountsBeforeDecline = { ...app.trace.mounts };
   assert.equal(app.leftRows.apply(app.leftRows.version, [{
     type: "insert", key: "new", value: { id: "new" }, beforeKey: "a",
   }]).ok, true);
   assert.equal(root.prepareCollections([app.leftRows]), null,
     "explicit scoped API accepted arbitrary row-render insertion");
-  assert.deepEqual({ ...app.trace.rowRenders }, rendersBeforeDecline,
-    "declined scoped insertion ran an Item renderer");
+  assert.equal(componentRenders(), rendersBeforeDecline,
+    "declined scoped insertion did not enter a flush owner render");
+  assert.deepEqual(itemHookReads, hookReadsBeforeDecline,
+    "declined scoped insertion does not execute an Item hook");
+  assert.equal(app.trace.appRenders, appRendersBeforeDecline,
+    "declined scoped insertion does not execute App");
+  assert.deepEqual({ ...app.trace.mounts }, mountsBeforeDecline,
+    "declined scoped insertion did not activate an Item");
   assert.equal(root.flush(), true, "ordinary collection fallback did not render insertion");
   assert.deepEqual(order(left), ["c", "new", "a", "b"]);
-  assert.equal(app.trace.rowRenders.new, 1,
-    "ordinary fallback did not render exactly the inserted row");
+  assert.equal(app.trace.mounts.new, 1,
+    "ordinary fallback activates exactly the inserted row");
+  assert.equal(itemHookReads.size, hookReadsBeforeDecline.size + 1,
+    "ordinary fallback executes one new Item owner");
+  for (const [owner, count] of hookReadsBeforeDecline) {
+    assert.equal(itemHookReads.get(owner), count,
+      "ordinary fallback does not execute retained Item hooks");
+  }
+  assert.deepEqual([...itemHookReads].filter(([owner]) => !hookReadsBeforeDecline.has(owner))
+    .map(([, count]) => count), [1], "inserted Item executes exactly once");
+  assert.equal(componentRenders() - rendersBeforeDecline, 1,
+    "ordinary fallback renders exactly the inserted Item");
   assert.equal(rowNode(left, "c"), c, "ordinary insert replaced retained c");
   assert.equal(rowNode(left, "b"), b, "ordinary insert lost b identity");
   assert.equal(b.props["data-count"], 7, "ordinary fallback lost b local state");
@@ -197,7 +257,8 @@ try {
     acceptedOrder: { left: ["c", "a", "b"], right: ["d", "e"] },
     fallbackOrder: order(left),
     publicationVersion: root.publicationVersion,
-    rowRenders: { ...app.trace.rowRenders },
+    profiledFlushComponentRenders: componentRenders(),
+    itemHookReads: [...itemHookReads.values()],
     mounts: { ...app.trace.mounts },
     cleanupsBeforeDispose: { ...app.trace.cleanups },
     pendingAfterFlush: root.diagnostics().pendingChangeCount,
@@ -206,6 +267,7 @@ try {
   failure = error;
 } finally {
   try {
+    restoreHookObserver();
     root?.dispose();
     if (app) {
       for (const [id, mounts] of Object.entries(app.trace.mounts)) {

@@ -17,32 +17,40 @@ const runtimeUrl = pathToFileURL(path.join(projectRoot, "src/native_runtime_api.
 
 const authored = `import { createKeyedCollection, useEffect, useState } from ${JSON.stringify(runtimeUrl)};
 export const rows = createKeyedCollection([{ id: "a" }, { id: "b" }], row => row.id);
-export const trace = { renders: {}, controls: {}, candidateMutationKey: null, candidateMutations: 0 };
+export const trace = { controls: {}, candidateMutationKey: null, candidateMutations: 0 };
 
-export function Row({ row }) {
-  trace.renders[row.id] = (trace.renders[row.id] ?? 0) + 1;
+export function Row({ id }) {
   const [x, setX] = useState(0);
   const [y, setY] = useState(0);
   const [rotation, setRotation] = useState(0);
-  trace.controls[row.id] = { x: setX, y: setY, rotation: setRotation };
   useEffect(() => {
+    trace.controls[id] = { x: setX, y: setY, rotation: setRotation };
     return () => {
-      if (trace.controls[row.id]?.x === setX) delete trace.controls[row.id];
+      if (trace.controls[id]?.x === setX) delete trace.controls[id];
     };
   });
-  if (trace.candidateMutationKey === row.id) {
-    trace.candidateMutations++;
-    setX(999);
-  }
-  return <i data-row={row.id} style={{
+  return <i data-row={id} style={{
     left: \`\${x}px\`,
     top: \`\${y}px\`,
     transform: \`rotate(\${rotation}deg)\`,
   }} />;
 }
 
+export function CandidateProbe() {
+  const [value, setValue] = useState(0);
+  if (trace.candidateMutationKey !== null) {
+    trace.candidateMutations++;
+    setValue(999);
+  }
+  return <span data-candidate={value} />;
+}
+
 export function Board() {
-  return <ul>{rows.map(row => <Row key={row.id} row={row} />)}</ul>;
+  const children = rows.map(row => <Row key={row.id} id={row.id} />);
+  if (trace.candidateMutationKey !== null) {
+    return <ul>{children}<CandidateProbe key="candidate" /></ul>;
+  }
+  return <ul>{children}</ul>;
 }`;
 
 const plugin = nativeModulePlugin({ root: projectRoot });
@@ -234,6 +242,7 @@ try {
   const candidate = root.prepare(jsx(app.Board, {}));
   assert.ok(app.trace.candidateMutations > 0, "authored candidate render performed its private setter");
   const candidateValid = candidate.validate();
+  assert.equal(candidateValid, false, "private render-time setter rejects candidate");
   for (let index = 0; index < columns.length; index++) {
     assert.equal(columns[index].values, savedColumnArrays[index], "candidate does not replace committed column storage");
     assert.deepEqual([...columns[index].values], savedColumnValues[index], "candidate does not write committed column values");
