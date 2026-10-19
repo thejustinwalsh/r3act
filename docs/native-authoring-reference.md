@@ -1,12 +1,12 @@
 # Native authoring reference
 
-**Status:** private alpha, 18 October 2026. This page describes the implemented native TSX subset. The `@r3act/*` tarballs are local artifacts; the namespace is unpublished and unreserved. For installation, Vite configuration, and a fresh consumer check, use the [native package integration guide](../native-package-integration.md).
+**Status:** private alpha, 19 October 2026. This page describes the implemented native TSX subset. The `@r3act/*` tarballs are local artifacts; the namespace is unpublished and unreserved. For installation, Vite configuration, and a fresh consumer check, use the [native package integration guide](../native-package-integration.md).
 
 Native components use `@r3act/core` and the mandatory Rust/OXC transform in `@r3act/vite`. Configure TypeScript with `jsx: "react-jsx"` and `jsxImportSource: "@r3act/core"`. JSX helpers alone do not lower owner sites, hooks, collection maps, task dependencies, or Suspense sites. Calling an authored hook without compilation throws. `@r3act/host-dom` and `@r3act/host-three` re-export host APIs from the same core runtime graph; `@r3act/react-bridge` supplies explicit DOM migration boundaries; hooks retain their owning runtime semantics. Both migration directions are described in the [bridge reference](react-bridge-reference.md), including independent React commits and DOM-only boundaries.
 
 ## Components and imports
 
-Declare hook-using components as named, capitalized, synchronous `function` declarations at module scope. Import native hooks, `Suspense`, `createKeyedCollection`, and `asyncTask` as direct, unaliased value imports from `@r3act/core`. The compiler assigns lexical owner and hook site identities. Conditional sites are supported; repeated loops and nested callbacks are not.
+Declare components as named, capitalized, synchronous `function` declarations or single-declarator `const` arrows at module scope. Const arrows support block and expression bodies, including named exports. Import native hooks, `Suspense`, `createKeyedCollection`, and `asyncTask` as direct, unaliased value imports from `@r3act/core`. The compiler assigns lexical owner and hook site identities. Conditional sites are supported; repeated loops and nested callbacks are not.
 
 ```tsx
 import { useState, useEffect } from "@r3act/core";
@@ -21,7 +21,9 @@ export function Counter() {
 }
 ```
 
-The effect site activates when `count` becomes positive and cleans up when it becomes absent; further increments while the site remains active do not rerun its setup. The compiler diagnoses hook aliases, type-only imports used as values, hook calls in nested functions or loops, and hook-using arrow or async components. Ordinary non-hook JavaScript remains JavaScript; accepting an expression does not certify its callbacks or property getters as pure. Native JSX can render intrinsic elements and native components. Event handlers run as host callbacks; their captured values do not become proven closed numeric bindings.
+The effect site activates when `count` becomes positive and cleans up when it becomes absent; further increments while the site remains active do not rerun its setup. The compiler diagnoses hook aliases, type-only imports used as values, hook calls in nested functions, loops or arrow parameter defaults, and unsupported mutable, async, nested or multi-declarator hook arrows. Direct JSX references to unsupported arrow declarations are also diagnosed without hooks. Ordinary non-hook JavaScript remains JavaScript; accepting an expression does not certify its callbacks or property getters as pure. Native JSX can render intrinsic elements and native components. Event handlers run as host callbacks; their captured values do not become proven closed numeric bindings.
+
+The same counter can be declared as `export const Counter = () => { /* body */ };`. The compiler wraps the original initializer without hoisting it or changing arrow lexical `this`/`arguments`, its inferred function name, const initialization order or exports. A temporary object preserves name inference once during module initialization. Arrow owners use the same keyed identity, hook sites, revision retirement and publication model as function declarations. Existing function-only closed host/program proofs conservatively decline arrows; generic reconciliation supplies their behavior. Arrow syntax is not a purity declaration. The [verified arrow example](../examples/arrow-components/README.md) and [integration evidence](../implementation/2026-10-19-arrow-components/results.md) define the tested scope.
 
 ## Authored hooks
 

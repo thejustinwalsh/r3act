@@ -1,0 +1,17 @@
+# Installed arrow component proof
+
+This bounded Unit 3/9 consumer copies the actual `examples/arrow-components` app and its Vite config into a fresh project, then installs five fresh `@r3act` tarballs. It uses only public package imports and the installed Rust compiler; there are no checkout aliases. The input lock records the actual source, consumer copies, package build report and tarballs, selected installed files, compiler binary, transforms, and production assets. The build proof requires native wrapping and semantic owners for each `const` arrow component in `app.tsx` and `scene.tsx`. Generic semantic operations are valid here; this proof does not assert a closed optimization program.
+
+The browser verifies the installed production assets over a synthetic HTTPS route with no project server. It is headless with GPU disabled, has a 90-second deadline, and responds to interruption. It checks lexical `this`/`arguments` on an expression-body arrow, arrow-local count and keyed DOM identity through a move, conditional effect activation/cleanup/reactivation, coordinated DOM/Three stage publication, accepted-view retention while a resource is pending, independent urgent progress, accepted error output in both hosts, superseded late-result discard, resource resolution, and final owner/effect/store/Three-resource cleanup. This is behavior and lifecycle evidence, not a paint-atomicity or runtime speed claim.
+
+A separate, matched small counter compares one native `const Counter = () =>` against an ordinary React arrow Counter with one local state and the same DOM output. The untimed transform proof requires an actual native component wrapper, state provenance, and React Compiler `CompileSuccess` plus generated memo cache use. It allows native generic execution. Browser parity must pass before any timing authorization.
+
+Use Node 24.18.0, the version pinned by this local protocol; that pin is not a claim of general Node portability. pnpm uses its default store unless `R3ACT_PNPM_STORE` is explicitly set. On this POSIX host, owned child process groups receive SIGKILL at deadlines or interruption. Each phase creates a receipt with `wx`, preserves failures, and must use a fresh proof directory after a failed attempt. After the primary's consolidated gate and fresh package archive, run:
+
+```sh
+node implementation/2026-10-19-arrow-components/build.mjs --proof-dir implementation/2026-10-19-arrow-components/proof-v1
+node implementation/2026-10-19-arrow-components/run-pair.mjs --proof-dir implementation/2026-10-19-arrow-components/proof-v1 --phase proof
+node implementation/2026-10-19-arrow-components/verify-browser.mjs --proof-dir implementation/2026-10-19-arrow-components/proof-v1
+```
+
+Only after source review and successful untimed build/browser receipts may the primary write `run-authorization.json` with `status: "APPROVED_FOR_ONE_BUILD_PAIR"` and the exact SHA-256 values for `build-proof.json`, `pair-proof.json`, and `browser-behavior.json`. Then run one `run-pair.mjs --phase measure`. It records a Native-first, fresh-process Vite build pair and requires equal timed/untimed transforms, assets, and metadata plus unchanged locked inputs. The interval is process spawn to exit, including Vite startup and potentially warm caches. It gives no runtime, CPU, memory, cold-start, tail, equivalent-feature-size, presentation, or independent-device qualification. Failed and interrupted intervals remain null.

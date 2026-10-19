@@ -749,6 +749,10 @@ struct ComponentStateSiteIr {
     name: String,
     component_site_id: String,
     declaration: SourceSpan,
+    #[serde(skip)]
+    arrow_initializer: Option<SourceSpan>,
+    #[serde(skip)]
+    arrow_body_start: Option<u32>,
     host_leaf_output: bool,
     state_sites: Vec<StateSiteIr>,
     effect_sites: Vec<EffectSiteIr>,
@@ -909,6 +913,7 @@ struct ComponentStateSiteCollector<'s, 'a> {
     event_callback_spans: Vec<SourceSpan>,
     function_binding_spans: Vec<(SymbolId, SourceSpan)>,
     current_declaration_is_const: bool,
+    current_declaration_is_single: bool,
     unsupported_import_shape: bool,
     unscoped_hook_calls: Vec<SourceSpan>,
     unsupported_effect_arity: bool,
@@ -919,7 +924,9 @@ struct ComponentStateSiteCollector<'s, 'a> {
     invalid_ownership_calls: Vec<SourceSpan>,
     nested_components: Vec<SourceSpan>,
     unsupported_component_forms: Vec<(SourceSpan, &'static str)>,
-    arrow_component_stack: Vec<SourceSpan>,
+    unsupported_arrow_components: BTreeMap<SymbolId, (SourceSpan, &'static str, String)>,
+    jsx_component_references: BTreeSet<SymbolId>,
+    arrow_component_stack: Vec<(SourceSpan, &'static str)>,
 }
 
 #[derive(Default)]
@@ -1959,10 +1966,13 @@ fn parameter_keyed_collection_symbol<'a>(
 impl<'a> Visit<'a> for ComponentStateSiteCollector<'_, 'a> {
     fn visit_variable_declaration(&mut self, node: &VariableDeclaration<'a>) {
         let previous = self.current_declaration_is_const;
+        let previous_single = self.current_declaration_is_single;
         self.current_declaration_is_const =
             node.kind == oxc_ast::ast::VariableDeclarationKind::Const;
+        self.current_declaration_is_single = node.declarations.len() == 1;
         walk::walk_variable_declaration(self, node);
         self.current_declaration_is_const = previous;
+        self.current_declaration_is_single = previous_single;
     }
 
     fn visit_import_declaration(&mut self, node: &ImportDeclaration<'a>) {
@@ -2073,6 +2083,12 @@ impl<'a> Visit<'a> for ComponentStateSiteCollector<'_, 'a> {
     }
 
     fn visit_jsx_opening_element(&mut self, node: &oxc_ast::ast::JSXOpeningElement<'a>) {
+        if let JSXElementName::IdentifierReference(identifier) = &node.name
+            && let Some(symbol) = identifier.reference_id.get()
+                .and_then(|reference| self.semantic.scoping().get_reference(reference).symbol_id())
+        {
+            self.jsx_component_references.insert(symbol);
+        }
         for attribute in &node.attributes {
             if let JSXAttributeItem::Attribute(attribute) = attribute
                 && matches!(&attribute.name, JSXAttributeName::Identifier(identifier) if identifier.name == "__nativeBoundarySite")
@@ -2158,6 +2174,8 @@ impl<'a> Visit<'a> for ComponentStateSiteCollector<'_, 'a> {
                     name: name.clone(),
                     component_site_id,
                     declaration: span(node.span.start, node.span.end),
+                    arrow_initializer: None,
+                    arrow_body_start: None,
                     host_leaf_output,
                     state_sites: Vec::new(),
                     effect_sites: Vec::new(),
@@ -2240,7 +2258,11 @@ impl<'a> Visit<'a> for ComponentStateSiteCollector<'_, 'a> {
                         )
                     });
             if imported_hook {
-                if self.function_depth != 1 || self.loop_depth != 0 {
+                let arrow_parameter_hook = self.component_stack.last()
+                    .and_then(|name| self.components.get(name))
+                    .and_then(|component| component.arrow_body_start)
+                    .is_some_and(|body_start| node.span.start < body_start);
+                if self.function_depth != 1 || self.loop_depth != 0 || arrow_parameter_hook {
                     self.invalid_ownership_calls
                         .push(span(node.span.start, node.span.end));
                 }
@@ -2322,9 +2344,9 @@ impl<'a> Visit<'a> for ComponentStateSiteCollector<'_, 'a> {
                         }
                     }
                 } else {
-                    if let Some(component_span) = self.arrow_component_stack.last() {
+                    if let Some((component_span, kind)) = self.arrow_component_stack.last() {
                         self.unsupported_component_forms
-                            .push((component_span.clone(), "arrow"));
+                            .push((component_span.clone(), kind));
                     }
                     self.unscoped_hook_calls
                         .push(span(node.span.start, node.span.end));
@@ -2460,17 +2482,63 @@ impl<'a> Visit<'a> for ComponentStateSiteCollector<'_, 'a> {
             }
             _ => None,
         };
-        let is_arrow_component = component_name.is_some()
-            && matches!(
-                node.init.as_ref(),
-                Some(Expression::ArrowFunctionExpression(_))
-            );
-        if is_arrow_component {
-            self.arrow_component_stack
-                .push(span(node.span.start, node.span.end));
+        let arrow = match node.init.as_ref() {
+            Some(Expression::ArrowFunctionExpression(arrow)) if component_name.is_some() => Some(arrow),
+            _ => None,
+        };
+        let arrow_supported = arrow.is_some_and(|arrow| {
+            self.current_declaration_is_const && self.current_declaration_is_single
+                && self.function_depth == 0 && !arrow.r#async
+                && matches!(&node.id, BindingPattern::BindingIdentifier(identifier)
+                    if identifier.symbol_id.get().is_some_and(|symbol| {
+                        self.semantic.scoping().symbol_scope_id(symbol)
+                            == self.semantic.scoping().root_scope_id()
+                    }))
+        });
+        if let (Some(name), Some(arrow)) = (component_name, arrow) {
+            if arrow_supported {
+                for symbol in parameter_keyed_collection_symbol(
+                    &arrow.params, self.semantic, &self.keyed_collection_type_symbols,
+                ) {
+                    self.keyed_collection_symbols.insert(symbol);
+                    self.typed_keyed_collection_symbols.insert(symbol);
+                }
+                self.components.entry(name.to_owned()).or_insert_with(|| ComponentStateSiteIr {
+                    name: name.to_owned(),
+                    component_site_id: format!("{}#component:{}", self.source_file, name),
+                    declaration: span(arrow.span.start, arrow.span.end),
+                    arrow_initializer: Some(span(arrow.span.start, arrow.span.end)),
+                    arrow_body_start: Some(arrow.body.span().start),
+                    host_leaf_output: false,
+                    state_sites: Vec::new(),
+                    effect_sites: Vec::new(),
+                    store_sites: Vec::new(),
+                    collection_sites: Vec::new(),
+                });
+                self.component_stack.push(name.to_owned());
+            } else {
+                let kind = if arrow.r#async {
+                    "async arrow"
+                } else if !self.current_declaration_is_const {
+                    "mutable arrow"
+                } else if !self.current_declaration_is_single {
+                    "multi-declarator arrow"
+                } else {
+                    "nested arrow"
+                };
+                if let BindingPattern::BindingIdentifier(identifier) = &node.id
+                    && let Some(symbol) = identifier.symbol_id.get()
+                {
+                    self.unsupported_arrow_components.insert(symbol,
+                        (span(node.span.start, node.span.end), kind, name.to_owned()));
+                }
+                self.arrow_component_stack.push((span(node.span.start, node.span.end), kind));
+            }
         }
         walk::walk_variable_declarator(self, node);
-        if is_arrow_component {
+        if arrow_supported {
+            self.component_stack.pop();
+        } else if arrow.is_some() {
             self.arrow_component_stack.pop();
         }
     }
@@ -3444,6 +3512,7 @@ fn compile_native_component_module(
         event_callback_spans: Vec::new(),
         function_binding_spans: Vec::new(),
         current_declaration_is_const: false,
+        current_declaration_is_single: false,
         unsupported_import_shape: false,
         unscoped_hook_calls: Vec::new(),
         unsupported_effect_arity: false,
@@ -3454,6 +3523,8 @@ fn compile_native_component_module(
         invalid_ownership_calls: Vec::new(),
         nested_components: Vec::new(),
         unsupported_component_forms: Vec::new(),
+        unsupported_arrow_components: BTreeMap::new(),
+        jsx_component_references: BTreeSet::new(),
         arrow_component_stack: Vec::new(),
     };
     collector.visit_program(&parsed.program);
@@ -3646,16 +3717,22 @@ fn compile_native_component_module(
             source,
             at.start,
             &format!(
-                "native hooks in {kind} components are unsupported; use a synchronous named function declaration"
+                "native hooks in {kind} components are unsupported; use a module-level synchronous const arrow or named function declaration"
             ),
         ));
+    }
+    if let Some((_, (at, kind, name))) = collector.unsupported_arrow_components.iter()
+        .find(|(symbol, _)| collector.jsx_component_references.contains(*symbol))
+    {
+        return Err(format_source_error(path, source, at.start,
+            &format!("native JSX component `{name}` uses an unsupported {kind} declaration")));
     }
     if let Some(at) = collector.unscoped_hook_calls.first() {
         return Err(format_source_error(
             path,
             source,
             at.start,
-            "native hooks must be called directly inside a named capitalized function component",
+            "native hooks must be called directly inside a module-level capitalized native component",
         ));
     }
     if let Some(at) = collector.nested_components.first() {
@@ -3733,10 +3810,13 @@ fn compile_native_component_module(
     }
     if state_plan.components.is_empty() {
         return Err(format!(
-            "{path}:1:1: no capitalized synchronous function components found"
+            "{path}:1:1: no capitalized synchronous native components found"
         ));
     }
     for component in &state_plan.components {
+        if component.arrow_initializer.is_some() {
+            continue;
+        }
         let declaration = slice(source, component.declaration.clone());
         if !declaration.starts_with(&format!("function {}", component.name)) {
             return Err(format_source_error(
@@ -3912,6 +3992,7 @@ fn compile_native_component_module(
         let certified = !candidate.other_refs
             && derived_is_closed
             && owner_local
+            && owner_component.is_some_and(|component| component.arrow_initializer.is_none())
             && !state_plan
                 .components
                 .iter()
@@ -5345,11 +5426,8 @@ fn transform_native_component_source(
             .get(&component.component_site_id)
             .map(|index| format!(", ownerUpdateProgram: {}[{index}]", aliases[9]))
             .unwrap_or_default();
-        registrations.push_str(&format!(
-            "\n{}({}, {}, {{ propOnlySites: [{}]{}{}{}{}{}{} }});",
-            aliases[0],
-            site,
-            component.name,
+        let options = format!(
+            "{{ propOnlySites: [{}]{}{}{}{}{}{} }}",
             sites,
             if component.host_leaf_output {
                 ", hostLeafOutput: true"
@@ -5361,7 +5439,23 @@ fn transform_native_component_source(
             closed_resource_option,
             closed_store_option,
             closed_forward_option,
-        ));
+        );
+        if let Some(arrow) = &component.arrow_initializer {
+            edits.push(TextEdit {
+                start: arrow.start as usize,
+                end: arrow.start as usize,
+                replacement: format!("{}({}, ({{ {}: ", aliases[0], site, component.name),
+            });
+            edits.push(TextEdit {
+                start: arrow.end as usize,
+                end: arrow.end as usize,
+                replacement: format!(" }}).{}, {options})", component.name),
+            });
+        } else {
+            registrations.push_str(&format!(
+                "\n{}({}, {}, {options});", aliases[0], site, component.name,
+            ));
+        }
         for state in &component.state_sites {
             let site = serde_json::to_string(&state.site_id).map_err(|error| error.to_string())?;
             edits.push(TextEdit {
@@ -6919,6 +7013,7 @@ fn run() -> Result<(), String> {
             event_callback_spans: Vec::new(),
             function_binding_spans: Vec::new(),
             current_declaration_is_const: false,
+            current_declaration_is_single: false,
             unsupported_import_shape: false,
             unscoped_hook_calls: Vec::new(),
             unsupported_effect_arity: false,
@@ -6929,6 +7024,8 @@ fn run() -> Result<(), String> {
             invalid_ownership_calls: Vec::new(),
             nested_components: Vec::new(),
             unsupported_component_forms: Vec::new(),
+            unsupported_arrow_components: BTreeMap::new(),
+            jsx_component_references: BTreeSet::new(),
             arrow_component_stack: Vec::new(),
         };
         collector.visit_program(&parsed.program);
@@ -9126,21 +9223,84 @@ export function Primitive(props) {
         assert!(metadata[0].host_leaf_output);
         assert!(code.contains("from \"native_runtime_api.ts\";"));
 
-        for (fixture, label) in [
-            ("native-state-async-component.tsx", "async components"),
-            ("native-state-arrow-component.tsx", "arrow components"),
+        for (fixture, label, source) in [
+            ("native-state-async-component.tsx", "async components",
+                include_str!("../../fixtures/native-state-async-component.tsx")),
+            ("mutable-arrow.tsx", "mutable arrow components",
+                "import { useState } from 'native_runtime_api.ts'; let Mutable = () => { useState(1); return <main />; };"),
+            ("async-arrow.tsx", "async arrow components",
+                "import { useState } from 'native_runtime_api.ts'; const AsyncArrow = async () => { useState(1); return <main />; };"),
+            ("multi-arrow.tsx", "multi-declarator arrow components",
+                "import { useState } from 'native_runtime_api.ts'; const Multi = () => { useState(1); return <main />; }, other = 1;"),
         ] {
-            let source = match fixture {
-                "native-state-async-component.tsx" => {
-                    include_str!("../../fixtures/native-state-async-component.tsx")
-                }
-                _ => include_str!("../../fixtures/native-state-arrow-component.tsx"),
-            };
             let error = compile_state(fixture, source)
                 .error
                 .expect("unsupported hook component form must be rejected");
             assert!(error.starts_with(&format!("{fixture}:")), "{error}");
             assert!(error.contains(label), "{error}");
+        }
+    }
+
+    #[test]
+    fn compiles_module_const_arrows_at_their_initializer_with_shared_owner_sites() {
+        let source = include_str!("../../fixtures/native-state-arrow-component.tsx");
+        let response = compile_state("native-state-arrow-component.tsx", source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let plan = response.plan.unwrap();
+        let component = &plan.components.as_ref().unwrap()[0];
+        assert_eq!(component.name, "ArrowApp");
+        assert_eq!(component.state_sites.len(), 1);
+        assert_eq!(component.state_sites[0].site_id,
+            "native-state-arrow-component.tsx#component:ArrowApp#state:0");
+        assert!(component.closed_resource_host_program.is_none());
+        assert!(component.closed_store_host_program.is_none());
+        let code = plan.component_module.unwrap();
+        assert!(code.contains("export const ArrowApp = __nativeDefineComponent(\"native-state-arrow-component.tsx#component:ArrowApp\", ({ ArrowApp: () => {"), "{code}");
+        assert!(code.contains("const [value] = __nativeUseStateAt(\"native-state-arrow-component.tsx#component:ArrowApp#state:0\", 1);"), "{code}");
+        assert!(code.contains("}).ArrowApp, { propOnlySites:"), "{code}");
+        assert!(!code.contains("\n__nativeDefineComponent(\"native-state-arrow-component.tsx#component:ArrowApp\", ArrowApp,"), "{code}");
+    }
+
+    #[test]
+    fn expression_arrows_preserve_export_and_arrow_syntax() {
+        let source = r#"import { use } from 'native_runtime_api.ts';
+export const ArrowRow = ({ value }: { value: number }) => <output>{value}</output>;
+const Plain = () => <output />;
+"#;
+        let response = compile_state("expression-arrow.tsx", source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let plan = response.plan.unwrap();
+        assert_eq!(plan.components.as_ref().unwrap().len(), 2);
+        let code = plan.component_module.unwrap();
+        assert!(code.contains("export const ArrowRow = __nativeDefineComponent(\"expression-arrow.tsx#component:ArrowRow\", ({ ArrowRow: ({ value }: { value: number }) => <output>{value}</output> }).ArrowRow, { propOnlySites:"), "{code}");
+        assert!(code.contains("const Plain = __nativeDefineComponent(\"expression-arrow.tsx#component:Plain\", ({ Plain: () => <output /> }).Plain, { propOnlySites:"), "{code}");
+    }
+
+    #[test]
+    fn arrow_hooks_reject_parameter_defaults_nested_blocks_and_callbacks() {
+        for (label, source) in [
+            ("parameter", "import { useState } from 'native_runtime_api.ts'; const Default = (value = useState(1)) => <output>{value}</output>;"),
+            ("block", "import { useState } from 'native_runtime_api.ts'; { const Nested = () => { useState(1); return <output />; }; }"),
+            ("callback", "import { useState } from 'native_runtime_api.ts'; const Outer = () => { [1].map(() => useState(1)); return <output />; };"),
+        ] {
+            let error = compile_state("arrow-invalid.tsx", source).error
+                .expect("invalid arrow hook placement must be rejected");
+            assert!(error.contains("unsupported") || error.contains("native hooks"),
+                "{label}: {error}");
+        }
+    }
+
+    #[test]
+    fn jsx_references_to_unsupported_arrows_fail_before_runtime_registration() {
+        for (kind, declaration) in [
+            ("mutable arrow", "let Bad = () => <output />;"),
+            ("async arrow", "const Bad = async () => <output />;"),
+            ("multi-declarator arrow", "const Bad = () => <output />, unused = 1;"),
+        ] {
+            let source = format!("import {{ use }} from 'native_runtime_api.ts'; {declaration} export const App = () => <Bad />;");
+            let error = compile_state("bad-arrow-jsx.tsx", &source).error
+                .expect("unsupported JSX component must be diagnosed");
+            assert!(error.contains(kind) && error.contains("`Bad`"), "{error}");
         }
     }
 
