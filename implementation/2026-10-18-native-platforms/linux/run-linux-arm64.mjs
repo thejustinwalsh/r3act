@@ -24,6 +24,7 @@ assert.equal(image.platform, "linux/arm64");
 const containerCommand = process.env.R3ACT_CONTAINER_COMMAND ?? "/Users/mini/.local/bin/container";
 assert.equal(containerCommand, image.containerCommand);
 const containerEnv = { ...process.env, CONTAINER_APP_ROOT: "/Volumes/Depot/Containers/apple/data" };
+const workloadResources = { cpus: "1", memory: "256m", cargoBuildJobs: "1" };
 assert.equal(containerEnv.CONTAINER_APP_ROOT, image.containerAppRoot);
 const command = (commandArgs, timeout = 10_000) => {
   const result = spawnSync(containerCommand, commandArgs, { encoding: "utf8", env: containerEnv,
@@ -79,7 +80,9 @@ assert.ok(volume.configuration.source.startsWith("/Volumes/Depot/Containers/appl
 const phaseReceiptPath = path.join(evidence, `host-${phase}.json`);
 const receipt = { schemaVersion: 1, phase, status: "STARTED", receiptId: ownership.receiptId,
   baseDigest: image.baseDigest, volumeName: ownership.volumeName,
-  volumeSource: volume.configuration.source, exit: null, stopReason: null, cleanupErrors: [], error: null };
+  volumeSource: volume.configuration.source,
+  requestedWorkloadResources: null,
+  exit: null, stopReason: null, cleanupErrors: [], error: null };
 await writeFile(phaseReceiptPath, JSON.stringify(receipt, null, 2) + "\n", { flag: "wx" });
 let activeChild;
 let containerName;
@@ -134,14 +137,16 @@ try {
       : phase === "benchmark-prepare" ? 1_800_000
       : phase === "verify" ? 2_700_000 : 600_000;
     containerName = `r3act-${phase}-${randomUUID()}`;
+    receipt.requestedWorkloadResources = workloadResources;
     const argumentsForContainer = ["run", "--rm", "--name", containerName,
-      "--platform", "linux/arm64", "--cpus", "4", "--memory", "6G",
+      "--platform", "linux/arm64", "--cpus", workloadResources.cpus,
+      "--memory", workloadResources.memory,
       "--label", `r3act.native-platform=${ownership.receiptId}`,
       "--mount", `type=volume,source=${ownership.volumeName},target=/workspace`,
       "--mount", `type=bind,source=${root},target=/source,readonly`,
       "--mount", `type=bind,source=${evidence},target=/evidence`,
       "--env", `R3ACT_SOURCE_COMMIT=${ownership.sourceCommit}`,
-      "--env", "CARGO_BUILD_JOBS=2",
+      "--env", `CARGO_BUILD_JOBS=${workloadResources.cargoBuildJobs}`,
       "--env", "RUSTUP_HOME=/workspace/toolchain/rustup",
       "--env", "CARGO_HOME=/workspace/toolchain/cargo",
       "--env", "PATH=/workspace/toolchain/cargo/bin:/workspace/toolchain/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",

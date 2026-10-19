@@ -26,6 +26,7 @@ const evidence = phase === "prepare-image" ? null : path.resolve(options.get("--
 assert.equal(path.dirname(output ?? evidence), stage);
 assert.match(path.basename(output ?? evidence), /^(?:image|evidence)-docker-[a-z0-9-]+$/);
 const docker = process.env.R3ACT_DOCKER_COMMAND ?? "docker";
+const workloadResources = { cpus: "1", memory: "256m", cargoBuildJobs: "1" };
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const json = (value) => JSON.stringify(value, null, 2) + "\n";
 const command = (args, timeout = 30_000) => {
@@ -238,7 +239,9 @@ if (phase === "prepare-image") {
   const receipt = { schemaVersion: 1, phase, status: "STARTED", receiptId: ownership.receiptId,
     daemon: image.daemon, imageId: image.imageId, volumeName: ownership.volumeName,
     sourceVolumeName: ownership.sourceVolumeName, evidenceVolumeName: ownership.evidenceVolumeName,
-    volumeMountpoints: volumes.map((item) => item.Mountpoint), exit: null, stopReason: null,
+    volumeMountpoints: volumes.map((item) => item.Mountpoint),
+    requestedWorkloadResources: null,
+    exit: null, stopReason: null,
     cleanupErrors: [], error: null };
   await writeFile(receiptPath, json(receipt), { flag: "wx" });
   let activeChild;
@@ -360,6 +363,7 @@ if (phase === "prepare-image") {
         : phase === "benchmark-prepare" ? 1_800_000
           : phase === "verify" ? 2_700_000 : 600_000;
       containerName = `r3act-${phase}-${randomUUID()}`;
+      receipt.requestedWorkloadResources = workloadResources;
       if (phase === "bootstrap") {
         receipt.dockerAvailableBytes = availableDockerBytes();
         assert.ok(Number.isSafeInteger(receipt.dockerAvailableBytes) &&
@@ -379,12 +383,14 @@ if (phase === "prepare-image") {
           "benchmark", "proof-v1", "run-authorization.json"));
       }
       const args = ["run", "--rm", "--name", containerName, "--platform", "linux/arm64",
-        "--cpus", "4", "--memory", "6g", "--label", `r3act.native-platform=${ownership.receiptId}`,
+        "--cpus", workloadResources.cpus, "--memory", workloadResources.memory,
+        "--label", `r3act.native-platform=${ownership.receiptId}`,
         "--mount", `type=volume,source=${ownership.volumeName},target=/workspace`,
         "--mount", `type=volume,source=${ownership.sourceVolumeName},target=/source,readonly`,
         "--mount", `type=volume,source=${ownership.evidenceVolumeName},target=/evidence`,
         "--env", `R3ACT_SOURCE_COMMIT=${ownership.sourceCommit}`,
-        "--env", "CARGO_BUILD_JOBS=2", "--env", "RUSTUP_HOME=/workspace/toolchain/rustup",
+        "--env", `CARGO_BUILD_JOBS=${workloadResources.cargoBuildJobs}`,
+        "--env", "RUSTUP_HOME=/workspace/toolchain/rustup",
         "--env", "CARGO_HOME=/workspace/toolchain/cargo",
         "--env", "PATH=/workspace/toolchain/cargo/bin:/workspace/toolchain/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
         image.baseReference, "node",

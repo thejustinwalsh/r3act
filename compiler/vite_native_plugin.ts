@@ -14,6 +14,9 @@ export type NativeModulePluginOptions = NativeCompilerOptions & {
 };
 
 type ReactExclude = string | RegExp | readonly (string | RegExp)[];
+type ReactPluginFactory = (options: {
+  exclude?: string | RegExp | (string | RegExp)[];
+}) => Plugin[];
 
 export type NativeReactPluginOptions<T extends { exclude?: ReactExclude }> = NativeModulePluginOptions & {
   root: string;
@@ -50,9 +53,11 @@ const scanNativeFiles = (root: string, sourceRoots: readonly string[]): Set<stri
 };
 
 /** Compose native TSX and React through the public React exclude option. */
-export const nativeReactPlugins = <T extends { exclude?: ReactExclude }>(
-  react: (options: Omit<Partial<T>, "exclude"> & { exclude: (string | RegExp)[] }) => Plugin[],
-  options: NativeReactPluginOptions<T>,
+export const nativeReactPlugins = <Factory extends ReactPluginFactory>(
+  react: Factory,
+  options: NativeReactPluginOptions<
+    NonNullable<Parameters<Factory>[0]> & { exclude?: ReactExclude }
+  >,
 ): Plugin[] => {
   const { reactOptions, sourceRoots = ["."], ...nativeOptions } = options;
   const root = path.resolve(options.root);
@@ -63,7 +68,7 @@ export const nativeReactPlugins = <T extends { exclude?: ReactExclude }>(
   const exactNativePatterns = [...excludedFiles].map((filename) =>
     new RegExp(`^${filename.replaceAll(path.sep, "/").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:\\?.*)?$`)
   );
-  const baseOptions: Partial<T> = reactOptions ?? {};
+  const baseOptions = reactOptions ?? { exclude: undefined };
   const { exclude: _previousExclude, ...otherOptions } = baseOptions;
   const combined = {
     ...otherOptions,

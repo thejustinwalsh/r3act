@@ -20,12 +20,19 @@ try {
   }, {
     root,
     sourceRoots: ["."],
-    reactOptions: { exclude: /external\.tsx$/, jsxRuntime: "automatic" },
+    reactOptions: {
+      exclude: /external\.tsx$/,
+      jsxRuntime: "automatic",
+      jsxImportSource: "react",
+      babel: { plugins: [] },
+    },
   });
   assert.deepEqual(plugins.map((plugin) => plugin.name), ["native-module", "fake-react"]);
   assert.equal(await plugins[0].transform.call({}, "raw loader output", `${nativeFile}?raw`), null);
   assert.equal(await plugins[0].transform.call({}, "url loader output", `${nativeFile}?import&url`), null);
   assert.equal(reactOptions.jsxRuntime, "automatic");
+  assert.equal(reactOptions.jsxImportSource, "react");
+  assert.deepEqual(reactOptions.babel, { plugins: [] });
   const excluded = (id) => reactOptions.exclude.some((pattern) => pattern.test(id));
   assert.ok(excluded(nativeFile));
   assert.ok(excluded(`${nativeFile}?direct`));

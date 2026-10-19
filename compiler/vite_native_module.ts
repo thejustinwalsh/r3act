@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import process from "node:process";
 import { existsSync } from "node:fs";
 import MagicString from "magic-string";
-import type { Plugin, ViteDevServer } from "vite";
+import { transformWithOxc, type Plugin, type ViteDevServer } from "vite";
 import {
   resolvePackagedNativeCompiler,
   verifyPackagedNativeCompiler,
@@ -712,14 +712,16 @@ export const nativeModuleCompilerPlugin = (
     },
     async handleHotUpdate(context) {
       const changedFile = path.resolve(context.file);
-      const affected = new Set<string>();
-      if (compiledNativeFiles.has(changedFile)) affected.add(changedFile);
+      const affected = new Map<string, { revision: string; instance: string }>();
+      const changedModule = compiledNativeFiles.get(changedFile);
+      if (changedModule) affected.set(changedFile, changedModule);
       const visited = new Set(context.modules);
       const queue = [...context.modules];
       for (const module of queue) {
         if (module.file) {
           const importerFile = path.resolve(module.file);
-          if (compiledNativeFiles.has(importerFile)) affected.add(importerFile);
+          const compiledImporter = compiledNativeFiles.get(importerFile);
+          if (compiledImporter) affected.set(importerFile, compiledImporter);
         }
         if (module.isSelfAccepting &&
           !(module.file && compiledNativeFiles.has(path.resolve(module.file)))) continue;
@@ -740,15 +742,43 @@ export const nativeModuleCompilerPlugin = (
           nativeModuleCandidateFromSource(source);
       }
       if (!affected.size && !boundaryChanged) return;
-      for (const file of affected) {
+      const acceptedChangedModule = affected.get(changedFile);
+      if (acceptedChangedModule) {
+        const source = await context.read();
+        await transformWithOxc(source, changedFile, { lang: "tsx" });
+        const helperModule = helperModuleFromSource(source);
+        const componentModule = componentModuleFromSource(source);
+        if (nativeModuleCandidateFromSource(source) && (helperModule || componentModule)) {
+          const sourcePath = path.relative(sourceRoot, changedFile).split(path.sep).join("/");
+          const response = await compile({
+            path: sourcePath,
+            source,
+            helper_module: helperModule,
+            ...(componentModule ? { component_module: source } : {}),
+          });
+          if (response.error) {
+            throw new Error(`Native UI compilation failed for ${sourcePath}: ${response.error}`);
+          }
+          if (typeof response.code !== "string" || !response.plan) {
+            throw new Error(`Native UI compiler returned an incomplete result for ${sourcePath}.`);
+          }
+        }
+        const latestSource = await context.read();
+        if (latestSource !== source) return [];
+      }
+      if ([...affected].some(([file, accepted]) => {
+        const current = compiledNativeFiles.get(file);
+        return current?.revision !== accepted.revision || current.instance !== accepted.instance;
+      })) return [];
+      for (const [file, accepted] of affected) {
         const sourceFile = path.relative(sourceRoot, file).split(path.sep).join("/");
         context.server.ws.send({
           type: "custom",
           event: "r3act:invalidate-native-module",
           data: {
             sourceFile,
-            previousRevision: compiledNativeFiles.get(file)?.revision,
-            previousInstance: compiledNativeFiles.get(file)?.instance,
+            previousRevision: accepted.revision,
+            previousInstance: accepted.instance,
           },
         });
       }

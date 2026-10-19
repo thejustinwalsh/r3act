@@ -86,9 +86,7 @@ types with `/** @jsxImportSource @r3act/host-three */`. Native hooks require the
 Rust/OXC transform; an uncompiled hook call fails explicitly. The current
 [native authoring reference](docs/native-authoring-reference.md) documents syntax,
 diagnostics and generic fallback; the [compiler tooling note](compiler-tooling.md)
-and [research guide](RESEARCH-GUIDE.md) retain checkout research context. Native module edits invalidate their
-revision and trigger a conservative full-page reload; state-preserving HMR is
-not promised.
+and [research guide](RESEARCH-GUIDE.md) retain checkout research context. Tracked native module edits pass parsing and semantic preflight before retiring the accepted revision and triggering a conservative full-page reload. Rejected or superseded edits keep the accepted app. Imported dependency syntax, runtime execution and later third-party transforms are outside preflight's guarantee; state-preserving native HMR is not promised.
 
 For a mixed native and React application, install `@vitejs/plugin-react` and
 compose it through the public helper:
@@ -103,10 +101,12 @@ export default defineConfig({
   plugins: nativeReactPlugins(react, {
     root: fileURLToPath(new URL(".", import.meta.url)),
     sourceRoots: ["src"],
-    reactOptions: {},
+    reactOptions: { jsxImportSource: "react" },
   }),
 });
 ```
+
+Explicit React JSX selection prevents native project TypeScript defaults from selecting the native factory for ordinary React production output. Native modules lower their factory locally. The helper infers options from the supplied React factory, so inline JSX/Babel options retain that factory's type checks.
 
 The helper inspects native imports and directives before constructing the React
 plugins, then excludes those exact files through React's public options. Pass
@@ -122,8 +122,7 @@ React Refresh boundaries retain their ordinary policy; native revision changes
 invalidate affected roots and pending work before conservative reload. Accepted
 host trees remain caller-owned: dispose roots and borrowed resources on page
 teardown or HMR disposal. Native-only applications need neither this helper nor
-the React plugin. Installed HMR browser verification for this new composition is
-still pending; source and plugin checks do not establish browser behavior.
+the React plugin. The [installed mixed HMR boundary](implementation/2026-10-19-hmr-completion/results.md) verifies fresh packages through headless Portless HTTPS: React Refresh retains local state/native identity, invalid native syntax preserves accepted pending work, and valid native edits remount with complete retirement and disposal. This does not establish HMR latency, arbitrary edit recovery or cross-renderer visual atomicity.
 
 The `@r3act/vite` JavaScript package remains installable on other platforms.
 Each build currently includes one native executable at
@@ -264,7 +263,7 @@ bridge were open. Later `@r3act/*` milestones add source-derived native/React
 composition and finite React island and Radix Dialog bridges, as described in
 the current sections above and below. The historical package fixture's HMR
 remount/cleanup tests do not establish installed-package HMR coverage; the
-current composition's installed browser HMR protocol remains unrun.
+current composition's later installed browser HMR coverage is documented in the [19 October completion boundary](implementation/2026-10-19-hmr-completion/results.md).
 
 ## Verification staging correction
 

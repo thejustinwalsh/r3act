@@ -100,7 +100,8 @@ const sourcePaths = async () => {
     "implementation/2026-10-19-async-recovery", "implementation/2026-10-19-installed-hmr",
     "implementation/2026-10-19-forked-transitions", "implementation/2026-10-19-custom-host",
     "implementation/2026-10-19-arrow-components",
-    "implementation/2026-10-19-publication-callbacks"]) {
+    "implementation/2026-10-19-publication-callbacks",
+    "implementation/2026-10-19-hmr-completion"]) {
     try { if ((await stat(path.join(root, relative))).isDirectory()) await walk(path.join(root, relative)); }
     catch (error) { if (error?.code !== "ENOENT") throw error; }
   }

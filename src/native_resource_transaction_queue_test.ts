@@ -229,26 +229,30 @@ Deno.test("a second A-only group cannot publish ahead of an older A/B group", as
   }
 });
 
-Deno.test("parked direct updates retain the latest tree until joint resource intent releases", async () => {
+Deno.test("direct marker updates publish while joint resource reveal stays held", async () => {
   const f = fixture("parked-direct", ["a", "b"]);
   const queue = new NativeRootWorkQueue();
   try {
+    const oldA = f.node("a"), oldB = f.node("b");
     const group = queue.enqueueResources({ id: "direct-ab", roots: [{ root: f.root,
       resources: [...f.resources.values()] }] });
     f.updateMarker("obsolete");
     f.updateMarker("latest");
     f.drain();
-    assertEquals(f.container.children[0].children.length, 2);
+    assertEquals(group.status, "pending");
+    assertStrictEquals(f.node("a"), oldA);
+    assertStrictEquals(f.node("b"), oldB);
+    assertEquals(f.container.children[0].children.map(text), ["a-loading", "b-loading", "latest"]);
     await f.settle("a");
     f.drain();
     assertEquals(group.status, "pending");
-    assertEquals(f.value("a"), "a-loading");
+    assertStrictEquals(f.node("a"), oldA);
+    assertStrictEquals(f.node("b"), oldB);
+    assertEquals(f.container.children[0].children.map(text), ["a-loading", "b-loading", "latest"]);
     await f.settle("b");
     assertEquals(group.status, "committed");
     f.drain();
-    assertEquals([f.value("a"), f.value("b")], ["a-ready", "b-ready"]);
-    assertEquals(f.container.children[0].children.length, 3);
-    assertEquals(text(f.container.children[0].children[2]), "latest");
+    assertEquals(f.container.children[0].children.map(text), ["a-ready", "b-ready", "latest"]);
   } finally {
     queue.dispose();
     f.dispose();

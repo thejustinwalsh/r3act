@@ -215,7 +215,63 @@ export const publishPreparedNativeGroup = <H, Parent>(
 type BoundaryPrimary = {
   tree: RuntimeNode;
 };
-type BoundaryRenderState = { blocked: boolean; visited: Set<string> };
+type HeldGenericState = {
+  holds: ReadonlyMap<() => void, object>;
+  boundaries: ReadonlyMap<OwnerId, {
+    cache: ComponentCache;
+    resource: AsyncResource<any>;
+  }>;
+};
+type BoundaryRenderState = {
+  blocked: boolean;
+  visited: Set<string>;
+  held?: HeldGenericState;
+  retained?: Set<OwnerId>;
+};
+
+const sameClosedBoundaryNode = (left: unknown, right: unknown, depth = 0): boolean => {
+  if (Object.is(left, right)) return true;
+  if (depth > 32 || !isRuntimeOwnedElement(left) ||
+    !isRuntimeOwnedElement(right)) return false;
+  const leftType = Object.getOwnPropertyDescriptor(left, "type")?.value;
+  const rightType = Object.getOwnPropertyDescriptor(right, "type")?.value;
+  const leftProps = Object.getOwnPropertyDescriptor(left, "props")?.value;
+  const rightProps = Object.getOwnPropertyDescriptor(right, "props")?.value;
+  if (leftType !== rightType || !leftProps || !rightProps ||
+    Object.getPrototypeOf(leftProps) !== Object.prototype ||
+    Object.getPrototypeOf(rightProps) !== Object.prototype ||
+    !Object.isFrozen(leftProps) || !Object.isFrozen(rightProps)) return false;
+  const leftKeys = Reflect.ownKeys(leftProps);
+  const rightKeys = Reflect.ownKeys(rightProps);
+  if (leftKeys.length !== rightKeys.length || leftKeys.length > 64) return false;
+  return leftKeys.every((key, index) => {
+    if (key !== rightKeys[index]) return false;
+    const a = Object.getOwnPropertyDescriptor(leftProps, key);
+    const b = Object.getOwnPropertyDescriptor(rightProps, key);
+    return !!a && !!b && "value" in a && "value" in b &&
+      sameClosedBoundaryNode(a.value, b.value, depth + 1);
+  });
+};
+const sameClosedBoundaryProps = (
+  element: RuntimeElement, accepted: Record<string, unknown>,
+): boolean => {
+  if (!isRuntimeOwnedElement(element)) return false;
+  const props = Object.getOwnPropertyDescriptor(element, "props")?.value;
+  if (!props || Object.getPrototypeOf(props) !== Object.prototype ||
+    Object.getPrototypeOf(accepted) !== Object.prototype ||
+    !Object.isFrozen(props)) return false;
+  const keys = Reflect.ownKeys(props);
+  const acceptedKeys = Reflect.ownKeys(accepted);
+  if (keys.length !== acceptedKeys.length || keys.length > 64) return false;
+  return keys.every((key, index) => {
+    if (key !== acceptedKeys[index]) return false;
+    const current = Object.getOwnPropertyDescriptor(props, key);
+    const previous = Object.getOwnPropertyDescriptor(accepted, key);
+    return !!current && !!previous && "value" in current &&
+      "value" in previous &&
+      sameClosedBoundaryNode(current.value, previous.value);
+  });
+};
 type PreparedRender = {
   owner: OwnerId;
   result: RuntimeNode;
@@ -274,6 +330,7 @@ type CandidateLifecycleSpec<H, Parent> = {
   pendingResources: readonly AsyncResource<any>[];
   blocked: boolean;
   permitPendingDirectIntent?: () => boolean;
+  permitHeldFullCandidate?: () => boolean;
   admissionCurrent?(): boolean;
   codeCurrent(): boolean;
   referencesCompiledSource?: (sourceFile: string) => boolean;
@@ -573,6 +630,15 @@ const treeReferencesCompiledSource = (
   } finally {
     seen.delete(node);
   }
+};
+const cacheReferencesCompiledSource = (
+  cache: ComponentCache, sourceFile: string,
+): boolean => {
+  if (componentRevision(cache.type)?.sourceFile === sourceFile ||
+    treeReferencesCompiledSource(cache.result, sourceFile)) return true;
+  const children = Object.getOwnPropertyDescriptor(cache.props, "children");
+  return !!children && (!("value" in children) ||
+    treeReferencesCompiledSource(children.value, sourceFile));
 };
 const cacheCodeCurrent = (caches: Iterable<ComponentCache>): boolean => {
   for (const cache of caches) if (!componentCodeCurrent(cache.type)) return false;
@@ -1310,7 +1376,7 @@ export class ComponentStateRoot<H, Parent = H> {
       let affected = treeReferencesCompiledSource(this.#tree, change.sourceFile) ||
         treeReferencesCompiledSource(this.#pendingDirectIntent?.tree ?? null, change.sourceFile);
       for (const cache of this.#componentCache.values()) {
-        if (componentRevision(cache.type)?.sourceFile === change.sourceFile) {
+        if (cacheReferencesCompiledSource(cache, change.sourceFile)) {
           affected = true;
           break;
         }
@@ -1841,6 +1907,76 @@ export class ComponentStateRoot<H, Parent = H> {
   #heldCollection(collection: KeyedCollection<any>): boolean {
     return [...this.#publicationIntents.values()].some(({ collections }) =>
       collections.has(collection));
+  }
+
+  #captureHeldGenericState(): HeldGenericState | null {
+    if (this.#publicationIntents.size === 0 ||
+      this.#pendingCollectionRegionKeys.size > 0) return null;
+    const pendingChanges = this.#pendingChanges.capture();
+    if (pendingChanges.some((change) =>
+      !change.cellIdentity || this.#heldCell({
+        owner: change.owner,
+        site: change.site,
+        cellIdentity: change.cellIdentity,
+      })
+    )) return null;
+    const holds = new Map<() => void, object>();
+    const boundaries = new Map<OwnerId, {
+      cache: ComponentCache;
+      resource: AsyncResource<any>;
+    }>();
+    for (const [release, hold] of this.#publicationIntents) {
+      if (hold.cells.length || hold.stores.size ||
+        hold.collections.size || hold.resources.size === 0) return null;
+      holds.set(release, hold);
+      for (const resource of hold.resources) {
+        const status = closedResourceStatus(resource);
+        if (status === null) return null;
+        const entries = [...this.#componentCache].filter(([owner, cache]) =>
+          this.#liveOwners.has(owner) && cache.nativeBoundary &&
+          cache.pendingResource === resource
+        );
+        if (entries.length !== 1) return null;
+        const [owner, cache] = entries[0];
+        boundaries.set(owner, { cache, resource });
+      }
+    }
+    const heldOwners = new Set(
+      [...boundaries.values()].flatMap(({ cache }) => [...cache.subtreeOwners]),
+    );
+    if (pendingChanges.some((change) =>
+      heldOwners.has(change.owner)
+    )) return null;
+    if (this.#storeNotificationGeneration !==
+      this.#committedStoreNotificationGeneration &&
+      [...this.#liveStoreReaders.keys()].some((readerId) =>
+        [...heldOwners].some((owner) =>
+          readerId.startsWith(`${owner}\u0000`) ||
+          (readerId.startsWith("\u0000suspense-pending:") &&
+            readerId.includes(`:${owner}\u0000`))
+        )
+      )) return null;
+    return boundaries.size ? { holds, boundaries } : null;
+  }
+
+  #heldGenericStateCurrent(state: HeldGenericState): boolean {
+    if (this.#publicationIntents.size !== state.holds.size) return false;
+    for (const [release, hold] of state.holds) {
+      if (this.#publicationIntents.get(release) !== hold) return false;
+    }
+    for (const [owner, { cache, resource }] of state.boundaries) {
+      if (!this.#liveOwners.has(owner) || !this.world.isAlive(owner) ||
+        this.#componentCache.get(owner) !== cache ||
+        !cacheCodeCurrentPrivate([cache]) ||
+        cache.pendingResource !== resource) return false;
+      for (const heldOwner of cache.subtreeOwners) {
+        if (!this.#liveOwners.has(heldOwner) ||
+          !this.world.isAlive(heldOwner) ||
+          !this.world.isWithin(heldOwner, owner) ||
+          !this.#componentCache.has(heldOwner)) return false;
+      }
+    }
+    return true;
   }
 
   #unheldCellChanges(): boolean {
@@ -2477,7 +2613,8 @@ export class ComponentStateRoot<H, Parent = H> {
       validate: () =>
         phase === "prepared" && !released && !this.#disposed &&
         !this.#terminalHostFailed && !this.#codeInvalidated &&
-        (scopedDelta || this.#publicationIntents.size === 0) &&
+        (scopedDelta || this.#publicationIntents.size === 0 ||
+          (spec.permitHeldFullCandidate?.() ?? false)) &&
         (!scopedDelta || spec.permitPendingDirectIntent?.() ||
           this.#pendingDirectIntent === null) &&
         (spec.admissionCurrent?.() ?? true) &&
@@ -2993,6 +3130,7 @@ export class ComponentStateRoot<H, Parent = H> {
     relevantOwners: Set<OwnerId>,
     numericChanges: readonly import("./owner_state_world.ts").StateChange[] =
       [],
+    heldGenericState?: HeldGenericState,
   ): NativeRootCandidate<H, Parent> {
     this.#assertActive();
     this.#assertNoPublicationBarrier("prepare");
@@ -3054,6 +3192,8 @@ export class ComponentStateRoot<H, Parent = H> {
     const boundaryState: BoundaryRenderState = {
       blocked: false,
       visited: new Set(),
+      held: heldGenericState,
+      retained: heldGenericState ? new Set() : undefined,
     };
     const nextOwners = new Set<OwnerId>();
     const nextEffects = new Map<string, EffectRegistration>();
@@ -3100,6 +3240,11 @@ export class ComponentStateRoot<H, Parent = H> {
         nextBoundaryPrimaries,
         boundaryState,
       );
+      if (heldGenericState &&
+        (boundaryState.retained?.size !== heldGenericState.boundaries.size ||
+          !this.#heldGenericStateCurrent(heldGenericState))) {
+        boundaryState.blocked = true;
+      }
       for (const key of nextBoundaryPrimaries.keys()) {
         if (!boundaryState.visited.has(key)) nextBoundaryPrimaries.delete(key);
       }
@@ -3128,7 +3273,10 @@ export class ComponentStateRoot<H, Parent = H> {
         sites.set(site, source.value);
       }
     }
-    const candidatePendingResources = [...resourceReads!.pending];
+    const candidatePendingResources = [...new Set([
+      ...resourceReads!.pending,
+      ...[...(heldGenericState?.boundaries.values() ?? [])].map(({ resource }) => resource),
+    ])];
     const ownerIds = new Set(nextOwners);
     const previousOwners = new Set(this.#liveOwners);
     const artifacts = {
@@ -3226,12 +3374,16 @@ export class ComponentStateRoot<H, Parent = H> {
       transitions: options.transitions ?? [],
       pendingResources: candidatePendingResources,
       blocked: boundaryState.blocked,
+      permitHeldFullCandidate: heldGenericState
+        ? () => this.#heldGenericStateCurrent(heldGenericState)
+        : undefined,
       referencesCompiledSource: (sourceFile) =>
         treeReferencesCompiledSource(tree, sourceFile) ||
         [...(artifacts.nextCache?.values() ?? [])].some((cache) =>
-          componentRevision(cache.type)?.sourceFile === sourceFile),
+          cacheReferencesCompiledSource(cache, sourceFile)),
       codeCurrent: () =>
         this.#pendingDirectIntent === directIntentAtPrepare &&
+        (!heldGenericState || this.#heldGenericStateCurrent(heldGenericState)) &&
         cacheCodeCurrent(artifacts.nextCache?.values() ?? []),
       validatePrepared: () =>
         artifacts.preparation !== null && artifacts.preparation.validate() &&
@@ -3259,6 +3411,7 @@ export class ComponentStateRoot<H, Parent = H> {
         cacheCodeCurrentPrivate(artifacts.nextCache?.values() ?? []) &&
         codeRevisionsCurrent(capturedCodeRevisions) &&
         this.#pendingDirectIntent === directIntentAtPrepare &&
+        (!heldGenericState || this.#heldGenericStateCurrent(heldGenericState)) &&
         ((resourceReads?.validateCanonical() ?? true) ||
           (retryResourceAfterPublication = true)),
       preparePublication: () => {
@@ -3580,6 +3733,35 @@ export class ComponentStateRoot<H, Parent = H> {
       return true;
     }
     if (boundaryPublished || urgentPublished) this.#deferredFlush = false;
+    if (this.#publicationIntents.size > 0 &&
+      (this.#pendingDirectIntent ||
+        this.#pendingChanges.size > 0 ||
+        this.#storeNotificationGeneration !==
+          this.#committedStoreNotificationGeneration) &&
+      (this.#pendingChanges.size > 0 || canTryClosedStores ||
+        this.#partialStoreAttemptGeneration !==
+        this.#storeNotificationGeneration)) {
+      const intent = this.#pendingDirectIntent;
+      this.#partialStoreAttemptGeneration = this.#storeNotificationGeneration;
+      this.#scopedFlushActive = true;
+      try {
+        const published = this.#renderAndCommit(
+          intent?.tree ?? this.#tree,
+          true,
+          new Set(),
+          new Set(),
+          0,
+          [],
+          intent,
+        );
+        if (published) {
+          reportFlush();
+          return true;
+        }
+      } finally {
+        this.#scopedFlushActive = false;
+      }
+    }
     if (this.#publicationIntents.size > 0 &&
       (this.#pendingDirectIntent || this.#pendingChanges.size > 0 ||
         this.#pendingCollectionRegionKeys.size > 0 ||
@@ -3946,7 +4128,6 @@ export class ComponentStateRoot<H, Parent = H> {
       previous.tree = null;
     }
     this.#pendingDirectIntent = intent;
-    if (this.#publicationIntents.size > 0) return;
     this.#renderAndCommit(tree, true, new Set(), new Set(), 0, [], intent);
   }
 
@@ -4758,6 +4939,10 @@ export class ComponentStateRoot<H, Parent = H> {
     directIntent: DirectTreeIntent | null = null,
   ): boolean {
     let candidate: NativeRootCandidate<H, Parent> | null = null;
+    const heldGenericState = this.#publicationIntents.size > 0
+      ? this.#captureHeldGenericState()
+      : undefined;
+    if (this.#publicationIntents.size > 0 && !heldGenericState) return false;
     const storeGenerationAtAttempt = this.#storeNotificationGeneration;
     const holdDirectFrontier = (
       current: NativeRootCandidate<H, Parent>,
@@ -4792,6 +4977,7 @@ export class ComponentStateRoot<H, Parent = H> {
         dirtyOwners,
         relevantOwners,
         numericChanges,
+        heldGenericState ?? undefined,
       );
       if (directIntent && this.#pendingDirectIntent !== directIntent) {
         candidate.discard();
@@ -8786,6 +8972,43 @@ export class ComponentStateRoot<H, Parent = H> {
         } else nextComponentCache.set(boundaryOwner, cache);
         return output;
       };
+      const heldBoundary = boundaryState?.held?.boundaries.get(boundaryOwner);
+      if (heldBoundary) {
+        const accepted = heldBoundary.cache;
+        if (this.#componentCache.get(boundaryOwner) !== accepted ||
+          !sameClosedBoundaryProps(node, accepted.props) ||
+          !accepted.nativeBoundary ||
+          accepted.pendingResource !== heldBoundary.resource ||
+          [...accepted.subtreeOwners].some((owner) =>
+            !this.#liveOwners.has(owner) ||
+            !this.#componentCache.has(owner)
+          )) {
+          boundaryState!.blocked = true;
+          return accepted.expandedResult;
+        }
+        const heldOwners = accepted.subtreeOwners;
+        for (const heldOwner of heldOwners) {
+          const cache = this.#componentCache.get(heldOwner)!;
+          nextOwners.add(heldOwner);
+          nextComponentCache.set(heldOwner, cache);
+          for (const [key, effect] of cache.ownEffects) nextEffects.set(key, effect);
+          if (cache.nativeBoundary) boundaryState!.visited.add(String(heldOwner));
+          for (const ancestor of ownerPath) {
+            subtreeOwnersByOwner.get(ancestor)?.add(heldOwner);
+          }
+        }
+        const heldReaders = new Map<string, ReadonlySet<AnyAsyncStore>>();
+        for (const [readerId, stores] of this.#liveStoreReaders) {
+          if ([...heldOwners].some((owner) =>
+            readerId.startsWith(`${owner}\u0000`) ||
+            (readerId.startsWith("\u0000suspense-pending:") &&
+              readerId.includes(`:${owner}\u0000`))
+          )) heldReaders.set(readerId, stores);
+        }
+        storeTransaction.preserveReaders(heldReaders);
+        boundaryState!.retained!.add(boundaryOwner);
+        return accepted.expandedResult;
+      }
       const storeMark = storeTransaction.checkpoint();
       const ownerMark = ownerPreparation?.checkpoint();
       const journalMark = branchJournal.checkpoint();
