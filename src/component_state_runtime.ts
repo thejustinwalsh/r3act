@@ -36,7 +36,11 @@ import {
   isPendingResourceToken,
   ResourceRejection,
 } from "./async_resource_runtime.ts";
-import { closedResourceStatus, ResourceReadSet } from "./resource_read_set.ts";
+import {
+  canonicalResourceVersion,
+  closedResourceStatus,
+  ResourceReadSet,
+} from "./resource_read_set.ts";
 import { captureClosedProjectionValues } from "./owned_store_record.ts";
 import { snapshotScopedHostProp } from "./scoped_host_values.ts";
 import { PendingStateChanges } from "./pending_state_changes.ts";
@@ -69,10 +73,12 @@ import {
   type BoundValue,
   type ComponentType,
   copyKeyedOwnerMetadata,
+  copyRuntimeElement,
   createKeyedOwnerVersion,
   Fragment,
   getKeyedOwnerRegionId,
   getKeyedOwnerVersion,
+  isRuntimeOwnedElement,
   keyedOwnerChildren,
   type NumericBindingProgramDescriptor,
   type NumericBindingProgramDescriptorV1,
@@ -97,6 +103,7 @@ import {
   type DerivedRegionGraph,
 } from "./derived_region_runtime.ts";
 import {
+  canonicalCollectionVersion,
   prepareCollectionReaderAcknowledgement,
   type KeyedCollection,
   type KeyedCollectionBatch,
@@ -144,12 +151,16 @@ const sameClosedHostOutput = (
   }
 };
 
-const componentSite = Symbol("compiled-component-site");
+type ComponentRegistration = Readonly<{
+  siteId: string;
+  metadata?: ComponentMetadata;
+}>;
+const componentRegistration = Symbol("compiled-component-registration");
+const definedComponents = new WeakMap<Function, ComponentRegistration>();
 class SparseCandidateIneligible extends Error {}
 class HeldPublicationWait extends Error {
   constructor(readonly resource: AsyncResource<void>) { super("Publication is held"); }
 }
-type SiteComponent<P> = ComponentType<P> & { [componentSite]: string };
 type EffectCleanup = () => void;
 type DirectTreeIntent = {
   tree: RuntimeNode;
@@ -184,6 +195,22 @@ export type NativeRootCandidate<H, Parent = H> = {
   runEffects(): void;
   discard(): void;
   failGroup(error: unknown): void;
+};
+const groupPublicationReceipts = new WeakMap<object, {
+  current(): boolean;
+  accept(): void;
+}>();
+
+/** Accept a prepared group using only its private final admission receipts. */
+export const publishPreparedNativeGroup = <H, Parent>(
+  candidates: readonly NativeRootCandidate<H, Parent>[],
+): void => {
+  const receipts = candidates.map((candidate) => groupPublicationReceipts.get(candidate));
+  if (receipts.some((receipt) => !receipt) ||
+    receipts.some((receipt) => !receipt!.current())) {
+    throw new Error("Native candidate became stale before grouped publication");
+  }
+  for (const receipt of receipts) receipt!.accept();
 };
 type BoundaryPrimary = {
   tree: RuntimeNode;
@@ -234,6 +261,7 @@ type ClosedStoreOutputCut = {
   readonly inputStores: ReadonlySet<AnyAsyncStore>;
   readonly inputResources: ReadonlySet<AsyncResource<any>>;
   current(): boolean;
+  privateCurrent(): boolean;
   publish(): void;
   release(): void;
 };
@@ -251,6 +279,7 @@ type CandidateLifecycleSpec<H, Parent> = {
   referencesCompiledSource?: (sourceFile: string) => boolean;
   validatePrepared(): boolean;
   validatePostHost(): boolean;
+  finalGroupCurrent(): boolean;
   commitHost(): void;
   preparePublication(): void;
   publish(): void;
@@ -392,8 +421,15 @@ export const defineComponent = <P extends Record<string, unknown>>(
   if (siteId.length === 0) {
     throw new Error("Component site ID must not be empty");
   }
-  Object.defineProperty(render, componentSite, { value: siteId });
+  const priorDefinition = definedComponents.get(render);
+  if (priorDefinition && priorDefinition.siteId === siteId &&
+    !metadata && !priorDefinition.metadata &&
+    siteId.lastIndexOf("#component:") < 0) return render;
+  if (priorDefinition) {
+    throw new TypeError("Component function is already registered");
+  }
   const moduleEnd = siteId.lastIndexOf("#component:");
+  let normalizedMetadata: ComponentMetadata | undefined;
   if (metadata || moduleEnd >= 0) {
     const propOnlySites = [...(metadata?.propOnlySites ?? [])];
     if (propOnlySites.some((site) => typeof site !== "string" || !site)) {
@@ -462,8 +498,7 @@ export const defineComponent = <P extends Record<string, unknown>>(
     if (expectedRevision && !revision) {
       throw new Error("Compiled component program has no matching module revision");
     }
-    Object.defineProperty(render, componentMetadata, {
-      value: Object.freeze({
+    normalizedMetadata = Object.freeze({
         propOnlySites: Object.freeze(propOnlySites),
         hostLeafOutput: metadata?.hostLeafOutput === true,
         ...(revision ? { revision } : {}),
@@ -471,13 +506,14 @@ export const defineComponent = <P extends Record<string, unknown>>(
         ...(closedResourceHostProgram ? { closedResourceHostProgram } : {}),
         ...(closedStoreHostProgram ? { closedStoreHostProgram } : {}),
         ...(closedComponentForwardProgram ? { closedComponentForwardProgram } : {}),
-      }),
-    });
+      });
   }
+  const registration = Object.freeze({ siteId, metadata: normalizedMetadata });
+  Object.defineProperty(render, componentRegistration, { value: registration });
+  definedComponents.set(render, registration);
   return render;
 };
 
-const componentMetadata = Symbol("compiled-component-metadata");
 const emptyCompiledPropSites: ReadonlySet<string> = new Set();
 type ComponentMetadata = {
   readonly revision?: CompiledSemanticRevisionToken;
@@ -491,12 +527,18 @@ type ComponentMetadata = {
 
 const componentRevision = (component: unknown) =>
   typeof component === "function"
-    ? (component as SiteComponent<unknown> & {
-      [componentMetadata]?: ComponentMetadata;
-    })[componentMetadata]?.revision
+    ? (definedComponents.get(component) ??
+      (component as Function & {
+        [componentRegistration]?: ComponentRegistration;
+      })[componentRegistration])?.metadata?.revision
     : undefined;
 const componentCodeCurrent = (component: unknown): boolean => {
   const revision = componentRevision(component);
+  return !revision || isCompiledSemanticRevisionCurrent(revision);
+};
+const componentCodeCurrentPrivate = (component: unknown): boolean => {
+  const revision = typeof component === "function"
+    ? definedComponents.get(component)?.metadata?.revision : undefined;
   return !revision || isCompiledSemanticRevisionCurrent(revision);
 };
 const treeReferencesCompiledSource = (
@@ -536,41 +578,58 @@ const cacheCodeCurrent = (caches: Iterable<ComponentCache>): boolean => {
   for (const cache of caches) if (!componentCodeCurrent(cache.type)) return false;
   return true;
 };
+const cacheCodeCurrentPrivate = (caches: Iterable<ComponentCache>): boolean => {
+  for (const cache of caches) if (!componentCodeCurrentPrivate(cache.type)) return false;
+  return true;
+};
+const captureCodeRevisions = (
+  caches: Iterable<ComponentCache>,
+): { readonly revisions: readonly CompiledSemanticRevisionToken[] } |
+  { readonly error: unknown } => {
+  const revisions: CompiledSemanticRevisionToken[] = [];
+  try {
+    for (const cache of caches) {
+      const revision = componentRevision(cache.type);
+      if (revision) revisions.push(revision);
+    }
+  } catch (error) {
+    return { error };
+  }
+  return { revisions };
+};
+const codeRevisionsCurrent = (
+  captured: ReturnType<typeof captureCodeRevisions>,
+) => {
+  if ("error" in captured) throw captured.error;
+  return captured.revisions.every(isCompiledSemanticRevisionCurrent);
+};
 
 const compiledStateLayoutFor = (
   component: unknown,
 ): CompiledStateLayout | undefined =>
   typeof component === "function"
-    ? (component as SiteComponent<unknown> & {
-      [componentMetadata]?: ComponentMetadata;
-    })[componentMetadata]?.stateLayout
+    ? definedComponents.get(component)?.metadata?.stateLayout
     : undefined;
 
 const closedResourceHostProgramFor = (
   component: unknown,
 ): ClosedResourceHostProgram | undefined =>
   typeof component === "function" && componentCodeCurrent(component)
-    ? (component as SiteComponent<unknown> & {
-      [componentMetadata]?: ComponentMetadata;
-    })[componentMetadata]?.closedResourceHostProgram
+    ? definedComponents.get(component)?.metadata?.closedResourceHostProgram
     : undefined;
 
 const closedStoreHostProgramFor = (
   component: unknown,
 ): ClosedStoreHostProgram | undefined =>
   typeof component === "function" && componentCodeCurrent(component)
-    ? (component as SiteComponent<unknown> & {
-      [componentMetadata]?: ComponentMetadata;
-    })[componentMetadata]?.closedStoreHostProgram
+    ? definedComponents.get(component)?.metadata?.closedStoreHostProgram
     : undefined;
 
 const closedComponentForwardProgramFor = (
   component: unknown,
 ): ClosedComponentForwardProgram | undefined =>
   typeof component === "function" && componentCodeCurrent(component)
-    ? (component as SiteComponent<unknown> & {
-      [componentMetadata]?: ComponentMetadata;
-    })[componentMetadata]?.closedComponentForwardProgram
+    ? definedComponents.get(component)?.metadata?.closedComponentForwardProgram
     : undefined;
 
 const validateNumericBindingProgram = (
@@ -966,7 +1025,10 @@ const getComponentSiteId = (type: RuntimeElement["type"]): string => {
   if (typeof type !== "function") {
     throw new Error("Expected a function component");
   }
-  const siteId = (type as SiteComponent<unknown>)[componentSite];
+  const siteId = (definedComponents.get(type) ??
+    (type as Function & {
+      [componentRegistration]?: ComponentRegistration;
+    })[componentRegistration])?.siteId;
   if (!siteId) {
     throw new Error(
       "Owner-aware components must be registered with defineComponent(siteId, render)",
@@ -1009,24 +1071,21 @@ const carryHostKeys = (
     );
   }
   if (node.type === Fragment) {
-    return {
-      ...node,
-      props: {
-        ...node.props,
-        children: carryHostKeys(
-          node.props.children,
-          componentKey,
-          path,
-          onVisit,
-        ),
-      },
-    };
+    return copyRuntimeElement(node.type, {
+      ...node.props,
+      children: carryHostKeys(
+        node.props.children,
+        componentKey,
+        path,
+        onVisit,
+      ),
+    });
   }
   const existingKey = node.props.key;
   const key = existingKey == null
     ? `${String(componentKey)}:${path}`
     : String(existingKey);
-  return { ...node, props: { ...node.props, key } };
+  return copyRuntimeElement(node.type, { ...node.props, key });
 };
 
 const singleHostRootKey = (
@@ -1665,6 +1724,7 @@ export class ComponentStateRoot<H, Parent = H> {
       codeCurrent: () => false,
       validatePrepared: () => false,
       validatePostHost: () => false,
+      finalGroupCurrent: () => false,
       commitHost: () => { throw new Error("Resource candidate is blocked"); },
       preparePublication: () => {}, publish: () => {},
       installSubscriptions: () => [], runEffects: () => [],
@@ -1681,6 +1741,12 @@ export class ComponentStateRoot<H, Parent = H> {
   ): NativeRootCandidate<H, Parent> | null {
     if (!accepted.size && !validators.length) return null;
     const stores = new StoreRenderTransaction(this.#rootId);
+    const collectionVersions = collections.map((collection) =>
+      [collection, canonicalCollectionVersion(collection)] as const
+    );
+    const resourceVersions = [...resources].map((resource) =>
+      [resource, canonicalResourceVersion(resource)] as const
+    );
     const current = () => validators.every((validate) => validate()) &&
       [...accepted].every(([owner, tree]) =>
       this.#boundaryPrimaries.get(String(owner))?.tree === tree &&
@@ -1700,6 +1766,15 @@ export class ComponentStateRoot<H, Parent = H> {
       codeCurrent: current,
       validatePrepared: () => current() && stores.validate(),
       validatePostHost: () => current() && stores.validatePublicationInputs(),
+      finalGroupCurrent: () => [...accepted].every(([owner, tree]) =>
+        this.#boundaryPrimaries.get(String(owner))?.tree === tree &&
+        this.#liveOwners.has(owner) && this.world.isAlive(owner)
+      ) && collectionVersions.every(([collection, version]) => {
+        const current = canonicalCollectionVersion(collection);
+        return version === null || current === null || current >= version;
+      }) && resourceVersions.every(([resource, version]) =>
+        version === null || canonicalResourceVersion(resource) === version
+      ) && stores.validatePublicationInputsCanonical(),
       commitHost: () => {},
       preparePublication: () => stores.preparePublicationAfterHost(),
       publish: () => { stores.publishAccepted(); this.#publicationVersion++; },
@@ -1980,9 +2055,11 @@ export class ComponentStateRoot<H, Parent = H> {
       };
       return visit(host, previous, next) ? { regions: staged, changed } : null;
     };
-    const current = () => [...owners].every(([owner, { cache, inputs }]) =>
+    const current = (privateOnly = false) => [...owners].every(([owner, { cache, inputs }]) =>
       this.#liveOwners.has(owner) && this.world.isAlive(owner) &&
-      this.#componentCache.get(owner) === cache && componentCodeCurrent(cache.type) &&
+      this.#componentCache.get(owner) === cache &&
+      (privateOnly ? componentCodeCurrentPrivate(cache.type) :
+        componentCodeCurrent(cache.type)) &&
       inputs.every(({ id, prop, source, membership }) =>
         ownValue(cache.props, prop) === source &&
         (membership === undefined ||
@@ -1994,7 +2071,7 @@ export class ComponentStateRoot<H, Parent = H> {
     ) && [...this.#liveStoreReaders].every(([id, membership]) =>
       ![...membership].some((store) => selectedStores.has(store)) ||
       covered.has(id) || retiredPendingReaders.has(id)
-    ) && resources.validate();
+    ) && (privateOnly ? resources.validateCanonical() : resources.validate());
     try {
       for (const [id, membership] of this.#liveStoreReaders) {
         if (![...membership].some((store) => selectedStores.has(store))) continue;
@@ -2004,7 +2081,7 @@ export class ComponentStateRoot<H, Parent = H> {
         if (owners.has(owner)) continue;
         const cache = this.#componentCache.get(owner);
         const program = typeof cache?.type === "function"
-          ? (cache.type as SiteComponent<unknown> & { [componentMetadata]?: ComponentMetadata })[componentMetadata]?.closedStoreHostProgram
+          ? definedComponents.get(cache.type)?.metadata?.closedStoreHostProgram
           : undefined;
         if (!cache || !program || cache.subtreeOwners.size !== 1 ||
           cache.ownEffects.size !== 0 || cache.propBoundSites.size !== 0 ||
@@ -2076,7 +2153,8 @@ export class ComponentStateRoot<H, Parent = H> {
         !current() || !stores.validate()) throw new SparseCandidateIneligible();
       const ownerIds = new Set(owners.keys());
       return {
-        owners: ownerIds, regions, current, inputStores, inputResources,
+        owners: ownerIds, regions, current: () => current(),
+        privateCurrent: () => current(true), inputStores, inputResources,
         publish: () => {
           for (const [owner, { next }] of owners) {
             const cache = this.#componentCache.get(owner)!;
@@ -2169,6 +2247,12 @@ export class ComponentStateRoot<H, Parent = H> {
     });
     const handles = writes.map(({ handle }) => handle);
     const versions = writes.map(({ version }) => version);
+    const acceptedCollectionVersions = acceptedCollectionFootprint.map((collection) =>
+      [collection, canonicalCollectionVersion(collection)] as const
+    );
+    const acceptedResourceVersions = [...acceptedResources].map((resource) =>
+      [resource, canonicalResourceVersion(resource)] as const
+    );
     return this.#createCandidateLifecycle({
       baseVersion: this.#publicationVersion, baseVDOMVersion: this.#vdom.version,
       scope: { kind: "retained" }, stores, transitions: [], pendingResources: [], blocked: false,
@@ -2187,6 +2271,18 @@ export class ComponentStateRoot<H, Parent = H> {
         (closed?.current() ?? true) && stores.validate(),
       validatePostHost: () => program!.validatePostHost() && this.#validateRetainedCells(writes, true) &&
         (closed?.current() ?? true) && stores.validatePublicationInputs(),
+      finalGroupCurrent: () => program!.validatePostHostPrivate() &&
+        this.#validateRetainedCells(writes, true) &&
+        (closed?.privateCurrent() ?? true) && stores.validatePublicationInputsCanonical() &&
+        acceptedCurrent() &&
+        acceptedCollectionVersions.every(([collection, version]) =>
+          version === null || canonicalCollectionVersion(collection) === version
+        ) && acceptedResourceVersions.every(([resource, version]) =>
+          version === null || canonicalResourceVersion(resource) === version
+        ) && writes.every(({ handle }) => {
+          const cache = this.#componentCache.get(handle.owner);
+          return cache !== undefined && componentCodeCurrentPrivate(cache.type);
+        }),
       commitHost: () => program!.commit(),
       preparePublication: () => stores.preparePublicationAfterHost(),
       publish: () => {
@@ -2291,6 +2387,7 @@ export class ComponentStateRoot<H, Parent = H> {
         pendingResources.length = 0;
         candidateStores.clear();
         if (candidateHandle) {
+          groupPublicationReceipts.delete(candidateHandle);
           Object.defineProperties(candidateHandle, {
             baseVersion: { value: admittedVersion, enumerable: true, configurable: true },
             targetVersion: { value: admittedVersion + 1, enumerable: true, configurable: true },
@@ -2342,6 +2439,26 @@ export class ComponentStateRoot<H, Parent = H> {
       return throwWithCleanup(error, errors);
     };
     const rootVersion = () => this.#publicationVersion;
+    const acceptPrepared = () => {
+      if (phase !== "publication-ready") throw new Error(`Candidate is ${phase}`);
+      try {
+        spec.publish();
+        this.#vdom.publishAccepted();
+        phase = "published";
+        spec.accepted?.();
+      } catch (error) {
+        this.#terminalFailureKind = "publication";
+        failUnpublished(error);
+      }
+    };
+    const finalPrivateCurrent = () => phase === "publication-ready" && !released &&
+      !this.#disposed && !this.#disposeRequested &&
+      !this.#terminalHostFailed && !this.#codeInvalidated &&
+      (!scopedDelta || spec.permitPendingDirectIntent?.() ||
+        this.#pendingDirectIntent === null) &&
+      this.#publicationVersion === admittedVersion &&
+      this.#vdom.appliedVersion === admittedVDOMVersion + appliedVDOMDelta &&
+      spec.finalGroupCurrent();
     const candidate: NativeRootCandidate<H, Parent> = {
       rootId: this.#rootId,
       get baseVersion() {
@@ -2401,7 +2518,7 @@ export class ComponentStateRoot<H, Parent = H> {
         }
       },
       validatePostHost: () =>
-        phase === "host-committed" && !this.#disposed &&
+        (phase === "host-committed" || phase === "publication-ready") && !this.#disposed &&
         !this.#disposeRequested && !this.#terminalHostFailed &&
         !this.#codeInvalidated &&
         (!scopedDelta || spec.permitPendingDirectIntent?.() ||
@@ -2439,17 +2556,14 @@ export class ComponentStateRoot<H, Parent = H> {
           if (this.#codeInvalidated ||
             (scopedDelta && !spec.permitPendingDirectIntent?.() &&
               this.#pendingDirectIntent !== null) ||
-            !spec.codeCurrent()) {
+            !spec.codeCurrent() || !finalPrivateCurrent()) {
             throw new Error("Compiled module changed before publication");
           }
-          spec.publish();
-          this.#vdom.publishAccepted();
-          phase = "published";
-          spec.accepted?.();
         } catch (error) {
           this.#terminalFailureKind = "publication";
           failUnpublished(error);
         }
+        acceptPrepared();
       },
       installSubscriptions: () => {
         if (phase !== "published") throw new Error(`Candidate is ${phase}`);
@@ -2512,6 +2626,10 @@ export class ComponentStateRoot<H, Parent = H> {
       },
     };
     candidateHandle = candidate;
+    groupPublicationReceipts.set(candidate, {
+      current: finalPrivateCurrent,
+      accept: acceptPrepared,
+    });
     this.#preparedCandidates.set(candidate, spec.referencesCompiledSource ?? (() => false));
     if (this.#codeInvalidated) candidate.discard();
     return candidate;
@@ -2549,9 +2667,8 @@ export class ComponentStateRoot<H, Parent = H> {
       if (!cache || cache.nativeBoundary || cache.subtreeOwners.size !== 1) {
         return null;
       }
-      const metadata = (cache.type as SiteComponent<unknown> & {
-        [componentMetadata]?: ComponentMetadata;
-      })[componentMetadata];
+      const metadata = typeof cache.type === "function"
+        ? definedComponents.get(cache.type)?.metadata : undefined;
       if (metadata?.hostLeafOutput !== true) return null;
       if (
         hasNestedComponent(
@@ -2722,6 +2839,7 @@ export class ComponentStateRoot<H, Parent = H> {
         sites.set(site, source.value);
       }
     }
+    const capturedCodeRevisions = captureCodeRevisions(cachePatches.values());
     return this.#createCandidateLifecycle({
       baseVersion,
       baseVDOMVersion,
@@ -2741,6 +2859,13 @@ export class ComponentStateRoot<H, Parent = H> {
         stores.validatePublicationInputs() &&
         validatePostHostNumericWrites() &&
         (resourceReads?.validate() ?? false),
+      finalGroupCurrent: () => preparation.validatePublicationInputs() &&
+        !preparation.hasStateWrites() &&
+        stores.validatePublicationInputsCanonical() &&
+        validatePostHostNumericWrites() &&
+        (resourceReads?.validateCanonical() ?? false) &&
+        cacheCodeCurrentPrivate(cachePatches.values()) &&
+        codeRevisionsCurrent(capturedCodeRevisions),
       preparePublication: () => {
         preparation.preparePublicationAfterHost();
         stores.preparePublicationAfterHost();
@@ -3082,6 +3207,18 @@ export class ComponentStateRoot<H, Parent = H> {
       ) && [...(artifacts.collectionRegions?.values() ?? [])].every((region) =>
         region.collection.version >= region.snapshotVersion
       );
+    const validatesPostHostCollectionsCanonical = () =>
+      [...(artifacts.keyedRegions?.values() ?? [])].every((region) => {
+        if (!region.collection) return true;
+        const version = canonicalCollectionVersion(region.collection.collection);
+        return version === null || version >= region.collection.snapshotVersion;
+      }) && [...(artifacts.collectionRegions?.values() ?? [])].every((region) => {
+        const version = canonicalCollectionVersion(region.collection);
+        return version === null || version >= region.snapshotVersion;
+      });
+    const capturedCodeRevisions = captureCodeRevisions(
+      artifacts.nextCache?.values() ?? [],
+    );
     return this.#createCandidateLifecycle({
       baseVersion,
       baseVDOMVersion,
@@ -3111,6 +3248,19 @@ export class ComponentStateRoot<H, Parent = H> {
         artifacts.stores.validatePublicationInputs() &&
         validatePostHostNumericWrites() &&
         !boundaryState.blocked && validatesPostHostCollections(),
+      finalGroupCurrent: () =>
+        artifacts.preparation !== null &&
+        artifacts.preparation.validatePublicationInputs() &&
+        !artifacts.preparation.hasStateWrites() &&
+        artifacts.stores !== null &&
+        artifacts.stores.validatePublicationInputsCanonical() &&
+        validatePostHostNumericWrites() && !boundaryState.blocked &&
+        validatesPostHostCollectionsCanonical() &&
+        cacheCodeCurrentPrivate(artifacts.nextCache?.values() ?? []) &&
+        codeRevisionsCurrent(capturedCodeRevisions) &&
+        this.#pendingDirectIntent === directIntentAtPrepare &&
+        ((resourceReads?.validateCanonical() ?? true) ||
+          (retryResourceAfterPublication = true)),
       preparePublication: () => {
         retryResourceAfterPublication = resourceReads !== null &&
           !resourceReads.validate();
@@ -4120,6 +4270,7 @@ export class ComponentStateRoot<H, Parent = H> {
       storeInputs: ReadonlySet<AnyAsyncStore>;
       pendingReaderIds: ReadonlySet<string>;
       current(): boolean;
+      privateCurrent(): boolean;
       publish(): void;
       installSubscriptions(): void;
       runEffects(): unknown[];
@@ -4209,6 +4360,17 @@ export class ComponentStateRoot<H, Parent = H> {
         !preparation.hasStateWrites() && stores.validatePublicationInputs() &&
         (reads?.validate() ?? false) && (program?.validatePostHost() ?? false) &&
         this.#validateRetainedCells(writes, true) && stageCurrent(),
+      finalGroupCurrent: () => preparation.validatePublicationInputs() &&
+        !preparation.hasStateWrites() &&
+        stores.validatePublicationInputsCanonical() &&
+        (reads?.validateCanonical() ?? false) &&
+        (program?.validatePostHostPrivate() ?? false) &&
+        this.#validateRetainedCells(writes, true) &&
+        stages.every((stage) => stage.privateCurrent()) &&
+        writes.every(({ handle }) => {
+          const cache = this.#componentCache.get(handle.owner);
+          return cache !== undefined && componentCodeCurrentPrivate(cache.type);
+        }),
       commitHost: () => { preparation.beginHostApplication(); program!.commit(); },
       preparePublication: () => {
         preparation.preparePublicationAfterHost();
@@ -4272,8 +4434,7 @@ export class ComponentStateRoot<H, Parent = H> {
     if (this.#resourceHoldWait(new Set([resource]), resourceLease)) return null;
     if (closedResourceStatus(resource)?.status !== "fulfilled") return null;
     const child = Object.getOwnPropertyDescriptor(boundaryCache.props, "children")?.value;
-    if (!child || Array.isArray(child) || typeof child !== "object" ||
-      !Object.isFrozen(child)) return null;
+    if (!isRuntimeOwnedElement(child)) return null;
     const dependencyStores = new Set<AnyAsyncStore>();
     const dependencies = this.#boundaryResourceDependencies(child, dependencyStores);
     if (!dependencies || this.#resourceHoldWait(
@@ -4296,10 +4457,11 @@ export class ComponentStateRoot<H, Parent = H> {
     for (;;) {
       const type = Object.getOwnPropertyDescriptor(projected, "type")?.value;
       const props = Object.getOwnPropertyDescriptor(projected, "props")?.value;
-      if (typeof type !== "function" || visited.has(type) ||
+      if (typeof type !== "function" || !definedComponents.has(type) ||
+        visited.has(type) ||
         !props || typeof props !== "object" || !Object.isFrozen(props)) return null;
       visited.add(type);
-      const siteId = (type as SiteComponent<unknown>)[componentSite];
+      const siteId = definedComponents.get(type)?.siteId;
       const revision = componentRevision(type);
       if (!siteId || !revision || !isCompiledSemanticRevisionCurrent(revision)) return null;
       if (steps.length && (revision.sourceFile !== steps[0].revision.sourceFile ||
@@ -4321,7 +4483,7 @@ export class ComponentStateRoot<H, Parent = H> {
       if (!forward) break;
       if (steps.length > 8 ||
         forward.childComponent === type ||
-        (forward.childComponent as SiteComponent<unknown>)[componentSite] !==
+        definedComponents.get(forward.childComponent)?.siteId !==
           forward.childComponentProgramId ||
         !componentCodeCurrent(forward.childComponent)) return null;
       const nextRevision = componentRevision(forward.childComponent);
@@ -4360,8 +4522,7 @@ export class ComponentStateRoot<H, Parent = H> {
       return null;
     }
     const oldOutput = boundaryCache.expandedResult;
-    if (!oldOutput || Array.isArray(oldOutput) ||
-      typeof oldOutput !== "object" ||
+    if (!isRuntimeOwnedElement(oldOutput) ||
       typeof Object.getOwnPropertyDescriptor(oldOutput, "type")?.value !== "string") {
       return null;
     }
@@ -4474,15 +4635,17 @@ export class ComponentStateRoot<H, Parent = H> {
           propBoundSites: new Set(),
         });
       }
-      const forwardingCurrent = () => steps.every((step, index) => {
+      const forwardingCodeCurrent = () => steps.every((step, index) =>
+        isCompiledSemanticRevisionCurrent(step.revision) &&
+        (step.forward === undefined ||
+          (closedComponentForwardProgramFor(step.type) === step.forward &&
+            definedComponents.get(step.forward.childComponent)?.siteId ===
+              step.forward.childComponentProgramId &&
+            step.forward.childComponent === steps[index + 1]?.type))
+      );
+      const forwardingCurrent = () => steps.every((step) => {
         if (Object.getOwnPropertyDescriptor(step.node, "type")?.value !== step.type ||
-          Object.getOwnPropertyDescriptor(step.node, "props")?.value !== step.props ||
-          !isCompiledSemanticRevisionCurrent(step.revision) ||
-          (step.forward !== undefined &&
-            (closedComponentForwardProgramFor(step.type) !== step.forward ||
-              (step.forward.childComponent as SiteComponent<unknown>)[componentSite] !==
-                step.forward.childComponentProgramId ||
-              step.forward.childComponent !== steps[index + 1]?.type))) return false;
+          Object.getOwnPropertyDescriptor(step.node, "props")?.value !== step.props) return false;
         const now = Object.getOwnPropertyDescriptors(step.props);
         const names = Reflect.ownKeys(now);
         return names.length === Reflect.ownKeys(step.descriptors).length &&
@@ -4493,12 +4656,7 @@ export class ComponentStateRoot<H, Parent = H> {
               Object.is(actual.value, original.value);
           });
       });
-      const current = () =>
-        Object.getOwnPropertyDescriptor(child, "type")?.value === steps[0].type &&
-        Object.getOwnPropertyDescriptor(child, "props")?.value === steps[0].props &&
-        forwardingCurrent() &&
-        Object.getOwnPropertyDescriptor(oldOutput, "type")?.value === oldTag &&
-        Object.getOwnPropertyDescriptor(oldOutput, "props")?.value === oldOutputProps &&
+      const privateCurrent = () => forwardingCodeCurrent() &&
         closedResourceStatus(resource)?.status === "fulfilled" &&
         !this.#codeInvalidated &&
         this.#componentCache.get(boundaryOwner) === boundaryCache &&
@@ -4515,6 +4673,13 @@ export class ComponentStateRoot<H, Parent = H> {
         [...pendingReaders].every(([id, membership]) =>
           this.#liveStoreReaders.get(id) === membership) &&
         preparation.validatePublicationInputs();
+      const current = () =>
+        Object.getOwnPropertyDescriptor(child, "type")?.value === steps[0].type &&
+        Object.getOwnPropertyDescriptor(child, "props")?.value === steps[0].props &&
+        forwardingCurrent() &&
+        Object.getOwnPropertyDescriptor(oldOutput, "type")?.value === oldTag &&
+        Object.getOwnPropertyDescriptor(oldOutput, "props")?.value === oldOutputProps &&
+        privateCurrent();
       const sourceCurrent = () =>
         (resourceProgram ? Object.getOwnPropertyDescriptor(childProps, resourceProgram.resourceProp)?.value === source : true) &&
         (!resourceProgram && storeProgram ? closedStoreHostInputs(storeProgram).every((input) =>
@@ -4528,6 +4693,7 @@ export class ComponentStateRoot<H, Parent = H> {
         pendingReaderIds: new Set(pendingReaders.keys()),
         stores,
         current: () => sourceCurrent() && current(),
+        privateCurrent: () => sourceCurrent() && current(),
         publish: () => {
           for (const owner of retired) this.#retireOwnerAccepted(owner);
           for (const [key] of retiredEffects) this.#liveEffects.delete(key);
@@ -5248,7 +5414,7 @@ export class ComponentStateRoot<H, Parent = H> {
       if (child === null) return null;
       return child === value.props.children
         ? value
-        : { ...value, props: { ...value.props, children: child } };
+        : copyRuntimeElement(value.type, { ...value.props, children: child });
     };
     const result = visit(node);
     if (result === null || regionCount !== 1 || reusedRows === 0) {
@@ -5537,9 +5703,8 @@ export class ComponentStateRoot<H, Parent = H> {
     if (cache.propBoundSites.size === 0) return emptyCompiledPropSites;
     const cached = this.#compiledPropSitesByCache.get(cache);
     if (cached) return cached;
-    const metadata = (cache.type as SiteComponent<unknown> & {
-      [componentMetadata]?: ComponentMetadata;
-    })[componentMetadata];
+    const metadata = typeof cache.type === "function"
+      ? definedComponents.get(cache.type)?.metadata : undefined;
     if (!metadata?.propOnlySites.length) return emptyCompiledPropSites;
     this.#count("numeric.compiled-site-cache-constructions");
     const eligible = new Set<string>();
@@ -5698,6 +5863,7 @@ export class ComponentStateRoot<H, Parent = H> {
       storeInputs: ReadonlySet<AnyAsyncStore>;
       pendingReaderIds: ReadonlySet<string>;
       current(): boolean;
+      privateCurrent(): boolean;
       publish(): void;
       installSubscriptions(): void;
       runEffects(): unknown[];
@@ -6196,10 +6362,8 @@ export class ComponentStateRoot<H, Parent = H> {
             } else {
               if (!storeChangePending) continue;
               const cache = this.#componentCache.get(owner);
-              const metadata = cache &&
-                (cache.type as SiteComponent<unknown> & {
-                  [componentMetadata]?: ComponentMetadata;
-                })[componentMetadata];
+              const metadata = cache && typeof cache.type === "function"
+                ? definedComponents.get(cache.type)?.metadata : undefined;
               if (
                 !cache || cache.nativeBoundary ||
                 metadata?.hostLeafOutput !== true ||
@@ -6384,15 +6548,24 @@ export class ComponentStateRoot<H, Parent = H> {
         touchedCollections.every((stage) =>
           stage.region.collection.version >= stage.read.toVersion
         );
-      const validateScopedCache = () => !options.scopedStructural ||
+      const validatePostHostCollectionsCanonical = () =>
+        touchedCollections.every((stage) => {
+          const version = canonicalCollectionVersion(stage.region.collection);
+          return version === null || version >= stage.read.toVersion;
+        });
+      const validateScopedCachePrivate = () => !options.scopedStructural ||
         !hasScopedStoreReaderConflict() &&
-        (options.acceptedCollections?.every((validate) => validate()) ?? true) &&
         touchedCollections.every((stage) =>
           this.#liveCollectionRegions.get(stage.key) === stage.region &&
           stage.region.reader === stage.reader &&
           this.#componentCache.get(stage.region.parentOwner) === stage.parentCache &&
-          componentCodeCurrent(stage.parentCache.type) &&
+          componentCodeCurrentPrivate(stage.parentCache.type) &&
           stage.parentCache.keyedRegion === stage.ownerRegion
+        );
+      const validateScopedCache = () => validateScopedCachePrivate() &&
+        (options.acceptedCollections?.every((validate) => validate()) ?? true) &&
+        touchedCollections.every((stage) =>
+          componentCodeCurrent(stage.parentCache.type)
         );
       const artifactsReleased = { value: false };
       const releaseArtifacts = () => {
@@ -6428,6 +6601,13 @@ export class ComponentStateRoot<H, Parent = H> {
         retiredOwners.clear();
         renderedOwners.clear();
       };
+      const capturedCodeRevisions = captureCodeRevisions([
+        ...leafCaches.values(),
+        ...[...stages.values()].flatMap((stage) =>
+          [...stage.rows.values(), ...stage.previousRows.values()]
+            .flatMap((row) => row ? [row.cache] : [])
+        ),
+      ]);
       return this.#createCandidateLifecycle({
         baseVersion,
         baseVDOMVersion,
@@ -6493,6 +6673,21 @@ export class ComponentStateRoot<H, Parent = H> {
           resourceStages.every((stage) => stage.current()) &&
           preparation.validatePublicationInputs() && validateScopedCells(true) &&
           (closedStoreOutputs?.current() ?? true) && stores.validatePublicationInputs(),
+        finalGroupCurrent: () =>
+          preparation.validatePublicationInputs() &&
+          !preparation.hasStateWrites() &&
+          stores.validatePublicationInputsCanonical() &&
+          validatePostHostNumericWrites() &&
+          validatePostHostCollectionsCanonical() &&
+          validateScopedCachePrivate() &&
+          (!options.scopedStructural ||
+            committedProgram?.validatePostHostPrivate() === true) &&
+          (resourceReads?.validateCanonical() ?? false) &&
+          resourceStages.every((stage) => stage.privateCurrent()) &&
+          validateScopedCells(true) &&
+          (closedStoreOutputs?.privateCurrent() ?? true) &&
+          cacheCodeCurrentPrivate(leafCaches.values()) &&
+          codeRevisionsCurrent(capturedCodeRevisions),
         preparePublication: () => {
           preparation.preparePublicationAfterHost();
           stores.preparePublicationAfterHost();
@@ -9058,7 +9253,7 @@ export class ComponentStateRoot<H, Parent = H> {
     );
     return children === node.props.children
       ? node
-      : { ...node, props: { ...node.props, children } };
+      : copyRuntimeElement(node.type, { ...node.props, children });
   }
 
   #assertActive() {

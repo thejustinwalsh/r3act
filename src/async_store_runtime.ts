@@ -15,6 +15,8 @@ export { storeRecord } from "./owned_store_record.ts";
  */
 
 let storeMutationClock = 0;
+const canonicalMapSet = Map.prototype.set;
+const canonicalMapDelete = Map.prototype.delete;
 
 // Publication is module-wide: a renderer may commit roots from several stores
 // after publishing one shared host tree. Keep only stores with pending work,
@@ -240,6 +242,12 @@ export class StoreRenderSnapshot<S, A = StoreAction<S, S>> {
           this.version,
           this.rootEpoch,
         ));
+  }
+  validatePublicationInputsCanonical(): boolean {
+    return !this.#committed &&
+      canonicalValidateRenderLineage.call(
+        this.store, this.rootId, this.version, this.rootEpoch,
+      );
   }
 
   /** Call after host commit. Repeated calls are harmless. */
@@ -846,8 +854,8 @@ export class AsyncStore<S, A = StoreAction<S, S>> implements StoreSource<S> {
       this.#readerValues.set(rootId, prepared.rootReaders);
     }
     for (const [readerId, values] of prepared.entries) {
-      if (values === null) prepared.rootReaders.delete(readerId);
-      else prepared.rootReaders.set(readerId, values);
+      if (values === null) canonicalMapDelete.call(prepared.rootReaders, readerId);
+      else canonicalMapSet.call(prepared.rootReaders, readerId, values);
     }
   }
 
@@ -864,7 +872,7 @@ export class AsyncStore<S, A = StoreAction<S, S>> implements StoreSource<S> {
   ): boolean {
     return this.#knownRoots.has(rootId) &&
       this.#rootEpochs.get(rootId) === rootEpoch &&
-      this.getRootVersion(rootId) >= version;
+      (this.#rootVersions.get(rootId) ?? 0) >= version;
   }
 
   #bumpRootVersion(rootId: string) {
@@ -1479,6 +1487,12 @@ export class StoreRenderTransaction {
         snapshot.validatePublicationInputs()
       );
   }
+  validatePublicationInputsCanonical(): boolean {
+    return !this.#closed && !this.#discoveredAfterMutation &&
+      [...this.#snapshots.values()].every((snapshot) =>
+        snapshot.validatePublicationInputsCanonical()
+      );
+  }
   /** Complete fallible reader validation and staging before accepted publication. */
   preparePublication(): void {
     if (this.#closed) throw new Error("Store render transaction is closed");
@@ -1500,12 +1514,13 @@ export class StoreRenderTransaction {
   #stagePublication(afterHost: boolean): void {
     const prepared = new Map<AnyAsyncStore, PreparedReaderValues>();
     for (const [store, pending] of this.#pending) {
-      prepared.set(
-        store,
-        this.#snapshots.get(store)?.closedNumeric
-          ? canonicalPrepareReaderValues.call(store, this.rootId, pending)
-          : store._prepareReaderValues(this.rootId, pending),
-      );
+      if (!this.#snapshots.get(store)?.closedNumeric) {
+        const prepare = store._prepareReaderValues;
+        if (prepare !== canonicalPrepareReaderValues) {
+          prepare.call(store, this.rootId, pending);
+        }
+      }
+      prepared.set(store, canonicalPrepareReaderValues.call(store, this.rootId, pending));
     }
     const valid = afterHost ? this.validatePublicationInputs() : this.validate();
     const closedValid = [...this.#snapshots.values()].every((snapshot) =>
@@ -1523,11 +1538,7 @@ export class StoreRenderTransaction {
       throw new Error("Store publication was not prepared");
     }
     for (const [store, readers] of prepared) {
-      if (this.#snapshots.get(store)?.closedNumeric) {
-        canonicalPublishReaderValues.call(store, this.rootId, readers);
-      } else {
-        store._publishPreparedReaderValues(this.rootId, readers);
-      }
+      canonicalPublishReaderValues.call(store, this.rootId, readers);
     }
     this.#closed = true;
     this.#preparedPublication = undefined;

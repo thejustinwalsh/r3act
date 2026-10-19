@@ -22,10 +22,14 @@ const program = (ownerProgramId: string, sourceSites: readonly string[]): Numeri
   sourceSites,
 });
 
-const metadataOf = (component: unknown): any =>
-  Object.getOwnPropertySymbols(component as object).map((symbol) =>
+const metadataOf = (component: unknown): any => {
+  const registrations = Object.getOwnPropertySymbols(component as object).map((symbol) =>
     Object.getOwnPropertyDescriptor(component as object, symbol)?.value
-  ).find((value) => value?.propOnlySites);
+  ).filter((value) => typeof value?.siteId === "string" && Object.hasOwn(value, "metadata"));
+  assertEquals(registrations.length, 1);
+  assertEquals(Object.isFrozen(registrations[0]), true);
+  return registrations[0].metadata;
+};
 
 Deno.test("layout program IDs are normalized, frozen, signature-bearing and component-scoped", () => {
   const mutableSlots = [{ siteId: "panel#state:0", slot: 0 }];

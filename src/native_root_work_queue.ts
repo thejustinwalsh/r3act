@@ -4,6 +4,7 @@ import {
 } from "./async_store_runtime.ts";
 import {
   ComponentStateRoot,
+  publishPreparedNativeGroup,
   type NativeRootCandidate,
 } from "./component_state_runtime.ts";
 import { type AsyncResource } from "./async_resource_runtime.ts";
@@ -417,7 +418,14 @@ export class NativeRootWorkQueue {
               }
             }
             for (const { value } of candidates) value.preparePublication();
-            for (const { value } of candidates) value.publish();
+            for (const { value } of candidates) {
+              if (!value.validatePostHost()) {
+                throw new Error(
+                  `Native candidate became stale before grouped publication: ${value.rootId}`,
+                );
+              }
+            }
+            publishPreparedNativeGroup(candidates.map(({ value }) => value));
           } catch (error) {
             const errors: unknown[] = [error];
             for (const { value } of candidates) {

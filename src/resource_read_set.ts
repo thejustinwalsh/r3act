@@ -10,6 +10,12 @@ const canonicalRead = resourcePrototype.read;
 const canonicalStatus = Object.getOwnPropertyDescriptor(resourcePrototype, "status")!.get!;
 const canonicalVersion = Object.getOwnPropertyDescriptor(resourcePrototype, "version")!.get!;
 
+/** @internal Read the provider's private version without an authored getter. */
+export const canonicalResourceVersion = (resource: unknown): number | null => {
+  if (typeof resource !== "object" || resource === null) return null;
+  try { return canonicalVersion.call(resource); } catch { return null; }
+};
+
 /** Inspect only the canonical resource implementation, without authored getters. */
 export const closedResourceStatus = (resource: unknown): AsyncResourceStatus<unknown> | null => {
   if (typeof resource !== "object" || resource === null) return null;
@@ -30,7 +36,11 @@ export const closedResourceStatus = (resource: unknown): AsyncResourceStatus<unk
 /** Candidate-local async reads; no subscriptions or provider cancellation. */
 export class ResourceReadSet {
   // Result types are existential here; this registry reads only identity/status.
-  #versions = new Map<AsyncResource<any>, number | { closed: true; version: 1 }>();
+  #versions = new Map<AsyncResource<any>, {
+    observedVersion: number;
+    canonicalVersion: number | null;
+    closed: boolean;
+  }>();
   #closed = false;
 
   constructor(private readonly table: AsyncResourceTable) {}
@@ -41,7 +51,12 @@ export class ResourceReadSet {
       ? source
       : this.table.from(source);
     if (!this.#versions.has(resource)) {
-      this.#versions.set(resource, resource.version);
+      const observedVersion = resource.version;
+      let capturedCanonical: number | null = null;
+      try { capturedCanonical = canonicalVersion.call(resource); } catch { /* opaque source */ }
+      this.#versions.set(resource, {
+        observedVersion, canonicalVersion: capturedCanonical, closed: false,
+      });
     }
     // Record pending/rejected reads too: a boundary decides whether to retry,
     // preserve prior content or reveal an error; the read set never hides them.
@@ -54,24 +69,37 @@ export class ResourceReadSet {
     const status = closedResourceStatus(resource);
     if (status?.status !== "fulfilled") return null;
     const previous = this.#versions.get(resource);
-    if (previous !== undefined &&
-      (typeof previous === "number" ? previous : previous.version) !== status.version) return null;
-    if (previous === undefined) this.#versions.set(resource, { version: status.version, closed: true });
+    if (previous !== undefined && previous.observedVersion !== status.version) return null;
+    if (previous === undefined) {
+      this.#versions.set(resource, {
+        observedVersion: status.version, canonicalVersion: status.version, closed: true,
+      });
+    }
     return status;
   }
 
   get pending(): readonly AsyncResource<any>[] {
     return [...this.#versions].filter(([resource, captured]) =>
-      typeof captured === "number" && resource.status.status === "pending"
+      !captured.closed && resource.status.status === "pending"
     ).map(([resource]) => resource);
   }
 
   validate(): boolean {
     return !this.#closed &&
       [...this.#versions].every(([resource, captured]) =>
-        typeof captured === "number" ? resource.version === captured
-          : closedResourceStatus(resource)?.version === captured.version
+        !captured.closed ? resource.version === captured.observedVersion
+          : closedResourceStatus(resource)?.version === captured.observedVersion
       );
+  }
+
+  validateCanonical(): boolean {
+    if (this.#closed) return false;
+    for (const [resource, captured] of this.#versions) {
+      if (captured.canonicalVersion === null) continue;
+      try { if (canonicalVersion.call(resource) !== captured.canonicalVersion) return false; }
+      catch { return false; }
+    }
+    return true;
   }
 
   discard(): void {

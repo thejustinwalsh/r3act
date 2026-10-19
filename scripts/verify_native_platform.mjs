@@ -99,7 +99,8 @@ const sourcePaths = async () => {
     "implementation/2026-10-19-installed-scene/comparison",
     "implementation/2026-10-19-async-recovery", "implementation/2026-10-19-installed-hmr",
     "implementation/2026-10-19-forked-transitions", "implementation/2026-10-19-custom-host",
-    "implementation/2026-10-19-arrow-components"]) {
+    "implementation/2026-10-19-arrow-components",
+    "implementation/2026-10-19-publication-callbacks"]) {
     try { if ((await stat(path.join(root, relative))).isDirectory()) await walk(path.join(root, relative)); }
     catch (error) { if (error?.code !== "ENOENT") throw error; }
   }
@@ -261,7 +262,8 @@ const version = (command, args) => {
 };
 const debugCompiler = path.join(root, "compiler/oxc-spike/target/debug/ui-graph-compiler-spike");
 const compilerHash = async () => { try { return await shaFile(debugCompiler); } catch { return null; } };
-const environment = { ...process.env, CARGO_HOME: process.env.CARGO_HOME ?? path.join(root, ".cache/cargo") };
+const environment = { ...process.env, CARGO_HOME: process.env.CARGO_HOME ?? path.join(root, ".cache/cargo"),
+  CARGO_BUILD_JOBS: process.env.CARGO_BUILD_JOBS ?? "1" };
 const receipt = { schemaVersion: 1, status: "RUNNING", executionKind: options.get("--execution-kind"),
   expected: { platform: options.get("--expected-platform"), arch: options.get("--expected-arch") },
   actual: { platform: process.platform, arch: process.arch }, steps: [], errors: [] };
@@ -282,7 +284,7 @@ const recordStep = async (step) => {
   await json(path.join(output, "receipt.json"), receipt);
   process.stdout.write(`${step.name}: ${step.status}${step.exitCode === undefined ? "" : ` exit=${step.exitCode}`}\n`);
 };
-const runStep = async (name, command, args, { depends = [], deadlineMs = 300_000 } = {}) => {
+const runStep = async (name, command, args, { depends = [], deadlineMs = 300_000, env = {} } = {}) => {
   const failed = depends.filter((dependency) => stepByName.get(dependency)?.status !== "PASS");
   if (failed.length || interrupted) {
     await recordStep({ name, status: interrupted ? "SKIPPED_INTERRUPTED" : "SKIPPED_DEPENDENCY_FAILED",
@@ -293,7 +295,7 @@ const runStep = async (name, command, args, { depends = [], deadlineMs = 300_000
   const start = performance.now();
   const logName = `logs/${name}.log`;
   const log = createWriteStream(path.join(output, logName), { flags: "wx" });
-  const child = spawn(command, args, { cwd: root, env: environment, detached: true,
+  const child = spawn(command, args, { cwd: root, env: { ...environment, ...env }, detached: true,
     stdio: ["ignore", "pipe", "pipe"] });
   active = child;
   child.stdout?.on("data", (chunk) => log.write(chunk));
@@ -420,12 +422,14 @@ try {
     "compiled_component_forwarding_test", "compiled_authored_lifecycle_test",
     "compiled_resource_transaction_test", "native_async_recovery_execution_test",
     "native_forked_transition_execution_test", "native_custom_host_execution_test",
-    "native_arrow_components_execution_test"];
+    "native_arrow_components_execution_test", "compiled_publication_callbacks_execution_test"];
   for (const [index, fixture] of fixtures.entries()) {
     const name = `compiled-${String(index + 1).padStart(2, "0")}`;
     const before = await compilerHash();
     await runStep(name, process.execPath, ["--experimental-transform-types", `compiler/${fixture}.mjs`],
-      { depends: ["install", "cargo-debug", "compiler-info"], deadlineMs: 300_000 });
+      { depends: ["install", "cargo-debug", "compiler-info"], deadlineMs: 300_000,
+        env: fixture === "compiled_publication_callbacks_execution_test"
+          ? { R3ACT_CAPTURED_COMPILER_SHA256: before ?? "" } : {} });
     const after = await compilerHash();
     const step = stepByName.get(name);
     step.debugCompilerSha256Before = before;

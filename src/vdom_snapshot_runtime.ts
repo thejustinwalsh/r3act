@@ -363,6 +363,7 @@ export type PreparedKeyedVDOMProgram = {
   readonly structuralVersionDelta: 0 | 1;
   validate(): boolean;
   validatePostHost(): boolean;
+  validatePostHostPrivate(): boolean;
   overlapsRetainedTargets(delta: PreparedRetainedSourceDelta): boolean;
   overlapsStoreTargets(delta: PreparedStorePropDelta): boolean;
   readonly hostKeys?: readonly string[];
@@ -2502,13 +2503,15 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         (scoped ? validateScoped() :
           this.#version === baseVersion && validateTargets()) &&
         (!hasLeafRegions || preparedLeaves!.validate?.() !== false),
-      validatePostHost: () =>
+      validatePostHost: () => hostMethodsCurrent() &&
+        (!postHostStore || this.#isStorePropDeltaCurrent(postHostStore, true, false)) &&
+        program.validatePostHostPrivate(),
+      validatePostHostPrivate: () =>
         state === "committed" && committedPublicationToken !== null &&
         this.#publicationToken === committedPublicationToken &&
         !this.#publicationFailed && committedVersion !== null &&
-        hostMethodsCurrent() &&
         this.#version === committedVersion + Number(deferVersion && changed) &&
-        (!postHostStore || this.#isStorePropDeltaCurrent(postHostStore, true, false)) &&
+        (!postHostStore || this.#isStorePropDeltaCurrent(postHostStore, true, false, true)) &&
         committedTargets !== null && committedTargets.every((target) =>
           !target.parent.hostDisposed && target.parent.vnode === target.vnode &&
           target.parent.handle === target.handle &&
@@ -2813,10 +2816,12 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         return !record || record.targets.some((target) => removedNodes.has(target.node));
       },
       validate: () => state === "prepared" && !this.#publicationToken && current(),
-      validatePostHost: () => state === "committed" && appliedToken !== null &&
-        this.#publicationToken === appliedToken && !this.#publicationFailed &&
-        this.#version === appliedVersion && hostPropWriter(this.host) === writer &&
+      validatePostHost: () => hostPropWriter(this.host) === writer &&
         methodNames.every((name, index) => hostMethod(name) === methods[index]) &&
+        program.validatePostHostPrivate(),
+      validatePostHostPrivate: () => state === "committed" && appliedToken !== null &&
+        this.#publicationToken === appliedToken && !this.#publicationFailed &&
+        this.#version === appliedVersion &&
         newCurrent() && targets.every(({ key, parent, index,
           bucket, afterKey, applied, next }) => {
           if (!applied || applied.hostDisposed || applied.parent !== parent ||
@@ -3060,6 +3065,12 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           retained, { afterHost: true }, true,
         )) &&
         (!store || this.isStorePropDeltaCurrent(store, { afterHost: true })),
+      validatePostHostPrivate: () => state === "committed" &&
+        structural.every((plan) => plan.validatePostHostPrivate()) &&
+        (!retained || this.#isRetainedSourceDeltaCurrent(
+          retained, { afterHost: true }, true,
+        )) &&
+        (!store || this.#isStorePropDeltaCurrent(store, true, false, true)),
       commit: () => {
         if (state !== "prepared" || !this.#publicationToken ||
           (keyed && !keyed.validate()) ||
@@ -3645,11 +3656,13 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     token: PreparedStorePropDelta,
     afterHost: boolean,
     allowActivePublication: boolean,
+    privateOnly = false,
   ): boolean {
     const record = this.#storePropDeltas.get(token);
     if (!record || this.#publicationFailed || this.#compiledGraph !== null ||
-      hostPropWriter(this.host) !== record.writer ||
-      (record.texts.length > 0 && hostTextWriter(this.host) !== record.textWriter) ||
+      (!privateOnly && hostPropWriter(this.host) !== record.writer) ||
+      (!privateOnly && record.texts.length > 0 &&
+        hostTextWriter(this.host) !== record.textWriter) ||
       this.#numericWriteInProgress) {
       return false;
     }

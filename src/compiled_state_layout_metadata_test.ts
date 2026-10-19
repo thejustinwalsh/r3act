@@ -4,6 +4,15 @@ import {
   defineComponent,
 } from "./component_state_runtime.ts";
 
+const metadataOf = (component: Function) => {
+  const registrations = Object.getOwnPropertySymbols(component).map((symbol) =>
+    Object.getOwnPropertyDescriptor(component, symbol)?.value
+  ).filter((value) => value?.siteId === "component" && Object.hasOwn(value, "metadata"));
+  assertEquals(registrations.length, 1);
+  assertEquals(Object.isFrozen(registrations[0]), true);
+  return registrations[0].metadata;
+};
+
 Deno.test("compiled layout metadata is defensively copied and deeply frozen", () => {
   const slots = [{ siteId: "component#state:2", slot: 0 }, {
     siteId: "component#state:10",
@@ -13,9 +22,7 @@ Deno.test("compiled layout metadata is defensively copied and deeply frozen", ()
     propOnlySites: slots.map((slot) => slot.siteId),
     stateLayout: { schemaVersion: 1, slots },
   });
-  const metadata = Object.getOwnPropertySymbols(render).map((symbol) =>
-    Object.getOwnPropertyDescriptor(render, symbol)?.value
-  ).find((value) => value?.stateLayout)?.stateLayout;
+  const metadata = metadataOf(render).stateLayout;
   assertEquals(metadata.slots, slots);
   slots[0].siteId = "mutated";
   assertEquals(metadata.slots[0].siteId, "component#state:2");
@@ -50,8 +57,6 @@ Deno.test("components without compiler layout retain their previous metadata sha
   const render = defineComponent("component", () => null, {
     propOnlySites: ["a"],
   });
-  const metadata = Object.getOwnPropertySymbols(render).map((symbol) =>
-    Object.getOwnPropertyDescriptor(render, symbol)?.value
-  ).find((value) => value?.propOnlySites);
+  const metadata = metadataOf(render);
   assertEquals(Object.hasOwn(metadata, "stateLayout"), false);
 });

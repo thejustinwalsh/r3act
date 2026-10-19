@@ -82,6 +82,12 @@ export type KeyedCollectionReader<T> = Readonly<{
 
 type ReaderAcknowledgement = (version: number) => (() => boolean) | null;
 const readerAcknowledgements = new WeakMap<object, ReaderAcknowledgement>();
+const collectionVersions = new WeakMap<object, () => number>();
+
+/** @internal Read the creator-owned collection version without public getters. */
+export const canonicalCollectionVersion = (collection: unknown): number | null =>
+  typeof collection === "object" && collection !== null
+    ? collectionVersions.get(collection)?.() ?? null : null;
 
 /** @internal Stage exact acceptance; the callback reports whether the reader caught up. */
 export function prepareCollectionReaderAcknowledgement(
@@ -495,6 +501,7 @@ export function createKeyedCollection<T>(
       listenerErrors = 0;
     },
   };
+  collectionVersions.set(collection, () => version);
   return collection;
 }
 

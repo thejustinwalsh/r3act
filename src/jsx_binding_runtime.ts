@@ -19,6 +19,26 @@ export type RuntimeElement = {
   props: Record<string, any>;
 };
 
+const runtimeOwnedElements = new WeakSet<object>();
+
+/** True only for an element and props allocated by the runtime. */
+export const isRuntimeOwnedElement = (value: unknown): value is RuntimeElement =>
+  typeof value === "object" && value !== null && runtimeOwnedElements.has(value);
+
+const ownRuntimeElement = (element: RuntimeElement): RuntimeElement => {
+  runtimeOwnedElements.add(element);
+  return element;
+};
+
+/** @internal Copy an element into runtime-owned ordinary objects. */
+export const copyRuntimeElement = (
+  type: ElementType,
+  props: Record<string, any>,
+): RuntimeElement => ownRuntimeElement(Object.freeze({
+  type,
+  props: Object.freeze({ ...props }),
+}));
+
 const keyedOwnerRegionTag = Symbol("keyed-owner-region");
 const keyedOwnerVersionTag = Symbol("keyed-owner-version");
 const keyedOwnerVersions = new WeakSet<object>();
@@ -103,7 +123,8 @@ export function jsx(
     next.children = Object.freeze(next.children.map(freezeChild));
   }
   Object.freeze(next);
-  return Object.freeze({ type, props: next });
+  const element = Object.freeze({ type, props: next });
+  return ownRuntimeElement(element);
 }
 
 const freezeChild = (node: RuntimeNode): RuntimeNode => {
