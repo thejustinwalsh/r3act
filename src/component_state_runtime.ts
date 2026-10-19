@@ -25,8 +25,11 @@ import {
   subscribeCompiledSemanticRevision,
 } from "./compiled_semantic_plan.ts";
 import {
+  type AcceptedStoreReaderReceipt,
   type AnyAsyncStore,
   AsyncStore,
+  captureCanonicalStoreReaderReceipt,
+  inspectCanonicalStoreReaderReceipt,
   StoreRenderTransaction,
   type StoreSource,
 } from "./async_store_runtime.ts";
@@ -220,6 +223,10 @@ type HeldGenericState = {
   boundaries: ReadonlyMap<OwnerId, {
     cache: ComponentCache;
     resource: AsyncResource<any>;
+  }>;
+  readers: ReadonlyMap<string, {
+    membership: ReadonlySet<AnyAsyncStore>;
+    receipts: ReadonlyMap<AnyAsyncStore, AcceptedStoreReaderReceipt>;
   }>;
 };
 type BoundaryRenderState = {
@@ -1899,6 +1906,13 @@ export class ComponentStateRoot<H, Parent = H> {
     );
   }
 
+  #readerBelongsToOwner(readerId: string, owner: OwnerId): boolean {
+    return readerId.startsWith(`${owner}\u0000`) ||
+      readerId.startsWith(`\u0000suspense-pending:${owner}:`) ||
+      (readerId.startsWith("\u0000suspense-pending:") &&
+        readerId.includes(`:${owner}\u0000`));
+  }
+
   #heldStore(store: AnyAsyncStore): boolean {
     return [...this.#publicationIntents.values()].some(({ stores }) =>
       stores.has(store));
@@ -1947,19 +1961,89 @@ export class ComponentStateRoot<H, Parent = H> {
     if (pendingChanges.some((change) =>
       heldOwners.has(change.owner)
     )) return null;
-    if (this.#storeNotificationGeneration !==
-      this.#committedStoreNotificationGeneration &&
-      [...this.#liveStoreReaders.keys()].some((readerId) =>
-        [...heldOwners].some((owner) =>
-          readerId.startsWith(`${owner}\u0000`) ||
-          (readerId.startsWith("\u0000suspense-pending:") &&
-            readerId.includes(`:${owner}\u0000`))
-        )
-      )) return null;
-    return boundaries.size ? { holds, boundaries } : null;
+    const readers = new Map<string, {
+      membership: ReadonlySet<AnyAsyncStore>;
+      receipts: ReadonlyMap<AnyAsyncStore, AcceptedStoreReaderReceipt>;
+    }>();
+    for (const [readerId, membership] of this.#liveStoreReaders) {
+      if (![...heldOwners].some((owner) =>
+        this.#readerBelongsToOwner(readerId, owner)
+      )) continue;
+      const receipts = new Map<AnyAsyncStore, AcceptedStoreReaderReceipt>();
+      for (const store of membership) {
+        const receipt = captureCanonicalStoreReaderReceipt(
+          store, this.#rootId, readerId,
+        );
+        if (!receipt) return null;
+        receipts.set(store, receipt);
+      }
+      readers.set(readerId, { membership, receipts });
+    }
+    return boundaries.size ? { holds, boundaries, readers } : null;
+  }
+
+  #heldGenericReadersState(
+    state: HeldGenericState,
+  ): "current" | "retained" | null {
+    let result: "current" | "retained" = "current";
+    for (const [readerId, { membership, receipts }] of state.readers) {
+      if (this.#liveStoreReaders.get(readerId) !== membership ||
+        membership.size !== receipts.size) return null;
+      for (const store of membership) {
+        const receipt = receipts.get(store);
+        if (!receipt) return null;
+        const status = inspectCanonicalStoreReaderReceipt(
+          store, this.#rootId, readerId, receipt,
+        );
+        if (status === null) return null;
+        if (status === "retained") result = "retained";
+      }
+    }
+    return result;
+  }
+
+  #captureBoundaryAncestorControlsCurrent(
+    boundaryOwner: OwnerId,
+  ): (() => boolean) | null {
+    const ancestors = new Set(this.world.ownerLineage(boundaryOwner).slice(1));
+    const localControlsCurrent = () =>
+      !this.#pendingChanges.capture().some((change) => ancestors.has(change.owner));
+    if (!localControlsCurrent()) return null;
+    const readers: Array<{
+      readerId: string;
+      membership: ReadonlySet<AnyAsyncStore>;
+      receipts: ReadonlyMap<AnyAsyncStore, AcceptedStoreReaderReceipt>;
+    }> = [];
+    for (const [readerId, membership] of this.#liveStoreReaders) {
+      if (![...ancestors].some((owner) =>
+        this.#readerBelongsToOwner(readerId, owner)
+      )) continue;
+      const receipts = new Map<AnyAsyncStore, AcceptedStoreReaderReceipt>();
+      for (const store of membership) {
+        const receipt = captureCanonicalStoreReaderReceipt(
+          store, this.#rootId, readerId,
+        );
+        if (!receipt || inspectCanonicalStoreReaderReceipt(
+          store, this.#rootId, readerId, receipt,
+        ) !== "current") return null;
+        receipts.set(store, receipt);
+      }
+      readers.push({ readerId, membership, receipts });
+    }
+    return () => localControlsCurrent() && readers.every(
+      ({ readerId, membership, receipts }) =>
+        this.#liveStoreReaders.get(readerId) === membership &&
+        membership.size === receipts.size && [...membership].every((store) => {
+          const receipt = receipts.get(store);
+          return receipt !== undefined && inspectCanonicalStoreReaderReceipt(
+            store, this.#rootId, readerId, receipt,
+          ) === "current";
+        }),
+    );
   }
 
   #heldGenericStateCurrent(state: HeldGenericState): boolean {
+    if (this.#heldGenericReadersState(state) === null) return false;
     if (this.#publicationIntents.size !== state.holds.size) return false;
     for (const [release, hold] of state.holds) {
       if (this.#publicationIntents.get(release) !== hold) return false;
@@ -3457,7 +3541,9 @@ export class ComponentStateRoot<H, Parent = H> {
         resourceReads?.discard();
         resourceReads = null;
         this.#syncLastSourceValues(artifacts.nextCache!, capturedBoundValues);
-        if (this.#storeNotificationGeneration === storeGenerationAtPrepare) {
+        if (this.#storeNotificationGeneration === storeGenerationAtPrepare &&
+          (!heldGenericState ||
+            this.#heldGenericReadersState(heldGenericState) === "current")) {
           this.#committedStoreNotificationGeneration = storeGenerationAtPrepare;
         }
         this.world.clearChangesThrough(capturedChanges);
@@ -3744,8 +3830,9 @@ export class ComponentStateRoot<H, Parent = H> {
       const intent = this.#pendingDirectIntent;
       this.#partialStoreAttemptGeneration = this.#storeNotificationGeneration;
       this.#scopedFlushActive = true;
+      let published = false;
       try {
-        const published = this.#renderAndCommit(
+        published = this.#renderAndCommit(
           intent?.tree ?? this.#tree,
           true,
           new Set(),
@@ -3754,12 +3841,15 @@ export class ComponentStateRoot<H, Parent = H> {
           [],
           intent,
         );
-        if (published) {
-          reportFlush();
-          return true;
-        }
       } finally {
         this.#scopedFlushActive = false;
+      }
+      const deferred = this.#deferredFlush;
+      this.#deferredFlush = false;
+      if (deferred && this.#hasPendingWork()) this.#schedule();
+      if (published) {
+        reportFlush();
+        return true;
       }
     }
     if (this.#publicationIntents.size > 0 &&
@@ -4611,6 +4701,10 @@ export class ComponentStateRoot<H, Parent = H> {
     if (!boundaryCache?.nativeBoundary || !boundaryCache.pendingResource ||
       !this.#liveOwners.has(boundaryOwner) || !this.world.isAlive(boundaryOwner) ||
       this.#boundaryPrimaries.has(String(boundaryOwner))) return null;
+    const ancestorControlsCurrent = this.#captureBoundaryAncestorControlsCurrent(
+      boundaryOwner,
+    );
+    if (!ancestorControlsCurrent) return null;
     const resource = boundaryCache.pendingResource;
     if (this.#resourceHoldWait(new Set([resource]), resourceLease)) return null;
     if (closedResourceStatus(resource)?.status !== "fulfilled") return null;
@@ -4837,7 +4931,7 @@ export class ComponentStateRoot<H, Parent = H> {
               Object.is(actual.value, original.value);
           });
       });
-      const privateCurrent = () => forwardingCodeCurrent() &&
+      const privateCurrent = () => ancestorControlsCurrent() && forwardingCodeCurrent() &&
         closedResourceStatus(resource)?.status === "fulfilled" &&
         !this.#codeInvalidated &&
         this.#componentCache.get(boundaryOwner) === boundaryCache &&
@@ -7961,9 +8055,7 @@ export class ComponentStateRoot<H, Parent = H> {
 
   #ownerHasStoreReaders(owner: OwnerId): boolean {
     for (const readerId of this.#liveStoreReaders.keys()) {
-      if (readerId.startsWith(`${owner}\u0000`) ||
-        (readerId.startsWith("\u0000suspense-pending:") &&
-          readerId.includes(`:${owner}\u0000`))) return true;
+      if (this.#readerBelongsToOwner(readerId, owner)) return true;
     }
     return false;
   }
@@ -8760,7 +8852,7 @@ export class ComponentStateRoot<H, Parent = H> {
           if (storeMark !== undefined) {
             storeTransaction.rollbackTo(storeMark);
             if (branchReaders.size) {
-              storeTransaction.preserveReaders(branchReaders);
+              storeTransaction.preserveCapturedReaders(branchReaders);
             }
           }
           if (journalMark !== undefined) {
@@ -9000,9 +9092,7 @@ export class ComponentStateRoot<H, Parent = H> {
         const heldReaders = new Map<string, ReadonlySet<AnyAsyncStore>>();
         for (const [readerId, stores] of this.#liveStoreReaders) {
           if ([...heldOwners].some((owner) =>
-            readerId.startsWith(`${owner}\u0000`) ||
-            (readerId.startsWith("\u0000suspense-pending:") &&
-              readerId.includes(`:${owner}\u0000`))
+            this.#readerBelongsToOwner(readerId, owner)
           )) heldReaders.set(readerId, stores);
         }
         storeTransaction.preserveReaders(heldReaders);
@@ -9067,15 +9157,15 @@ export class ComponentStateRoot<H, Parent = H> {
         }
         branchJournal.rollback(journalMark);
         if (suspendedReaders.size) {
-          // Boundary-scoped IDs keep retained-branch subscription footprints separate
-          // when lexical sites read from different sources; no selector history is staged.
+          // Boundary-scoped IDs keep captured subscriptions separate when
+          // lexical sites read from different sources.
           const pendingReaderDependencies = new Map(
             [...suspendedReaders].map(([readerId, stores]) => [
               `\u0000suspense-pending:${boundaryKey}:${readerId}`,
               stores,
             ]),
           );
-          storeTransaction.preserveReaders(pendingReaderDependencies);
+          storeTransaction.preserveCapturedReaders(pendingReaderDependencies);
         }
         const previous = boundaryPrimaries?.get(boundaryKey);
         if (isPendingResource(error) && previous) {

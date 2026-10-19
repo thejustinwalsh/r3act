@@ -1,5 +1,15 @@
 # Implementation checkpoint
 
+## Held Store reader boundary — 19 October 2026
+
+Independent generic Store/local/direct work now retains canonical Store-A-before-resource reader history while A advances. Cut-only suspended dependencies accept no selector values; real selector Maps keep identity. Exact owner/code/resource/hold/membership/epoch checks and whole-root/VDOM guards remain. Scoped resource reveal declines stale ancestor Store or pending local controls; separate replacement-tree requests keep the accepted-old-group reveal policy. Newer host-time A/B wake correctly, and failures retain old managed history/quarantine. Added allocation/inspection/traversal costs remain unqualified.
+
+Final Darwin-v3 passes 45/45 steps, 1031 runtime tests, 68 Rust tests, 29 actual compiled fixtures and thirteen fresh-package checks. All 1054 runner inputs match, with 1063 archived raw source/context files. V1/v2 failures and the supplement's incomplete supervisor receipt remain preserved; v3 has numeric exit 0. Existing tests are unchanged. Fresh installed proof-v2 passes independent dialog/local work, changed A, partial settlement, joint DOM/Three reveal and empty cleanup. Only the Native consumer data attribute and verifier checkpoints change after v3, separately bound by proof-v2.
+
+Actual React App/JointReveal/DialogSlot emit _c(14)/_c(12)/_c(16); ReactPanel is uncompiled in both arms. Eighteen source rows, five tarballs, 1621 selected installed files, package report, compiler, transforms and assets are checked. The sole Native-first click-to-dialog-observer pair observes 12/7.799999997019768 ms Native/React, with Native slower in this observation. One prepaint pair, with timer quantum unmeasured, establishes no speed/CPU/tails/cold/memory/presentation/independent-device advantage. Full-plan first-pass and remaining platform/product qualification stay active; historic wins, dense FAIL, Recording A unresolved, physical HOLD and zero human participants/no maintenance claim retain scope.
+
+No server or VM runs; saved Apple limits remain one CPU, 256 MiB/container and 512 MiB/build, effective limits unverified behind Depot startup permissions. [Source, receipts, preserved failures and limits](implementation/2026-10-19-held-reader-progress/results.md).
+
 ## Installed mixed HMR and independent generic progress — 19 October 2026
 
 Tracked native edits now preflight parsing/semantic compilation before exact revision retirement; superseded/rejected edits preserve the accepted app. Valid edits conservatively reload. Existing cache-result/children traversal catches hidden pending modules. Independent generic Store/local/direct work can progress beside unchanged resource-only held pending boundaries; ambiguous/mixed footprints decline, whole-root/VDOM guards stay, and existing live ownership, accepted history, reader lifetime and exact acknowledgement remain authoritative. The mixed plugin helper infers actual React factory options, and explicit React JSX configuration prevents native project defaults contaminating React production output. Generic traversal/retention and edit-time costs remain unqualified.

@@ -120,11 +120,22 @@ export type StoreChange = {
 };
 
 type StoreNotificationBatch = Map<string, StorePriority>;
-type PendingReaderValues = ReadonlyMap<object, unknown> | null;
+const capturedReaderCut = Symbol("captured-reader-cut");
+type PendingReaderValues = ReadonlyMap<object, unknown> | typeof capturedReaderCut | null;
+type StoreRootStamp = Readonly<{ version: number; rootEpoch: object }>;
+type AcceptedReaderHistory = Readonly<{
+  selections: Map<object, unknown> | null;
+  stamp: StoreRootStamp | null;
+}>;
+export type AcceptedStoreReaderReceipt = Readonly<{
+  history: object;
+  version: number;
+  rootEpoch: object;
+}>;
 type PreparedReaderValues = {
-  readonly rootReaders: Map<string, Map<object, unknown>>;
+  readonly rootReaders: Map<string, AcceptedReaderHistory>;
   readonly isNewRoot: boolean;
-  readonly entries: Map<string, Map<object, unknown> | null>;
+  readonly entries: Map<string, AcceptedReaderHistory | null>;
 };
 
 type StoreEntry<S, A> = {
@@ -197,6 +208,10 @@ export class StoreRenderSnapshot<S, A = StoreAction<S, S>> {
     readonly closedNumeric = false,
   ) {}
 
+  capturedRootStamp(): StoreRootStamp {
+    return Object.freeze({ version: this.version, rootEpoch: this.rootEpoch });
+  }
+
   read<T>(source: StoreSource<T>, readerId: string): T {
     if (this.#committed) {
       throw new Error("Cannot read from a committed store render snapshot");
@@ -264,7 +279,9 @@ export class StoreRenderSnapshot<S, A = StoreAction<S, S>> {
   /** Publish selector history after a renderer's pre-host-commit validation. */
   commitAfterValidatedRender(): void {
     if (this.#committed) return;
-    this.store._commitReaderValues(this.rootId, this.#pending);
+    this.store._commitReaderValues(
+      this.rootId, this.#pending, canonicalSnapshotRootStamp.call(this),
+    );
     this.#committed = true;
   }
 }
@@ -328,7 +345,7 @@ export class AsyncStore<S, A = StoreAction<S, S>> implements StoreSource<S> {
   #entries: StoreEntry<S, A>[] = [];
   #transitions = new Map<string, TransitionRecord>();
   #roots = new Map<string, Set<(change: StoreChange) => void>>();
-  #readerValues = new Map<string, Map<string, Map<object, unknown>>>();
+  #readerValues = new Map<string, Map<string, AcceptedReaderHistory>>();
   #notificationQueue: StoreNotificationBatch[] = [];
   #notifying = false;
 
@@ -779,7 +796,7 @@ export class AsyncStore<S, A = StoreAction<S, S>> implements StoreSource<S> {
     snapshotStates: ReadonlyMap<object, unknown>,
     pending: Map<string, Map<object, unknown>>,
   ): T {
-    const previous = this.#readerValues.get(rootId)?.get(readerId) ??
+    const previous = this.#readerValues.get(rootId)?.get(readerId)?.selections ??
       new Map<object, unknown>();
     const session = new StoreReadSession(
       rootId,
@@ -798,7 +815,40 @@ export class AsyncStore<S, A = StoreAction<S, S>> implements StoreSource<S> {
     rootId: string,
     readerId: string,
   ): ReadonlyMap<object, unknown> {
-    return this.#readerValues.get(rootId)?.get(readerId) ?? new Map();
+    return this.#readerValues.get(rootId)?.get(readerId)?.selections ?? new Map();
+  }
+
+  _captureCanonicalReaderReceipt(
+    rootId: string,
+    readerId: string,
+  ): AcceptedStoreReaderReceipt | null {
+    if (!canonicalClosedNumericStore.call(this) ||
+      !this.#knownRoots.has(rootId)) return null;
+    const history = this.#readerValues.get(rootId)?.get(readerId);
+    const stamp = history?.stamp;
+    if (!history || !stamp ||
+      this.#rootEpochs.get(rootId) !== stamp.rootEpoch ||
+      (this.#rootVersions.get(rootId) ?? 0) < stamp.version) return null;
+    return Object.freeze({
+      history, version: stamp.version, rootEpoch: stamp.rootEpoch,
+    });
+  }
+
+  _inspectCanonicalReaderReceipt(
+    rootId: string,
+    readerId: string,
+    receipt: AcceptedStoreReaderReceipt,
+  ): "current" | "retained" | null {
+    const history = this.#readerValues.get(rootId)?.get(readerId);
+    if (!canonicalClosedNumericStore.call(this) ||
+      !this.#knownRoots.has(rootId) ||
+      history !== receipt.history ||
+      history?.stamp?.version !== receipt.version ||
+      history?.stamp?.rootEpoch !== receipt.rootEpoch ||
+      this.#rootEpochs.get(rootId) !== receipt.rootEpoch) return null;
+    const version = this.#rootVersions.get(rootId) ?? 0;
+    if (version < receipt.version) return null;
+    return version === receipt.version ? "current" : "retained";
   }
 
   diagnostics() {
@@ -809,7 +859,9 @@ export class AsyncStore<S, A = StoreAction<S, S>> implements StoreSource<S> {
         0,
       ),
       readers: [...this.#readerValues.values()].reduce(
-        (count, values) => count + values.size,
+        (count, values) => count + [...values.values()].filter(
+          (history) => history.selections !== null,
+        ).length,
         0,
       ),
       retainedActions: this.#entries.length,
@@ -820,25 +872,41 @@ export class AsyncStore<S, A = StoreAction<S, S>> implements StoreSource<S> {
   _commitReaderValues(
     rootId: string,
     pending: Map<string, Map<object, unknown>>,
+    stamp?: StoreRootStamp,
   ) {
+    if (this._prepareReaderValues !== canonicalPrepareReaderValues) {
+      this._prepareReaderValues(rootId, pending);
+    }
     this._publishPreparedReaderValues(
       rootId,
-      this._prepareReaderValues(rootId, pending),
+      canonicalPrepareReaderValues.call(this, rootId, pending, stamp),
     );
   }
 
   _prepareReaderValues(
     rootId: string,
     pending: ReadonlyMap<string, PendingReaderValues>,
+    stamp?: StoreRootStamp,
   ): PreparedReaderValues {
     if (!this.#knownRoots.has(rootId)) {
       throw new Error(`Store reader root is no longer live: ${rootId}`);
     }
-    const prepared = new Map<string, Map<object, unknown> | null>();
-    for (const [readerId, values] of pending) {
-      prepared.set(readerId, values === null ? null : new Map(values));
-    }
+    const prepared = new Map<string, AcceptedReaderHistory | null>();
     const existing = this.#readerValues.get(rootId);
+    for (const [readerId, values] of pending) {
+      if (values === null) {
+        prepared.set(readerId, null);
+      } else if (values === capturedReaderCut) {
+        const accepted = existing?.get(readerId);
+        prepared.set(readerId, accepted?.selections ? accepted : Object.freeze({
+          selections: null, stamp: stamp ?? null,
+        }));
+      } else {
+        prepared.set(readerId, Object.freeze({
+          selections: new Map(values), stamp: stamp ?? null,
+        }));
+      }
+    }
     return {
       rootReaders: existing ?? new Map(),
       isNewRoot: existing === undefined,
@@ -1035,6 +1103,36 @@ const canonicalValidateRender = AsyncStore.prototype._validateRender;
 const canonicalValidateRenderLineage = AsyncStore.prototype._validateRenderLineage;
 const canonicalPrepareReaderValues = AsyncStore.prototype._prepareReaderValues;
 const canonicalPublishReaderValues = AsyncStore.prototype._publishPreparedReaderValues;
+const canonicalCaptureReaderReceipt = AsyncStore.prototype._captureCanonicalReaderReceipt;
+const canonicalInspectReaderReceipt = AsyncStore.prototype._inspectCanonicalReaderReceipt;
+const canonicalSnapshotRootStamp = StoreRenderSnapshot.prototype.capturedRootStamp;
+
+export function captureCanonicalStoreReaderReceipt(
+  store: AnyAsyncStore,
+  rootId: string,
+  readerId: string,
+): AcceptedStoreReaderReceipt | null {
+  try {
+    return canonicalCaptureReaderReceipt.call(store, rootId, readerId);
+  } catch (error) {
+    if (error instanceof TypeError) return null;
+    throw error;
+  }
+}
+
+export function inspectCanonicalStoreReaderReceipt(
+  store: AnyAsyncStore,
+  rootId: string,
+  readerId: string,
+  receipt: AcceptedStoreReaderReceipt,
+): "current" | "retained" | null {
+  try {
+    return canonicalInspectReaderReceipt.call(store, rootId, readerId, receipt);
+  } catch (error) {
+    if (error instanceof TypeError) return null;
+    throw error;
+  }
+}
 
 export function createAsyncStore<S>(initialState: S): AsyncStore<S>;
 export function createAsyncStore<S, A>(
@@ -1300,6 +1398,24 @@ export class StoreRenderTransaction {
     }
   }
 
+  /** Carry the captured cut of a suspended draft without rerunning its readers. */
+  preserveCapturedReaders(
+    readers: ReadonlyMap<string, ReadonlySet<AnyAsyncStore>>,
+  ): void {
+    this.preserveReaders(readers);
+    for (const [readerId, stores] of readers) {
+      for (const store of stores) {
+        if (!canonicalClosedNumericStore.call(store)) continue;
+        let pending = this.#pending.get(store);
+        if (!pending) {
+          pending = new Map();
+          this.#setJournaled(this.#pending, store, pending);
+        }
+        this.#setJournaled(pending, readerId, capturedReaderCut);
+      }
+    }
+  }
+
   /**
    * Remove superseded reader observations from this candidate. Store snapshots
    * stay pinned: even a reader that leaves the candidate participated in its
@@ -1514,13 +1630,16 @@ export class StoreRenderTransaction {
   #stagePublication(afterHost: boolean): void {
     const prepared = new Map<AnyAsyncStore, PreparedReaderValues>();
     for (const [store, pending] of this.#pending) {
-      if (!this.#snapshots.get(store)?.closedNumeric) {
+      const snapshot = this.#snapshots.get(store)!;
+      if (!snapshot.closedNumeric) {
         const prepare = store._prepareReaderValues;
         if (prepare !== canonicalPrepareReaderValues) {
           prepare.call(store, this.rootId, pending);
         }
       }
-      prepared.set(store, canonicalPrepareReaderValues.call(store, this.rootId, pending));
+      prepared.set(store, canonicalPrepareReaderValues.call(
+        store, this.rootId, pending, canonicalSnapshotRootStamp.call(snapshot),
+      ));
     }
     const valid = afterHost ? this.validatePublicationInputs() : this.validate();
     const closedValid = [...this.#snapshots.values()].every((snapshot) =>

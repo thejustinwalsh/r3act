@@ -1,0 +1,1412 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-10-19T21:50:04.339Z",
+  "scope": "read-only final evidence audit; audit receipt excluded from self-hash",
+  "counts": {
+    "gate": {
+      "status": "PASS",
+      "stepCount": 45,
+      "allStepsPass": true,
+      "runtimeTests": 1031,
+      "rustTests": [
+        "test result: ok. 68 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s"
+      ],
+      "compiledExecutions": 29,
+      "freshPackageChecks": 13,
+      "sourceRows": 1054,
+      "archiveRows": 1063,
+      "contextRows": 9,
+      "runnerInputs": 1054,
+      "actual": {
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      "declaredCommit": "f031b6db0ff43591ca126b273201bf4a66b287db",
+      "gitHead": "f031b6db0ff43591ca126b273201bf4a66b287db",
+      "sourceAudit": {
+        "status": "MATCH",
+        "changed": []
+      },
+      "gateChanges": [
+        {
+          "path": "implementation/2026-10-19-held-reader-progress/consumer/main.tsx",
+          "captured": "7a178a49ab59b065f84fd8d1e21dd4c659d4abcffcb85c92f4b303652e9de0bd",
+          "after": "7a178a49ab59b065f84fd8d1e21dd4c659d4abcffcb85c92f4b303652e9de0bd",
+          "current": "79125b59f7cc507f1497ff8ac0babb42d7993dfde0c80d4b97e7266d808341d0"
+        },
+        {
+          "path": "implementation/2026-10-19-held-reader-progress/verify-browser.mjs",
+          "captured": "ac6959e872a9c6cc36f89daead3ac25cf1655c77897c53b60bef81042389606c",
+          "after": "ac6959e872a9c6cc36f89daead3ac25cf1655c77897c53b60bef81042389606c",
+          "current": "ab8b10d88663582dd28780f1c0425efdcf8c1976ba5fe0cb406b819f2dec3803"
+        }
+      ],
+      "rawArchiveVerified": 1063,
+      "rawArchiveMismatches": [],
+      "logs": {
+        "denoTail": [
+          "pending subscription failure settles failed and source errors stay ordinary failures ... ok (121µs)",
+          "failed source read does not leave a partial reader session ... ok (115µs)",
+          "failed removal cleanup never reindexes disposed keyed nodes ... ok (642µs)",
+          "failed prepared host phase repairs indexes and leaves refs unpublished ... ok (590µs)",
+          "ok | 1031 passed | 0 failed (9s)"
+        ],
+        "rustResults": [
+          "test result: ok. 68 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s"
+        ],
+        "compiledLogCount": 29,
+        "packagingValidation": {
+          "status": "PASS",
+          "tarballs": [
+            {
+              "name": "core",
+              "path": "tarballs/r3act-core.tgz",
+              "sha256": "a18b4f3178bf001a8ab04d46c5a64e3178fe9fbeee4a7b89c6afb92bc81f0c45",
+              "bytes": 1018990
+            },
+            {
+              "name": "vite",
+              "path": "tarballs/r3act-vite.tgz",
+              "sha256": "25e8cbda76024a6f1d433ea092879e26b2686e7387478f199f8339de96e28f1b",
+              "bytes": 1231091
+            },
+            {
+              "name": "host-dom",
+              "path": "tarballs/r3act-host-dom.tgz",
+              "sha256": "cd9b9ca857b1ea8ba96a6dedd7c7a8a8f379a5dd5e83db19582d3d07b9ab3e34",
+              "bytes": 1252
+            },
+            {
+              "name": "host-three",
+              "path": "tarballs/r3act-host-three.tgz",
+              "sha256": "a25bf2dadeb96f88d51da7a31a396e1cb78e7d330045d3c644d1946cdcd1b7fd",
+              "bytes": 1437
+            },
+            {
+              "name": "react-bridge",
+              "path": "tarballs/r3act-react-bridge.tgz",
+              "sha256": "4f228cac55b141a2e3b1df6d20c1f38359ca93b769bf2f03f94c85cf577e0c4c",
+              "bytes": 1411
+            }
+          ],
+          "compiler": {
+            "target": "aarch64-apple-darwin",
+            "platform": "darwin",
+            "arch": "arm64",
+            "file": "aarch64-apple-darwin/ui-graph-compiler-spike",
+            "sha256": "512df2251865469e60dbb3d7a68228120a98e4cfd28f7bfac5783967ccb1cdd9",
+            "bytes": 3422624
+          },
+          "consumerStatus": "PASS"
+        }
+      },
+      "numericExit": 0,
+      "numericExitEvidence": "Direct consolidated gate command completed with numeric exit 0; raw runner receipt records PASS/45 steps.",
+      "expectedFollowons": [
+        "implementation/2026-10-19-held-reader-progress/consumer/main.tsx",
+        "implementation/2026-10-19-held-reader-progress/verify-browser.mjs"
+      ],
+      "followonsMatch": true,
+      "unexpectedDrift": [],
+      "runtimeCompilerFixtureTestsUnchanged": true,
+      "packagingCheckLabels": [
+        "five fresh tarballs install outside the checkout without scripts",
+        "native core/Vite import without React or plugin-react and the default bridge imports without Radix",
+        "installed manifests and MIT licenses match private-alpha package identities",
+        "installed target manifest, executable bytes/hash and native protocol info agree",
+        "installed JS and declaration maps resolve to hash-checked packaged TypeScript",
+        "DOM, Three and React package routes re-export one core runtime graph",
+        "installed core/Three JSX, both React bridge directions and controlled Radix dialog props typecheck authored TSX",
+        "actual forked-transition DOM/Three example and Vite config typecheck against fresh installed public packages",
+        "actual independent Canvas host and compiled DOM/Three/Canvas example typecheck against fresh public packages",
+        "actual const-arrow DOM/Three example and Vite config typecheck against fresh installed public packages",
+        "installed Rust/OXC plugin compiles and runs state/store TSX without Cargo",
+        "installed storeRecord provenance and compiled scoped projections share the core runtime",
+        "installed compiled resource leaves reveal together through the public queue"
+      ],
+      "postGateDriftSummary": {
+        "expectedFollowons": [
+          "implementation/2026-10-19-held-reader-progress/consumer/main.tsx",
+          "implementation/2026-10-19-held-reader-progress/verify-browser.mjs"
+        ],
+        "observedFollowons": [
+          "implementation/2026-10-19-held-reader-progress/consumer/main.tsx",
+          "implementation/2026-10-19-held-reader-progress/verify-browser.mjs"
+        ],
+        "runtimeCompilerFixtureTestsUnchanged": true
+      }
+    },
+    "proof": {
+      "build": {
+        "status": "PASS_INSTALLED_BUILD_PROOF",
+        "sha256": "cdc93118cc9d084753ef89c6749643c524099e5c0f95a446ae34fe45dee98f16",
+        "node": "v24.18.0",
+        "platform": "darwin-arm64",
+        "sourceRows": 18,
+        "tarballs": 5,
+        "installedRows": 1621,
+        "packageReport": {
+          "expected": "9703be5cea4f3fbf024b2b424309df33e3c631fca5260d4f06df0cd944af0520",
+          "archive": "9703be5cea4f3fbf024b2b424309df33e3c631fca5260d4f06df0cd944af0520",
+          "live": "9703be5cea4f3fbf024b2b424309df33e3c631fca5260d4f06df0cd944af0520",
+          "sourceHashCount": 48,
+          "sourceHashFailures": []
+        },
+        "compiler": {
+          "archive": "512df2251865469e60dbb3d7a68228120a98e4cfd28f7bfac5783967ccb1cdd9",
+          "installed": "512df2251865469e60dbb3d7a68228120a98e4cfd28f7bfac5783967ccb1cdd9",
+          "expected": "512df2251865469e60dbb3d7a68228120a98e4cfd28f7bfac5783967ccb1cdd9"
+        },
+        "sourceFailures": [],
+        "tarballFailures": [],
+        "installedFailures": [],
+        "manifestRows": [
+          {
+            "name": "package.json",
+            "archive": "f3b2d857f3276b62a999110e90c932ae55f3939a9378226579e739693146599f",
+            "installedPath": "/private/var/folders/6p/79mr8_4n34d9_2m75n54r1qc0000gn/T/r3act-held-reader-S8aj2G/package.json",
+            "installed": "f3b2d857f3276b62a999110e90c932ae55f3939a9378226579e739693146599f"
+          },
+          {
+            "name": "pnpm-workspace.yaml",
+            "archive": "0527218c5ddc9fc0f324417c4ce7900e1057c40e3ff6d52f59fec1a956708943",
+            "installedPath": "/private/var/folders/6p/79mr8_4n34d9_2m75n54r1qc0000gn/T/r3act-held-reader-S8aj2G/pnpm-workspace.yaml",
+            "installed": "0527218c5ddc9fc0f324417c4ce7900e1057c40e3ff6d52f59fec1a956708943"
+          },
+          {
+            "name": "pnpm-lock.yaml",
+            "archive": "2b5c7d0755939c4de14e17dbe3e434cb03cffc219d4eec6d904cfe1cd70ed365",
+            "installedPath": "/private/var/folders/6p/79mr8_4n34d9_2m75n54r1qc0000gn/T/r3act-held-reader-S8aj2G/pnpm-lock.yaml",
+            "installed": "2b5c7d0755939c4de14e17dbe3e434cb03cffc219d4eec6d904cfe1cd70ed365"
+          }
+        ],
+        "buildAssets": [
+          {
+            "path": "/Volumes/Depot/Developer/r3act/implementation/2026-10-19-held-reader-progress/proof-v2/dist/assets/index-B6Y9MnFl.js",
+            "expected": "172d69aa5c3857bfbfc9ed6c861dcc2633c5617120aec3edaf70c30141c40b2c",
+            "actual": "172d69aa5c3857bfbfc9ed6c861dcc2633c5617120aec3edaf70c30141c40b2c",
+            "bytes": 3299512
+          },
+          {
+            "path": "/Volumes/Depot/Developer/r3act/implementation/2026-10-19-held-reader-progress/proof-v2/dist/index.html",
+            "expected": "0f21fd025c26664b0f8a2e2f31ff8b46199e32b50db7f6946a90546b66bd3e7e",
+            "actual": "0f21fd025c26664b0f8a2e2f31ff8b46199e32b50db7f6946a90546b66bd3e7e",
+            "bytes": 1102
+          }
+        ],
+        "buildAssetFailures": [],
+        "allIntegrityChecksPass": true
+      },
+      "pair": {
+        "status": "PASS_UNTIMED_PRODUCTION_PAIR",
+        "sha256": "c9fd92f483ce64eddc4188f4c8fae8ec71fdcde1ea05ec7be0511175afc376d5",
+        "sourceRows": 18,
+        "sourceStable": true,
+        "nativeBuild": {
+          "mode": "native",
+          "command": "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+          "argv": [
+            "comparison/build.mjs",
+            "native",
+            "/Volumes/Depot/Developer/r3act/implementation/2026-10-19-held-reader-progress/proof-v2/comparison-proof"
+          ],
+          "exit": 0,
+          "signal": null,
+          "stopReason": null,
+          "spawnError": null
+        },
+        "reactBuild": {
+          "mode": "react",
+          "command": "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+          "argv": [
+            "comparison/build.mjs",
+            "react",
+            "/Volumes/Depot/Developer/r3act/implementation/2026-10-19-held-reader-progress/proof-v2/comparison-proof"
+          ],
+          "exit": 0,
+          "signal": null,
+          "stopReason": null,
+          "spawnError": null
+        },
+        "reactEvents": [
+          {
+            "filename": "/private/var/folders/6p/79mr8_4n34d9_2m75n54r1qc0000gn/T/r3act-held-reader-S8aj2G/comparison/react/react.tsx",
+            "kind": "CompileSuccess",
+            "fnName": "JointReveal",
+            "reason": null
+          },
+          {
+            "filename": "/private/var/folders/6p/79mr8_4n34d9_2m75n54r1qc0000gn/T/r3act-held-reader-S8aj2G/comparison/react/react.tsx",
+            "kind": "CompileSuccess",
+            "fnName": "DialogSlot",
+            "reason": null
+          },
+          {
+            "filename": "/private/var/folders/6p/79mr8_4n34d9_2m75n54r1qc0000gn/T/r3act-held-reader-S8aj2G/comparison/react/react.tsx",
+            "kind": "CompileSuccess",
+            "fnName": "App",
+            "reason": null
+          },
+          {
+            "filename": "/private/var/folders/6p/79mr8_4n34d9_2m75n54r1qc0000gn/T/r3act-held-reader-S8aj2G/react-panel.tsx",
+            "kind": "CompileError",
+            "fnName": null,
+            "reason": null
+          }
+        ],
+        "transformChecks": [
+          {
+            "mode": "native",
+            "path": "comparison/native/native.tsx.js",
+            "expected": "4d50424e48a10349ba0bf9647afa267aa9316c24bc75be25ff999d0f3324f084",
+            "actual": "4d50424e48a10349ba0bf9647afa267aa9316c24bc75be25ff999d0f3324f084",
+            "bytes": 21
+          },
+          {
+            "mode": "native",
+            "path": "main.tsx.js",
+            "expected": "b9b506504c3175ad460cd7ea9dae1fd75be6d49180a0a092062717e7c8c030d6",
+            "actual": "b9b506504c3175ad460cd7ea9dae1fd75be6d49180a0a092062717e7c8c030d6",
+            "bytes": 23794
+          },
+          {
+            "mode": "native",
+            "path": "react-panel.tsx.js",
+            "expected": "db2b85df733aea27146aed0e68a8d2b9f0989fcfd9f2453da3bf0ba548ea0e7d",
+            "actual": "db2b85df733aea27146aed0e68a8d2b9f0989fcfd9f2453da3bf0ba548ea0e7d",
+            "bytes": 761
+          },
+          {
+            "mode": "native",
+            "path": "scene.tsx.js",
+            "expected": "8fe0e3a2faab7b47ccc8ed49c0775d481c5f69ade1deeb226156604c42c72468",
+            "actual": "8fe0e3a2faab7b47ccc8ed49c0775d481c5f69ade1deeb226156604c42c72468",
+            "bytes": 10069
+          },
+          {
+            "mode": "native",
+            "path": "state.ts.js",
+            "expected": "fd2a1c5c2fddf486b7a91b1c2d8d4d506545ed29ebe928954331b1bd8f4e0fd1",
+            "actual": "fd2a1c5c2fddf486b7a91b1c2d8d4d506545ed29ebe928954331b1bd8f4e0fd1",
+            "bytes": 752
+          },
+          {
+            "mode": "react",
+            "path": "comparison/react/react.tsx.js",
+            "expected": "3f188e6525b5cba483f2ad8fabd13e9addeae16760e16b12bc211b9a2c54f296",
+            "actual": "3f188e6525b5cba483f2ad8fabd13e9addeae16760e16b12bc211b9a2c54f296",
+            "bytes": 7782
+          },
+          {
+            "mode": "react",
+            "path": "react-panel.tsx.js",
+            "expected": "db2b85df733aea27146aed0e68a8d2b9f0989fcfd9f2453da3bf0ba548ea0e7d",
+            "actual": "db2b85df733aea27146aed0e68a8d2b9f0989fcfd9f2453da3bf0ba548ea0e7d",
+            "bytes": 761
+          }
+        ],
+        "transformFailures": [],
+        "assetChecks": [
+          {
+            "mode": "native",
+            "path": "assets/index-B6Y9MnFl.js",
+            "expected": "172d69aa5c3857bfbfc9ed6c861dcc2633c5617120aec3edaf70c30141c40b2c",
+            "actual": "172d69aa5c3857bfbfc9ed6c861dcc2633c5617120aec3edaf70c30141c40b2c",
+            "bytes": 3299512
+          },
+          {
+            "mode": "native",
+            "path": "index.html",
+            "expected": "e48bb8334e641258f206c04579fd1ee95ef1201d638eec526cb36fc8a5646c88",
+            "actual": "e48bb8334e641258f206c04579fd1ee95ef1201d638eec526cb36fc8a5646c88",
+            "bytes": 281
+          },
+          {
+            "mode": "react",
+            "path": "assets/index-XhJnuV-h.js",
+            "expected": "70e8826ea8419e12b29c82d84bbeca15e555f1f9712d78b2f0b87113de326333",
+            "actual": "70e8826ea8419e12b29c82d84bbeca15e555f1f9712d78b2f0b87113de326333",
+            "bytes": 1149334
+          },
+          {
+            "mode": "react",
+            "path": "index.html",
+            "expected": "566074d53fe2959cb52a151fc0918538e2209f2d0167463038e58779a5a8765d",
+            "actual": "566074d53fe2959cb52a151fc0918538e2209f2d0167463038e58779a5a8765d",
+            "bytes": 280
+          }
+        ],
+        "assetFailures": [],
+        "actualReactMemoCacheSlots": {
+          "App": 14,
+          "JointReveal": 12,
+          "DialogSlot": 16
+        },
+        "reactPanelCompileEvents": [
+          "CompileError",
+          "CompileError"
+        ],
+        "allIntegrityChecksPass": true
+      },
+      "untimed": {
+        "status": "PASS_UNTIMED_BROWSER",
+        "sha256": "0387bc69227a59913d4b6f16d57bf8dde62b6fbb9900382411ccf19e3fed5473",
+        "assetStable": true,
+        "sourceStable": true,
+        "errors": 0,
+        "events": 0,
+        "closed": true
+      },
+      "measure": {
+        "status": "PASS_ONE_RUNTIME_PAIR",
+        "sha256": "1b1be9aae5a7537ff85f941c5bf63bb76a1b75200a5a356bc79d79a40e81ba6e",
+        "authorization": {
+          "status": "APPROVED_FOR_ONE_RUNTIME_PAIR",
+          "baseCommit": "f031b6db0ff43591ca126b273201bf4a66b287db",
+          "gateReceiptMatches": true,
+          "buildProofMatches": true,
+          "pairProofMatches": true,
+          "untimedBrowserMatches": true,
+          "measureProofMatches": false,
+          "order": [
+            "native",
+            "react"
+          ],
+          "maximumPairs": 1
+        },
+        "nativeMs": 12,
+        "reactMs": 7.799999997019768,
+        "timerQuantum": "not measured",
+        "nativeFirst": true,
+        "sourceBefore": 18,
+        "sourceAfter": 18,
+        "sourceStable": true,
+        "assetsStable": true,
+        "served": [
+          {
+            "path": "/native/index.html",
+            "sha256": "e48bb8334e641258f206c04579fd1ee95ef1201d638eec526cb36fc8a5646c88"
+          },
+          {
+            "path": "/native/assets/index-B6Y9MnFl.js",
+            "sha256": "172d69aa5c3857bfbfc9ed6c861dcc2633c5617120aec3edaf70c30141c40b2c"
+          },
+          {
+            "path": "/react/index.html",
+            "sha256": "566074d53fe2959cb52a151fc0918538e2209f2d0167463038e58779a5a8765d"
+          },
+          {
+            "path": "/react/assets/index-XhJnuV-h.js",
+            "sha256": "70e8826ea8419e12b29c82d84bbeca15e555f1f9712d78b2f0b87113de326333"
+          }
+        ],
+        "errors": [],
+        "events": 0,
+        "stopReason": null,
+        "contextClosed": true,
+        "browserClosed": true,
+        "stages": [
+          {
+            "mode": "native",
+            "stage": "initial",
+            "snapshot": {
+              "groupStatus": "pending",
+              "held": "waiting",
+              "reactMounts": 0,
+              "reactCleanups": 0,
+              "disposed": false,
+              "ownerCounts": [
+                4,
+                2
+              ],
+              "liveHandles": 2
+            }
+          },
+          {
+            "mode": "native",
+            "stage": "opened",
+            "snapshot": {
+              "groupStatus": "pending",
+              "held": "waiting",
+              "reactMounts": 1,
+              "reactCleanups": 0,
+              "disposed": false,
+              "ownerCounts": [
+                4,
+                2
+              ],
+              "liveHandles": 2
+            }
+          },
+          {
+            "mode": "native",
+            "stage": "disposed",
+            "snapshot": {
+              "groupStatus": "cancelled",
+              "held": null,
+              "reactMounts": 1,
+              "reactCleanups": 1,
+              "disposed": true,
+              "ownerCounts": [
+                0,
+                0
+              ],
+              "liveHandles": 0
+            }
+          },
+          {
+            "mode": "native"
+          },
+          {
+            "mode": "react",
+            "stage": "initial",
+            "snapshot": {
+              "groupStatus": "pending",
+              "held": "waiting",
+              "reactMounts": 0,
+              "reactCleanups": 0,
+              "disposed": false,
+              "ownerCounts": [
+                null,
+                null
+              ]
+            }
+          },
+          {
+            "mode": "react",
+            "stage": "opened",
+            "snapshot": {
+              "groupStatus": "pending",
+              "held": "waiting",
+              "reactMounts": 1,
+              "reactCleanups": 0,
+              "disposed": false,
+              "ownerCounts": [
+                null,
+                null
+              ]
+            }
+          },
+          {
+            "mode": "react",
+            "stage": "disposed",
+            "snapshot": {
+              "groupStatus": "pending",
+              "held": null,
+              "reactMounts": 1,
+              "reactCleanups": 1,
+              "disposed": true,
+              "ownerCounts": [
+                null,
+                null
+              ]
+            }
+          },
+          {
+            "mode": "react"
+          }
+        ],
+        "measuredReceiptCount": 1,
+        "exactMeasurementStages": [
+          "native:initial",
+          "native:opened",
+          "native:disposed",
+          "react:initial",
+          "react:opened",
+          "react:disposed"
+        ],
+        "nativeCleanup": {
+          "groupStatus": "cancelled",
+          "groupCallbacks": 0,
+          "detailStatus": "pending",
+          "signalStatus": "pending",
+          "held": null,
+          "acceptedA": null,
+          "fallbackRetained": false,
+          "threeFallbackRetained": false,
+          "threePosition": null,
+          "open": null,
+          "local": null,
+          "dialogPresent": false,
+          "reactMounts": 1,
+          "reactCleanups": 1,
+          "dom": {
+            "version": 2,
+            "ownerCount": 0,
+            "pendingChangeCount": 0,
+            "sourceValueSyncVisits": 0,
+            "disposed": true
+          },
+          "three": {
+            "version": 1,
+            "ownerCount": 0,
+            "pendingChangeCount": 0,
+            "sourceValueSyncVisits": 0,
+            "disposed": true
+          },
+          "threeHost": {
+            "createdResources": 0,
+            "disposedResources": 0,
+            "liveResources": 0,
+            "liveHandles": 0,
+            "eventRegistrations": 0
+          },
+          "heldPendingValue": 1,
+          "heldDomProjection": null,
+          "heldThreeProjection": null,
+          "portalConnected": true,
+          "disposed": true
+        },
+        "reactCleanup": {
+          "groupStatus": "pending",
+          "detailStatus": "pending",
+          "signalStatus": "pending",
+          "held": null,
+          "acceptedA": null,
+          "fallbackRetained": false,
+          "threePosition": null,
+          "open": null,
+          "local": null,
+          "dialogPresent": false,
+          "reactMounts": 1,
+          "reactCleanups": 1,
+          "disposed": true
+        },
+        "singleObservationOnly": true
+      }
+    },
+    "priorFailures": {
+      "darwinV1": {
+        "path": "implementation/2026-10-19-held-reader-progress/verification/darwin-v1/receipt.json",
+        "sha256": "235953f166d51c228cc469801d5c2f19fa7c2b0c8bedf2673d2031740697e197",
+        "status": "FAIL",
+        "exit": null,
+        "errors": [],
+        "contextClosed": null,
+        "browserClosed": null
+      },
+      "darwinV2": {
+        "path": "implementation/2026-10-19-held-reader-progress/verification/darwin-v2/receipt.json",
+        "sha256": "5906f06b1af025282eca452b90b79e2785d9633398fa2944ded1f0ec9cf7c461",
+        "status": "FAIL",
+        "exit": null,
+        "errors": [],
+        "contextClosed": null,
+        "browserClosed": null
+      },
+      "compiledSupplement": {
+        "path": "implementation/2026-10-19-held-reader-progress/verification/compiled-29-supplement-v1/receipt.json",
+        "sha256": "0fe39aa5fcf395e519d4b0560ec7ed1008a6b1ea2a958f33d71caf4eed49165c",
+        "status": "PASS_COMMAND_RECEIPT_INCOMPLETE",
+        "exit": null,
+        "errors": null,
+        "contextClosed": null,
+        "browserClosed": null
+      },
+      "proofV1": {
+        "path": "implementation/2026-10-19-held-reader-progress/proof-v1/browser-untimed.json",
+        "sha256": "92bf5f37dde051f2cafb028e9510276e9c3af2b44ab94e79a30512cfd8b4defc",
+        "status": "FAIL_OR_INCOMPLETE",
+        "exit": null,
+        "errors": [
+          {
+            "kind": "verifier",
+            "message": "page.waitForFunction: Timeout 12000ms exceeded.\n    at wait (/Volumes/Depot/Developer/r3act/implementation/2026-10-19-held-reader-progress/verify-browser.mjs:90:40)\n    at /Volumes/Depot/Developer/r3act/implementation/2026-10-19-held-reader-progress/verify-browser.mjs:226:13"
+          }
+        ],
+        "contextClosed": true,
+        "browserClosed": true
+      }
+    },
+    "docs": {
+      "notebook": {
+        "cellCount": 215,
+        "headCellCount": 214,
+        "firstCellsEqual": true,
+        "metadataEqual": true,
+        "lastCellType": "markdown",
+        "lastCellHeading": "## Held Store readers and dependency-scoped progress — 19 October 2026",
+        "lastCellMatchesPaperAppend": true,
+        "appendedPaperHeading": "## Held Store readers and dependency-scoped progress — 19 October 2026"
+      },
+      "paper": {
+        "oldContentIsPrefix": true,
+        "appendedHeadingExists": true
+      },
+      "checkpoint": {
+        "oldBodyPreservedAfterBoundedPrepend": true,
+        "prependedSectionBytes": 2275,
+        "oldSectionStartInGitHead": 29
+      },
+      "master": {
+        "oldBodyPreservedAfterBoundedPrepend": true,
+        "prependedSectionBytes": 1428,
+        "oldSectionStartInGitHead": 53
+      },
+      "relevantLocalLinks": [
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-19-held-reader-progress/results.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-19-hmr-completion/results.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-19-publication-callbacks/results.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-19-first-pass-audit/results.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-19-arrow-components/results.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-19-custom-host/results.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-19-forked-transitions/results.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-19-installed-hmr/results.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-19-async-recovery/results.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-19-installed-scene/results.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-19-radix-dialog/results.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-19-react-island/results.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-19-resource-transactions/results.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-18-linux-delivery/results.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-18-authored-lifecycle/results.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-18-component-forwarding/results.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-18-joint-async-inputs/results.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-18-store-projections/results.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-18-store-subtrees/results.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-18-store-values/results.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-18-resource-values/results.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-18-native-platforms/design.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-18-native-platforms/results.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-18-compiler-artifacts/results.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-18-resource-subtree/results.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-18-joint-inputs/design.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-18-joint-inputs/results.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-18-store-host/verification/gate-results.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-18-store-host/benchmark/README.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-18-store-host/benchmark/proof-v1/pair-one-shot.json",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-18-direct-intent/design.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-18-direct-intent/source-review.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-18-direct-intent/verification/gate-results.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-18-urgent-retained/design.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-18-urgent-retained/verification/gate-results.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-18-reveal-workset/verification/gate-results.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-18-reveal-workset/benchmark/proof-v1/pair-one-shot.json",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-18-host-reveal/verification/gate-results.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-18-host-reveal/benchmark/proof-v1/pair-one-shot.json",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "docs/native-authoring-reference.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-18-first-pass/benchmark/proof-v1/pair-one-shot.json",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-18-first-pass/design.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-17-scoped-structure/benchmark/reviewed-proof-v1/pair-one-shot.json",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-17-scoped-structure/design.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-17-retained-deltas/design.md",
+          "exists": true
+        },
+        {
+          "from": "implementation-checkpoint.md",
+          "target": "implementation/2026-10-16-publication/verification/gate-results.md",
+          "exists": true
+        },
+        {
+          "from": "final-master-plan.md",
+          "target": "implementation/2026-10-19-held-reader-progress/results.md",
+          "exists": true
+        },
+        {
+          "from": "final-master-plan.md",
+          "target": "implementation/2026-10-19-hmr-completion/results.md",
+          "exists": true
+        },
+        {
+          "from": "final-master-plan.md",
+          "target": "implementation/2026-10-19-publication-callbacks/results.md",
+          "exists": true
+        },
+        {
+          "from": "final-master-plan.md",
+          "target": "implementation/2026-10-19-first-pass-audit/results.md",
+          "exists": true
+        },
+        {
+          "from": "final-master-plan.md",
+          "target": "implementation/2026-10-19-arrow-components/results.md",
+          "exists": true
+        },
+        {
+          "from": "final-master-plan.md",
+          "target": "implementation/2026-10-19-custom-host/results.md",
+          "exists": true
+        },
+        {
+          "from": "final-master-plan.md",
+          "target": "implementation/2026-10-19-forked-transitions/results.md",
+          "exists": true
+        },
+        {
+          "from": "final-master-plan.md",
+          "target": "implementation/2026-10-19-installed-hmr/results.md",
+          "exists": true
+        },
+        {
+          "from": "final-master-plan.md",
+          "target": "implementation/2026-10-19-async-recovery/results.md",
+          "exists": true
+        },
+        {
+          "from": "final-master-plan.md",
+          "target": "implementation/2026-10-19-installed-scene/results.md",
+          "exists": true
+        },
+        {
+          "from": "final-master-plan.md",
+          "target": "implementation/2026-10-19-radix-dialog/results.md",
+          "exists": true
+        },
+        {
+          "from": "final-master-plan.md",
+          "target": "implementation/2026-10-19-react-island/results.md",
+          "exists": true
+        },
+        {
+          "from": "final-master-plan.md",
+          "target": "implementation/2026-10-19-resource-transactions/results.md",
+          "exists": true
+        },
+        {
+          "from": "final-master-plan.md",
+          "target": "implementation/2026-10-18-linux-delivery/results.md",
+          "exists": true
+        },
+        {
+          "from": "final-master-plan.md",
+          "target": "implementation/2026-10-18-authored-lifecycle/results.md",
+          "exists": true
+        },
+        {
+          "from": "final-master-plan.md",
+          "target": "implementation/2026-10-18-component-forwarding/results.md",
+          "exists": true
+        },
+        {
+          "from": "final-master-plan.md",
+          "target": "implementation/2026-10-18-joint-async-inputs/results.md",
+          "exists": true
+        },
+        {
+          "from": "final-master-plan.md",
+          "target": "implementation/2026-10-18-store-projections/results.md",
+          "exists": true
+        },
+        {
+          "from": "final-master-plan.md",
+          "target": "implementation/2026-10-18-store-subtrees/results.md",
+          "exists": true
+        },
+        {
+          "from": "final-master-plan.md",
+          "target": "implementation/2026-10-18-store-values/results.md",
+          "exists": true
+        },
+        {
+          "from": "final-master-plan.md",
+          "target": "implementation/2026-10-18-resource-values/results.md",
+          "exists": true
+        },
+        {
+          "from": "final-master-plan.md",
+          "target": "implementation/2026-10-18-compiler-artifacts/results.md",
+          "exists": true
+        },
+        {
+          "from": "final-master-plan.md",
+          "target": "implementation/2026-10-18-resource-subtree/results.md",
+          "exists": true
+        },
+        {
+          "from": "final-master-plan.md",
+          "target": "implementation/2026-10-18-joint-inputs/results.md",
+          "exists": true
+        },
+        {
+          "from": "final-master-plan.md",
+          "target": "implementation/2026-10-18-host-reveal/verification/gate-results.md",
+          "exists": true
+        },
+        {
+          "from": "final-master-plan.md",
+          "target": "implementation/2026-10-18-reveal-workset/verification/gate-results.md",
+          "exists": true
+        },
+        {
+          "from": "final-master-plan.md",
+          "target": "implementation/2026-10-18-urgent-retained/verification/gate-results.md",
+          "exists": true
+        },
+        {
+          "from": "final-master-plan.md",
+          "target": "implementation/2026-10-18-direct-intent/verification/gate-results.md",
+          "exists": true
+        },
+        {
+          "from": "final-master-plan.md",
+          "target": "implementation/2026-10-18-store-host/results.md",
+          "exists": true
+        },
+        {
+          "from": "final-master-plan.md",
+          "target": ".cache/dense-causal-control-v1/README.md",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-19-resource-transactions/results.md",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-18-linux-delivery/results.md",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-18-authored-lifecycle/results.md",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-18-component-forwarding/results.md",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-18-joint-async-inputs/results.md",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-18-store-projections/results.md",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-18-store-subtrees/results.md",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-18-store-values/results.md",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-18-direct-intent/verification/gate-results.md",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-18-urgent-retained/benchmark/proof-v1/pair-one-shot.json",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-18-direct-intent/benchmark/proof-v2/pair-one-shot.json",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-18-host-reveal/verification/gate-results.md",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "docs/native-authoring-reference.md",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-18-first-pass/benchmark/proof-v1/pair-one-shot.json",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-18-host-reveal/benchmark/proof-v1/pair-one-shot.json",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-16-publication/verification/gate-results.md",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "./README.md",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-18-store-host/verification/gate-results.md",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-18-store-host/benchmark/README.md",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-18-store-host/benchmark/proof-v1/pair-one-shot.json",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-18-joint-inputs/results.md",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-18-joint-inputs/benchmark/proof-v1/pair-one-shot.json",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-18-resource-subtree/results.md",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-18-compiler-artifacts/results.md",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-18-resource-values/results.md",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-19-react-island/results.md",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-19-radix-dialog/results.md",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-19-installed-scene/results.md",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-19-async-recovery/results.md",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-19-forked-transitions/results.md",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-19-custom-host/results.md",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-19-arrow-components/results.md",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-19-publication-callbacks/results.md",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-19-hmr-completion/results.md",
+          "exists": true
+        },
+        {
+          "from": "paper.md",
+          "target": "implementation/2026-10-19-held-reader-progress/results.md",
+          "exists": true
+        },
+        {
+          "from": "docs/native-authoring-reference.md",
+          "target": "../examples/arrow-components/README.md",
+          "exists": true
+        },
+        {
+          "from": "docs/native-authoring-reference.md",
+          "target": "../implementation/2026-10-19-arrow-components/results.md",
+          "exists": true
+        },
+        {
+          "from": "docs/native-authoring-reference.md",
+          "target": "../implementation/2026-10-19-async-recovery/results.md",
+          "exists": true
+        },
+        {
+          "from": "docs/native-authoring-reference.md",
+          "target": "../examples/forked-transitions/README.md",
+          "exists": true
+        },
+        {
+          "from": "docs/native-authoring-reference.md",
+          "target": "../implementation/2026-10-19-forked-transitions/results.md",
+          "exists": true
+        },
+        {
+          "from": "docs/native-authoring-reference.md",
+          "target": "../implementation/2026-10-18-resource-subtree/verification/gate-results.md",
+          "exists": true
+        },
+        {
+          "from": "docs/native-authoring-reference.md",
+          "target": "../implementation/2026-10-18-resource-subtree/results.md",
+          "exists": true
+        },
+        {
+          "from": "docs/native-authoring-reference.md",
+          "target": "../implementation/2026-10-19-resource-transactions/results.md",
+          "exists": true
+        },
+        {
+          "from": "docs/native-authoring-reference.md",
+          "target": "../implementation/2026-10-19-resource-transactions/design.md",
+          "exists": true
+        },
+        {
+          "from": "docs/native-authoring-reference.md",
+          "target": "../implementation/2026-10-19-publication-callbacks/results.md",
+          "exists": true
+        },
+        {
+          "from": "docs/native-authoring-reference.md",
+          "target": "../implementation/2026-10-18-store-projections/design.md",
+          "exists": true
+        },
+        {
+          "from": "docs/native-authoring-reference.md",
+          "target": "../implementation/2026-10-18-store-host/verification/gate-results.md",
+          "exists": true
+        },
+        {
+          "from": "docs/native-authoring-reference.md",
+          "target": "../implementation/2026-10-18-urgent-retained/verification/gate-results.md",
+          "exists": true
+        },
+        {
+          "from": "docs/native-authoring-reference.md",
+          "target": "../implementation/2026-10-18-direct-intent/verification/gate-results.md",
+          "exists": true
+        },
+        {
+          "from": "docs/native-authoring-reference.md",
+          "target": "../implementation/2026-10-18-joint-async-inputs/design.md",
+          "exists": true
+        },
+        {
+          "from": "docs/native-authoring-reference.md",
+          "target": "../implementation/2026-10-18-joint-async-inputs/verification/results.md",
+          "exists": true
+        },
+        {
+          "from": "docs/native-authoring-reference.md",
+          "target": "../implementation/2026-10-18-component-forwarding/design.md",
+          "exists": true
+        },
+        {
+          "from": "docs/native-authoring-reference.md",
+          "target": "../implementation/2026-10-19-hmr-completion/results.md",
+          "exists": true
+        },
+        {
+          "from": "docs/native-authoring-reference.md",
+          "target": "../implementation/2026-10-19-held-reader-progress/design.md",
+          "exists": true
+        },
+        {
+          "from": "docs/native-authoring-reference.md",
+          "target": "../implementation/2026-10-18-joint-inputs/results.md",
+          "exists": true
+        },
+        {
+          "from": "docs/native-authoring-reference.md",
+          "target": "../examples/installed-scene/README.md",
+          "exists": true
+        },
+        {
+          "from": "implementation/2026-10-19-held-reader-progress/results.md",
+          "target": "design.md",
+          "exists": true
+        },
+        {
+          "from": "implementation/2026-10-19-held-reader-progress/results.md",
+          "target": "source-review.md",
+          "exists": true
+        },
+        {
+          "from": "implementation/2026-10-19-held-reader-progress/results.md",
+          "target": "../../docs/native-authoring-reference.md",
+          "exists": true
+        },
+        {
+          "from": "implementation/2026-10-19-held-reader-progress/results.md",
+          "target": "verification/darwin-v3/receipt.json",
+          "exists": true
+        },
+        {
+          "from": "implementation/2026-10-19-held-reader-progress/results.md",
+          "target": "README.md",
+          "exists": true
+        },
+        {
+          "from": "implementation/2026-10-19-held-reader-progress/results.md",
+          "target": "verification/darwin-v3/receipt.json",
+          "exists": true
+        },
+        {
+          "from": "implementation/2026-10-19-held-reader-progress/results.md",
+          "target": "proof-v1/browser-untimed.json",
+          "exists": true
+        },
+        {
+          "from": "implementation/2026-10-19-held-reader-progress/results.md",
+          "target": "proof-v2/build-proof.json",
+          "exists": true
+        },
+        {
+          "from": "implementation/2026-10-19-held-reader-progress/results.md",
+          "target": "proof-v2/pair-proof.json",
+          "exists": true
+        },
+        {
+          "from": "implementation/2026-10-19-held-reader-progress/results.md",
+          "target": "proof-v2/browser-untimed.json",
+          "exists": true
+        },
+        {
+          "from": "implementation/2026-10-19-held-reader-progress/results.md",
+          "target": "proof-v2/run-authorization.json",
+          "exists": true
+        },
+        {
+          "from": "implementation/2026-10-19-held-reader-progress/results.md",
+          "target": "proof-v2/browser-one-pair.json",
+          "exists": true
+        }
+      ],
+      "brokenRelevantLinks": [],
+      "gitDiffCheck": "",
+      "trackedCacheChanges": [],
+      "appleConfig": {
+        "cpus": true,
+        "container256MiB": true,
+        "build512MiB": true,
+        "raw": "[build]\nrosetta = false\ncpus = 1\nmemory = \"512m\"\n\n[container]\ncpus = 1\nmemory = \"256m\"\n"
+      },
+      "noVmOrProjectServer": "Audit launched neither; unit reports no project server or VM run.",
+      "noTrackedHistoricalCacheChanges": true,
+      "resultsClaimChecks": {
+        "counts": true,
+        "sourceCounts": true,
+        "followonSeparation": true,
+        "memoCounts": true,
+        "measuredPair": true,
+        "negativeClaims": true,
+        "machineLimits": true,
+        "humanLimits": true,
+        "allClaimsConsistent": true
+      }
+    }
+  },
+  "finalizedAt": "2026-10-19T21:51:44.134Z",
+  "overallStatus": "PASS_WITH_RECORDED_INVOCATION_ERRORS",
+  "auditInvocationAttempts": [
+    {
+      "attempt": 1,
+      "category": "audit-wrapper setup failure before receipt write",
+      "commandSummary": "Inline Node 24 audit script used require() together with top-level await; no workload was launched and no audit or product artifact was written.",
+      "commandSummaryIsExactShellText": false,
+      "toolError": "ReferenceError: Cannot determine intended module format because both require and top-level await are present. If the code is intended to be CommonJS, wrap await in an async function. If the code is intended to be an ES module, replace require() with import.",
+      "disposition": "Corrected by wrapping the audit body in an async function; successful audit followed."
+    },
+    {
+      "attempt": 2,
+      "category": "audit-wrapper setup failure before receipt write",
+      "commandSummary": "Inline Node 24 audit script called git show for the notebook without a sufficiently large execFileSync maxBuffer; no workload was launched and no audit or product artifact was written.",
+      "commandSummaryIsExactShellText": false,
+      "toolError": "Error: spawnSync git ENOBUFS (at execFileSync while reading HEAD:research.ipynb).",
+      "disposition": "Corrected by setting a 64 MiB maxBuffer for git show; successful audit followed."
+    }
+  ]
+}
