@@ -95,10 +95,10 @@ const sourcePaths = async () => {
     try { if ((await stat(path.join(root, relative))).isFile()) files.push(relative); }
     catch (error) { if (error?.code !== "ENOENT") throw error; }
   }
-  for (const relative of ["examples/installed-scene", "examples/forked-transitions",
+  for (const relative of ["examples/installed-scene", "examples/forked-transitions", "examples/custom-host",
     "implementation/2026-10-19-installed-scene/comparison",
     "implementation/2026-10-19-async-recovery", "implementation/2026-10-19-installed-hmr",
-    "implementation/2026-10-19-forked-transitions"]) {
+    "implementation/2026-10-19-forked-transitions", "implementation/2026-10-19-custom-host"]) {
     try { if ((await stat(path.join(root, relative))).isDirectory()) await walk(path.join(root, relative)); }
     catch (error) { if (error?.code !== "ENOENT") throw error; }
   }
@@ -418,7 +418,7 @@ try {
     "compiled_store_host_subtree_test", "compiled_store_projection_test", "compiled_joint_async_inputs_test",
     "compiled_component_forwarding_test", "compiled_authored_lifecycle_test",
     "compiled_resource_transaction_test", "native_async_recovery_execution_test",
-    "native_forked_transition_execution_test"];
+    "native_forked_transition_execution_test", "native_custom_host_execution_test"];
   for (const [index, fixture] of fixtures.entries()) {
     const name = `compiled-${String(index + 1).padStart(2, "0")}`;
     const before = await compilerHash();

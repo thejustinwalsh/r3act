@@ -275,6 +275,20 @@ export const invalidDialogChild = <RadixDialog {...dialogProps} children={validI
   run("pnpm", ["exec", "tsgo", "-p", "forked-transitions/tsconfig.json"]);
   record.checks.push("actual forked-transition DOM/Three example and Vite config typecheck against fresh installed public packages");
 
+  const customExample = path.join(root, "examples/custom-host");
+  const copiedCustomExample = path.join(consumer, "custom-host");
+  await mkdir(copiedCustomExample);
+  record.customHostExampleSources = [];
+  for (const filename of ["app.tsx", "scene.tsx", "main.ts", "retained_host.ts", "vite.config.ts", "tsconfig.json"]) {
+    const bytes = await readFile(path.join(customExample, filename));
+    const copied = path.join(copiedCustomExample, filename);
+    await writeFile(copied, bytes);
+    assert.equal(hash(await readFile(copied)), hash(bytes));
+    record.customHostExampleSources.push({ path: `examples/custom-host/${filename}`, sha256: hash(bytes) });
+  }
+  run("pnpm", ["exec", "tsgo", "-p", "custom-host/tsconfig.json"]);
+  record.checks.push("actual independent Canvas host and compiled DOM/Three/Canvas example typecheck against fresh public packages");
+
   const { nativeModulePlugin } = await import(pathToFileURL(path.join(installed("vite"), "dist/compiler/vite_native_plugin.js")).href);
   const { build: viteBuild } = await import(pathToFileURL(path.join(consumer, "node_modules/vite/dist/node/index.js")).href);
   const blocker = path.join(consumer, "blocked-tools");

@@ -1,0 +1,467 @@
+import { registerCompiledSemanticPlan as __registerNativeSemanticPlan, invalidateCompiledSemanticPlan as __invalidateNativeSemanticPlan } from "file:///Volumes/Depot/Developer/r3act/src/native_runtime_api.ts";
+__registerNativeSemanticPlan({
+	"schema_version": 1,
+	"source_file": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx",
+	"module_revision": "native-v1-318e07bd929556ca",
+	"owners": [
+		{
+			"site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:A",
+			"repeated_scope": "runtime-keyed-owner"
+		},
+		{
+			"site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:App",
+			"repeated_scope": "runtime-keyed-owner"
+		},
+		{
+			"site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:B",
+			"repeated_scope": "runtime-keyed-owner"
+		},
+		{
+			"site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:C",
+			"repeated_scope": "runtime-keyed-owner"
+		}
+	],
+	"sources": [
+		{
+			"site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:A#store:0",
+			"owner_site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:A",
+			"kind": "use-input",
+			"provenance": "opaque"
+		},
+		{
+			"site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:A#store:1",
+			"owner_site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:A",
+			"kind": "use-input",
+			"provenance": "opaque"
+		},
+		{
+			"site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:B#store:0",
+			"owner_site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:B",
+			"kind": "use-input",
+			"provenance": "opaque"
+		},
+		{
+			"site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:C#store:0",
+			"owner_site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:C",
+			"kind": "use-input",
+			"provenance": "opaque"
+		}
+	],
+	"sinks": [],
+	"operations": [
+		{
+			"site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:A#store:0",
+			"owner_site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:A",
+			"kind": "use-store-or-resource",
+			"provenance": "opaque",
+			"source_sites": []
+		},
+		{
+			"site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:A#store:1",
+			"owner_site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:A",
+			"kind": "use-store-or-resource",
+			"provenance": "opaque",
+			"source_sites": []
+		},
+		{
+			"site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:B#store:0",
+			"owner_site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:B",
+			"kind": "use-store-or-resource",
+			"provenance": "opaque",
+			"source_sites": []
+		},
+		{
+			"site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:C#store:0",
+			"owner_site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:C",
+			"kind": "use-store-or-resource",
+			"provenance": "opaque",
+			"source_sites": []
+		}
+	],
+	"graph": {
+		"coverage": "proven-sinks-only",
+		"source_to_sinks": {},
+		"execution_order": []
+	}
+});
+if (import.meta.hot) {
+	const __onNativeModuleRevision = (event) => {
+		if (event?.sourceFile === ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx" && event.previousRevision === "native-v1-318e07bd929556ca" && event.previousInstance === "native-v1-318e07bd929556ca") __invalidateNativeSemanticPlan(".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx", "native-v1-318e07bd929556ca");
+	};
+	import.meta.hot.on("r3act:invalidate-native-module", __onNativeModuleRevision);
+	import.meta.hot.dispose(() => import.meta.hot?.off("r3act:invalidate-native-module", __onNativeModuleRevision));
+}
+/** @jsxRuntime classic */
+/** @jsx jsx */
+// @native-ui
+import { AsyncResource, Suspense, createStore, jsx } from "file:///Volumes/Depot/Developer/r3act/src/native_runtime_api.ts";
+import { defineComponent as __nativeDefineComponent, useAt as __nativeUseAt } from "file:///Volumes/Depot/Developer/r3act/src/native_runtime_api.ts";
+__nativeDefineComponent(".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:A", A, { propOnlySites: [] });
+__nativeDefineComponent(".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:App", App, { propOnlySites: [] });
+__nativeDefineComponent(".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:B", B, {
+	propOnlySites: [],
+	closedResourceHostProgram: {
+		"componentProgramId": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:B",
+		"host": {
+			"child": "resource-value",
+			"key": "b-host",
+			"props": [["data-b", "primary"]],
+			"tag": "div"
+		},
+		"moduleRevision": "native-v1-318e07bd929556ca",
+		"resourceProp": "resource",
+		"resourceUseSiteId": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:B#store:0",
+		"schemaVersion": 1
+	},
+	closedStoreHostProgram: {
+		"componentProgramId": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:B",
+		"host": {
+			"children": [{
+				"expression": {
+					"index": 0,
+					"kind": "input"
+				},
+				"kind": "text"
+			}],
+			"key": "b-host",
+			"props": [["data-b", {
+				"kind": "literal",
+				"value": "primary"
+			}]],
+			"tag": "div"
+		},
+		"inputs": [{
+			"storeProp": "resource",
+			"storeUseSiteId": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:B#store:0"
+		}],
+		"moduleRevision": "native-v1-318e07bd929556ca",
+		"schemaVersion": 4
+	}
+});
+__nativeDefineComponent(".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:C", C, {
+	propOnlySites: [],
+	closedResourceHostProgram: {
+		"componentProgramId": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:C",
+		"host": {
+			"child": "resource-value",
+			"key": "c-host",
+			"props": [["data-c", "primary"]],
+			"tag": "div"
+		},
+		"moduleRevision": "native-v1-318e07bd929556ca",
+		"resourceProp": "resource",
+		"resourceUseSiteId": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:C#store:0",
+		"schemaVersion": 1
+	},
+	closedStoreHostProgram: {
+		"componentProgramId": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:C",
+		"host": {
+			"children": [{
+				"expression": {
+					"index": 0,
+					"kind": "input"
+				},
+				"kind": "text"
+			}],
+			"key": "c-host",
+			"props": [["data-c", {
+				"kind": "literal",
+				"value": "primary"
+			}]],
+			"tag": "div"
+		},
+		"inputs": [{
+			"storeProp": "resource",
+			"storeUseSiteId": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:C#store:0"
+		}],
+		"moduleRevision": "native-v1-318e07bd929556ca",
+		"schemaVersion": 4
+	}
+});
+export function deferred() {
+	let resolve;
+	const promise = new Promise((yes) => {
+		resolve = yes;
+	});
+	return {
+		promise,
+		resolve
+	};
+}
+export const firstA = deferred();
+export const nextA = deferred();
+export const pendingB = deferred();
+export const pendingC = deferred();
+export const resourceB = new AsyncResource(pendingB.promise);
+export const resourceC = new AsyncResource(pendingC.promise);
+export const mode = createStore(0, (_state, action) => action);
+export function A() {
+	const selected = __nativeUseAt(".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:A#store:0", mode) === 0 ? firstA.promise : nextA.promise;
+	const value = __nativeUseAt(".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:A#store:1", selected);
+	return /* @__PURE__ */ jsx("div", {
+		key: "a-host",
+		"data-a": "primary"
+	}, value);
+}
+export function B(props) {
+	const value = __nativeUseAt(".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:B#store:0", props.resource);
+	return /* @__PURE__ */ jsx("div", {
+		key: "b-host",
+		"data-b": "primary"
+	}, value);
+}
+export function C(props) {
+	const value = __nativeUseAt(".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:C#store:0", props.resource);
+	return /* @__PURE__ */ jsx("div", {
+		key: "c-host",
+		"data-c": "primary"
+	}, value);
+}
+export function App() {
+	return /* @__PURE__ */ jsx("section", null, /* @__PURE__ */ jsx(Suspense, {
+		fallback: /* @__PURE__ */ jsx("div", { key: "a-host" }, "a-loading"),
+		__nativeBoundarySite: ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#boundary:0"
+	}, /* @__PURE__ */ jsx(A, { key: "a-child" })), /* @__PURE__ */ jsx(Suspense, {
+		fallback: /* @__PURE__ */ jsx("div", { key: "b-host" }, "b-loading"),
+		__nativeBoundarySite: ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#boundary:1"
+	}, /* @__PURE__ */ jsx(B, {
+		key: "b-child",
+		resource: resourceB
+	})), /* @__PURE__ */ jsx(Suspense, {
+		fallback: /* @__PURE__ */ jsx("div", { key: "c-host" }, "c-loading"),
+		__nativeBoundarySite: ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#boundary:2"
+	}, /* @__PURE__ */ jsx(C, {
+		key: "c-child",
+		resource: resourceC
+	})));
+}
+export const compiledNativeComponentPlan = {
+	"schema_version": 2,
+	"module_revision": "native-v1-318e07bd929556ca",
+	"semantic_plan": {
+		"schema_version": 1,
+		"source_file": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx",
+		"module_revision": "native-v1-318e07bd929556ca",
+		"owners": [
+			{
+				"site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:A",
+				"repeated_scope": "runtime-keyed-owner"
+			},
+			{
+				"site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:App",
+				"repeated_scope": "runtime-keyed-owner"
+			},
+			{
+				"site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:B",
+				"repeated_scope": "runtime-keyed-owner"
+			},
+			{
+				"site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:C",
+				"repeated_scope": "runtime-keyed-owner"
+			}
+		],
+		"sources": [
+			{
+				"site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:A#store:0",
+				"owner_site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:A",
+				"kind": "use-input",
+				"provenance": "opaque"
+			},
+			{
+				"site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:A#store:1",
+				"owner_site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:A",
+				"kind": "use-input",
+				"provenance": "opaque"
+			},
+			{
+				"site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:B#store:0",
+				"owner_site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:B",
+				"kind": "use-input",
+				"provenance": "opaque"
+			},
+			{
+				"site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:C#store:0",
+				"owner_site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:C",
+				"kind": "use-input",
+				"provenance": "opaque"
+			}
+		],
+		"sinks": [],
+		"operations": [
+			{
+				"site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:A#store:0",
+				"owner_site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:A",
+				"kind": "use-store-or-resource",
+				"provenance": "opaque",
+				"source_sites": []
+			},
+			{
+				"site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:A#store:1",
+				"owner_site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:A",
+				"kind": "use-store-or-resource",
+				"provenance": "opaque",
+				"source_sites": []
+			},
+			{
+				"site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:B#store:0",
+				"owner_site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:B",
+				"kind": "use-store-or-resource",
+				"provenance": "opaque",
+				"source_sites": []
+			},
+			{
+				"site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:C#store:0",
+				"owner_site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:C",
+				"kind": "use-store-or-resource",
+				"provenance": "opaque",
+				"source_sites": []
+			}
+		],
+		"graph": {
+			"coverage": "proven-sinks-only",
+			"source_to_sinks": {},
+			"execution_order": []
+		}
+	},
+	"source_file": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx",
+	"helper_module": "",
+	"tasks": [],
+	"task_order": [],
+	"component_module": "/** @jsxRuntime classic */\n/** @jsx jsx */\n// @native-ui\nimport { AsyncResource, Suspense, use, createStore, jsx } from \"file:///Volumes/Depot/Developer/r3act/src/native_runtime_api.ts\";\nimport { defineComponent as __nativeDefineComponent, useStateAt as __nativeUseStateAt, useEffectAt as __nativeUseEffectAt, useStoreAt as __nativeUseStoreAt, bindStatePropsAt as __nativeBindStatePropsAt, renderCollectionAt as __nativeRenderCollectionAt, useAt as __nativeUseAt, bindStatePropAt as __nativeBindStatePropAt } from \"file:///Volumes/Depot/Developer/r3act/src/native_runtime_api.ts\";\n__nativeDefineComponent(\".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:A\", A, { propOnlySites: [] });\n__nativeDefineComponent(\".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:App\", App, { propOnlySites: [] });\n__nativeDefineComponent(\".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:B\", B, { propOnlySites: [], closedResourceHostProgram: {\"componentProgramId\":\".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:B\",\"host\":{\"child\":\"resource-value\",\"key\":\"b-host\",\"props\":[[\"data-b\",\"primary\"]],\"tag\":\"div\"},\"moduleRevision\":\"native-v1-318e07bd929556ca\",\"resourceProp\":\"resource\",\"resourceUseSiteId\":\".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:B#store:0\",\"schemaVersion\":1}, closedStoreHostProgram: {\"componentProgramId\":\".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:B\",\"host\":{\"children\":[{\"expression\":{\"index\":0,\"kind\":\"input\"},\"kind\":\"text\"}],\"key\":\"b-host\",\"props\":[[\"data-b\",{\"kind\":\"literal\",\"value\":\"primary\"}]],\"tag\":\"div\"},\"inputs\":[{\"storeProp\":\"resource\",\"storeUseSiteId\":\".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:B#store:0\"}],\"moduleRevision\":\"native-v1-318e07bd929556ca\",\"schemaVersion\":4} });\n__nativeDefineComponent(\".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:C\", C, { propOnlySites: [], closedResourceHostProgram: {\"componentProgramId\":\".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:C\",\"host\":{\"child\":\"resource-value\",\"key\":\"c-host\",\"props\":[[\"data-c\",\"primary\"]],\"tag\":\"div\"},\"moduleRevision\":\"native-v1-318e07bd929556ca\",\"resourceProp\":\"resource\",\"resourceUseSiteId\":\".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:C#store:0\",\"schemaVersion\":1}, closedStoreHostProgram: {\"componentProgramId\":\".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:C\",\"host\":{\"children\":[{\"expression\":{\"index\":0,\"kind\":\"input\"},\"kind\":\"text\"}],\"key\":\"c-host\",\"props\":[[\"data-c\",{\"kind\":\"literal\",\"value\":\"primary\"}]],\"tag\":\"div\"},\"inputs\":[{\"storeProp\":\"resource\",\"storeUseSiteId\":\".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:C#store:0\"}],\"moduleRevision\":\"native-v1-318e07bd929556ca\",\"schemaVersion\":4} });\n\nexport function deferred() {\n  let resolve;\n  const promise = new Promise((yes) => { resolve = yes; });\n  return { promise, resolve };\n}\n\nexport const firstA = deferred();\nexport const nextA = deferred();\nexport const pendingB = deferred();\nexport const pendingC = deferred();\nexport const resourceB = new AsyncResource(pendingB.promise);\nexport const resourceC = new AsyncResource(pendingC.promise);\nexport const mode = createStore(0, (_state, action) => action);\n\nexport function A() {\n  const selected = __nativeUseAt(\".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:A#store:0\", mode) === 0 ? firstA.promise : nextA.promise;\n  const value = __nativeUseAt(\".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:A#store:1\", selected);\n  return <div key=\"a-host\" data-a=\"primary\">{value}</div>;\n}\n\nexport function B(props) {\n  const value = __nativeUseAt(\".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:B#store:0\", props.resource);\n  return <div key=\"b-host\" data-b=\"primary\">{value}</div>;\n}\n\nexport function C(props) {\n  const value = __nativeUseAt(\".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:C#store:0\", props.resource);\n  return <div key=\"c-host\" data-c=\"primary\">{value}</div>;\n}\n\nexport function App() {\n  return <section>\n    <Suspense fallback={<div key=\"a-host\">a-loading</div>} __nativeBoundarySite=\".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#boundary:0\">\n      <A key=\"a-child\" />\n    </Suspense>\n    <Suspense fallback={<div key=\"b-host\">b-loading</div>} __nativeBoundarySite=\".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#boundary:1\">\n      <B key=\"b-child\" resource={resourceB} />\n    </Suspense>\n    <Suspense fallback={<div key=\"c-host\">c-loading</div>} __nativeBoundarySite=\".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#boundary:2\">\n      <C key=\"c-child\" resource={resourceC} />\n    </Suspense>\n  </section>;\n}\n",
+	"components": [
+		{
+			"name": "A",
+			"component_site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:A",
+			"prop_only_sites": [],
+			"host_leaf_output": false,
+			"state_sites": [],
+			"effect_sites": [],
+			"store_sites": [{
+				"site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:A#store:0",
+				"source_expression": "mode"
+			}, {
+				"site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:A#store:1",
+				"source_expression": "selected"
+			}],
+			"collection_sites": [],
+			"numeric_sinks": [],
+			"opaque_sinks": []
+		},
+		{
+			"name": "App",
+			"component_site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:App",
+			"prop_only_sites": [],
+			"host_leaf_output": false,
+			"state_sites": [],
+			"effect_sites": [],
+			"store_sites": [],
+			"collection_sites": [],
+			"numeric_sinks": [],
+			"opaque_sinks": []
+		},
+		{
+			"name": "B",
+			"component_site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:B",
+			"prop_only_sites": [],
+			"host_leaf_output": false,
+			"state_sites": [],
+			"effect_sites": [],
+			"store_sites": [{
+				"site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:B#store:0",
+				"source_expression": "props.resource"
+			}],
+			"closedResourceHostProgram": {
+				"componentProgramId": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:B",
+				"host": {
+					"child": "resource-value",
+					"key": "b-host",
+					"props": [["data-b", "primary"]],
+					"tag": "div"
+				},
+				"moduleRevision": "native-v1-318e07bd929556ca",
+				"resourceProp": "resource",
+				"resourceUseSiteId": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:B#store:0",
+				"schemaVersion": 1
+			},
+			"closedStoreHostProgram": {
+				"componentProgramId": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:B",
+				"host": {
+					"children": [{
+						"expression": {
+							"index": 0,
+							"kind": "input"
+						},
+						"kind": "text"
+					}],
+					"key": "b-host",
+					"props": [["data-b", {
+						"kind": "literal",
+						"value": "primary"
+					}]],
+					"tag": "div"
+				},
+				"inputs": [{
+					"storeProp": "resource",
+					"storeUseSiteId": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:B#store:0"
+				}],
+				"moduleRevision": "native-v1-318e07bd929556ca",
+				"schemaVersion": 4
+			},
+			"collection_sites": [],
+			"numeric_sinks": [],
+			"opaque_sinks": []
+		},
+		{
+			"name": "C",
+			"component_site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:C",
+			"prop_only_sites": [],
+			"host_leaf_output": false,
+			"state_sites": [],
+			"effect_sites": [],
+			"store_sites": [{
+				"site_id": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:C#store:0",
+				"source_expression": "props.resource"
+			}],
+			"closedResourceHostProgram": {
+				"componentProgramId": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:C",
+				"host": {
+					"child": "resource-value",
+					"key": "c-host",
+					"props": [["data-c", "primary"]],
+					"tag": "div"
+				},
+				"moduleRevision": "native-v1-318e07bd929556ca",
+				"resourceProp": "resource",
+				"resourceUseSiteId": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:C#store:0",
+				"schemaVersion": 1
+			},
+			"closedStoreHostProgram": {
+				"componentProgramId": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:C",
+				"host": {
+					"children": [{
+						"expression": {
+							"index": 0,
+							"kind": "input"
+						},
+						"kind": "text"
+					}],
+					"key": "c-host",
+					"props": [["data-c", {
+						"kind": "literal",
+						"value": "primary"
+					}]],
+					"tag": "div"
+				},
+				"inputs": [{
+					"storeProp": "resource",
+					"storeUseSiteId": ".cache/compiled-boundary-workset-7d0953d4-d546-462c-9162-75533196f71c/workset.tsx#component:C#store:0"
+				}],
+				"moduleRevision": "native-v1-318e07bd929556ca",
+				"schemaVersion": 4
+			},
+			"collection_sites": [],
+			"numeric_sinks": [],
+			"opaque_sinks": []
+		}
+	]
+};
