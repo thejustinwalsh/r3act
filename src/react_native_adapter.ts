@@ -12,6 +12,7 @@ import {
   type NativeRootOptions,
 } from "./native_runtime_api.ts";
 import { createNativeReactIslandComponent } from "./react_island_runtime.ts";
+import type { RuntimeNode } from "./jsx_binding_runtime.ts";
 
 /**
  * Create a React component that owns one bounded native DOM root.
@@ -90,7 +91,7 @@ export function createReactNativeRootAdapter<P>(
 /** Embed one independent React DOM root inside a native owner. */
 export function createNativeReactRootAdapter<P extends object>(
   ReactComponent: ReactComponentType<P>,
-): NativeComponentType<P> {
+): (props: P) => RuntimeNode {
   return createNativeReactIslandComponent<P, HTMLDivElement>({
     accepts(instance): instance is HTMLDivElement {
       if (typeof instance !== "object" || instance === null) return false;

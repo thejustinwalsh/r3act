@@ -72,6 +72,11 @@ const sourcePaths = async () => {
     "implementation/2026-10-18-component-forwarding/source-review.md",
     "implementation/2026-10-18-authored-lifecycle/design.md",
     "implementation/2026-10-18-authored-lifecycle/source-review.md",
+    "implementation/2026-10-19-radix-dialog/design.md",
+    "implementation/2026-10-19-radix-dialog/source-review.md",
+    ...["native_arm.tsx", "react_arm.tsx", "dialog_body.tsx", "entry.ts", "index.html",
+      "vite.config.ts", "build-gate.mjs", "run-pair.mjs", "README.md"].map((name) =>
+      `implementation/2026-10-19-radix-dialog/workload/${name}`),
     "implementation/2026-10-19-react-island/design.md",
     "implementation/2026-10-19-react-island/source-review.md",
     ...["native_arm.tsx", "react_arm.tsx", "react_leaf.tsx", "entry.ts", "index.html",
@@ -103,6 +108,36 @@ const sourceLock = async (paths) => {
     inputs.push({ path: relative, sha256: await shaFile(filename), bytes: details.size });
   }
   return { schemaVersion: 1, inputs };
+};
+const archiveSource = async (source) => {
+  const entries = source.inputs.map(entry => ({ ...entry, kind: "runner-input" }));
+  const selected = new Set(entries.map(entry => entry.path));
+  const unavailableContext = [];
+  for (const relative of ["AGENTS.md", "final-master-plan.md", "implementation-checkpoint.md",
+    "HANDOFF-PROMPT.txt", "RESEARCH-GUIDE.md", "native-package-integration.md",
+    "docs/react-bridge-reference.md", "docs/radix-dialog-reference.md"]) {
+    if (!selected.has(relative)) {
+      try {
+        const bytes = await readFile(path.join(root, relative));
+        entries.push({ path: relative, sha256: sha256(bytes), bytes: bytes.length, kind: "context" });
+      } catch (error) {
+        if (error?.code !== "ENOENT") throw error;
+        unavailableContext.push(relative);
+      }
+    }
+  }
+  for (const entry of entries) {
+    const bytes = await readFile(path.join(root, entry.path));
+    assert.equal(sha256(bytes), entry.sha256, `source changed before archiving: ${entry.path}`);
+    assert.equal(bytes.length, entry.bytes);
+    const destination = path.join(output, "source-before/files", entry.path);
+    await mkdir(path.dirname(destination), { recursive: true });
+    await writeFile(destination, bytes, { flag: "wx" });
+  }
+  const manifest = { status: "ARCHIVED_BEFORE_PRODUCT_COMMANDS", inputs: entries, unavailableContext };
+  await json(path.join(output, "source-archive.json"), manifest);
+  return { manifest: "source-archive.json", files: "source-before/files",
+    runnerInputs: source.inputs.length, contextInputs: entries.length - source.inputs.length, unavailableContext };
 };
 const archiveTree = async (source, destination) => {
   try { await stat(source); }
@@ -287,11 +322,12 @@ try {
   const paths = await sourcePaths();
   beforeSource = await sourceLock(paths);
   await json(path.join(output, "source-before.json"), beforeSource);
+  const rawArchive = await archiveSource(beforeSource);
   beforeFixtures = await fixtureFiles();
   const declaredCommit = process.env.R3ACT_SOURCE_COMMIT ?? null;
   const gitResult = version("git", ["rev-parse", "HEAD"]);
   const gitHead = gitResult.exitCode === 0 && !gitResult.signal && !gitResult.error ? gitResult.stdout : null;
-  receipt.source = { declaredCommit, gitHead, inputCount: paths.length };
+  receipt.source = { declaredCommit, gitHead, inputCount: paths.length, rawArchive };
   if (declaredCommit && !/^[a-f0-9]{40}$/.test(declaredCommit)) throw new Error("Invalid R3ACT_SOURCE_COMMIT");
   if (gitHead && !/^[a-f0-9]{40}$/.test(gitHead)) throw new Error("Invalid Git HEAD");
   if (!gitHead && !declaredCommit) throw new Error("Missing Git HEAD and R3ACT_SOURCE_COMMIT");
@@ -371,18 +407,20 @@ try {
     if (step.status === "PASS" && (!before || before !== after)) step.status = "FAIL_COMPILER_CHANGED";
     await json(path.join(output, "steps", `${name}.json`), step);
   }
-  const islandCompilerBefore = await compilerHash();
-  await runStep("react-island-compiled-source", process.execPath,
-    ["--experimental-transform-types", "compiler/compiled_react_island_test.mjs"],
-    { depends: ["install", "cargo-debug", "compiler-info"], deadlineMs: 300_000 });
-  const islandStep = stepByName.get("react-island-compiled-source");
-  islandStep.debugCompilerSha256Before = islandCompilerBefore;
-  islandStep.debugCompilerSha256After = await compilerHash();
-  if (islandStep.status === "PASS" && (!islandCompilerBefore ||
-    islandCompilerBefore !== islandStep.debugCompilerSha256After)) {
-    islandStep.status = "FAIL_COMPILER_CHANGED";
+  for (const [name, script] of [
+    ["react-island-compiled-source", "compiler/compiled_react_island_test.mjs"],
+    ["radix-dialog-compiled-source", "compiler/compiled_radix_dialog_test.mjs"],
+  ]) {
+    const before = await compilerHash();
+    await runStep(name, process.execPath, ["--experimental-transform-types", script],
+      { depends: ["install", "cargo-debug", "compiler-info"], deadlineMs: 300_000 });
+    const step = stepByName.get(name);
+    step.debugCompilerSha256Before = before;
+    step.debugCompilerSha256After = await compilerHash();
+    if (step.status === "PASS" && (!before || before !== step.debugCompilerSha256After))
+      step.status = "FAIL_COMPILER_CHANGED";
+    await json(path.join(output, `steps/${name}.json`), step);
   }
-  await json(path.join(output, "steps/react-island-compiled-source.json"), islandStep);
   await runStep("three-host-7", process.execPath,
     ["--experimental-transform-types", "--test", "compiler/three_host_capability_test.mjs"],
     { depends: ["install"], deadlineMs: 300_000 });

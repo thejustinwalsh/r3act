@@ -120,7 +120,7 @@ const wrappers = {
     "jsx-runtime": "@r3act/core/three/jsx-runtime",
     "jsx-dev-runtime": "@r3act/core/three/jsx-dev-runtime",
   },
-  "react-bridge": { "index": "@r3act/core/react" },
+  "react-bridge": { "index": "@r3act/core/react", "radix-dialog": "@r3act/core/react/radix-dialog" },
 };
 for (const [name, entries] of Object.entries(wrappers)) {
   const dist = path.join(packageStages.get(name), "dist");

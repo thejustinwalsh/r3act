@@ -1,5 +1,5 @@
 import { defineComponent, useEffectAt, useStateAt } from "./component_state_runtime.ts";
-import { jsx, type ComponentType } from "./jsx_binding_runtime.ts";
+import { jsx, type RuntimeNode } from "./jsx_binding_runtime.ts";
 
 export type IslandRoot<P> = {
   render(props: P): void;
@@ -92,7 +92,7 @@ class IslandLifetime<P, Container> {
 /** Internal host seam; the public adapter supplies React DOM as its renderer. */
 export function createNativeReactIslandComponent<P extends object, Container>(
   renderer: IslandRenderer<P, Container>,
-): ComponentType<P> {
+): (props: P) => RuntimeNode {
   const site = `react-island:${++nextIslandSite}`;
   const component = defineComponent(site, (props: Record<string, unknown>) => {
     const [lifetime] = useStateAt(`${site}:lifetime`,
@@ -103,5 +103,6 @@ export function createNativeReactIslandComponent<P extends object, Container>(
       ref: (instance: unknown | null) => lifetime.attach(instance, committedProps),
     });
   });
-  return component as ComponentType<P>;
+  // This boundary accepts React children; native child typing does not apply.
+  return component as unknown as (props: P) => RuntimeNode;
 }

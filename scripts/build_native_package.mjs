@@ -93,13 +93,14 @@ const manifest = {
     "./three/jsx-runtime": entry("src/three_jsx_runtime"),
     "./three/jsx-dev-runtime": entry("src/three_jsx_dev_runtime"),
     "./react": entry("src/react_native_adapter"),
+    "./react/radix-dialog": entry("src/react_radix_dialog_adapter"),
     "./vite": entry("compiler/vite_native_plugin"),
     "./jsx-runtime": entry("src/native_jsx_runtime"),
     "./jsx-dev-runtime": entry("src/native_jsx_dev_runtime"),
   },
   dependencies: { "magic-string": "^1.4.3" },
-  peerDependencies: { vite: "^8.3.1", react: "^19.3.0", "react-dom": "^19.3.0", three: "^0.186.1" },
-  peerDependenciesMeta: { react: { optional: true }, "react-dom": { optional: true }, three: { optional: true } },
+  peerDependencies: { "@radix-ui/react-dialog": "1.3.1", vite: "^8.3.1", react: "^19.3.0", "react-dom": "^19.3.0", three: "^0.186.1" },
+  peerDependenciesMeta: { "@radix-ui/react-dialog": { optional: true }, react: { optional: true }, "react-dom": { optional: true }, three: { optional: true } },
 };
 await writeFile(path.join(staging, "package.json"), JSON.stringify(manifest, null, 2) + "\n");
 await writeFile(path.join(staging, "README.md"), `# Compiled UI private integration artifact\n\nThis is a platform-specific private alpha build, not a published package. Native authored TSX requires \`nativeModulePlugin()\` from \`@compiled-ui/runtime/vite\`. Use \`jsxImportSource: "@compiled-ui/runtime"\` for types. Uncompiled hooks fail explicitly. The package includes one Rust/OXC compiler executable for ${rustTarget} (${process.platform}-${process.arch}); consuming this artifact needs no Cargo build. Native HMR remounts roots; applications own teardown. State-preserving HMR, React library parity, other platform binaries, and performance/maintenance claims are not established.\n\nJavaScript and declaration source maps resolve to authored TypeScript files under \`sources/\` in the installed package for editor and debugger navigation.\n`);

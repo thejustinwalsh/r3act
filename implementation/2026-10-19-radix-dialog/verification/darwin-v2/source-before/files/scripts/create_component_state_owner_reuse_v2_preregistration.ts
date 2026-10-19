@@ -1,0 +1,70 @@
+const output = "results/component-state-owner-reuse-v2-preregistration.json";
+try {
+  await Deno.stat(output);
+  throw new Error(`${output} already exists; the preregistration is immutable`);
+} catch (error) {
+  if (!(error instanceof Deno.errors.NotFound)) throw error;
+}
+
+const preregistration = {
+  schemaVersion: "component-state-owner-reuse-preregistration-v2",
+  status: "FROZEN_BEFORE_IMPLEMENTATION_AND_COLLECTION",
+  createdAt: new Date().toISOString(),
+  experiment: "V2 tests a trusted keyed-region version token as an O(1) eligibility proof, against the V1 validation scan and generic expansion.",
+  priorEvidence: {
+    manifest: "results/component-state-owner-reuse-v1-manifest.json",
+    finding: "V1 keyed reuse passed same-key rotation but remained slower than React + Compiler; edge replacement was 1.179x generic and failed its frozen 1.10 fallback guardrail.",
+    mechanism: "The V1 rotation path visits 10,000 marked rows while validating uniqueness, owner identity, cache presence, and shallow props. Membership-changing updates fall back after a full validation scan.",
+  },
+  question: "Can a compiler/runtime-produced keyed-region version token skip V1's per-row eligibility checks, beat React + Compiler on same-key rotation, and return to the generic runtime's latency envelope when membership or rendered row data changes?",
+  hypotheses: {
+    productPrimary: "For same-key rotation, the token path's median paired update-to-host-commit ratio versus React + Compiler will be <= 0.90 on at least four of five pages.",
+    runtimePrimary: "For same-key rotation, the token path's median paired ratio versus generic owner expansion will be <= 0.50 on at least four of five pages.",
+    mechanism: "The token path performs zero per-row uniqueness, owner-world lookup, and shallow-prop eligibility checks for a valid token; it reuses all 10,000 cached row outputs and only walks the new order to assemble the keyed VDOM result.",
+    fallbackGuardrail: "For edge replacement, filter shrink, and filter restore, token-path median paired latency ratios versus generic owner expansion will each be <= 1.10. A token mismatch must select the ordinary generic fallback and preserve output, host identity, state, effects, and teardown contracts.",
+    context: "React 19.3 + React Compiler remains a contextual product reference. The runtime-only causal comparisons are generic expansion, V1 checked reuse, and V2 token reuse.",
+  },
+  design: {
+    count: 10_000,
+    arms: [
+      "react-19.3-react-compiler",
+      "generic-owner-expansion",
+      "v1-checked-keyed-owner-reuse",
+      "v2-token-keyed-owner-reuse",
+    ],
+    operations: ["rotate", "replace-edge", "filter-half"],
+    filterDirections: ["shrink", "restore"],
+    keyedSequence: "All arms receive the same persistent keyed-sequence values and run the same rotate/replace/filter operation. The sequence's opaque owner-region token is unchanged only when keys and rendered row data are unchanged; membership or row-data edits issue a new token. React, generic, and V1 arms ignore the token. The token V2 arm consumes it.",
+    tokenTrust: "Only the compiler/runtime helper may create the opaque token. The runtime must not infer or trust a user-supplied boolean. A token equality hit is valid only for the same compiler-marked region, row component site, key set, and shallow rendered row data version.",
+    treatment: "On token equality, skip per-row duplicate-key checks, OwnerStateWorld lookups, cache-presence checks, and shallow-prop comparisons; use the retained key-to-expanded-output directory to assemble the requested order. On mismatch, bail before visiting region rows and use the existing generic structural path.",
+    sharedRuntime: "V1 and V2 must use the same ComponentStateRoot/VDOM implementation except for the separately versioned treatment module; both use delta key-index maintenance and the same host, compiler fixture, row components, and commit boundary.",
+    operationDefinitions: {
+      rotate: "Move the first key to the end while preserving key membership and every rendered row prop; preserve the region token.",
+      replaceEdge: "Replace the tail key and its row with a fresh key; issue a new region token.",
+      filterHalf: "Alternate between the full key set and the deterministic even-key half; issue a new token for each membership change; balance 12 shrink and 12 restore samples.",
+    },
+    warmupsPerOperation: 8,
+    measuredPairsPerOperation: 24,
+    armOrder: "Seeded shuffle of the 24 permutations of four arms; each permutation appears once per operation/page. Identical operation values and directions are applied to each arm in a pair.",
+    pageReplications: 5,
+    seeds: [83005101, 83005102, 83005103, 83005104, 83005105],
+    replicationUnit: "Fresh visible production browser page. Within-page paired updates are repeated measures, not independent replications.",
+    browserProfile: "Chrome on the same available MacIntel device/profile used in V1, recording exact browser, platform, concurrency, DPR, and visibility. This tests within-device repeatability, not cross-device generalization.",
+    timing: "From the same triggered state update through the arm's completed host commit. Mount and teardown are reported separately. Diagnostic counters are collected on a separate pass and never included in latency claims.",
+  },
+  decisionRules: {
+    primaryPass: "Both productPrimary and runtimePrimary pass on >=4/5 pages, with every page satisfying output parity, stable host identity for retained keys, fresh identity for reinserted keys, retained state/effect contracts, and complete teardown.",
+    fallbackPass: "Each membership-changing operation's median page-level paired ratio versus generic is <=1.10, and every diagnostic sample records an early token mismatch before any per-row eligibility visit.",
+    mechanismPass: "For rotation, every diagnostic sample records 10,000 token fast-path hits, 10,000 reused cached outputs, zero V1 eligibility-row checks, and zero fallback. For each membership change, it records one token mismatch, zero V1 eligibility-row checks before fallback, and parity with generic expansion.",
+    invalidation: "Any token/key/prop/state/effect mismatch invalidates the optimization claim, even if latency gates pass. No performance-based sample exclusions or post-hoc threshold changes.",
+    rejectInterpretation: "If V2 helps against V1 but fails productPrimary, report only a within-runtime mechanism improvement; do not claim this path beats React. If fallbackPass fails, restrict or reject the token fast path rather than averaging fallback operations with rotation.",
+  },
+  limitations: [
+    "One physical device/browser profile; no independent-device estimate.",
+    "Update-to-host-commit excludes layout, paint, and display presentation.",
+    "The homogeneous 10,000-row fixture does not establish performance for arbitrary JSX, dynamic nested regions, or other hosts.",
+    "The persistent keyed-sequence token is a proposed compiler/runtime primitive; the benchmark must include its operation/update cost equally across all arms.",
+  ],
+};
+await Deno.writeTextFile(output, JSON.stringify(preregistration, null, 2) + "\n");
+console.log(`Froze V2 protocol at ${output}`);

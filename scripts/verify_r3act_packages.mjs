@@ -34,7 +34,7 @@ try {
     name: "r3act-independent-consumer", private: true, type: "module",
     dependencies: {
       ...dependencies,
-      vite: "8.3.1", react: "19.3.0", "react-dom": "19.3.0", three: "0.186.1",
+      "@radix-ui/react-dialog": "1.3.1", vite: "8.3.1", react: "19.3.0", "react-dom": "19.3.0", three: "0.186.1",
       "@types/react": "19.3.0", "@types/react-dom": "19.3.0", "@types/three": "0.186.0", "@types/node": "^24.19.2",
       "@typescript/native-preview": "7.0.0-dev.20260707.2",
     },
@@ -43,6 +43,22 @@ try {
     `packages:\n  - .\noverrides:\n  "@r3act/core": ${JSON.stringify(dependencies["@r3act/core"])}\n`);
   run("pnpm", ["install", "--ignore-scripts"]);
   record.checks.push("five fresh tarballs install outside the checkout without scripts");
+  await writeFile(path.join(consumer, "optional-bridge-isolation.mjs"), `import assert from "node:assert/strict";
+import { registerHooks } from "node:module";
+let allowReact = false;
+registerHooks({ resolve(specifier, context, nextResolve) {
+  if (specifier.startsWith("@radix-ui/")) throw new Error("RADIX_BRIDGE_DEPENDENCY_BLOCKED");
+  const isReact = specifier === "react" || specifier === "react-dom" || specifier.startsWith("react/") || specifier.startsWith("react-dom/");
+  if (!allowReact && isReact) throw new Error("REACT_DEPENDENCY_BLOCKED");
+  return nextResolve(specifier, context);
+} });
+await import("@r3act/core");
+allowReact = true;
+await import("@r3act/react-bridge");
+await assert.rejects(import("@r3act/react-bridge/radix-dialog"), /RADIX_BRIDGE_DEPENDENCY_BLOCKED/);
+`);
+  run(process.execPath, ["optional-bridge-isolation.mjs"]);
+  record.checks.push("native core imports without React and the default bridge imports without Radix");
 
   for (const name of ["core", "vite", "host-dom", "host-three", "react-bridge"]) {
     const manifest = JSON.parse(await readFile(path.join(installed(name), "package.json"), "utf8"));
@@ -120,6 +136,15 @@ try {
   const dom = await packageImport("host-dom");
   const three = await packageImport("host-three");
   const bridge = await packageImport("react-bridge");
+  const radixBridge = await packageImport("react-bridge", "radix-dialog");
+  const coreRadix = await import(pathToFileURL(path.join(installed("core"), "dist/src/react_radix_dialog_adapter.js")).href);
+  assert.equal(radixBridge.RadixDialog, coreRadix.RadixDialog);
+  assert.equal(radixBridge.ReactRadixDialog, coreRadix.ReactRadixDialog);
+  assert.equal(typeof radixBridge.RadixDialog, "function");
+  assert.equal(typeof radixBridge.ReactRadixDialog, "function");
+  const bridgeManifest = JSON.parse(await readFile(path.join(installed("react-bridge"), "package.json"), "utf8"));
+  assert.equal(bridgeManifest.peerDependencies["@radix-ui/react-dialog"], "1.3.1");
+  assert.equal(bridgeManifest.peerDependenciesMeta["@radix-ui/react-dialog"].optional, true);
   assert.equal(dom.createDOMRoot, coreDom.createDOMRoot);
   assert.equal(three.createThreeHost, coreThree.createThreeHost);
   assert.equal(bridge.createReactNativeRootAdapter, coreReact.createReactNativeRootAdapter);
@@ -196,8 +221,9 @@ export function Scene() { const [angle] = useState(0); return <group><mesh rotat
 // @ts-expect-error invalid geometry argument type
 export const invalid = <icosahedronGeometry args={[1, "bad"]} />;
 `);
-  await writeFile(path.join(consumer, "bridge-types.tsx"), `import { createElement } from "react";
+  await writeFile(path.join(consumer, "bridge-types.tsx"), `import { createElement, type ReactNode } from "react";
 import { createNativeReactRootAdapter, createReactNativeRootAdapter } from "@r3act/react-bridge";
+import { RadixDialog, ReactRadixDialog } from "@r3act/react-bridge/radix-dialog";
 export const Island = createNativeReactRootAdapter((props: { value: number }) =>
   createElement("output", null, props.value));
 export const validIsland = <Island value={1} />;
@@ -207,13 +233,30 @@ export const Embedded = createReactNativeRootAdapter(Island);
 export const validEmbedded = createElement(Embedded, { value: 1 });
 // @ts-expect-error Opposite bridge direction retains the same prop contract.
 export const invalidEmbedded = createElement(Embedded, { value: "bad" });
+const dialogProps = { open: false, onOpenChange(_open: boolean) {}, title: "Title",
+  description: "Description", triggerLabel: "Open" };
+export const validDialog = <RadixDialog {...dialogProps} />;
+function ReactChild() { return createElement("input", { defaultValue: "note" }); }
+export const validDialogChild = <RadixDialog {...dialogProps} children={createElement(ReactChild)} />;
+const ReactChildrenIsland = createNativeReactRootAdapter((props: { children?: ReactNode }) =>
+  createElement("section", null, props.children));
+export const validGenericReactChildren = <ReactChildrenIsland children={createElement(ReactChild)} />;
+// @ts-expect-error The generic React boundary also rejects native VNode children.
+export const invalidGenericReactChildren = <ReactChildrenIsland children={validIsland} />;
+export const validReactDialog = createElement(ReactRadixDialog, dialogProps);
+// @ts-expect-error The controlled open value is a boolean.
+export const invalidDialog = <RadixDialog {...dialogProps} open="yes" />;
+// @ts-expect-error Dialog requires its controlled change callback.
+export const missingDialogCallback = <RadixDialog open={false} title="Title" description="Description" triggerLabel="Open" />;
+// @ts-expect-error A native VNode is not a React child.
+export const invalidDialogChild = <RadixDialog {...dialogProps} children={validIsland} />;
 `);
   await writeFile(path.join(consumer, "tsconfig.json"), JSON.stringify({ compilerOptions: {
     target: "ES2023", module: "NodeNext", moduleResolution: "NodeNext", strict: true,
     noEmit: true, jsx: "react-jsx", jsxImportSource: "@r3act/core", types: ["node"],
   }, files: ["app.tsx", "types.tsx", "bridge-types.tsx"] }));
   run("pnpm", ["exec", "tsgo", "-p", "tsconfig.json"]);
-  record.checks.push("installed core/Three JSX and both React bridge prop contracts typecheck authored TSX");
+  record.checks.push("installed core/Three JSX, both React bridge directions and controlled Radix dialog props typecheck authored TSX");
 
   const { nativeModulePlugin } = await import(pathToFileURL(path.join(installed("vite"), "dist/compiler/vite_native_plugin.js")).href);
   const { build: viteBuild } = await import(pathToFileURL(path.join(consumer, "node_modules/vite/dist/node/index.js")).href);

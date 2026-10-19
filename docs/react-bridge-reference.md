@@ -15,7 +15,7 @@ export const ReactPanel = createNativeReactRootAdapter(ExistingReactPanel);
 
 Create the adapter once outside component rendering. Use `ReactPanel` in compiled native TSX with the React component's ordinary props. Keep the React component in a React module so its hooks and JSX use the React pipeline. The adapter returns one native-owned private `div`; React owns its contents. It requires an HTML DOM host and cannot mount into Three or a memory host.
 
-Props are captured shallowly during native preparation and delivered after native acceptance, in the ref phase. A discarded, stale or failed host candidate does not deliver its props. Native groups finish accepted publication before an island receives new props. Nested objects retain caller ownership; passing them does not make them immutable or versioned. Native VNodes cannot be used as React children. Construct any React children using React's own element APIs.
+Props are captured shallowly during native preparation and delivered after native acceptance, in the ref phase. A discarded, stale or failed host candidate does not deliver its props. Native groups finish accepted publication before an island receives new props. Nested objects retain caller ownership; passing them does not make them immutable or versioned. Replace nested objects when changing them, following [React’s prop immutability rules](https://react.dev/reference/rules/components-and-hooks-must-be-pure). Native VNodes cannot be used as React children. Construct any React children using React's own element APIs.
 
 An ordinary prop update or keyed move retains the React root, local React state and private container. Removing or replacing the native owner unmounts its React root; reinsertion creates a new lifetime. Each native root or fork owns its own island. The adapter uses native owner state and activation cleanup internally; applications need no manual root or ref bookkeeping.
 
@@ -39,3 +39,7 @@ React owns the outer commit and native owns the container's contents. React cont
 Both factories are re-exported from one `@r3act/core/react` module graph. They do not install another native World, reconciler or accepted-state registry. The private-alpha packages are unpublished and their namespace is unreserved. See [package installation](../native-package-integration.md) and the [native authoring reference](native-authoring-reference.md).
 
 These boundaries support explicit migration. They do not establish cross-renderer visual atomicity, full React renderer compatibility, SSR/hydration, or a selected third-party library's complete behavior. Keep library providers and their consumers inside the same React island unless that library supplies a supported external integration.
+
+## Selected library subpaths
+
+The separate `@r3act/react-bridge/radix-dialog` entry supplies a finite controlled modal adapter for exact Radix Dialog 1.3.1. Its public props, ownership and current verification status are in the [Radix reference](radix-dialog-reference.md). Default bridge/core imports do not load that optional library. This integration does not establish other Radix components or general ecosystem compatibility.

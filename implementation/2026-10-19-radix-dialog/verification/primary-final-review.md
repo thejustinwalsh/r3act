@@ -1,0 +1,7 @@
+# Primary final disposition
+
+The reviewed selected Dialog boundary is accepted for local integration, within the finite API and tested environment described in results.md. The final bounded audit is PASS WITH NOTES; its original three checker failures and two aborted checker attempts remain preserved. Those checker failures do not replace or invalidate the source-locked product receipts. No product test, build or timing was repeated for them.
+
+Primary review found an additional evidence distinction: the browser workload aliases package names to checkout source and explicitly runs React Compiler on the wrapper. The tsgo package build does not precompile that library with React Compiler. Fresh installed-package checks cover isolation, identities, types and native execution, but no installed Radix browser rendering. Browser behavior and timings belong to the source workload; installed rendering and performance remain unverified. This caveat is added after the final audit without changing frozen receipts.
+
+Product/workload code remains at the accepted proof source. Only final review and documentation are updated after execution. The raw selected dependency archives must be retained despite nested node_modules ignore rules. Historical evidence remains immutable. The full-plan goal stays active; this disposition does not establish release, broad compatibility or performance qualification.

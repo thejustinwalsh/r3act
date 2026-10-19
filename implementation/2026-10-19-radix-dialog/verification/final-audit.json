@@ -1,0 +1,281 @@
+{
+  "schemaVersion": "radix-dialog-final-audit-v1",
+  "scope": "bounded read-only audit; no tests, builds, browser, benchmarks, or source edits",
+  "status": "PASS_WITH_NOTES",
+  "auditToolNotes": [
+    "First notebook read hit Node spawnSync default maxBuffer; no repository change.",
+    "Second checker stopped on a missing local variable before writing a report; no repository change. The corrected bounded checker completed.",
+    "Initial checker interrupted before report creation by notebook git-show maxBuffer, then by a missing checker variable; both were read-only checker errors. Corrected checker completed and its first-pass failures and dispositions are preserved above."
+  ],
+  "checks": [
+    {
+      "name": "v2 gate current source inputs",
+      "status": "FAIL",
+      "details": {
+        "count": 874,
+        "currentDrift": 1,
+        "sourceBeforeAfterEqual": true
+      }
+    },
+    {
+      "name": "v2 raw archive manifest",
+      "status": "PASS",
+      "details": {
+        "entries": 882,
+        "hashSizeMismatches": 0,
+        "unavailableContext": 0
+      }
+    },
+    {
+      "name": "current production/workload vs accepted proof lock",
+      "status": "PASS",
+      "details": {
+        "lockedInputs": 1289,
+        "currentDrift": 0,
+        "rawArchiveDrift": 0
+      }
+    },
+    {
+      "name": "gate receipt counts and fixture distinction",
+      "status": "PASS",
+      "details": {
+        "steps": 37,
+        "allPass": true,
+        "deno": "1003/0",
+        "rust": "63/0",
+        "artifactChecks": 24,
+        "runtimeFixtures": 23,
+        "distinctAstSteps": [
+          "react-island-compiled-source",
+          "radix-dialog-compiled-source"
+        ],
+        "consumerChecks": 10
+      }
+    },
+    {
+      "name": "proof build and memo assertions",
+      "status": "PASS",
+      "details": {
+        "buildStatus": "BUILD_CAPTURED_PENDING_PRIMARY_REVIEW",
+        "assertionCount": 13,
+        "allAssertionsTrue": true,
+        "events": [
+          "ReactApp:CompileSuccess",
+          "ReactRadixDialog:CompileSuccess",
+          "DialogBody:CompileSuccess"
+        ],
+        "lockedInputs": 1289,
+        "runtimePackages": 28,
+        "radixVersion": "1.3.1",
+        "compilerStable": true,
+        "capturedOutputFiles": 9,
+        "outputHashSizeMismatches": 0,
+        "inputAuditMismatches": 0
+      }
+    },
+    {
+      "name": "proof-v1 failure retained",
+      "status": "PASS",
+      "details": {
+        "status": "BUILD_FAILED_OR_INCOMPLETE",
+        "falseAssertions": [
+          "reactRadixSourceTransformed"
+        ],
+        "proof1BuildProofSha256": "884f5640941669e54300e26a5bb26e82b13bea38e82af5a4d6cbd1c8eabac8a1"
+      }
+    },
+    {
+      "name": "pair receipt and 2588-row integrity arithmetic",
+      "status": "PASS",
+      "details": {
+        "pairStatus": "PASS_DESCRIPTIVE_RADIX_DIALOG_PAIR_ONLY",
+        "authorizationBound": true,
+        "sourceLockBinds": true,
+        "rowFormula": "1289 current + 1289 archive + compiler + 6 transforms/events + 3 assets",
+        "expectedRows": 2588,
+        "beforeRows": 2588,
+        "afterRows": 2588,
+        "beforeMismatches": 0,
+        "afterMismatches": 0,
+        "rowSetsIdentical": true,
+        "definedOutputsMatch": true
+      }
+    },
+    {
+      "name": "pair correctness and cleanup fields",
+      "status": "PASS",
+      "details": {
+        "arms": [
+          {
+            "arm": "native",
+            "status": "PASS",
+            "outputSha256": "bdea6f638c1309191fbd31673687e2a237fc5a783cc9930c78fa6c083d8c7624",
+            "callbacks": 5,
+            "setupReturnMs": 11.5,
+            "mountToMatchingOutputObservedMs": 38.40000000037253,
+            "timerResolutionMs": 0.09999999962747097,
+            "openToMutationObserverMs": 10.099999999627471,
+            "baselineRestored": true,
+            "portalOutsidePrivateRoot": true,
+            "keyboardEscape": true,
+            "diagnostics": {
+              "version": 14,
+              "ownerCount": 0,
+              "pendingChangeCount": 0,
+              "sourceValueSyncVisits": 0,
+              "disposed": true
+            }
+          },
+          {
+            "arm": "react",
+            "status": "PASS",
+            "outputSha256": "bdea6f638c1309191fbd31673687e2a237fc5a783cc9930c78fa6c083d8c7624",
+            "callbacks": 5,
+            "setupReturnMs": 10.900000000372529,
+            "mountToMatchingOutputObservedMs": 11.099999999627471,
+            "timerResolutionMs": 0.09999999962747097,
+            "openToMutationObserverMs": 13.699999999254942,
+            "baselineRestored": true,
+            "portalOutsidePrivateRoot": true,
+            "keyboardEscape": true,
+            "diagnostics": {
+              "disposed": true
+            }
+          }
+        ],
+        "comparison": {
+          "nativeOpenToMutationObserverMs": 10.099999999627471,
+          "reactOpenToMutationObserverMs": 13.699999999254942,
+          "nativeMinusReactMs": -3.599999999627471,
+          "observerDelayIncluded": true,
+          "paintExcluded": true,
+          "status": "ONE_RADIX_DIALOG_CONTROLLED_OPEN_TO_MUTATION_OBSERVER_DIAGNOSTIC"
+        },
+        "errors": {
+          "runner": 0,
+          "blocked": 0,
+          "requests": 0,
+          "page": 0,
+          "console": 0
+        },
+        "stopReason": null
+      }
+    },
+    {
+      "name": "notebook append-only integrity",
+      "status": "PASS",
+      "details": {
+        "headCells": 206,
+        "currentCells": 207,
+        "first206Exact": true,
+        "rootMetadataExact": true,
+        "appendedCellType": "markdown"
+      }
+    },
+    {
+      "name": "bounded documentation links",
+      "status": "PASS",
+      "details": {
+        "documents": 14,
+        "linksChecked": 66,
+        "missing": []
+      }
+    },
+    {
+      "name": "version and evidence-limit wording",
+      "status": "FAIL",
+      "details": {
+        "exactInstalledVersion": "1.3.1",
+        "versionConsistent": true,
+        "scopeLimitersPresent": false,
+        "broadPerformanceAccessibilityAtomicityClaimFound": false
+      }
+    },
+    {
+      "name": "results pair digest",
+      "status": "PASS",
+      "details": {
+        "pairSha256": "4f4e5bda84d9c77d3c5c75d83d61b66600cf23eb6e57d6ca93fd0a695c881abc",
+        "present": true
+      }
+    },
+    {
+      "name": "tracked cache preservation",
+      "status": "FAIL",
+      "details": {
+        "trackedFiles": 19940,
+        "legacyNativePackageFiles": 549,
+        "gitDiffQuietExit": 0
+      }
+    }
+  ],
+  "evidence": {
+    "darwinV2Receipt": "implementation/2026-10-19-radix-dialog/verification/darwin-v2/receipt.json",
+    "proofV1": "implementation/2026-10-19-radix-dialog/workload/proof-v1/build-proof.json",
+    "proofV2": "implementation/2026-10-19-radix-dialog/workload/proof-v2/build-proof.json",
+    "pair": "implementation/2026-10-19-radix-dialog/workload/proof-v2/pair-one-shot.json",
+    "pairSha256": "4f4e5bda84d9c77d3c5c75d83d61b66600cf23eb6e57d6ca93fd0a695c881abc",
+    "notebook": "research.ipynb",
+    "documents": [
+      "implementation/2026-10-19-radix-dialog/results.md",
+      "docs/radix-dialog-reference.md",
+      "docs/react-bridge-reference.md",
+      "native-package-integration.md",
+      "implementation-checkpoint.md",
+      "final-master-plan.md",
+      "paper.md",
+      "implementation/2026-10-19-radix-dialog/design.md",
+      "implementation/2026-10-19-radix-dialog/source-review.md",
+      "implementation/2026-10-19-radix-dialog/verification/gate-review-v1.md",
+      "implementation/2026-10-19-radix-dialog/verification/gate-review-v2.md",
+      "implementation/2026-10-19-radix-dialog/verification/workload-proof-v1-review.md",
+      "implementation/2026-10-19-radix-dialog/verification/workload-proof-v2-review.md",
+      "implementation/2026-10-19-radix-dialog/verification/workload-pair-review.md"
+    ]
+  },
+  "initialCheckerStatus": "FAIL",
+  "initialCheckerFailures": [
+    {
+      "name": "v2 gate current source inputs",
+      "status": "FAIL",
+      "details": {
+        "count": 874,
+        "currentDrift": 1,
+        "sourceBeforeAfterEqual": true
+      }
+    },
+    {
+      "name": "version and evidence-limit wording",
+      "status": "FAIL",
+      "details": {
+        "exactInstalledVersion": "1.3.1",
+        "versionConsistent": true,
+        "scopeLimitersPresent": false,
+        "broadPerformanceAccessibilityAtomicityClaimFound": false
+      }
+    },
+    {
+      "name": "tracked cache preservation",
+      "status": "FAIL",
+      "details": {
+        "trackedFiles": 19940,
+        "legacyNativePackageFiles": 549,
+        "gitDiffQuietExit": 0
+      }
+    }
+  ],
+  "dispositions": [
+    {
+      "check": "v2 gate current source inputs",
+      "disposition": "The sole changed path is implementation/2026-10-19-radix-dialog/source-review.md, explicitly whitelisted post-execution review/context documentation. The other 873 current runner inputs match; the accepted proof-v2 lock separately confirms all 1,289 current product/workload/runtime inputs and archived copies match."
+    },
+    {
+      "check": "version and evidence-limit wording",
+      "disposition": "The phrase matcher required an exact phrase not used in the results prose. Manual bounded review confirmed equivalent explicit limits on CPU, broad performance, cross-renderer visual atomicity, accessibility certification, and general compatibility."
+    },
+    {
+      "check": "tracked cache preservation",
+      "disposition": "The broad substring matcher counted 549 paths containing native-package-build across unrelated historical snapshots/logs. The exact protected .cache/native-package-build/ subtree contains 176 tracked files; all 19,940 tracked .cache files have zero diff from HEAD."
+    }
+  ]
+}
