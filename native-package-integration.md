@@ -10,14 +10,14 @@ The repository now builds five local tarballs with `pnpm package:r3act`:
 | `@r3act/vite` | Required Rust/OXC Vite compiler plugin and one bundled platform-targeted compiler |
 | `@r3act/host-dom` | DOM host/root re-exports from core |
 | `@r3act/host-three` | Three host and JSX re-exports from core; requires a compatible Three peer |
-| `@r3act/react-bridge` | Optional React adapter re-export from core; requires a compatible React peer |
+| `@r3act/react-bridge` | Optional DOM migration adapters re-exported from core; require compatible React/React DOM peers |
 
 The tarballs are under `.cache/r3act-package-build/tarballs/r3act-*.tgz`.
 They are **unpublished**, and the `@r3act` namespace is **unreserved**. Each
 host or bridge package depends on the same core version and re-exports its
 modules, so it does not create another World or reconciliation authority. The
 native runtime replaces React for its supported TSX subset; install the React
-bridge only for an explicit migration boundary. React and Three remain optional
+bridge only for an explicit migration boundary. React, React DOM and Three remain optional
 peers of core.
 
 ### Install the local tarballs
@@ -36,7 +36,8 @@ the checkout. Replace `/absolute/path/to/r3act` with that checkout's path:
     "@r3act/react-bridge": "file:/absolute/path/to/r3act/.cache/r3act-package-build/tarballs/r3act-react-bridge.tgz",
     "vite": "8.3.1",
     "three": "0.186.1",
-    "react": "19.3.0"
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
   }
 }
 ```
@@ -52,7 +53,7 @@ overrides:
   "@r3act/core": "file:/absolute/path/to/r3act/.cache/r3act-package-build/tarballs/r3act-core.tgz"
 ```
 
-Then run `pnpm install --ignore-scripts`. The React and Three packages can be
+Then run `pnpm install --ignore-scripts`. The React bridge, React/React DOM peers and Three packages can be
 omitted when those integrations are unused. The builder includes source maps,
 authored TypeScript sources and MIT license files in each relevant artifact.
 
@@ -226,3 +227,7 @@ archiving. Prior checkpoint command logs represent executed checks, but their
 copied resource-browser JSON/screenshots may come from an earlier cache run.
 Those archives remain immutable; use this checkpoint's freshly routed records
 for the current resource-boundary observation.
+
+## Native-owned React islands — 19 October 2026
+
+`createNativeReactRootAdapter` uses a private native DOM container and one independently scheduled React root. Both directions re-export from the same core graph; the native main entry does not load React. Current Darwin fresh-package consumption verifies both factories, shared identity and valid/invalid prop typing. Consolidated coverage uses the preserved v2 run plus a three-command environment supplement; it is not a single 36/36 pass. Real browser coverage verifies the finite island lifecycle; the sole descriptive observation is slower for the native bridge. See the [bridge reference](docs/react-bridge-reference.md) and [source-locked results](implementation/2026-10-19-react-island/results.md). Earlier Linux package evidence predates this change and does not verify the current reverse adapter on Linux.

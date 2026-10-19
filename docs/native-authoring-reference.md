@@ -2,7 +2,7 @@
 
 **Status:** private alpha, 18 October 2026. This page describes the implemented native TSX subset. The `@r3act/*` tarballs are local artifacts; the namespace is unpublished and unreserved. For installation, Vite configuration, and a fresh consumer check, use the [native package integration guide](../native-package-integration.md).
 
-Native components use `@r3act/core` and the mandatory Rust/OXC transform in `@r3act/vite`. Configure TypeScript with `jsx: "react-jsx"` and `jsxImportSource: "@r3act/core"`. JSX helpers alone do not lower owner sites, hooks, collection maps, task dependencies, or Suspense sites. Calling an authored hook without compilation throws. `@r3act/host-dom` and `@r3act/host-three` re-export host APIs from the same core runtime graph; `@r3act/react-bridge` is an optional adapter for a native subtree inside a React tree, not a React-compatible hook mode.
+Native components use `@r3act/core` and the mandatory Rust/OXC transform in `@r3act/vite`. Configure TypeScript with `jsx: "react-jsx"` and `jsxImportSource: "@r3act/core"`. JSX helpers alone do not lower owner sites, hooks, collection maps, task dependencies, or Suspense sites. Calling an authored hook without compilation throws. `@r3act/host-dom` and `@r3act/host-three` re-export host APIs from the same core runtime graph; `@r3act/react-bridge` supplies explicit DOM migration boundaries; hooks retain their owning runtime semantics. Both migration directions are described in the [bridge reference](react-bridge-reference.md), including independent React commits and DOM-only boundaries.
 
 ## Components and imports
 
@@ -200,7 +200,7 @@ The emitted target function/site and module revision must match at admission. St
 | --- | --- |
 | Compiler diagnostic | Unsupported hook declaration/position, malformed native collection map, dynamic inferred task read, qualified native `Suspense`. Correct the authored form. |
 | Generic native path | Ordinary arrays, expressions not proven as retained numeric bindings, opaque row/component callbacks, authored collection insert/replace, closed-resource forms or values outside the finite subset, and a scoped candidate whose guard cannot hold. Correctness does not depend on selecting the fast path. |
-| React bridge | `createReactNativeRootAdapter` renders a React-owned `div` containing one native DOM root. React's committed props update the native component without resetting that root. React owns the outer commit; context, refs, portals, and React lifecycle semantics do not cross into the native subtree. A compatible React peer is required. |
+| React bridge | `createReactNativeRootAdapter` embeds native content in React; `createNativeReactRootAdapter` embeds an independent React DOM root in a native owner. Accepted props and keyed moves preserve the inner lifetime; removal retires it. Context and hook semantics stay with their runtime. Compatible React and React DOM peers are required. See the [bridge reference](react-bridge-reference.md). |
 
 An edit to a compiled native module invalidates its revision and currently triggers a full-page reload. State-preserving HMR is not provided. The `@r3act/vite` tarball bundles a compiler executable for its build machine's OS and CPU. On another platform supply a compatible binary through `nativeModulePlugin({ compilerBinary: "/path/to/compiler" })`; the JavaScript package itself has no platform install restriction. See the [integration guide](../native-package-integration.md) for the exact local tarball setup.
 

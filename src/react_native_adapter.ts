@@ -4,12 +4,14 @@ import {
   useRef,
   type ComponentType as ReactComponentType,
 } from "react";
+import { createRoot } from "react-dom/client";
 import {
   createDOMRoot,
   jsx as nativeJsx,
   type ComponentType as NativeComponentType,
   type NativeRootOptions,
 } from "./native_runtime_api.ts";
+import { createNativeReactIslandComponent } from "./react_island_runtime.ts";
 
 /**
  * Create a React component that owns one bounded native DOM root.
@@ -83,4 +85,29 @@ export function createReactNativeRootAdapter<P>(
   }
 
   return ReactNativeRootAdapter;
+}
+
+/** Embed one independent React DOM root inside a native owner. */
+export function createNativeReactRootAdapter<P extends object>(
+  ReactComponent: ReactComponentType<P>,
+): NativeComponentType<P> {
+  return createNativeReactIslandComponent<P, HTMLDivElement>({
+    accepts(instance): instance is HTMLDivElement {
+      if (typeof instance !== "object" || instance === null) return false;
+      const node = instance as HTMLDivElement;
+      const Div = node.ownerDocument?.defaultView?.HTMLDivElement;
+      return typeof Div === "function" && instance instanceof Div;
+    },
+    create(container) {
+      const root = createRoot(container);
+      return {
+        render(props) {
+          root.render(createElement(ReactComponent, props));
+        },
+        unmount() {
+          root.unmount();
+        },
+      };
+    },
+  });
 }

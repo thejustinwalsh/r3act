@@ -23,8 +23,8 @@ try {
     name: "independent-native-consumer", private: true, type: "module",
     dependencies: {
       "@compiled-ui/runtime": `file:${tarballPath}`,
-      vite: "8.3.1", react: "19.3.0", three: "0.186.1",
-      "@types/react": "19.3.0", "@types/three": "0.186.0", "@types/node": "^24.19.2",
+      vite: "8.3.1", react: "19.3.0", "react-dom": "19.3.0", three: "0.186.1",
+      "@types/react": "19.3.0", "@types/react-dom": "19.3.0", "@types/three": "0.186.0", "@types/node": "^24.19.2",
       "@typescript/native-preview": "7.0.0-dev.20260707.2",
     },
   }, null, 2));
@@ -157,6 +157,7 @@ export const method = <group updateMatrix={true} />;
   assert.equal(threeDev.jsxDEV("group", null, "group", false).props.key, "group");
   const dom = await importEntry("./dom");
   assert.equal(typeof react.createReactNativeRootAdapter, "function");
+  assert.equal(typeof react.createNativeReactRootAdapter, "function");
   assert.equal(typeof three.createThreeHost, "function");
   assert.equal(typeof dom.createDOMRoot, "function");
   assert.equal(dom.MemoryVDOMHost, undefined, "research memory host must not be a public DOM export");

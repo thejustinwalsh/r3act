@@ -1,0 +1,13 @@
+# React island workload proof v1
+
+The one authorized untimed build ran with Node `v24.18.0` using `workload/build-gate.mjs --proof-dir workload/proof-v1`. The output directory was absent before launch. The command returned a failed proof status; it was not retried. The Vite child build exited `0` after transforming 53 modules, but the proof gate set its own exit status to `1` because the React compiler runtime and React memo assertions were false. The outer tool wrapper did not retain a separate raw exit-code field; the runner's proof JSON and branch condition establish the failed gate status.
+
+At preflight, all 859 runner-input rows in the immutable source-v2 archive matched current worktree bytes and sizes. The post-build audit again found all 859 current rows unchanged. The build runner's narrower source lock covered 761 inputs and recorded zero input mismatches. The compiler artifact at `compiler/oxc-spike/target/debug/ui-graph-compiler-spike` was unchanged before/after at SHA-256 `cee5598eaa612f76fe6b4717d3161333d30c5f4503430c3c448627e27b6d0fb0`.
+
+The environment used pinned Node 24.18.0 first on `PATH`, `CI=true`, `CARGO_HOME` at the repository cache, `CARGO_BUILD_JOBS=1`, and both Cargo target variables unset. The conditional pnpm shim was available on `PATH` with SHA-256 `7719c0c52c75197463a603a950610c1a2ed11f3f1ad176693d08c5fd12a84948`; the proof build invoked Vite using Node's `process.execPath` directly.
+
+The captured Native transform registers `NativeIslandApp` and the workload bootstrap registers `NativeRootView`. Each registration carries `propOnlySites: []`, which is opaque prop-only metadata and does not prove closed purity. Inside `NativeIslandApp`, the transform directly lowers the `props.point` read through `__nativeUseAt` and state site 0 through `__nativeUseStateAt`. The bridge adapter remains present. These Native registration, store, state, and adapter assertions passed.
+
+The captured ReactLeaf transform uses ordinary `useState`, `useLayoutEffect`, and `react/jsx-runtime`; it contains neither `react/compiler-runtime` nor the compiler memo `_c` call. Both React proof assertions failed. The output includes three unique assets: the 533,070-byte JS bundle (SHA-256 `f2f533cdc8f788f1cd089dec0a5be7252b2f03d64ec5f16767388004991f37e6`), its 2,511,996-byte source map (SHA-256 `e8078bf12939e625a1c2521b64cb8855810a8214ab9f3fb6fbc1c8d91921a208`), and the 235-byte HTML entry (SHA-256 `32c593595c2867e9165650aedf9e90698e6d0f4b6b1f167cc1fc8936742825c9`). Vite emitted a chunk-size advisory for the bundle.
+
+Full proof, input audit, transforms, and raw Vite logs are preserved under `workload/proof-v1/`.

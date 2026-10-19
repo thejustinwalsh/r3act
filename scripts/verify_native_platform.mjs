@@ -72,6 +72,11 @@ const sourcePaths = async () => {
     "implementation/2026-10-18-component-forwarding/source-review.md",
     "implementation/2026-10-18-authored-lifecycle/design.md",
     "implementation/2026-10-18-authored-lifecycle/source-review.md",
+    "implementation/2026-10-19-react-island/design.md",
+    "implementation/2026-10-19-react-island/source-review.md",
+    ...["native_arm.tsx", "react_arm.tsx", "react_leaf.tsx", "entry.ts", "index.html",
+      "vite.config.ts", "build-gate.mjs", "run-pair.mjs", "README.md"].map((name) =>
+      `implementation/2026-10-19-react-island/workload/${name}`),
     "implementation/2026-10-19-resource-transactions/design.md",
     "implementation/2026-10-19-resource-transactions/source-review.md",
     ...["native_arm.tsx", "react_arm.tsx", "entry.ts", "index.html",
@@ -366,6 +371,18 @@ try {
     if (step.status === "PASS" && (!before || before !== after)) step.status = "FAIL_COMPILER_CHANGED";
     await json(path.join(output, "steps", `${name}.json`), step);
   }
+  const islandCompilerBefore = await compilerHash();
+  await runStep("react-island-compiled-source", process.execPath,
+    ["--experimental-transform-types", "compiler/compiled_react_island_test.mjs"],
+    { depends: ["install", "cargo-debug", "compiler-info"], deadlineMs: 300_000 });
+  const islandStep = stepByName.get("react-island-compiled-source");
+  islandStep.debugCompilerSha256Before = islandCompilerBefore;
+  islandStep.debugCompilerSha256After = await compilerHash();
+  if (islandStep.status === "PASS" && (!islandCompilerBefore ||
+    islandCompilerBefore !== islandStep.debugCompilerSha256After)) {
+    islandStep.status = "FAIL_COMPILER_CHANGED";
+  }
+  await json(path.join(output, "steps/react-island-compiled-source.json"), islandStep);
   await runStep("three-host-7", process.execPath,
     ["--experimental-transform-types", "--test", "compiler/three_host_capability_test.mjs"],
     { depends: ["install"], deadlineMs: 300_000 });

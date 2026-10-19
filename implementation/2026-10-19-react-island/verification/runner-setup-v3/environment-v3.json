@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "gateType": "environment-only package supplement",
+  "executionPlan": [
+    {
+      "argv": [
+        "pnpm",
+        "check:native-tooling"
+      ],
+      "deadlineMs": 300000
+    },
+    {
+      "argv": [
+        "pnpm",
+        "package:r3act"
+      ],
+      "deadlineMs": 900000,
+      "condition": "only if check:native-tooling passes"
+    },
+    {
+      "argv": [
+        "pnpm",
+        "check:r3act-packages"
+      ],
+      "deadlineMs": 900000,
+      "condition": "only if package:r3act passes"
+    }
+  ],
+  "noInstallStep": true,
+  "environment": {
+    "CI": "true",
+    "PATH": "/private/tmp/react-island-darwin-package-supplement-v3-bin:/Users/mini/.local/share/mise/installs/node/24.18.0/bin:/Applications/ChatGPT.app/Contents/Resources/codex-cli/codex-path:/Users/mini/.local/bin:/Users/mini/.opencode/bin:/Users/mini/.local/share/mise/installs/node/26/bin:/Users/mini/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Library/Apple/usr/bin:/opt/homebrew/bin:/Users/mini/.local/bin:/opt/homebrew/sbin:/Users/mini/.cargo/bin:/Users/mini/.codex/tmp/arg0/codex-arg0aRsclr:/Applications/ChatGPT.app/Contents/Resources/codex-cli/codex-path:/Users/mini/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/override:/Users/mini/.opencode/bin:/Users/mini/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/fallback:/Applications/ChatGPT.app/Contents/Resources:/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS",
+    "PATHPrefix": [
+      "/private/tmp/react-island-darwin-package-supplement-v3-bin",
+      "/Users/mini/.local/share/mise/installs/node/24.18.0/bin"
+    ],
+    "nodeExecutable": "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+    "pnpmResolvesTo": "/private/tmp/react-island-darwin-package-supplement-v3-bin/pnpm",
+    "pnpmShimSha256": "7719c0c52c75197463a603a950610c1a2ed11f3f1ad176693d08c5fd12a84948",
+    "realPnpmInvocationPath": "/Users/mini/.local/share/mise/installs/node/26/bin/pnpm",
+    "realPnpmSymlinkTarget": "/Users/mini/.local/share/mise/installs/node/26.5.0/lib/node_modules/corepack/dist/pnpm.js",
+    "realPnpmTargetSha256": "7c2a67995976b5b592b611d8b236e3b0633bd654fb49aedd96c6eb7ce04c9cbb",
+    "pnpmStore": "/Volumes/Depot/.pnpm-store",
+    "CARGO_HOME": "/Volumes/Depot/Developer/r3act/.cache/cargo",
+    "CARGO_BUILD_JOBS": "1",
+    "CARGO_TARGET_DIR": "UNSET",
+    "CARGO_BUILD_TARGET": "UNSET",
+    "npm_config_store_dir": "UNSET",
+    "R3ACT_SOURCE_COMMIT": "fefd4a9c4527268af721e7a61f9be3a07a220fee"
+  },
+  "sourceV2ManifestSha256": "2b61beb3580890de9c651122e5fa264f5f71f20b5317f32ed738839ff7533b25",
+  "sourceV2PreflightSha256": "81b4da17bde67530d5a95ccb9fdf0617599af12c6cb7c34462bc2459b546bcaa",
+  "outputPath": "/Volumes/Depot/Developer/r3act/implementation/2026-10-19-react-island/verification/darwin-package-supplement-v3",
+  "supplementRunnerPath": "implementation/2026-10-19-react-island/verification/runner-setup-v3/run-supplement.py",
+  "supplementRunnerSha256": "c288655e387fefd46aa69f7cf9dd4a7261a49ec625e7cb4bf78f4b23bbe1af0b"
+}

@@ -1,0 +1,242 @@
+{
+  "schemaVersion": "react-island-final-evidence-audit-v1",
+  "auditedAt": "2026-10-19T15:44:37.944877+00:00",
+  "status": "PASS_WITH_RECORDED_DOCUMENTATION_FINDING",
+  "sourceIntegrity": {
+    "darwinSourceV2": {
+      "manifestSha256": "2b61beb3580890de9c651122e5fa264f5f71f20b5317f32ed738839ff7533b25",
+      "manifestEntries": 870,
+      "runnerInputCount": 859,
+      "archiveManifestEntryMismatches": 0,
+      "changedCurrentRunnerPaths": [
+        "compiler/fixtures/native-react-island.tsx",
+        "implementation/2026-10-19-react-island/source-review.md",
+        "implementation/2026-10-19-react-island/workload/build-gate.mjs",
+        "implementation/2026-10-19-react-island/workload/native_arm.tsx",
+        "implementation/2026-10-19-react-island/workload/react_arm.tsx",
+        "implementation/2026-10-19-react-island/workload/react_leaf.tsx",
+        "implementation/2026-10-19-react-island/workload/run-pair.mjs",
+        "implementation/2026-10-19-react-island/workload/vite.config.ts"
+      ],
+      "approvedFixtureWorkloadChanges": [
+        "compiler/fixtures/native-react-island.tsx",
+        "implementation/2026-10-19-react-island/workload/build-gate.mjs",
+        "implementation/2026-10-19-react-island/workload/native_arm.tsx",
+        "implementation/2026-10-19-react-island/workload/react_arm.tsx",
+        "implementation/2026-10-19-react-island/workload/react_leaf.tsx",
+        "implementation/2026-10-19-react-island/workload/run-pair.mjs",
+        "implementation/2026-10-19-react-island/workload/vite.config.ts"
+      ],
+      "intentionalSourceReviewContextDrift": true,
+      "unexpectedProductDrift": [],
+      "missingPaths": []
+    },
+    "workloadSourceV2": {
+      "manifestSha256": "8b82a8a0f3b04888967cba5dc97bab50a8b86314f342226bfa1798ba83dd7142",
+      "fileCount": 763,
+      "archiveManifestEntryMismatches": 0,
+      "currentContextDifferences": [
+        {
+          "path": "implementation/2026-10-19-react-island/source-review.md",
+          "archivedSha256": "5e0f554a20239cea734ee3c85ae3ae7e0b2813812fa6432890c1f5f6be7f7a3f",
+          "currentSha256": "a90e9732cdf04ae85f90e3293f44bd53f66070e699dbf5350f1f3c8fd9cccbc2",
+          "kind": "context"
+        }
+      ],
+      "preflightStatus": "PASS"
+    },
+    "proofV2": {
+      "sourceLockSha256": "89653861d73388355b83766186308304a8734b71b43c3e3cb57c05afba4baf2c",
+      "proofSha256": "a50840acc232e636863cb5ffc7f85e78fa71ae7abbbd41d7df1411e62db57294",
+      "inputCount": 761,
+      "inputMismatches": 0,
+      "assertions": {
+        "publicCoreImport": true,
+        "publicBridgeImport": true,
+        "nativeAppRegistered": true,
+        "nativeBootstrapRegistered": true,
+        "nativeIslandOpaque": true,
+        "nativeStoreReadLowered": true,
+        "nativeStateLowered": true,
+        "bridgeAdapterRetained": true,
+        "reactCompilerRuntime": true,
+        "reactHotComponentMemo": true
+      },
+      "authorizationStatus": "APPROVED_FOR_ONE_DESCRIPTIVE_PAIR",
+      "authorizationBindsExactProof": true,
+      "buildStatus": "BUILD_CAPTURED_PENDING_PRIMARY_REVIEW",
+      "childExitCode": 0,
+      "outerBuildCommandExitRecorded": 0,
+      "compiler": {
+        "path": "compiler/oxc-spike/target/debug/ui-graph-compiler-spike",
+        "sha256": "cee5598eaa612f76fe6b4717d3161333d30c5f4503430c3c448627e27b6d0fb0",
+        "sha256After": "cee5598eaa612f76fe6b4717d3161333d30c5f4503430c3c448627e27b6d0fb0"
+      }
+    }
+  },
+  "correctnessReceipts": {
+    "rawDarwinV2": {
+      "status": "FAIL",
+      "steps": 36,
+      "statusCounts": {
+        "PASS": 33,
+        "FAIL": 2,
+        "SKIPPED_DEPENDENCY_FAILED": 1
+      },
+      "nonPassSteps": [
+        {
+          "name": "native-tooling",
+          "status": "FAIL",
+          "exitCode": 1
+        },
+        {
+          "name": "package-build",
+          "status": "FAIL",
+          "exitCode": 1
+        },
+        {
+          "name": "package-consumer",
+          "status": "SKIPPED_DEPENDENCY_FAILED",
+          "exitCode": null
+        }
+      ],
+      "denoFinalLine": "ok | 1003 passed | 0 failed (11s)",
+      "rustFinalLine": "test result: ok. 63 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s",
+      "artifactConformanceLog": "(node:36984) ExperimentalWarning: Transform Types is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nPASS compiler artifact conformance (24 checks): /Volumes/Depot/Developer/r3act/.cache/compiler-artifact-conformance-e58fb67f-25c2-49f5-b671-1eb54bcdb7bb",
+      "compiledRuntimeFixtureCount": 23,
+      "all23CompiledRuntimePass": true,
+      "separateReactIslandAstSourceStep": "PASS",
+      "threeHost7Status": "PASS",
+      "retentionSteps": [
+        [
+          "direct-intent-gc",
+          "PASS"
+        ],
+        [
+          "native-candidate-gc",
+          "PASS"
+        ]
+      ]
+    },
+    "packageSupplement": {
+      "status": "PASS",
+      "kind": "bounded pnpm environment/package supplement; not a replacement consolidated gate",
+      "steps": [
+        [
+          "native-tooling",
+          "PASS",
+          0
+        ],
+        [
+          "package-build",
+          "PASS",
+          0
+        ],
+        [
+          "package-consumer",
+          "PASS",
+          0
+        ]
+      ],
+      "sourceCount": 859,
+      "sourceAuditMatch": true,
+      "compilerStable": true,
+      "fivePackages": 5,
+      "consumerStatus": "PASS",
+      "consumerCheckCount": 9,
+      "trackedCacheAfter": {
+        "trackedFileCount": 19799,
+        "diffHeadClean": true,
+        "legacyFileCount": 176,
+        "legacyMatchesBefore": true,
+        "legacyChanged": []
+      }
+    }
+  },
+  "pair": {
+    "recordSha256": "501c6125278e1f85c7035a7553c3453036748d7646fa0cacf9c959ffd0c2fc24",
+    "status": "PASS_DESCRIPTIVE_REACT_ISLAND_PAIR_ONLY",
+    "arms": [
+      [
+        "native",
+        "PASS"
+      ],
+      [
+        "react",
+        "PASS"
+      ]
+    ],
+    "identicalDefinedOutput": true,
+    "outputSha256": "2a19ddf4425da99fa0a2a9c73a753139bb3d20886b0548270fb93a0c0e0b7493",
+    "rows": {
+      "before": {
+        "rows": 768,
+        "mismatches": 0
+      },
+      "after": {
+        "rows": 768,
+        "mismatches": 0
+      }
+    },
+    "blockedFailedPageOrConsoleEvents": 0,
+    "metrics": {
+      "native": {
+        "setupReturnMs": 5.8999999994412065,
+        "mountToMatchingOutputObservedMs": 36.09999999962747,
+        "timerResolutionMs": 0.09999999962747097,
+        "settlementToMutationObserverMs": 2.099999999627471
+      },
+      "react": {
+        "setupReturnMs": 3.300000000745058,
+        "mountToMatchingOutputObservedMs": 3.300000000745058,
+        "timerResolutionMs": 0.09999999962747097,
+        "settlementToMutationObserverMs": 0.5
+      }
+    },
+    "timingInterpretation": "one fixed-order descriptive settlement-to-observer observation; not CPU/latency qualification",
+    "outerShellExitCode": 1,
+    "outerShellError": "zsh:1: read-only variable: status",
+    "pairRunnerCompletionLog": "{\"status\":\"PASS_DESCRIPTIVE_REACT_ISLAND_PAIR_ONLY\",\"outputPath\":\"/Volumes/Depot/Developer/r3act/implementation/2026-10-19-react-island/workload/proof-v2/pair-one-shot.json\"}",
+    "separateNodeExitCodeCaptured": false,
+    "cleanupEvidence": "pair record stopReason null, both arms disposed, read-only process check found no vitexec/Playwright or separate headless Chromium; existing Chrome 155 PID 1314 remained untouched"
+  },
+  "notebook": {
+    "headCellCount": 205,
+    "currentCellCount": 206,
+    "first205CellsExact": true,
+    "only206thCellAdded": true,
+    "rootMetadataAndTopLevelExact": true,
+    "newCellId": "native-react-islands-20261019"
+  },
+  "trackedCache": {
+    "trackedCount": 19799,
+    "legacyTrackedCount": 176,
+    "trackedCacheDiffHeadExit": 0,
+    "legacyDiffHeadExit": 0,
+    "supplementReceiptPreservesBeforeAfter": true
+  },
+  "documentation": {
+    "relativeLinksChecked": 61,
+    "missingRelativeLinks": [],
+    "rawV2FailuresExplicit": true,
+    "noSingle36of36Claim": true,
+    "compiledFixtureAndASTDistinguished": true,
+    "summaryCounts": {
+      "denoRuntimeTests": 1003,
+      "rustTests": 63,
+      "artifactChecks": 24,
+      "compiledExecutionFixtures": 23,
+      "separateASTSourceProof": true,
+      "threeCases": 7,
+      "retentionChecks": 2,
+      "packageSupplementSteps": 3
+    },
+    "masterPlanOverclaim": "final-master-plan.md current execution authority says separate React commits/fixed order/observer scheduling \u201cpreclude visual atomicity or broad performance claims\u201d; this overstates the evidence. The pair cannot establish those claims. Results and bridge reference use appropriately bounded wording."
+  },
+  "evidencePaths": [
+    "implementation/2026-10-19-react-island/verification/darwin-v2/receipt.json",
+    "implementation/2026-10-19-react-island/verification/darwin-package-supplement-v3/supplement-receipt.json",
+    "implementation/2026-10-19-react-island/workload/proof-v2/build-proof.json",
+    "implementation/2026-10-19-react-island/workload/proof-v2/pair-one-shot.json"
+  ]
+}

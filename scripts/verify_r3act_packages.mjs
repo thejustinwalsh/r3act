@@ -34,8 +34,8 @@ try {
     name: "r3act-independent-consumer", private: true, type: "module",
     dependencies: {
       ...dependencies,
-      vite: "8.3.1", react: "19.3.0", three: "0.186.1",
-      "@types/react": "19.3.0", "@types/three": "0.186.0", "@types/node": "^24.19.2",
+      vite: "8.3.1", react: "19.3.0", "react-dom": "19.3.0", three: "0.186.1",
+      "@types/react": "19.3.0", "@types/react-dom": "19.3.0", "@types/three": "0.186.0", "@types/node": "^24.19.2",
       "@typescript/native-preview": "7.0.0-dev.20260707.2",
     },
   }, null, 2));
@@ -123,6 +123,8 @@ try {
   assert.equal(dom.createDOMRoot, coreDom.createDOMRoot);
   assert.equal(three.createThreeHost, coreThree.createThreeHost);
   assert.equal(bridge.createReactNativeRootAdapter, coreReact.createReactNativeRootAdapter);
+  assert.equal(bridge.createNativeReactRootAdapter, coreReact.createNativeReactRootAdapter);
+  assert.equal(typeof bridge.createNativeReactRootAdapter, "function");
   assert.equal(typeof (await packageImport("host-three", "jsx-runtime")).jsx, "function");
   const host = {
     createElement: (tag) => ({ tag, props: {}, children: [] }),
@@ -194,12 +196,24 @@ export function Scene() { const [angle] = useState(0); return <group><mesh rotat
 // @ts-expect-error invalid geometry argument type
 export const invalid = <icosahedronGeometry args={[1, "bad"]} />;
 `);
+  await writeFile(path.join(consumer, "bridge-types.tsx"), `import { createElement } from "react";
+import { createNativeReactRootAdapter, createReactNativeRootAdapter } from "@r3act/react-bridge";
+export const Island = createNativeReactRootAdapter((props: { value: number }) =>
+  createElement("output", null, props.value));
+export const validIsland = <Island value={1} />;
+// @ts-expect-error React island retains its component prop contract.
+export const invalidIsland = <Island value="bad" />;
+export const Embedded = createReactNativeRootAdapter(Island);
+export const validEmbedded = createElement(Embedded, { value: 1 });
+// @ts-expect-error Opposite bridge direction retains the same prop contract.
+export const invalidEmbedded = createElement(Embedded, { value: "bad" });
+`);
   await writeFile(path.join(consumer, "tsconfig.json"), JSON.stringify({ compilerOptions: {
     target: "ES2023", module: "NodeNext", moduleResolution: "NodeNext", strict: true,
     noEmit: true, jsx: "react-jsx", jsxImportSource: "@r3act/core", types: ["node"],
-  }, files: ["app.tsx", "types.tsx"] }));
+  }, files: ["app.tsx", "types.tsx", "bridge-types.tsx"] }));
   run("pnpm", ["exec", "tsgo", "-p", "tsconfig.json"]);
-  record.checks.push("installed core and Three JSX declarations typecheck authored TSX");
+  record.checks.push("installed core/Three JSX and both React bridge prop contracts typecheck authored TSX");
 
   const { nativeModulePlugin } = await import(pathToFileURL(path.join(installed("vite"), "dist/compiler/vite_native_plugin.js")).href);
   const { build: viteBuild } = await import(pathToFileURL(path.join(consumer, "node_modules/vite/dist/node/index.js")).href);
