@@ -72,6 +72,11 @@ const sourcePaths = async () => {
     "implementation/2026-10-18-component-forwarding/source-review.md",
     "implementation/2026-10-18-authored-lifecycle/design.md",
     "implementation/2026-10-18-authored-lifecycle/source-review.md",
+    "implementation/2026-10-19-resource-transactions/design.md",
+    "implementation/2026-10-19-resource-transactions/source-review.md",
+    ...["native_arm.tsx", "react_arm.tsx", "entry.ts", "index.html",
+      "vite.config.ts", "build-gate.mjs", "run-pair.mjs", "README.md"].map((name) =>
+      `implementation/2026-10-19-resource-transactions/workload/${name}`),
     ...["contract.ts", "native_arm.tsx", "react_arm.tsx", "entry.ts", "index.html",
       "vite.config.ts", "build-gate.mjs", "run-pairs.mjs", "README.md"].map((name) =>
       `implementation/2026-10-18-authored-lifecycle/workload/${name}`)]) {
@@ -347,7 +352,8 @@ try {
     "compiled_joint_input_transaction_test", "compiled_resource_subtree_reveal_test",
     "compiled_resource_host_values_test", "compiled_store_host_values_test",
     "compiled_store_host_subtree_test", "compiled_store_projection_test", "compiled_joint_async_inputs_test",
-    "compiled_component_forwarding_test", "compiled_authored_lifecycle_test"];
+    "compiled_component_forwarding_test", "compiled_authored_lifecycle_test",
+    "compiled_resource_transaction_test"];
   for (const [index, fixture] of fixtures.entries()) {
     const name = `compiled-${String(index + 1).padStart(2, "0")}`;
     const before = await compilerHash();

@@ -97,6 +97,8 @@ A Three transaction must finish its required writes before the application calls
 
 ## Extension seam
 
+The working-source resource transaction extension also lets a DOM/Three queue group include `resources` alongside selected cells, Stores and collections, or use `enqueueResources` for joint resource reveal alone. Selected A/B consumers retain accepted fallback until both can publish; supported independent scene work may progress. This extension passes the [35-step consolidated boundary](implementation/2026-10-19-resource-transactions/results.md), including actual compiled DOM/Three/fork execution. See the [authoring API and current status](docs/native-authoring-reference.md#explicit-scoped-transactions). The same root publication authority and host lifetime checks apply; finish required writes before the application's renderer observation boundary.
+
 ```ts
 const native = createThreeNativeRoot(scene, {
   registry: {

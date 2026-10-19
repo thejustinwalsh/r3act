@@ -365,6 +365,8 @@ export type PreparedKeyedVDOMProgram = {
   validatePostHost(): boolean;
   overlapsRetainedTargets(delta: PreparedRetainedSourceDelta): boolean;
   overlapsStoreTargets(delta: PreparedStorePropDelta): boolean;
+  readonly hostKeys?: readonly string[];
+  overlapsHostReplacementTargets?(keys: readonly string[]): boolean;
   commit(): void;
   discard(): void;
 };
@@ -2104,7 +2106,37 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     regions: readonly { key: string; tree: RuntimeNode }[] = [],
     options: { scoped?: boolean } = {},
   ): PreparedKeyedVDOMProgram | null {
+    return this.#prepareKeyedRegionDeltas(deltas, regions, options, false);
+  }
+
+  #prepareKeyedRegionDeltas(
+    deltas: readonly KeyedRegionDeltaRequest[],
+    regions: readonly { key: string; tree: RuntimeNode }[],
+    options: { scoped?: boolean },
+    deferVersion: boolean,
+    postHostStore: PreparedStorePropDelta | null = null,
+  ): PreparedKeyedVDOMProgram | null {
     const scoped = options.scoped === true;
+    deferVersion &&= scoped;
+    const methodNames = ["createElement", "createText", "setText", "setProp",
+      "place", "remove", "dispose", "setStyleProp", "prepareStyleProp"] as const;
+    const hostMethod = (name: string): Function | null => {
+      let object: object | null = this.host;
+      while (object) {
+        const descriptor = Object.getOwnPropertyDescriptor(object, name);
+        if (descriptor) return typeof descriptor.value === "function"
+          ? descriptor.value : null;
+        object = Object.getPrototypeOf(object);
+      }
+      return null;
+    };
+    let methods: readonly (Function | null)[] = [];
+    if (scoped) {
+      try { methods = methodNames.map(hostMethod); } catch { return null; }
+      if (methods.slice(0, 6).some((method) => !method)) return null;
+    }
+    const hostMethodsCurrent = () => !scoped || methodNames.every((name, index) =>
+      hostMethod(name) === methods[index]);
     if (
       this.#compiledGraph ||
       this.#incompatibleScalarBindingGroups > 0 ||
@@ -2379,6 +2411,19 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     let released = false;
     let committedVersion: number | null = null;
     let committedPublicationToken: object | null = null;
+    let committedTargets: Array<{
+      parent: MountedNode<H>;
+      vnode: VNode;
+      handle: H;
+      bucket: KeyedRegionBuckets<MountedNode<H>>;
+      keys: Array<{
+        key: string;
+        node: MountedNode<H> | undefined;
+        vnode: VNode | undefined;
+        handle: H | undefined;
+        afterKey: string | null;
+      }>;
+    }> | null = null;
     const validateTargets = () => preparedDeltas.every(
       ({ root, parent, parentKey, regionId, bucket, parentVNode, keyedFootprint }) => {
         const entries = this.#nodesByKey.get(parentKey);
@@ -2422,12 +2467,21 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       return true;
     };
     if (scoped && !validateScoped()) return null;
+    const hostKeys = Object.freeze([...candidateKeys]);
     const changed =
       preparedDeltas.some(({ operations }) => operations.length > 0) ||
       hasLeafRegions;
     const program: PreparedKeyedVDOMProgram = {
       scoped,
       structuralVersionDelta: changed ? 1 : 0,
+      hostKeys,
+      overlapsHostReplacementTargets: (keys) => keys.some((key) => {
+        const matches = this.#nodesByKey.get(key);
+        if (matches?.size !== 1) return true;
+        const target = matches.values().next().value as MountedNode<H>;
+        return [...deltaParents].some((parent) =>
+          isAncestor(parent, target) || isAncestor(target, parent));
+      }),
       overlapsRetainedTargets: (delta) => {
         const record = this.#retainedSourceDeltas.get(delta);
         if (!record || record.root !== this) return true;
@@ -2444,6 +2498,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       },
       validate: () =>
         state === "prepared" && !this.#publicationFailed &&
+        hostMethodsCurrent() &&
         (scoped ? validateScoped() :
           this.#version === baseVersion && validateTargets()) &&
         (!hasLeafRegions || preparedLeaves!.validate?.() !== false),
@@ -2451,7 +2506,25 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         state === "committed" && committedPublicationToken !== null &&
         this.#publicationToken === committedPublicationToken &&
         !this.#publicationFailed && committedVersion !== null &&
-        this.#version === committedVersion,
+        hostMethodsCurrent() &&
+        this.#version === committedVersion + Number(deferVersion && changed) &&
+        (!postHostStore || this.#isStorePropDeltaCurrent(postHostStore, true, false)) &&
+        committedTargets !== null && committedTargets.every((target) =>
+          !target.parent.hostDisposed && target.parent.vnode === target.vnode &&
+          target.parent.handle === target.handle &&
+          target.parent.keyedChildren === target.bucket &&
+          target.keys.every(({ key, node, vnode, handle, afterKey }) =>
+            target.bucket.get(key) === node &&
+            (node === undefined || (!node.hostDisposed &&
+              node.parent === target.parent && node.vnode ===
+                (postHostStore
+                  ? this.#storePropDeltas.get(postHostStore)?.targets.find(
+                    (candidate) => candidate.node === node,
+                  )?.next ?? vnode
+                  : vnode) &&
+              node.handle === handle && target.bucket.afterKey(key) === afterKey &&
+              this.#nodesByKey.get(key)?.size === 1 &&
+              this.#nodesByKey.get(key)?.has(node) === true)))),
       commit: () => {
         if (state !== "prepared") {
           throw new Error("Prepared keyed VDOM program is no longer available");
@@ -2485,11 +2558,24 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           if (this.#version !== versionAtApply) {
             throw new Error("Prepared keyed VDOM changed during host application");
           }
-          if (changed) this.#version++;
+          if (!hostMethodsCurrent()) {
+            throw new Error("Prepared keyed VDOM host methods changed during application");
+          }
+          committedTargets = preparedDeltas.map(({ parent, bucket, keyedFootprint }) => ({
+            parent, vnode: parent.vnode, handle: parent.handle, bucket,
+            keys: [...keyedFootprint.keys()].map((key) => {
+              const node = bucket.get(key);
+              return { key, node, vnode: node?.vnode, handle: node?.handle,
+                afterKey: node ? bucket.afterKey(key) : null };
+            }),
+          }));
+          if (changed && !deferVersion) this.#version++;
           committedVersion = this.#version;
           committedPublicationToken = this.#publicationToken;
-          this.#partialCommitBatchCount = batchCountBefore + Number(changed);
+          this.#partialCommitBatchCount = batchCountBefore +
+            Number(changed && !deferVersion);
         } catch (error) {
+          committedTargets = null;
           this.#pendingRefs.clear();
           for (const [node, ref] of pendingRefsBefore) {
             this.#pendingRefs.set(node, ref);
@@ -2516,27 +2602,29 @@ export class VDOMSnapshotRoot<H, Parent = H> {
             );
           }
           throw error;
-        } finally {
-          program.discard();
-        }
+        } finally { releasePrepared(); }
       },
       discard: () => {
-        if (released) return;
-        released = true;
-        if (state === "prepared") state = "discarded";
-        preparedLeaves?.discard?.();
-        leafPlan.clear();
-        preparedDeltas.length = 0;
-        candidateRoots.length = 0;
-        candidateKeys.clear();
-        candidateKeyOwners.clear();
-        replacedNodes.clear();
-        replacedVNodeFootprint.clear();
-        deltaParents.clear();
-        regionIds.clear();
-        touchedKeys.clear();
+        if (state === "committed") committedTargets = null;
+        releasePrepared();
       },
     };
+    function releasePrepared() {
+      if (released) return;
+      released = true;
+      if (state === "prepared") state = "discarded";
+      preparedLeaves?.discard?.();
+      leafPlan.clear();
+      preparedDeltas.length = 0;
+      candidateRoots.length = 0;
+      candidateKeys.clear();
+      candidateKeyOwners.clear();
+      replacedNodes.clear();
+      replacedVNodeFootprint.clear();
+      deltaParents.clear();
+      regionIds.clear();
+      touchedKeys.clear();
+    }
     return program;
   }
 
@@ -2713,6 +2801,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     const program: PreparedKeyedVDOMProgram = {
       scoped: true,
       structuralVersionDelta: 1,
+      hostKeys: Object.freeze([...candidateKeys]),
       overlapsRetainedTargets: (delta) => {
         const record = this.#retainedSourceDeltas.get(delta);
         return !record || record.groups.some((group) =>
@@ -2913,60 +3002,85 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     deltas: readonly KeyedRegionDeltaRequest[],
     updates: readonly (readonly [ScalarSource, number])[],
     storeRegions: readonly StorePropDelta[],
+    replacements: readonly { key: string; tree: RuntimeNode }[] = [],
   ): PreparedScopedKeyedRetainedProgram | null {
-    if (!deltas.length && !updates.length && !storeRegions.length) return null;
+    if (!deltas.length && !updates.length && !storeRegions.length &&
+      !replacements.length) return null;
     const retained = updates.length ? this.prepareRetainedSourceDelta(updates) : null;
     if (updates.length && !retained) return null;
     const store = storeRegions.length ? this.prepareStorePropDelta(storeRegions) : null;
     if (storeRegions.length && !store) return null;
     const keyed = deltas.length
-      ? this.prepareKeyedRegionDeltas(deltas, [], { scoped: true })
-      : null;
-    if ((deltas.length && (!keyed || keyed.structuralVersionDelta !== 1)) ||
-      (retained && keyed?.overlapsRetainedTargets(retained)) ||
-      (store && keyed?.overlapsStoreTargets(store)) ||
-      (keyed && !keyed.validate()) ||
+      ? this.#prepareKeyedRegionDeltas(deltas, [], { scoped: true },
+        replacements.length > 0, store) : null;
+    const replacement = replacements.length
+      ? this.prepareScopedHostSubtreeReplacements(replacements) : null;
+    const structural = [keyed, replacement].filter(
+      (plan): plan is PreparedKeyedVDOMProgram => plan !== null,
+    );
+    const overlap = keyed && replacement && (
+      keyed.overlapsHostReplacementTargets?.(replacements.map(({ key }) => key)) ||
+      (keyed.hostKeys ?? []).some((key) => replacement.hostKeys?.includes(key))
+    );
+    if (((deltas.length || replacements.length) &&
+      ((deltas.length && !keyed) || (replacements.length && !replacement))) ||
+      overlap ||
+      structural.some((plan) => plan.structuralVersionDelta !== 1 ||
+        !plan.validate()) ||
+      (retained && structural.some((plan) =>
+        plan.overlapsRetainedTargets(retained))) ||
+      (store && structural.some((plan) =>
+        plan.overlapsStoreTargets(store))) ||
       (retained && !this.#isRetainedSourceDeltaCurrent(retained, undefined, true)) ||
       (store && !this.isStorePropDeltaCurrent(store))) {
       keyed?.discard();
+      replacement?.discard();
       return null;
     }
     let state: "prepared" | "committed" | "discarded" = "prepared";
     return {
       scoped: true,
-      structuralVersionDelta: keyed?.structuralVersionDelta ?? 0,
+      structuralVersionDelta: structural.length ? 1 : 0,
       readSources: retained?.readSources ?? [],
-      overlapsRetainedTargets: (delta) => keyed?.overlapsRetainedTargets(delta) ?? false,
-      overlapsStoreTargets: (delta) => keyed?.overlapsStoreTargets(delta) ?? false,
+      overlapsRetainedTargets: (delta) => structural.some((plan) =>
+        plan.overlapsRetainedTargets(delta)),
+      overlapsStoreTargets: (delta) => structural.some((plan) =>
+        plan.overlapsStoreTargets(delta)),
       validate: () => state === "prepared" &&
-        (!keyed || keyed.validate()) &&
-        (!retained || !keyed?.overlapsRetainedTargets(retained)) &&
-        (!store || !keyed?.overlapsStoreTargets(store)) &&
+        structural.every((plan) => plan.validate()) &&
+        (!retained || structural.every((plan) =>
+          !plan.overlapsRetainedTargets(retained))) &&
+        (!store || structural.every((plan) =>
+          !plan.overlapsStoreTargets(store))) &&
         (!retained || this.#isRetainedSourceDeltaCurrent(retained, undefined, true)) &&
         (!store || this.isStorePropDeltaCurrent(store)),
       validatePostHost: () => state === "committed" &&
-        (!keyed || keyed.validatePostHost()) &&
+        structural.every((plan) => plan.validatePostHost()) &&
         (!retained || this.#isRetainedSourceDeltaCurrent(
           retained, { afterHost: true }, true,
         )) &&
         (!store || this.isStorePropDeltaCurrent(store, { afterHost: true })),
       commit: () => {
-        if (state !== "prepared" ||
+        if (state !== "prepared" || !this.#publicationToken ||
           (keyed && !keyed.validate()) ||
-          (retained && keyed?.overlapsRetainedTargets(retained)) ||
-          (store && keyed?.overlapsStoreTargets(store)) ||
+          (retained && structural.some((plan) =>
+            plan.overlapsRetainedTargets(retained))) ||
+          (store && structural.some((plan) =>
+            plan.overlapsStoreTargets(store))) ||
           (store && !this.#isStorePropDeltaCurrent(store, false, true))) {
           throw new Error("Prepared scoped VDOM transaction is stale");
         }
         state = "committed";
         if (retained) this.#applyRetainedSourceDelta(retained, true);
         keyed?.commit();
+        replacement?.commit();
         if (store) this.applyStorePropDelta(store);
       },
       discard: () => {
         if (state === "discarded") return;
         if (state === "prepared") state = "discarded";
         keyed?.discard();
+        replacement?.discard();
       },
     };
   }

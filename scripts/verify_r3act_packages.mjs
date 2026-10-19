@@ -145,7 +145,7 @@ try {
   identityRoot.dispose();
   record.checks.push("DOM, Three and React package routes re-export one core runtime graph");
 
-  const appSource = `import { useState, use, createStore, createNativeRoot, storeRecord } from "@r3act/core";
+  const appSource = `import { useState, use, createStore, createNativeRoot, storeRecord, Suspense, AsyncResource } from "@r3act/core";
 import type { VDOMHost } from "@r3act/host-dom";
 export const label = createStore("ready");
 export const scene = createStore(storeRecord({ position: storeRecord({ x: 1 }) }));
@@ -166,6 +166,24 @@ export function Counter() {
 export const mount = (host: VDOMHost<any>, container: any) => {
   const root = createNativeRoot(host, container, { scheduleCommit() {} });
   root.render(<Counter />);
+  return root;
+};
+export function ResourceA(props: { resource: AsyncResource<string> }) {
+  const value = use(props.resource);
+  return <output key="a-host">{value}</output>;
+}
+export function ResourceB(props: { resource: AsyncResource<string> }) {
+  const value = use(props.resource);
+  return <output key="b-host">{value}</output>;
+}
+export const mountResourcePair = (host: VDOMHost<any>, container: any,
+  a: AsyncResource<string>, b: AsyncResource<string>) => {
+  const root = createNativeRoot(host, container);
+  root.render(<section><Suspense fallback={<output key="a-host">a-loading</output>}>
+    <ResourceA resource={a} />
+  </Suspense><Suspense fallback={<output key="b-host">b-loading</output>}>
+    <ResourceB resource={b} />
+  </Suspense></section>);
   return root;
 };
 `;
@@ -235,6 +253,29 @@ export const invalid = <icosahedronGeometry args={[1, "bad"]} />;
   assert.equal(projectedContainer.children.length, 0);
   assert.equal(app.scene.diagnostics().roots, 0);
   record.checks.push("installed storeRecord provenance and compiled scoped projections share the core runtime");
+
+  const pairContainer = { children: [] };
+  let resolveA, resolveB;
+  const pairA = new core.AsyncResource(new Promise((done) => { resolveA = done; }));
+  const pairB = new core.AsyncResource(new Promise((done) => { resolveB = done; }));
+  const pairRoot = app.mountResourcePair(host, pairContainer, pairA, pairB);
+  const pairQueue = new core.NativeRootWorkQueue();
+  try {
+    const pairWork = pairQueue.enqueueResources({ id: "installed-resource-pair",
+      roots: [{ root: pairRoot, resources: [pairA, pairB] }] });
+    assert.equal(pairWork.status, "pending");
+    assert.equal(text(pairContainer.children[0]), "a-loadingb-loading");
+    resolveA("a-ready");
+    for (let index = 0; index < 8; index++) await Promise.resolve();
+    assert.equal(pairWork.status, "pending");
+    assert.equal(text(pairContainer.children[0]), "a-loadingb-loading");
+    resolveB("b-ready");
+    for (let index = 0; index < 8; index++) await Promise.resolve();
+    assert.equal(pairWork.status, "committed");
+    assert.equal(text(pairContainer.children[0]), "a-readyb-ready");
+  } finally { pairQueue.dispose(); pairRoot.dispose(); }
+  assert.equal(pairContainer.children.length, 0);
+  record.checks.push("installed compiled resource leaves reveal together through the public queue");
 
   record.status = "PASS";
 } catch (error) {

@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS_WITH_DOCUMENTED_PROVENANCE_LIMITATION",
+  "scope": "Read-only documentation and evidence integrity audit; no build, test, browser, timing, or VM execution.",
+  "archives": {
+    "source-v1": {
+      "manifestEntries": 2322,
+      "manifestSha256": "6dcb56cf28416fea4cbbe79c81465688aecf0135710f7d08dec368fc303c2521",
+      "archivedFilesMatchManifest": true,
+      "originalPreGateManifest": {
+        "entries": 2321,
+        "sha256": "1d4108edf8aa34eed0ba79354f20186b63884100b852bdef2def7e39bee3a34b",
+        "bytesRetained": false
+      },
+      "provenanceException": "The workflow input was added and the manifest updated after v1 execution. The original manifest bytes were not retained and were not reconstructed. The current archive is the documented 2,322-entry supplemented form."
+    },
+    "source-v2": {
+      "manifestEntries": 2322,
+      "manifestSha256": "768a67b64be8b892d9f74cbec904eb61fd626837cac4303cd7bfd959e072f8c5",
+      "archivedFilesMatchManifest": true
+    },
+    "source-v3": {
+      "manifestEntries": 852,
+      "manifestSha256": "cd78e45325e56a69ad0f10bf9f9c59679e6dd4f3a39d68833807dd4dc24a78fb",
+      "archivedFilesMatchManifest": true
+    },
+    "source-v4": {
+      "manifestEntries": 852,
+      "manifestSha256": "81106b52f3e95625b9d63005dbd5829668159a40b570a1fcdaf3eb18df3c6a81",
+      "archivedFilesMatchManifest": true
+    },
+    "workload-source-v2": {
+      "manifestEntries": 757,
+      "manifestSha256": "a8211378426ea8b373ae53da838d4e43577e9305d2a06de02ad20a83728c90bb",
+      "archivedFilesMatchManifest": true,
+      "proofV2SourceLockEntriesMatched": 756
+    }
+  },
+  "currentSourceComparedWithV4": {
+    "archivePaths": 852,
+    "missingPaths": 0,
+    "changedPaths": [
+      "docs/native-authoring-reference.md",
+      "final-master-plan.md",
+      "implementation-checkpoint.md",
+      "implementation/2026-10-19-resource-transactions/source-review.md",
+      "implementation/2026-10-19-resource-transactions/workload/README.md",
+      "implementation/2026-10-19-resource-transactions/workload/native_arm.tsx",
+      "implementation/2026-10-19-resource-transactions/workload/react_arm.tsx",
+      "paper.md",
+      "three-host-api.md"
+    ],
+    "intentionalWorkloadRuntimeChanges": [
+      "implementation/2026-10-19-resource-transactions/workload/native_arm.tsx",
+      "implementation/2026-10-19-resource-transactions/workload/react_arm.tsx"
+    ],
+    "otherDifferencesAreDocumentationOrContext": true,
+    "unexplainedCurrentRuntimeCompilerPackageScriptOrFixtureDifferences": 0
+  },
+  "gateReceipts": {
+    "darwin-v1": {"status": "FAIL", "steps": 35, "pass": 31, "fail": 4, "sourceInputs": 844, "beforeAfterIdentical": true},
+    "darwin-v2": {"status": "FAIL", "steps": 35, "pass": 33, "fail": 2, "sourceInputs": 844, "beforeAfterIdentical": true},
+    "darwin-v3": {"status": "FAIL", "steps": 35, "pass": 33, "fail": 2, "sourceInputs": 844, "beforeAfterIdentical": true},
+    "darwin-v4": {
+      "status": "PASS",
+      "steps": 35,
+      "pass": 35,
+      "fail": 0,
+      "sourceInputs": 844,
+      "beforeAfterIdentical": true,
+      "denoRuntime": {"passed": 994, "failed": 0},
+      "rust": {"passed": 63, "failed": 0},
+      "artifactChecks": 24,
+      "compiledFixtures": {"passed": 23, "failed": 0},
+      "threeCases": {"passed": 7, "failed": 0},
+      "retentionChecks": 2,
+      "freshPackagesConsumed": 5,
+      "fixtureArtifactFiles": 137,
+      "packagedFiles": 488,
+      "receiptSha256": "25cd3ca893c26dc3268c744879652a4e67c9944403bedb65e3442b9bb2a30b16"
+    }
+  },
+  "workloadProofAndPair": {
+    "proofV2": {
+      "buildProofSha256": "d371949b30861959a188d29a08e6f2a7242490cb9d0dd1678ba22690eb34c32b",
+      "sourceLockSha256": "9ad976501c8d4bdd569d6440038195b449064931309320f7171f825fd185dc45",
+      "sourceInputs": 756,
+      "allSixAssertions": true,
+      "compilerStableBeforeAfter": true,
+      "runAuthorizationBindsProofHash": true
+    },
+    "pair": {
+      "status": "PASS_DESCRIPTIVE_RESOURCE_TRANSACTION_PAIR_ONLY",
+      "sha256": "52a986c276a792425c23c828dbf092e1d5bcd12e64ddec2668abf6ef22fce07b",
+      "auditedEntries": 762,
+      "itemization": {"sourceInputs": 756, "compiler": 1, "transforms": 2, "assets": 3},
+      "beforeAfterMismatches": 0,
+      "nativeAndReactOutputHashesEqual": true,
+      "fallbackMountCleanupEachArm": "1/1 for A and B",
+      "nativeCallbackCount": 1,
+      "nativeDispose": {"owners": 0, "pendingChanges": 0, "remainingChildren": 0},
+      "reactDispose": {"listeners": 0, "remainingChildren": 0},
+      "settlementToMutationObserverMs": {"native": 2.4, "react": 287.5},
+      "timingInterpretation": "One fixed-order pre-paint scheduling and observer interval; CPU time and scheduler attribution are not isolated, and this is not a performance qualification."
+    }
+  },
+  "notebook": {
+    "path": "research.ipynb",
+    "gitHeadCellCount": 204,
+    "currentCellCount": 205,
+    "first204CellsExactlyMatchGitHead": true,
+    "rootMetadataExactlyMatchesGitHead": true,
+    "rootKeysExactlyMatchGitHead": true,
+    "new205thCellLinksToExistingResults": true
+  },
+  "documentationLinks": {"resultsMarkdownLinks": 7, "missingLocalTargets": 0},
+  "trackedCacheResearchEvidence": {"trackedFiles": 19249, "gitDiffFromHeadIsClean": true},
+  "knownDocumentationCorrection": "The Darwin-v2 summary's 2,314 runner-input wording is corrected by primary-integrity-note.md: the authoritative runner inventory is 844; the broader 2,322-file archive contains 1,478 extras."
+}

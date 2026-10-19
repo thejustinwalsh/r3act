@@ -93,6 +93,15 @@ export type NativeTransactionRootWork = Omit<NativeRetainedRootWork, "roots"> & 
     readonly cells: readonly StateCellHandle[];
     readonly collections: readonly KeyedCollection<any>[];
     readonly stores?: readonly AnyAsyncStore[];
+    readonly resources?: readonly AsyncResource<any>[];
+  }[];
+};
+
+/** A declared joint reveal of the closed readers of selected resources. */
+export type NativeResourceRootWork = Omit<NativeRetainedRootWork, "roots"> & {
+  readonly roots: readonly {
+    readonly root: NativeRoot;
+    readonly resources: readonly AsyncResource<any>[];
   }[];
 };
 
@@ -152,7 +161,10 @@ export class NativeRootWorkQueue {
         root,
         cells: Object.freeze([...cells]),
       })),
-      ({ root, cells }) => root.prepareRetained(cells),
+      ({ root, cells }, _transitions, lease) => root.prepareRetained(cells, lease),
+      ({ root, cells }) => root.holdTransactionPublications({
+        resources: [], cells, collections: [], stores: [],
+      }),
     );
   }
 
@@ -160,7 +172,10 @@ export class NativeRootWorkQueue {
     return this.#enqueuePrepared(
       work,
       work.roots.map(({ root, stores }) => ({ root, stores: Object.freeze([...stores]) })),
-      ({ root, stores }) => root.prepareStores(stores),
+      ({ root, stores }, _transitions, lease) => root.prepareStores(stores, lease),
+      ({ root, stores }) => root.holdTransactionPublications({
+        resources: [], cells: [], collections: [], stores,
+      }),
     );
   }
 
@@ -171,31 +186,55 @@ export class NativeRootWorkQueue {
         root,
         collections: Object.freeze([...collections]),
       })),
-      ({ root, collections }) => root.prepareCollections(collections),
+      ({ root, collections }, _transitions, lease) =>
+        root.prepareCollections(collections, lease),
+      ({ root, collections }) => root.holdTransactionPublications({
+        resources: [], cells: [], collections, stores: [],
+      }),
+    );
+  }
+
+  enqueueResources(work: NativeResourceRootWork): NativeRootWorkHandle {
+    return this.#enqueuePrepared(
+      work,
+      work.roots.map(({ root, resources }) => ({
+        root,
+        resources: Object.freeze([...resources]),
+      })),
+      ({ root, resources }, _transitions, resourceLease) =>
+        root.prepareResources(resources, resourceLease),
+      ({ root, resources }) => root.holdTransactionPublications({
+        resources, cells: [], collections: [], stores: [],
+      }),
     );
   }
 
   enqueueTransaction(work: NativeTransactionRootWork): NativeRootWorkHandle {
     return this.#enqueuePrepared(
       work,
-      work.roots.map(({ root, cells, collections, stores }) => ({
+      work.roots.map(({ root, cells, collections, stores, resources }) => ({
         root,
         cells: Object.freeze([...cells]),
         collections: Object.freeze([...collections]),
         stores: Object.freeze([...(stores ?? [])]),
+        resources: Object.freeze([...(resources ?? [])]),
       })),
-      ({ root, cells, collections, stores }) =>
-        root.prepareTransaction({ cells, collections, stores }),
+      ({ root, cells, collections, stores, resources }, _transitions, resourceLease) =>
+        root.prepareTransaction({ cells, collections, stores, resources }, resourceLease),
+      ({ root, cells, collections, stores, resources }) =>
+        root.holdTransactionPublications({ resources, cells, collections, stores }),
     );
   }
 
   #enqueuePrepared<Entry extends { readonly root: NativeRoot }>(
-    work: NativeRootWork | NativeRetainedRootWork | NativeCollectionRootWork | NativeTransactionRootWork | NativeStoreRootWork,
+    work: NativeRootWork | NativeRetainedRootWork | NativeCollectionRootWork | NativeTransactionRootWork | NativeStoreRootWork | NativeResourceRootWork,
     entries: readonly Entry[],
     prepareCandidate: (
       entry: Entry,
       transitions: readonly string[],
+      resourceLease?: () => void,
     ) => Candidate | null,
+    holdResources?: (entry: Entry) => () => void,
   ): NativeRootWorkHandle {
     this.#assertActive();
     const transitions = Object.freeze([
@@ -228,7 +267,32 @@ export class NativeRootWorkQueue {
       throw new Error("Native work cannot contain duplicate root IDs");
     }
     for (const { root } of entries) this.#attach(root);
-    return this.#invoke(() => {
+    const resourceHolds: (() => void)[] = [];
+    const resourceLeaseByRoot = new Map<NativeRoot, () => void>();
+    const releaseResourceHolds = () => {
+      const errors: unknown[] = [];
+      for (const release of resourceHolds.splice(0)) {
+        try { release(); } catch (error) { errors.push(error); }
+      }
+      if (errors.length) {
+        throw new AggregateError(errors, "Resource publication hold release failed");
+      }
+    };
+    try {
+      if (holdResources) {
+        for (const entry of entries) {
+          const release = holdResources(entry);
+          resourceHolds.push(release);
+          resourceLeaseByRoot.set(entry.root, release);
+        }
+      }
+    } catch (error) {
+      try { releaseResourceHolds(); } catch (cleanupError) {
+        throw new AggregateError([error, cleanupError], "Resource hold acquisition and cleanup failed");
+      }
+      throw error;
+    }
+    try { return this.#invoke(() => {
       const handle = this.#queue.enqueue({
         id: work.id,
         roots: entries.map(({ root }) => root.rootId),
@@ -251,7 +315,9 @@ export class NativeRootWorkQueue {
           const prepared: Candidate[] = [];
           try {
             for (const entry of entries) {
-              const candidate = prepareCandidate(entry, transitions);
+              const candidate = prepareCandidate(
+                entry, transitions, resourceLeaseByRoot.get(entry.root)
+              );
               if (!candidate) {
                 throw new Error(
                   `Scoped root delta is unavailable: ${entry.root.rootId}`,
@@ -435,9 +501,12 @@ export class NativeRootWorkQueue {
           this.#watchPending(work.id, tokens, resolve, refresh);
         },
         onSettled: (resolution) => {
-          this.#cleanupPending(work.id);
+          const errors: unknown[] = [];
+          try { this.#cleanupPending(work.id); } catch (error) { errors.push(error); }
           this.#workStores.delete(work.id);
-          work.onSettled?.(resolution);
+          try { releaseResourceHolds(); } catch (error) { errors.push(error); }
+          try { work.onSettled?.(resolution); } catch (error) { errors.push(error); }
+          if (errors.length) throw new AggregateError(errors, "Native work settlement cleanup failed");
         },
       });
       return {
@@ -492,7 +561,12 @@ export class NativeRootWorkQueue {
           };
         },
       };
-    });
+    }); } catch (error) {
+      try { releaseResourceHolds(); } catch (cleanupError) {
+        throw new AggregateError([error, cleanupError], "Native work enqueue and cleanup failed");
+      }
+      throw error;
+    }
   }
 
   getVersion(root: NativeRoot): number {
