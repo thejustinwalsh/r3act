@@ -404,7 +404,7 @@ Deno.test("stale forwarding revision cannot advance a pending boundary", async (
     pending.resolve(4);
     await Promise.resolve();
     assertThrows(() => root.flush(), Error,
-      "Compiled component revision is obsolete; remount with current code");
+      "Compiled module changed; remount the root");
     assertStrictEquals(container.children[0], fallback);
     assertEquals(fallback.props["data-value"], "waiting");
     assertEquals(root.publicationVersion, version);

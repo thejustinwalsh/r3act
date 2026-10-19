@@ -1,0 +1,14 @@
+$ node scripts/build_r3act_packages.mjs
+compiler/vite_native_plugin.ts(65,20): error TS2352: Conversion of type '{ exclude: any[]; }' to type 'T' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  '{ exclude: any[]; }' is assignable to the constraint of type 'T', but 'T' could be instantiated with a different subtype of constraint '{ exclude?: ReactExclude | undefined; }'.
+src/component_state_runtime.ts(3832,48): error TS2740: Type 'Set<() => void>' is missing the following properties from type 'readonly (() => void)[]': length, concat, join, slice, and 21 more.
+file:///Volumes/Depot/Developer/r3act/scripts/build_r3act_packages.mjs:16
+  if (result.status !== 0) throw new Error(`${command} exited ${result.status}`);
+                                 ^
+
+Error: pnpm exited 2
+    at run (file:///Volumes/Depot/Developer/r3act/scripts/build_r3act_packages.mjs:16:34)
+    at file:///Volumes/Depot/Developer/r3act/scripts/build_r3act_packages.mjs:39:1
+
+Node.js v24.18.0
+[ELIFECYCLE] Command failed with exit code 1.

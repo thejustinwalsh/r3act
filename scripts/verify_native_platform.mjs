@@ -96,7 +96,7 @@ const sourcePaths = async () => {
     catch (error) { if (error?.code !== "ENOENT") throw error; }
   }
   for (const relative of ["examples/installed-scene", "implementation/2026-10-19-installed-scene/comparison",
-    "implementation/2026-10-19-async-recovery"]) {
+    "implementation/2026-10-19-async-recovery", "implementation/2026-10-19-installed-hmr"]) {
     try { if ((await stat(path.join(root, relative))).isDirectory()) await walk(path.join(root, relative)); }
     catch (error) { if (error?.code !== "ENOENT") throw error; }
   }
@@ -392,6 +392,20 @@ try {
   await runStep("artifact-conformance", process.execPath,
     ["--experimental-transform-types", "compiler/native_compiler_artifact_test.mjs"],
     { depends: ["install", "cargo-debug", "compiler-info"], deadlineMs: 300_000 });
+  for (const [name, script] of [
+    ["hmr-revision-plugin", "compiler/native_hmr_revision_test.mjs"],
+    ["react-composition-plugin", "compiler/native_react_composition_test.mjs"],
+  ]) {
+    const before = await compilerHash();
+    await runStep(name, process.execPath, ["--experimental-transform-types", script],
+      { depends: ["install", "cargo-debug", "compiler-info"], deadlineMs: 300_000 });
+    const step = stepByName.get(name);
+    step.debugCompilerSha256Before = before;
+    step.debugCompilerSha256After = await compilerHash();
+    if (step.status === "PASS" && (!before || before !== step.debugCompilerSha256After))
+      step.status = "FAIL_COMPILER_CHANGED";
+    await json(path.join(output, `steps/${name}.json`), step);
+  }
   const fixtures = ["compiled_direct_intent_test", "compiled_urgent_retained_test",
     "compiled_urgent_retained_three_test", "compiled_boundary_workset_test", "compiled_boundary_reveal_test",
     "native_resource_execution_test", "compiled_joint_transaction_test", "compiled_scoped_collection_test",

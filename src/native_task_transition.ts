@@ -239,10 +239,10 @@ export class NativeTaskTransitionQueue {
     }
     try {
       for (const descriptor of descriptors) {
-        if (descriptor.root.diagnostics().disposed) {
-          throw new Error("Cannot enqueue task work for a disposed root");
+        if (descriptor.root.retired) {
+          throw new Error("Cannot enqueue task work for a retired root");
         }
-        operation.rootDisposers.push(descriptor.root.onDispose(() => {
+        operation.rootDisposers.push(descriptor.root.onRetire(() => {
           this.#cancel(operation, "Root detached: " + descriptor.root.rootId);
         }));
       }

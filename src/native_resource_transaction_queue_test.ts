@@ -327,15 +327,37 @@ Deno.test("a lease for A cannot authorize B through a younger B/C hold", async (
 Deno.test("expired compiled code cannot publish a waiting resource group", async () => {
   const f = fixture("expired-code", ["a", "b"]);
   const queue = new NativeRootWorkQueue();
+  const resources = [...f.resources.values()];
+  let observedInterests = 0;
+  for (const resource of resources) {
+    const subscribe = resource.subscribe.bind(resource);
+    resource.subscribe = (listener) => {
+      const unsubscribe = subscribe(listener);
+      observedInterests++;
+      let active = true;
+      return () => {
+        if (!active) return;
+        active = false;
+        observedInterests--;
+        unsubscribe();
+      };
+    };
+  }
   try {
     const work = queue.enqueueResources({ id: "expired-ab", roots: [{ root: f.root,
-      resources: [...f.resources.values()] }] });
+      resources }] });
     const fallback = f.node("a");
+    const accepted = f.root.publicationVersion;
+    assertEquals(work.status, "pending");
+    assertEquals(observedInterests > 0, true);
     invalidateCompiledSemanticPlan(f.sourceFile);
+    assertEquals(work.status, "cancelled");
+    assertEquals(observedInterests, 0);
     await f.settle("a");
     await f.settle("b");
-    assertEquals(work.status, "failed");
+    assertEquals(work.status, "cancelled");
     assertStrictEquals(f.node("a"), fallback);
+    assertEquals(f.root.publicationVersion, accepted);
   } finally {
     queue.dispose();
     f.dispose();

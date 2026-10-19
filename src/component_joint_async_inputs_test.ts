@@ -463,7 +463,7 @@ Deno.test("invalidated joint component code cannot reveal a pending boundary", a
     pending.resolve(3);
     await Promise.resolve();
     assertThrows(() => root.flush(), Error,
-      "Compiled component revision is obsolete; remount with current code");
+      "Compiled module changed; remount the root");
     assertStrictEquals(container.children[0], accepted);
     assertEquals(container.children[0].props["data-total"], "waiting");
     assertEquals(resource.status.status, "fulfilled");

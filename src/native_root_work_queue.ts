@@ -266,6 +266,9 @@ export class NativeRootWorkQueue {
     ) {
       throw new Error("Native work cannot contain duplicate root IDs");
     }
+    if (entries.some(({ root }) => root.retired)) {
+      throw new Error("Cannot enqueue work for a retired native root");
+    }
     for (const { root } of entries) this.#attach(root);
     const resourceHolds: (() => void)[] = [];
     const resourceLeaseByRoot = new Map<NativeRoot, () => void>();
@@ -582,8 +585,8 @@ export class NativeRootWorkQueue {
   }
 
   #attach(root: NativeRoot): void {
-    if (root.diagnostics().disposed) {
-      throw new Error("Cannot attach a disposed native root");
+    if (root.retired) {
+      throw new Error("Cannot attach a retired native root");
     }
     const prior = this.#roots.get(root.rootId);
     if (prior) {
@@ -593,7 +596,7 @@ export class NativeRootWorkQueue {
       return;
     }
     this.#queue.attachRoot(root.rootId, root.publicationVersion);
-    const unsubscribe = root.onDispose(() => {
+    const unsubscribe = root.onRetire(() => {
       this.#detached.add(root.rootId);
       if (this.#callDepth === 0) this.#flushDetached();
     });

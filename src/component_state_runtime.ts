@@ -248,6 +248,7 @@ type CandidateLifecycleSpec<H, Parent> = {
   permitPendingDirectIntent?: () => boolean;
   admissionCurrent?(): boolean;
   codeCurrent(): boolean;
+  referencesCompiledSource?: (sourceFile: string) => boolean;
   validatePrepared(): boolean;
   validatePostHost(): boolean;
   commitHost(): void;
@@ -497,6 +498,39 @@ const componentRevision = (component: unknown) =>
 const componentCodeCurrent = (component: unknown): boolean => {
   const revision = componentRevision(component);
   return !revision || isCompiledSemanticRevisionCurrent(revision);
+};
+const treeReferencesCompiledSource = (
+  node: RuntimeNode,
+  sourceFile: string,
+  seen = new WeakSet<object>(),
+): boolean => {
+  if (node == null || typeof node !== "object") return false;
+  if (seen.has(node)) return true;
+  seen.add(node);
+  try {
+    if (Array.isArray(node)) {
+      const length = Object.getOwnPropertyDescriptor(node, "length")?.value;
+      if (typeof length !== "number") return true;
+      for (let index = 0; index < length; index++) {
+        const child = Object.getOwnPropertyDescriptor(node, String(index));
+        if (!child || !("value" in child) ||
+          treeReferencesCompiledSource(child.value, sourceFile, seen)) return true;
+      }
+      return false;
+    }
+    const type = Object.getOwnPropertyDescriptor(node, "type");
+    const props = Object.getOwnPropertyDescriptor(node, "props");
+    if (!type || !("value" in type) || !props || !("value" in props) ||
+      props.value === null || typeof props.value !== "object") return true;
+    if (componentRevision(type.value)?.sourceFile === sourceFile) return true;
+    const children = Object.getOwnPropertyDescriptor(props.value, "children");
+    return !!children && (!("value" in children) ||
+      treeReferencesCompiledSource(children.value, sourceFile, seen));
+  } catch {
+    return true;
+  } finally {
+    seen.delete(node);
+  }
 };
 const cacheCodeCurrent = (caches: Iterable<ComponentCache>): boolean => {
   for (const cache of caches) if (!componentCodeCurrent(cache.type)) return false;
@@ -1064,11 +1098,12 @@ export class ComponentStateRoot<H, Parent = H> {
   #hostApplicationDepth = 0;
   #directPublicationPending = false;
   #publicationVersion = 0;
-  #preparedCandidates = new Set<NativeRootCandidate<H, Parent>>();
+  #preparedCandidates = new Map<NativeRootCandidate<H, Parent>, (sourceFile: string) => boolean>();
   #candidateHostCommit = false;
   #publicationBarrier: NativeRootCandidate<H, Parent> | null = null;
   #deferredFlush = false;
   #disposeListeners = new Set<() => void>();
+  #retireListeners = new Set<() => void>();
   #candidateStoreHolds = new Map<AnyAsyncStore, number>();
   #storeDependencyLeases = new Map<symbol, Set<AnyAsyncStore>>();
   #terminalHostFailure: unknown;
@@ -1135,6 +1170,7 @@ export class ComponentStateRoot<H, Parent = H> {
   readonly #unsubscribe: () => void;
   readonly #unsubscribeRevision: () => void;
   #codeInvalidated = false;
+  #revisionRetirementPending = false;
   readonly #profile?: RuntimeProfileCallback;
   readonly #profileCounter?: RuntimeCounterCallback;
   readonly #keyedOwnerReuse: boolean;
@@ -1211,21 +1247,27 @@ export class ComponentStateRoot<H, Parent = H> {
       };
     }
     this.#unsubscribeRevision = subscribeCompiledSemanticRevision((change) => {
-      if (this.#pendingDirectIntent) this.#codeInvalidated = true;
+      if (this.#disposed || this.#codeInvalidated) return;
+      let affected = treeReferencesCompiledSource(this.#tree, change.sourceFile) ||
+        treeReferencesCompiledSource(this.#pendingDirectIntent?.tree ?? null, change.sourceFile);
       for (const cache of this.#componentCache.values()) {
         if (componentRevision(cache.type)?.sourceFile === change.sourceFile) {
-          this.#codeInvalidated = true;
+          affected = true;
           break;
         }
       }
-      if (this.#codeInvalidated) {
-        const errors = collectCleanupErrors([
-          () => this.#dropPendingDirectIntent(),
-          () => this.#cancelTerminalResourceWaits(),
-        ]);
-        if (errors.length === 1) throw errors[0];
-        if (errors.length) throw new AggregateError(errors, "Revision cleanup failed");
+      if (!affected) {
+        for (const referencesSource of this.#preparedCandidates.values()) {
+          if (referencesSource(change.sourceFile)) {
+            affected = true;
+            break;
+          }
+        }
       }
+      if (!affected) return;
+      this.#codeInvalidated = true;
+      this.#revisionRetirementPending = true;
+      this.#retireCompiledInterests();
     });
     this.#rootOwner = this.world.claimRootId(rootId);
     this.#unsubscribe = this.world.subscribeDirtyCells((handle, version) => {
@@ -1234,6 +1276,61 @@ export class ComponentStateRoot<H, Parent = H> {
       if (this.#pendingDirectIntent) this.#pendingResourceRetry = true;
       this.#schedule();
     });
+  }
+
+  #retireCompiledInterests() {
+    if (!this.#revisionRetirementPending || this.#disposed ||
+      this.#publicationBarrier || this.#hostApplicationDepth > 0 ||
+      this.#nativeCellCutActive || this.#directPublicationPending) return;
+    this.#revisionRetirementPending = false;
+    const listeners = [...this.#retireListeners];
+    this.#retireListeners.clear();
+    const errors = collectCleanupErrors([
+      ...listeners,
+      () => {
+        const cleanup = collectCleanupErrors(
+          [...this.#preparedCandidates.keys()].map((candidate) => () => candidate.discard()),
+        );
+        if (cleanup.length) throw new AggregateError(cleanup, "Revision candidate cleanup failed");
+      },
+      () => this.#dropPendingDirectIntent(),
+      () => this.#cancelTerminalResourceWaits(),
+      () => {
+        const subscriptions = [...this.#liveStoreSubscriptions];
+        const readers = [...this.#liveStoreReaders];
+        for (const stores of this.#storeDependencyLeases.values()) stores.clear();
+        this.#storeDependencyLeases.clear();
+        this.#liveStoreSubscriptions.clear();
+        this.#liveStoreReaders.clear();
+        const cleanup = collectCleanupErrors([
+          ...subscriptions.map(([, unsubscribe]) => unsubscribe),
+          ...readers.flatMap(([readerId, stores]) => [...stores].map((store) =>
+            () => store.forgetReader(this.#rootId, readerId))),
+          ...subscriptions.filter(([store]) =>
+            (this.#candidateStoreHolds.get(store) ?? 0) === 0).map(([store]) =>
+              () => store.detachRoot(this.#rootId)),
+        ]);
+        if (cleanup.length) throw new AggregateError(cleanup, "Revision Store cleanup failed");
+      },
+      () => {
+        const regions = [...this.#liveCollectionRegions.values()];
+        this.#liveCollectionRegions.clear();
+        const cleanup = collectCleanupErrors(regions.flatMap((region) => [
+          ...(region.unsubscribe ? [region.unsubscribe] : []),
+          ...(region.reader ? [() => region.reader!.detach()] : []),
+        ]));
+        if (cleanup.length) throw new AggregateError(cleanup, "Revision collection cleanup failed");
+      },
+      () => this.#unsubscribe(),
+      () => {
+        const cleanup = this.#cleanupEffects(this.#liveEffects.values());
+        this.#liveEffects.clear();
+        this.#liveEffectKeysByOwner.clear();
+        if (cleanup.length) throw new AggregateError(cleanup, "Revision effect cleanup failed");
+      },
+    ]);
+    if (errors.length === 1) throw errors[0];
+    if (errors.length) throw new AggregateError(errors, "Revision cleanup failed");
   }
 
   get version() {
@@ -2415,7 +2512,8 @@ export class ComponentStateRoot<H, Parent = H> {
       },
     };
     candidateHandle = candidate;
-    this.#preparedCandidates.add(candidate);
+    this.#preparedCandidates.set(candidate, spec.referencesCompiledSource ?? (() => false));
+    if (this.#codeInvalidated) candidate.discard();
     return candidate;
   }
 
@@ -2991,6 +3089,10 @@ export class ComponentStateRoot<H, Parent = H> {
       transitions: options.transitions ?? [],
       pendingResources: candidatePendingResources,
       blocked: boundaryState.blocked,
+      referencesCompiledSource: (sourceFile) =>
+        treeReferencesCompiledSource(tree, sourceFile) ||
+        [...(artifacts.nextCache?.values() ?? [])].some((cache) =>
+          componentRevision(cache.type)?.sourceFile === sourceFile),
       codeCurrent: () =>
         this.#pendingDirectIntent === directIntentAtPrepare &&
         cacheCodeCurrent(artifacts.nextCache?.values() ?? []),
@@ -3135,6 +3237,11 @@ export class ComponentStateRoot<H, Parent = H> {
     return this.#rootId;
   }
 
+  /** A retired root rejects new work; its accepted host tree stays until caller disposal. */
+  get retired() {
+    return this.#disposed || this.#codeInvalidated;
+  }
+
   onDispose(listener: () => void): () => void {
     if (typeof listener !== "function") {
       throw new Error("Dispose listener must be a function");
@@ -3145,6 +3252,17 @@ export class ComponentStateRoot<H, Parent = H> {
     }
     this.#disposeListeners.add(listener);
     return () => this.#disposeListeners.delete(listener);
+  }
+
+  /** Observe terminal work retirement; callers still dispose the accepted host tree. */
+  onRetire(listener: () => void): () => void {
+    if (typeof listener !== "function") throw new Error("Retire listener must be a function");
+    if (this.#disposed || (this.#codeInvalidated && !this.#revisionRetirementPending)) {
+      listener();
+      return () => {};
+    }
+    this.#retireListeners.add(listener);
+    return () => this.#retireListeners.delete(listener);
   }
 
   get snapshot() {
@@ -3699,7 +3817,7 @@ export class ComponentStateRoot<H, Parent = H> {
     }
     this.#disposing = true;
     const disposeErrors: unknown[] = [];
-    for (const candidate of [...this.#preparedCandidates]) {
+    for (const candidate of [...this.#preparedCandidates.keys()]) {
       try {
         candidate.failGroup(
           new Error("Component root disposed during candidate preparation"),
@@ -3711,6 +3829,8 @@ export class ComponentStateRoot<H, Parent = H> {
     this.#disposed = true;
     this.#disposing = false;
     this.#deferredFlush = false;
+    disposeErrors.push(...collectCleanupErrors([...this.#retireListeners]));
+    this.#retireListeners.clear();
     disposeErrors.push(...collectCleanupErrors(
       [...this.#publicationIntents.keys()],
     ));
@@ -7273,17 +7393,7 @@ export class ComponentStateRoot<H, Parent = H> {
       }
     } finally {
       this.#hostApplicationDepth--;
-      try {
-        this.#completeDeferredDispose();
-      } catch (cleanupError) {
-        if (failed) {
-          throw new AggregateError(
-            [primaryFailure, cleanupError],
-            "Host application and deferred disposal failed",
-          );
-        }
-        throw cleanupError;
-      }
+      this.#finishDeferredLifetime(failed ? { error: primaryFailure } : undefined);
     }
   }
 
@@ -7297,7 +7407,7 @@ export class ComponentStateRoot<H, Parent = H> {
     this.#vdom.publishAccepted();
     this.#publicationVersion++;
     this.#directPublicationPending = false;
-    this.#completeDeferredDispose();
+    this.#finishDeferredLifetime();
     if (this.#deferredFlush && !this.#disposed) this.#schedule();
   }
 
@@ -7305,7 +7415,7 @@ export class ComponentStateRoot<H, Parent = H> {
     if (!this.#directPublicationPending) return;
     this.#vdom.cancelPublication();
     this.#directPublicationPending = false;
-    this.#completeDeferredDispose();
+    this.#finishDeferredLifetime();
   }
 
   #failDirectHostMutation(error: unknown): never {
@@ -7318,15 +7428,8 @@ export class ComponentStateRoot<H, Parent = H> {
       () => this.#dropPendingDirectIntent(),
       () => this.#cancelTerminalResourceWaits(),
     ]);
-    try {
-      this.#completeDeferredDispose();
-    } catch (cleanupError) {
-      throw new AggregateError(
-        [error, ...cleanup, cleanupError],
-        "Direct publication and deferred disposal failed",
-      );
-    }
-    return throwWithCleanup(error, cleanup);
+    this.#finishDeferredLifetime({ error }, cleanup);
+    throw error;
   }
 
   #dropPendingDirectIntent() {
@@ -7363,6 +7466,19 @@ export class ComponentStateRoot<H, Parent = H> {
     this.dispose();
   }
 
+  #finishDeferredLifetime(
+    primary?: { error: unknown },
+    priorErrors: readonly unknown[] = [],
+  ): void {
+    const errors = [...priorErrors, ...collectCleanupErrors([
+      () => this.#retireCompiledInterests(),
+      () => this.#completeDeferredDispose(),
+    ])];
+    if (primary) throwWithCleanup(primary.error, errors);
+    if (errors.length === 1) throw errors[0];
+    if (errors.length) throw new AggregateError(errors, "Deferred lifetime cleanup failed");
+  }
+
   #assertNoPublicationBarrier(operation: string) {
     if (
       this.#nativeCellCutActive || this.#hostApplicationDepth > 0 ||
@@ -7382,7 +7498,7 @@ export class ComponentStateRoot<H, Parent = H> {
   #releasePublicationBarrier(candidate: NativeRootCandidate<H, Parent>) {
     if (this.#publicationBarrier !== candidate) return;
     this.#publicationBarrier = null;
-    this.#completeDeferredDispose();
+    this.#finishDeferredLifetime();
     const shouldFlush = this.#deferredFlush || this.#hasPendingWork();
     this.#deferredFlush = false;
     if (
@@ -8127,7 +8243,7 @@ export class ComponentStateRoot<H, Parent = H> {
       this.#clearNumericProgramBuffers();
       this.#clearNativeCellCutBuffers(count);
       this.#nativeCellCutActive = false;
-      this.#completeDeferredDispose();
+      this.#finishDeferredLifetime();
       if (this.#disposed) {
         this.#nativeCellHandles.length = 0;
         this.#nativeCellVersions.length = 0;

@@ -11,7 +11,7 @@ import {
   type ViteDevServer,
 } from "vite";
 import { fileURLToPath } from "node:url";
-import { nativeModulePlugin } from "./compiler/vite_native_plugin.ts";
+import { nativeReactPlugins } from "./compiler/vite_native_plugin.ts";
 
 const installBenchmarkArchive = (server: ViteDevServer | PreviewServer) => {
   server.middlewares.use((request, response, next) => {
@@ -1665,6 +1665,45 @@ const oxcGeneratedClassicJsxPlugin: Plugin = {
   },
 };
 
+const [nativeCompilerPlugin, ...reactPlugins] = nativeReactPlugins(react, {
+  root: fileURLToPath(new URL(".", import.meta.url)),
+  sourceRoots: ["src/browser"],
+  reactOptions: {
+    babel: (id) => ({
+      plugins: id.endsWith("/src/browser/main.tsx") ||
+          id.endsWith("/src/browser/react_baseline.tsx") ||
+          id.endsWith("/src/browser/multi_source_benchmark.tsx") ||
+          id.endsWith("/src/browser/shared_source_benchmark.tsx") ||
+          id.endsWith("/src/browser/vdom_react_benchmark.tsx") ||
+          id.endsWith("/src/browser/keyed_filter_benchmark.tsx") ||
+          id.endsWith("/src/browser/component_state_react_benchmark.tsx") ||
+          id.endsWith("/src/browser/keyed_region_graph_benchmark.tsx") ||
+          id.endsWith("/src/browser/async_suspense_benchmark.tsx") ||
+          id.endsWith("/src/browser/urgent_transition_benchmark.tsx") ||
+          id.endsWith("/src/browser/async_task_reuse_browser.tsx") ||
+          id.endsWith("/src/browser/multi_owner_batch_benchmark.tsx") ||
+          id.endsWith(
+            "/src/browser/component_state_structural_benchmark.tsx",
+          ) ||
+          id.endsWith("/src/browser/component_state_index_benchmark.tsx") ||
+          id.endsWith(
+            "/src/browser/component_state_owner_reuse_benchmark.tsx",
+          ) ||
+          id.endsWith(
+            "/src/browser/key_index_maintenance_benchmark.tsx",
+          ) ||
+          id.endsWith("/src/browser/snake_frame_benchmark.tsx") ||
+          id.endsWith("/src/browser/mixed_realtime_benchmark.tsx") ||
+          id.endsWith("/src/browser/snake_lifecycle_v1_benchmark.tsx") ||
+          id.endsWith("/src/browser/snake_frame_cadence_v1_benchmark.tsx") ||
+          id.endsWith("/src/browser/snake_frame_phase_v1_benchmark.tsx") ||
+          id.endsWith("/src/browser/snake_sparse_frame_benchmark.tsx")
+        ? [["babel-plugin-react-compiler", { target: "19" }]]
+        : [],
+    }),
+  },
+});
+
 export default defineConfig({
   server: {
     ...(process.env.PORT
@@ -1681,45 +1720,9 @@ export default defineConfig({
   plugins: [
     benchmarkArchivePlugin,
     { ...vitexec({ directory: false }), apply: "serve" },
-    nativeModulePlugin(),
+    nativeCompilerPlugin,
     oxcGeneratedClassicJsxPlugin,
-    react({
-      // Native modules own their remount/disposal policy and use a different
-      // component runtime. React Refresh must not register those components.
-      exclude: /\/src\/browser\/(?:native_[^/]+|async_transition_stress_v1)\.tsx(?:\?.*)?$/,
-      babel: (id) => ({
-        plugins: id.endsWith("/src/browser/main.tsx") ||
-            id.endsWith("/src/browser/react_baseline.tsx") ||
-            id.endsWith("/src/browser/multi_source_benchmark.tsx") ||
-            id.endsWith("/src/browser/shared_source_benchmark.tsx") ||
-            id.endsWith("/src/browser/vdom_react_benchmark.tsx") ||
-            id.endsWith("/src/browser/keyed_filter_benchmark.tsx") ||
-            id.endsWith("/src/browser/component_state_react_benchmark.tsx") ||
-            id.endsWith("/src/browser/keyed_region_graph_benchmark.tsx") ||
-            id.endsWith("/src/browser/async_suspense_benchmark.tsx") ||
-            id.endsWith("/src/browser/urgent_transition_benchmark.tsx") ||
-            id.endsWith("/src/browser/async_task_reuse_browser.tsx") ||
-            id.endsWith("/src/browser/multi_owner_batch_benchmark.tsx") ||
-            id.endsWith(
-              "/src/browser/component_state_structural_benchmark.tsx",
-            ) ||
-            id.endsWith("/src/browser/component_state_index_benchmark.tsx") ||
-            id.endsWith(
-              "/src/browser/component_state_owner_reuse_benchmark.tsx",
-            ) ||
-            id.endsWith(
-              "/src/browser/key_index_maintenance_benchmark.tsx",
-            ) ||
-            id.endsWith("/src/browser/snake_frame_benchmark.tsx") ||
-            id.endsWith("/src/browser/mixed_realtime_benchmark.tsx") ||
-            id.endsWith("/src/browser/snake_lifecycle_v1_benchmark.tsx") ||
-            id.endsWith("/src/browser/snake_frame_cadence_v1_benchmark.tsx") ||
-            id.endsWith("/src/browser/snake_frame_phase_v1_benchmark.tsx") ||
-            id.endsWith("/src/browser/snake_sparse_frame_benchmark.tsx")
-          ? [["babel-plugin-react-compiler", { target: "19" }]]
-          : [],
-      }),
-    }),
+    ...reactPlugins,
   ],
   build: {
     rollupOptions: {

@@ -1,5 +1,6 @@
 import { spawn, type ChildProcess, type ChildProcessWithoutNullStreams } from "node:child_process";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import process from "node:process";
 import { existsSync } from "node:fs";
@@ -213,6 +214,20 @@ const componentModuleFromSource = (source: string): string => {
 /** The native runtime import used by a component module, when present. */
 export const nativeRuntimeModuleFromSource = componentModuleFromSource;
 
+export const nativeModuleCandidateFromSource = (source: string): boolean => {
+  if (componentModuleFromSource(source)) return true;
+  const helper = helperModuleFromSource(source);
+  return Boolean(helper && (source.includes("// @native-ui") ||
+    helper.includes("native_runtime_api") ||
+    ["@compiled-ui/runtime", "@compiled-ui/runtime/core", "@r3act/core"].includes(helper)));
+};
+
+export const isNativeTransformRequest = (id: string): boolean => {
+  const [filename, query = ""] = id.split("?", 2);
+  return filename.endsWith(".tsx") &&
+    !/(?:^|&)(?:raw|url|worker|sharedworker|inline)(?:&|=|$)/.test(query);
+};
+
 /**
  * Compile opt-in native TSX modules with the persistent Rust/OXC process.
  * Rust owns native hook/site analysis and asyncTask dependency inference. Vite
@@ -223,6 +238,8 @@ export type NativeCompilerOptions = {
   compilerRoot?: string;
   /** Explicit persistent compiler executable; skips the development Cargo build. */
   compilerBinary?: string;
+  /** Source-derived React exclusions fixed when the Vite config was created. */
+  reactBoundary?: { excludedFiles: ReadonlySet<string>; sourceRoots: readonly string[] };
 };
 
 export const nativeModuleCompilerPlugin = (
@@ -246,8 +263,12 @@ export const nativeModuleCompilerPlugin = (
   let outputBuffer = "";
   let stderrBuffer = "";
   let stopped = false;
+  let hmrEnabled = false;
+  let devServer: ViteDevServer | undefined;
+  let restartRequested = false;
   const pending = new Map<string, PendingRequest>();
-  const compiledNativeFiles = new Set<string>();
+  const compiledNativeFiles = new Map<string, { revision: string; instance: string }>();
+  const pluginInstance = randomUUID();
 
   const failPending = (error: Error) => {
     for (const request of pending.values()) request.reject(error);
@@ -423,8 +444,21 @@ export const nativeModuleCompilerPlugin = (
   };
 
   const shutdownOnServerClose = (server: ViteDevServer) => {
+    devServer = server;
     server.httpServer?.once("close", stopCompiler);
     server.watcher.once("close", stopCompiler);
+  };
+
+  const restartForBoundaryChange = () => {
+    if (restartRequested || !devServer) return;
+    restartRequested = true;
+    queueMicrotask(() => {
+      const server = devServer;
+      if (!server) return;
+      void server.restart().catch((error: unknown) => {
+        server.config.logger.error(`Native/React boundary restart failed: ${String(error)}`);
+      });
+    });
   };
 
   return {
@@ -432,13 +466,24 @@ export const nativeModuleCompilerPlugin = (
     enforce: "pre",
     configResolved(config) {
       if (!options.root) sourceRoot = path.resolve(config.root);
+      hmrEnabled = config.command === "serve";
     },
     async transform(source, id) {
+      if (!isNativeTransformRequest(id)) return null;
       const cleanId = id.split("?", 1)[0];
-      if (!cleanId.endsWith(".tsx")) {
-        return null;
-      }
       const absolutePath = path.resolve(cleanId);
+      if (options.reactBoundary) {
+        const candidate = nativeModuleCandidateFromSource(source);
+        const covered = options.reactBoundary.sourceRoots.some((entry) =>
+          absolutePath === entry || absolutePath.startsWith(`${entry}${path.sep}`));
+        if (candidate && !covered) {
+          this.error(`Native TSX module is outside configured nativeReactPlugins sourceRoots: ${cleanId}`);
+        }
+        if (options.reactBoundary.excludedFiles.has(absolutePath) !== candidate) {
+          restartForBoundaryChange();
+          this.error(`Native/React module boundary changed for ${cleanId}; Vite is restarting.`);
+        }
+      }
       const sourcePath = path.relative(sourceRoot, absolutePath).split(path.sep).join("/");
       if (sourcePath.startsWith("../")) {
         if (source.includes("// @native-ui")) {
@@ -621,8 +666,10 @@ export const nativeModuleCompilerPlugin = (
           ? helperModule.replace(/async_task_plan\.ts$/, "compiled_semantic_plan.ts")
           : helperModule);
       const semanticJson = JSON.stringify(response.plan.semantic_plan).replace(/</g, "\\u003c");
-      const registration = `import { registerCompiledSemanticPlan as ${registrar}, invalidateCompiledSemanticPlan as ${invalidator} } from ${JSON.stringify(registryModule)};\n${registrar}(${semanticJson});\nif (import.meta.hot) {\n  const ${hotListener} = (event: { sourceFile?: string }) => { if (event?.sourceFile === ${JSON.stringify(sourcePath)}) ${invalidator}(${JSON.stringify(sourcePath)}, ${JSON.stringify(response.plan.module_revision)}); };\n  import.meta.hot.on("r3act:invalidate-native-module", ${hotListener});\n  import.meta.hot.dispose(() => import.meta.hot?.off("r3act:invalidate-native-module", ${hotListener}));\n}\n`;
-      compiledNativeFiles.add(absolutePath);
+      const previous = compiledNativeFiles.get(absolutePath);
+      const instance = previous?.revision === response.plan.module_revision
+        ? previous.instance : hmrEnabled ? `${pluginInstance}:${response.id}` : response.plan.module_revision;
+      const registration = `import { registerCompiledSemanticPlan as ${registrar}, invalidateCompiledSemanticPlan as ${invalidator} } from ${JSON.stringify(registryModule)};\n${registrar}(${semanticJson});\nif (import.meta.hot) {\n  const ${hotListener} = (event: { sourceFile?: string; previousRevision?: string; previousInstance?: string }) => { if (event?.sourceFile === ${JSON.stringify(sourcePath)} && event.previousRevision === ${JSON.stringify(response.plan.module_revision)} && event.previousInstance === ${JSON.stringify(instance)}) ${invalidator}(${JSON.stringify(sourcePath)}, ${JSON.stringify(response.plan.module_revision)}); };\n  import.meta.hot.on("r3act:invalidate-native-module", ${hotListener});\n  import.meta.hot.dispose(() => import.meta.hot?.off("r3act:invalidate-native-module", ${hotListener}));\n}\n`;
       if (response.plan.schema_version === 2) {
         if (!componentModule || !Array.isArray(response.component_edits) ||
           typeof response.plan.component_module !== "string") {
@@ -641,6 +688,7 @@ export const nativeModuleCompilerPlugin = (
           this.error(`Native UI compiler returned overlapping task and component transformations for ${sourcePath}.`);
         }
         combinedMagic.append(`\nexport const ${exportName} = ${serializedPlan} as const;\n`);
+        compiledNativeFiles.set(absolutePath, { revision: response.plan.module_revision, instance });
         return {
           code: combinedMagic.toString(),
           map: combinedMagic.generateMap({
@@ -652,6 +700,7 @@ export const nativeModuleCompilerPlugin = (
       }
       taskMagic.prepend(registration);
       taskMagic.append(`\nexport const ${exportName} = ${serializedPlan} as const;\n`);
+      compiledNativeFiles.set(absolutePath, { revision: response.plan.module_revision, instance });
       return {
         code: taskMagic.toString(),
         map: taskMagic.generateMap({
@@ -661,15 +710,50 @@ export const nativeModuleCompilerPlugin = (
         }),
       };
     },
-    handleHotUpdate(context) {
-      if (!compiledNativeFiles.has(path.resolve(context.file))) return;
-      const sourceFile = path.relative(sourceRoot, path.resolve(context.file)).split(path.sep).join("/");
-      context.server.ws.send({
-        type: "custom",
-        event: "r3act:invalidate-native-module",
-        data: { sourceFile },
-      });
+    async handleHotUpdate(context) {
+      const changedFile = path.resolve(context.file);
+      const affected = new Set<string>();
+      if (compiledNativeFiles.has(changedFile)) affected.add(changedFile);
+      const visited = new Set(context.modules);
+      const queue = [...context.modules];
+      for (const module of queue) {
+        if (module.file) {
+          const importerFile = path.resolve(module.file);
+          if (compiledNativeFiles.has(importerFile)) affected.add(importerFile);
+        }
+        if (module.isSelfAccepting &&
+          !(module.file && compiledNativeFiles.has(path.resolve(module.file)))) continue;
+        for (const importer of module.importers) {
+          if (importer.acceptedHmrDeps?.has(module)) continue;
+          if (visited.has(importer)) continue;
+          visited.add(importer);
+          queue.push(importer);
+        }
+      }
+      let boundaryChanged = false;
+      if (options.reactBoundary && changedFile.endsWith(".tsx") &&
+        options.reactBoundary.sourceRoots.some((entry) =>
+          changedFile === entry || changedFile.startsWith(`${entry}${path.sep}`))) {
+        let source = "";
+        try { source = await context.read(); } catch { /* Deleted files leave the boundary. */ }
+        boundaryChanged = options.reactBoundary.excludedFiles.has(changedFile) !==
+          nativeModuleCandidateFromSource(source);
+      }
+      if (!affected.size && !boundaryChanged) return;
+      for (const file of affected) {
+        const sourceFile = path.relative(sourceRoot, file).split(path.sep).join("/");
+        context.server.ws.send({
+          type: "custom",
+          event: "r3act:invalidate-native-module",
+          data: {
+            sourceFile,
+            previousRevision: compiledNativeFiles.get(file)?.revision,
+            previousInstance: compiledNativeFiles.get(file)?.instance,
+          },
+        });
+      }
       context.server.ws.send({ type: "full-reload" });
+      if (boundaryChanged) restartForBoundaryChange();
       return [];
     },
     configureServer: shutdownOnServerClose,

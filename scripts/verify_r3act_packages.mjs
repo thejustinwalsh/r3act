@@ -48,17 +48,20 @@ import { registerHooks } from "node:module";
 let allowReact = false;
 registerHooks({ resolve(specifier, context, nextResolve) {
   if (specifier.startsWith("@radix-ui/")) throw new Error("RADIX_BRIDGE_DEPENDENCY_BLOCKED");
+  if (specifier === "@vitejs/plugin-react") throw new Error("REACT_VITE_DEPENDENCY_BLOCKED");
   const isReact = specifier === "react" || specifier === "react-dom" || specifier.startsWith("react/") || specifier.startsWith("react-dom/");
   if (!allowReact && isReact) throw new Error("REACT_DEPENDENCY_BLOCKED");
   return nextResolve(specifier, context);
 } });
 await import("@r3act/core");
+const vite = await import("@r3act/vite");
+assert.equal(typeof vite.nativeReactPlugins, "function");
 allowReact = true;
 await import("@r3act/react-bridge");
 await assert.rejects(import("@r3act/react-bridge/radix-dialog"), /RADIX_BRIDGE_DEPENDENCY_BLOCKED/);
 `);
   run(process.execPath, ["optional-bridge-isolation.mjs"]);
-  record.checks.push("native core imports without React and the default bridge imports without Radix");
+  record.checks.push("native core/Vite import without React or plugin-react and the default bridge imports without Radix");
 
   for (const name of ["core", "vite", "host-dom", "host-three", "react-bridge"]) {
     const manifest = JSON.parse(await readFile(path.join(installed(name), "package.json"), "utf8"));

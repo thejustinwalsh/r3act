@@ -210,6 +210,8 @@ The emitted target function/site and module revision must match at admission. St
 
 An edit to a compiled native module invalidates its revision and currently triggers a full-page reload. State-preserving HMR is not provided. The `@r3act/vite` tarball bundles a compiler executable for its build machine's OS and CPU. On another platform supply a compatible binary through `nativeModulePlugin({ compilerBinary: "/path/to/compiler" })`; the JavaScript package itself has no platform install restriction. See the [integration guide](../native-package-integration.md) for the exact local tarball setup.
 
+Mixed applications can use `nativeReactPlugins` to derive React exclusions from native source membership. Native revision changes retire affected pending tasks, subscriptions and effects after active host work finishes; callers still dispose accepted host trees. Unrelated known roots remain live. This uses the existing semantic-plan revision authority and does not preserve uncertain hook state across edits. The [integration guide](../native-package-integration.md) describes source roots and restart policy; installed HMR browser verification remains pending.
+
 The executable contract is implemented in [native runtime API](../src/native_runtime_api.ts), [owner runtime](../src/component_state_runtime.ts), [collection](../src/keyed_collection.ts), [Rust lowering](../compiler/oxc-spike/src/main.rs), and [Vite integration](../compiler/vite_native_module.ts). The [compiled state](../compiler/fixtures/native-state-positive.tsx), [collection](../compiler/native_collection_execution_test.mjs), [store](../compiler/native_store_execution_test.mjs), and [resource](../compiler/native_resource_execution_test.mjs) fixtures exercise representative forms.
 
 

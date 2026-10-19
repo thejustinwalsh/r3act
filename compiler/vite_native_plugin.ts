@@ -1,8 +1,8 @@
 import type { Plugin } from "vite";
 import { transformWithOxc } from "vite";
 import path from "node:path";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { nativeModuleCompilerPlugin, nativeRuntimeModuleFromSource, type NativeCompilerOptions } from "./vite_native_module.ts";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { isNativeTransformRequest, nativeModuleCandidateFromSource, nativeModuleCompilerPlugin, nativeRuntimeModuleFromSource, type NativeCompilerOptions } from "./vite_native_module.ts";
 import { generateHostJSXDeclarations, GENERATED_HOST_JSX_HEADER, type HostJSXDeclarationOptions } from "./host_jsx_declarations.ts";
 
 export { generateHostJSXDeclarations } from "./host_jsx_declarations.ts";
@@ -11,6 +11,70 @@ export type { HostJSXDeclarationOptions } from "./host_jsx_declarations.ts";
 export type NativeModulePluginOptions = NativeCompilerOptions & {
   /** Type-only host registration. Module paths are relative to declarationFile. */
   jsxHosts?: readonly (HostJSXDeclarationOptions & { declarationFile: string })[];
+};
+
+type ReactExclude = string | RegExp | readonly (string | RegExp)[];
+
+export type NativeReactPluginOptions<T extends { exclude?: ReactExclude }> = NativeModulePluginOptions & {
+  root: string;
+  /** Relative directories or TSX files to inspect when Vite creates its config. */
+  sourceRoots?: readonly string[];
+  reactOptions?: T;
+};
+
+const scanNativeFiles = (root: string, sourceRoots: readonly string[]): Set<string> => {
+  const files = new Set<string>();
+  const skipped = new Set(["node_modules", "dist", "build", "coverage", "implementation", "results"]);
+  const visit = (filename: string) => {
+    if (!existsSync(filename)) return;
+    const entries = readdirSync(filename, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.name.startsWith(".") || skipped.has(entry.name)) continue;
+      const child = path.join(filename, entry.name);
+      if (entry.isDirectory()) visit(child);
+      else if (entry.isFile() && child.endsWith(".tsx") &&
+        nativeModuleCandidateFromSource(readFileSync(child, "utf8"))) files.add(path.resolve(child));
+    }
+  };
+  for (const sourceRoot of sourceRoots) {
+    const location = path.resolve(root, sourceRoot);
+    const relative = path.relative(root, location);
+    if (relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+      throw new Error(`Native React source root must stay inside the Vite root: ${sourceRoot}`);
+    }
+    if (location.endsWith(".tsx")) {
+      if (existsSync(location) && nativeModuleCandidateFromSource(readFileSync(location, "utf8"))) files.add(location);
+    } else visit(location);
+  }
+  return files;
+};
+
+/** Compose native TSX and React through the public React exclude option. */
+export const nativeReactPlugins = <T extends { exclude?: ReactExclude }>(
+  react: (options: Omit<Partial<T>, "exclude"> & { exclude: (string | RegExp)[] }) => Plugin[],
+  options: NativeReactPluginOptions<T>,
+): Plugin[] => {
+  const { reactOptions, sourceRoots = ["."], ...nativeOptions } = options;
+  const root = path.resolve(options.root);
+  const excludedFiles = scanNativeFiles(root, sourceRoots);
+  const userExclude = reactOptions?.exclude;
+  const userPatterns: readonly (string | RegExp)[] = userExclude === undefined ? []
+    : typeof userExclude === "string" || userExclude instanceof RegExp ? [userExclude] : userExclude;
+  const exactNativePatterns = [...excludedFiles].map((filename) =>
+    new RegExp(`^${filename.replaceAll(path.sep, "/").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:\\?.*)?$`)
+  );
+  const baseOptions: Partial<T> = reactOptions ?? {};
+  const { exclude: _previousExclude, ...otherOptions } = baseOptions;
+  const combined = {
+    ...otherOptions,
+    exclude: [/\/node_modules\//, ...userPatterns, ...exactNativePatterns],
+  };
+  const resolvedSourceRoots = sourceRoots.map((entry) => path.resolve(root, entry));
+  return [nativeModulePlugin({
+    ...nativeOptions,
+    root,
+    reactBoundary: { excludedFiles, sourceRoots: resolvedSourceRoots },
+  }), ...react(combined)];
 };
 
 const emitHostDeclarations = (root: string, hosts: NonNullable<NativeModulePluginOptions["jsxHosts"]>) => {
@@ -86,7 +150,7 @@ export const nativeModulePlugin = (options: NativeModulePluginOptions = {}): Plu
       callPluginHook(compiler.configResolved, this, config);
     },
     async transform(source, id) {
-      if (!id.split("?", 1)[0].endsWith(".tsx")) return null;
+      if (!isNativeTransformRequest(id)) return null;
       const compiled = await callPluginHook(compiler.transform, this, source, id);
       if (!compiled || typeof compiled === "string") return compiled ?? null;
 

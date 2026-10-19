@@ -32,6 +32,7 @@ function scene(
   host: MemoryVDOMHost = new MemoryVDOMHost(),
   onSelectedStoreRead: () => void = () => {},
   scheduleCommit: (commit: () => void) => void = () => {},
+  moduleSource?: string,
 ) {
   const oldGate = deferred<string>();
   const pendingGate = deferred<string>();
@@ -53,11 +54,11 @@ function scene(
   });
   let setLocal!: (value: number) => boolean;
   let cleanups = 0;
-  const Gate = defineComponent(`${id}:Gate`, () => {
+  const Gate = defineComponent(moduleSource ? `${moduleSource}#component:Gate` : `${id}:Gate`, () => {
     const resource = useStoreAt("gate", gate);
     return jsx("div", { key: "gate-host" }, useAt("gate-resource", resource));
   });
-  const Choice = defineComponent(`${id}:Choice`, (props: {
+  const Choice = defineComponent(moduleSource ? `${moduleSource}#component:Choice` : `${id}:Choice`, (props: {
     selection: AsyncResource<string> | AsyncStore<AsyncResource<string>, AsyncResource<string>>;
     label: string;
   }) => {
@@ -67,7 +68,7 @@ function scene(
     return jsx("div", { key: "choice-host" },
       `${props.label}:${useAt("choice-resource", resource)}`);
   });
-  const Local = defineComponent(`${id}:Local`, () => {
+  const Local = defineComponent(moduleSource ? `${moduleSource}#component:Local` : `${id}:Local`, () => {
     const [value, set] = useStateAt("local", 0);
     setLocal = set;
     useEffectAt("local-effect", () => () => { cleanups++; });
@@ -541,7 +542,7 @@ Deno.test("invalidation cancels a pending direct intent and its scheduled resour
   });
   const scheduled: Array<() => void> = [];
   const f = scene("direct-intent-hmr", undefined, undefined,
-    (commit) => { scheduled.push(commit); });
+    (commit) => { scheduled.push(commit); }, sourceFile);
   try {
     f.oldGate.resolve("old-gate");
     f.oldValue.resolve("old-choice");

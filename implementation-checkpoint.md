@@ -1,5 +1,13 @@
 # Implementation checkpoint
 
+## HMR integration offline checkpoint — 19 October 2026
+
+The current uncompleted unit adds public source-derived native/React Vite composition, revision/instance-stamped invalidation and affected-root work retirement through existing code/publication authority. Retirement waits for active host work, including listeners registered inside the writer, and preserves original errors while attempting deferred disposal. Accepted host trees remain caller-owned. Whole-tree guards and generic fallback remain.
+
+Darwin-v5 passes 40/40 steps, 1013 runtime tests, 64 Rust tests, 24 actual compiled fixtures, two source proofs, two plugin tests and ten fresh package checks; all 928 captured inputs match, with 936 raw source/context files archived. The separate installed mixed app typechecks/builds. Prior failed gates and proofs remain preserved. Its counter proof rejected an unjustified numeric-program expectation; actual compiler output correctly stays generic. Fresh proof-v3 verifies that exact generic plan and React Counter/Readout _c(8)/_c(2), with both elapsed fields null. Only the pair harness/README/design change after v5; proof-v3 binds them separately without changing authoring or product source. No measurement has run.
+
+Installed browser HMR conformance remains pending the required missing Portless skill replacement choice. No server or VM ran. Apple defaults remain one CPU and 256/512 MiB container/builder, runtime-unverified while Depot permissions block startup. This is offline progress, not a completed slice or release qualification. Full-plan goal, historical evidence limits, dense FAIL, Recording A unresolved and physical HOLD remain. See [current results and failures](implementation/2026-10-19-installed-hmr/results.md).
+
 ## Accepted error recovery boundary — 19 October 2026
 
 Native Suspense now records its accepted error output in existing boundary history, so pending retries retain that error without resurrecting older successful content. Candidate discard and enclosing-boundary rollback preserve accepted retention; manual pending candidates remain publishable. Expected cancellation during installed-example disposal no longer throws. No new identity/version/cache authority or physical layout is introduced.

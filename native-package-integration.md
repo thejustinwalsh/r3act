@@ -87,6 +87,41 @@ and [research guide](RESEARCH-GUIDE.md). Native module edits invalidate their
 revision and trigger a conservative full-page reload; state-preserving HMR is
 not promised.
 
+For a mixed native and React application, install `@vitejs/plugin-react` and
+compose it through the public helper:
+
+```ts
+import { fileURLToPath } from "node:url";
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
+import { nativeReactPlugins } from "@r3act/vite";
+
+export default defineConfig({
+  plugins: nativeReactPlugins(react, {
+    root: fileURLToPath(new URL(".", import.meta.url)),
+    sourceRoots: ["src"],
+    reactOptions: {},
+  }),
+});
+```
+
+The helper inspects native imports and directives before constructing the React
+plugins, then excludes those exact files through React's public options. Pass
+React Compiler/Babel configuration in `reactOptions`; existing exclusions are
+retained. Declare every directory or individual TSX file containing native
+sources. Roots must stay inside the Vite root. The default scan is `.` and skips
+hidden directories, dependencies, build output, coverage, `implementation` and
+`results`; use explicit roots for authored files in those directories.
+
+Changing a file's native classification restarts Vite to rebuild the filters.
+An excluded native module cannot silently switch into the React pipeline.
+React Refresh boundaries retain their ordinary policy; native revision changes
+invalidate affected roots and pending work before conservative reload. Accepted
+host trees remain caller-owned: dispose roots and borrowed resources on page
+teardown or HMR disposal. Native-only applications need neither this helper nor
+the React plugin. Installed HMR browser verification for this new composition is
+still pending; source and plugin checks do not establish browser behavior.
+
 The `@r3act/vite` JavaScript package remains installable on other platforms.
 Each build currently includes one native executable at
 `dist/compiler/bin/<Rust-target>/ui-graph-compiler-spike` (with `.exe` on Windows)
