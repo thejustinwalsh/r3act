@@ -1,0 +1,544 @@
+{
+  "schemaVersion": 1,
+  "status": "FAIL",
+  "executionKind": "native-host",
+  "expected": {
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "actual": {
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "steps": [
+    {
+      "name": "native-inputs-contract",
+      "status": "FAIL",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--test",
+        "compiler/native_verification_inputs_test.mjs"
+      ],
+      "dependencies": [],
+      "deadlineMs": 300000,
+      "startedAt": "2026-10-20T00:47:18.504Z",
+      "durationMs": 1063,
+      "log": "logs/native-inputs-contract.log",
+      "exitCode": 1,
+      "signal": null,
+      "spawnError": null,
+      "groupCleanupError": null
+    },
+    {
+      "name": "install",
+      "status": "PASS",
+      "command": [
+        "pnpm",
+        "install",
+        "--frozen-lockfile",
+        "--ignore-scripts"
+      ],
+      "dependencies": [],
+      "deadlineMs": 900000,
+      "startedAt": "2026-10-20T00:47:19.569Z",
+      "durationMs": 1021,
+      "log": "logs/install.log",
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "groupCleanupError": null
+    },
+    {
+      "name": "cargo-test",
+      "status": "PASS",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--manifest-path",
+        "compiler/oxc-spike/Cargo.toml"
+      ],
+      "dependencies": [],
+      "deadlineMs": 900000,
+      "startedAt": "2026-10-20T00:47:20.590Z",
+      "durationMs": 29999,
+      "log": "logs/cargo-test.log",
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "groupCleanupError": null
+    },
+    {
+      "name": "cargo-debug",
+      "status": "PASS",
+      "command": [
+        "cargo",
+        "build",
+        "--locked",
+        "--manifest-path",
+        "compiler/oxc-spike/Cargo.toml"
+      ],
+      "dependencies": [],
+      "deadlineMs": 900000,
+      "startedAt": "2026-10-20T00:47:50.590Z",
+      "durationMs": 5155,
+      "log": "logs/cargo-debug.log",
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "groupCleanupError": null
+    },
+    {
+      "name": "compiler-info",
+      "status": "PASS",
+      "command": [
+        "/private/tmp/r3act-native-transfer-Bg938S/stagedroot/compiler/oxc-spike/target/debug/ui-graph-compiler-spike",
+        "--compiler-info"
+      ],
+      "dependencies": [
+        "cargo-debug"
+      ],
+      "deadlineMs": 10000,
+      "startedAt": "2026-10-20T00:47:55.761Z",
+      "durationMs": 3,
+      "log": "logs/compiler-info.log",
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "groupCleanupError": null
+    },
+    {
+      "name": "deno-full",
+      "status": "INTERRUPTED",
+      "command": [
+        "deno",
+        "test",
+        "--config",
+        "deno.browser.json",
+        "--frozen",
+        "--lock=implementation/2026-10-16-publication/verification/deno-runtime.lock",
+        "src"
+      ],
+      "dependencies": [],
+      "deadlineMs": 900000,
+      "startedAt": "2026-10-20T00:47:55.765Z",
+      "durationMs": 3559,
+      "log": "logs/deno-full.log",
+      "exitCode": null,
+      "signal": "SIGKILL",
+      "spawnError": null,
+      "groupCleanupError": null
+    },
+    {
+      "name": "native-tooling",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": []
+    },
+    {
+      "name": "artifact-conformance",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": []
+    },
+    {
+      "name": "hmr-revision-plugin",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "react-composition-plugin",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-01",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-02",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-03",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-04",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-05",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-06",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-07",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-08",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-09",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-10",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-11",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-12",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-13",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-14",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-15",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-16",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-17",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-18",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-19",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-20",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-21",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-22",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-23",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-24",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-25",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-26",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-27",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-28",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-29",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-30",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-31",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-32",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-33",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "compiled-34",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "react-island-compiled-source",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "radix-dialog-compiled-source",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "three-host-7",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": []
+    },
+    {
+      "name": "direct-intent-gc",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": []
+    },
+    {
+      "name": "native-candidate-gc",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": []
+    },
+    {
+      "name": "compiled-collection-gc",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [],
+      "debugCompilerSha256Before": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+      "debugCompilerSha256After": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b"
+    },
+    {
+      "name": "package-build",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": []
+    },
+    {
+      "name": "package-consumer",
+      "status": "SKIPPED_INTERRUPTED",
+      "dependencies": [
+        "package-build"
+      ]
+    }
+  ],
+  "errors": [],
+  "source": {
+    "declaredCommit": "4254255980beb1056705d3d489dd0872f6b4f486",
+    "gitHead": null,
+    "inputCount": 1189,
+    "rawArchive": {
+      "manifest": "source-archive.json",
+      "files": "source-before/files",
+      "runnerInputs": 1189,
+      "contextInputs": 10,
+      "unavailableContext": []
+    }
+  },
+  "machine": {
+    "osType": "Darwin",
+    "osRelease": "25.6.0",
+    "osMachine": "arm64",
+    "cpuModel": "Apple M4",
+    "logicalCpus": 10,
+    "totalMemoryBytes": 17179869184
+  },
+  "toolchains": {
+    "node": {
+      "executable": "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+      "version": "v24.18.0",
+      "sha256": "ee6fb0e015284d83a91e8ec5213f43a157f8a392b58555301682892ba928c04a"
+    },
+    "rustc": {
+      "command": [
+        "rustc",
+        "-vV"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "stdout": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: aarch64-apple-darwin\nrelease: 1.97.1\nLLVM version: 22.1.6",
+      "stderr": ""
+    },
+    "cargo": {
+      "command": [
+        "cargo",
+        "--version"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "stdout": "cargo 1.97.1 (c980f4866 2026-06-30)",
+      "stderr": ""
+    },
+    "pnpm": {
+      "command": [
+        "pnpm",
+        "--version"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "stdout": "11.25.0",
+      "stderr": ""
+    },
+    "deno": {
+      "command": [
+        "deno",
+        "--version"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "stdout": "deno 2.9.7 (stable, release, aarch64-apple-darwin)\nv8 15.0.245.2-rusty\ntypescript 6.0.3",
+      "stderr": ""
+    }
+  },
+  "packageCacheBefore": {
+    "status": "ABSENT",
+    "files": []
+  },
+  "debugCompiler": {
+    "path": "compiler/oxc-spike/target/debug/ui-graph-compiler-spike",
+    "sha256AfterBuild": "7fda2df5869ad681bf68e9514f6c0511cec50d3f6747ecf774a1438eda512d5b",
+    "info": {
+      "arch": "arm64",
+      "platform": "darwin",
+      "protocolVersion": 1,
+      "schemaVersion": 1,
+      "target": "aarch64-apple-darwin",
+      "version": "0.1.0"
+    }
+  },
+  "interruptedBy": "SIGINT",
+  "packageCacheAfter": {
+    "status": "ABSENT",
+    "files": []
+  },
+  "fixtureArtifacts": {
+    "status": "ARCHIVED",
+    "files": []
+  },
+  "sourceAudit": {
+    "status": "MATCH",
+    "changed": []
+  }
+}

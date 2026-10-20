@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { copyFile, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { stageNativeVerificationSource } from "../../../scripts/native_verification_inputs.mjs";
 
 const [phase] = process.argv.slice(2);
 assert.ok(["bootstrap", "verify", "benchmark-prepare", "benchmark-run", "archive"].includes(phase));
@@ -26,18 +27,6 @@ const runNode = async (args) => {
   receipt.exit = result;
   assert.equal(result.code, 0, `phase ${phase} failed: ${JSON.stringify(result)}`);
 };
-const excluded = new Set([".cache", ".git", "node_modules", "target", "dist", "verification", "evidence"]);
-const generated = /^(?:proof|evidence|images?|generated)(?:-|$)/;
-const selected = [];
-const collect = async (relative) => {
-  for (const entry of await readdir(path.join(source, relative), { withFileTypes: true })) {
-    if (excluded.has(entry.name) || generated.test(entry.name)) continue;
-    const child = path.posix.join(relative, entry.name);
-    if (entry.isDirectory()) await collect(child);
-    else if (entry.isFile()) selected.push(child);
-    else throw new Error(`Unsupported selected source entry: ${child}`);
-  }
-};
 const validateCopiedSource = async () => {
   const lock = JSON.parse(await readFile(path.join(evidence, "container-source-lock.json")));
   assert.equal(lock.sourceCommit, receipt.sourceCommit);
@@ -51,6 +40,10 @@ const validateCopiedSource = async () => {
     "implementation/2026-10-18-native-platforms/linux/run-container.mjs");
   assert.equal(hash(await readFile(path.join(source, control.path))), control.sha256,
     "executed host control differs from copied source lock");
+  const helper = lock.files.find((file) => file.path === "scripts/native_verification_inputs.mjs");
+  assert.ok(helper, "source lock must contain the shared staging helper");
+  assert.equal(hash(await readFile(path.join(source, helper.path))), helper.sha256,
+    "host staging helper differs from copied source lock");
 };
 const runAndMirror = async (args) => {
   let primaryError;
@@ -103,35 +96,7 @@ try {
   if (phase === "bootstrap") {
     assert.ok((await readdir("/workspace")).every((name) => name === "lost+found"),
       "owned workspace volume must contain no prior project files");
-    selected.push("LICENSE", "README.md", "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml",
-      "deno.json", "deno.browser.json", "deno.native.json", "deno.lock",
-      "implementation/2026-10-16-publication/verification/deno-runtime.lock");
-    for (const unit of ["resource-values", "store-values", "store-subtrees", "store-projections",
-      "joint-async-inputs", "component-forwarding", "authored-lifecycle"]) {
-      for (const name of ["design.md", "source-review.md"])
-        selected.push(`implementation/2026-10-18-${unit}/${name}`);
-    }
-    for (const name of ["contract.ts", "native_arm.tsx", "react_arm.tsx", "entry.ts",
-      "index.html", "vite.config.ts", "build-gate.mjs", "run-pairs.mjs", "README.md"])
-      selected.push(`implementation/2026-10-18-authored-lifecycle/workload/${name}`);
-    for (const entry of await readdir(source)) {
-      if (/^tsconfig(?:\..+)?\.json$/.test(entry) || /^vite[^/]*\.ts$/.test(entry)) selected.push(entry);
-    }
-    for (const directory of ["src", "compiler", "packages", "scripts", ".github",
-      "implementation/2026-10-18-native-platforms"]) await collect(directory);
-    selected.sort();
-    assert.equal(new Set(selected).size, selected.length);
-    const files = [];
-    for (const relative of selected) {
-      const original = path.join(source, relative);
-      const before = await readFile(original);
-      const destination = path.join(workspace, relative);
-      await mkdir(path.dirname(destination), { recursive: true });
-      await copyFile(original, destination);
-      const copied = await readFile(destination);
-      assert.equal(hash(copied), hash(before), `copy changed bytes: ${relative}`);
-      files.push({ path: relative, sha256: hash(before), bytes: (await stat(original)).size });
-    }
+    const { files } = await stageNativeVerificationSource(source, workspace);
     const lockBytes = Buffer.from(JSON.stringify({
       schemaVersion: 1, sourceCommit: receipt.sourceCommit, files,
     }, null, 2) + "\n");

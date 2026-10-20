@@ -6,6 +6,7 @@ import { cp, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises"
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { nativeVerificationInputs, nativeVerificationContext } from "./native_verification_inputs.mjs";
 
 const root = path.resolve(fileURLToPath(new URL("../", import.meta.url)));
 const options = new Map();
@@ -33,90 +34,6 @@ await mkdir(path.join(output, "steps"));
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const shaFile = async (filename) => sha256(await readFile(filename));
 const json = async (filename, value) => writeFile(filename, JSON.stringify(value, null, 2) + "\n");
-const selectedRoots = ["src", "compiler", "packages", "scripts"];
-const excluded = new Set([".git", ".cache", "node_modules", "target", "dist", "evidence", "verification",
-  "benchmark", "proof", "images", "image", "generated"]);
-const sourcePaths = async () => {
-  const files = [];
-  const walk = async (directory) => {
-    for (const entry of await readdir(directory, { withFileTypes: true })) {
-      if (excluded.has(entry.name) || /^(?:proof|evidence|images?|generated)(?:-|$)/.test(entry.name)) continue;
-      const filename = path.join(directory, entry.name);
-      if (entry.isDirectory()) await walk(filename);
-      else if (entry.isFile()) files.push(path.relative(root, filename).split(path.sep).join("/"));
-      else throw new Error(`Unsupported source entry: ${filename}`);
-    }
-  };
-  for (const name of selectedRoots) await walk(path.join(root, name));
-  for (const name of await readdir(root)) {
-    if (["package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "deno.json", "deno.browser.json",
-      "deno.lock", "LICENSE"].includes(name) || /^tsconfig[^/]*\.json$/.test(name) || /^vite[^/]*\.ts$/.test(name)) {
-      files.push(name);
-    }
-  }
-  files.push("implementation/2026-10-16-publication/verification/deno-runtime.lock");
-  for (const relative of [".github/workflows/native-package-portability.yml",
-    "implementation/2026-10-18-native-platforms/design.md",
-    "implementation/2026-10-18-native-platforms/source-review.md",
-    "implementation/2026-10-18-resource-values/design.md",
-    "implementation/2026-10-18-resource-values/source-review.md",
-    "implementation/2026-10-18-store-values/design.md",
-    "implementation/2026-10-18-store-values/source-review.md",
-    "implementation/2026-10-18-store-subtrees/design.md",
-    "implementation/2026-10-18-store-subtrees/source-review.md",
-    "implementation/2026-10-18-store-projections/design.md",
-    "implementation/2026-10-18-store-projections/source-review.md",
-    "implementation/2026-10-18-joint-async-inputs/design.md",
-    "implementation/2026-10-18-joint-async-inputs/source-review.md",
-    "implementation/2026-10-18-component-forwarding/design.md",
-    "implementation/2026-10-18-component-forwarding/source-review.md",
-    "implementation/2026-10-18-authored-lifecycle/design.md",
-    "implementation/2026-10-18-authored-lifecycle/source-review.md",
-    ...["design.md", "source-review.md", "prepare-build.mjs", "consumer-build.mjs", "verify-browser.mjs", "run-build-pair.mjs", "README.md"].map((name) =>
-      `implementation/2026-10-19-installed-scene/${name}`),
-    "implementation/2026-10-19-radix-dialog/design.md",
-    "implementation/2026-10-19-radix-dialog/source-review.md",
-    ...["native_arm.tsx", "react_arm.tsx", "dialog_body.tsx", "entry.ts", "index.html",
-      "vite.config.ts", "build-gate.mjs", "run-pair.mjs", "README.md"].map((name) =>
-      `implementation/2026-10-19-radix-dialog/workload/${name}`),
-    "implementation/2026-10-19-react-island/design.md",
-    "implementation/2026-10-19-react-island/source-review.md",
-    ...["native_arm.tsx", "react_arm.tsx", "react_leaf.tsx", "entry.ts", "index.html",
-      "vite.config.ts", "build-gate.mjs", "run-pair.mjs", "README.md"].map((name) =>
-      `implementation/2026-10-19-react-island/workload/${name}`),
-    "implementation/2026-10-19-resource-transactions/design.md",
-    "implementation/2026-10-19-resource-transactions/source-review.md",
-    ...["native_arm.tsx", "react_arm.tsx", "entry.ts", "index.html",
-      "vite.config.ts", "build-gate.mjs", "run-pair.mjs", "README.md"].map((name) =>
-      `implementation/2026-10-19-resource-transactions/workload/${name}`),
-    ...["contract.ts", "native_arm.tsx", "react_arm.tsx", "entry.ts", "index.html",
-      "vite.config.ts", "build-gate.mjs", "run-pairs.mjs", "README.md"].map((name) =>
-      `implementation/2026-10-18-authored-lifecycle/workload/${name}`)]) {
-    try { if ((await stat(path.join(root, relative))).isFile()) files.push(relative); }
-    catch (error) { if (error?.code !== "ENOENT") throw error; }
-  }
-  for (const relative of ["examples/installed-scene", "examples/forked-transitions", "examples/custom-host", "examples/arrow-components",
-    "implementation/2026-10-19-installed-scene/comparison",
-    "implementation/2026-10-19-async-recovery", "implementation/2026-10-19-installed-hmr",
-    "implementation/2026-10-19-forked-transitions", "implementation/2026-10-19-custom-host",
-    "implementation/2026-10-19-arrow-components",
-    "implementation/2026-10-19-publication-callbacks",
-    "implementation/2026-10-19-hmr-completion",
-    "implementation/2026-10-19-held-reader-progress",
-    "implementation/2026-10-19-closed-arrow-authoring",
-    "implementation/2026-10-19-numeric-owner-effects",
-    "implementation/2026-10-19-collection-owner-effects",
-    "implementation/2026-10-19-host-value-diff"]) {
-    try { if ((await stat(path.join(root, relative))).isDirectory()) await walk(path.join(root, relative)); }
-    catch (error) { if (error?.code !== "ENOENT") throw error; }
-  }
-  const linux = path.join(root, "implementation/2026-10-18-native-platforms/linux");
-  let linuxExists = false;
-  try { linuxExists = (await stat(linux)).isDirectory(); }
-  catch (error) { if (error?.code !== "ENOENT") throw error; }
-  if (linuxExists) await walk(linux);
-  return [...new Set(files)].sort();
-};
 const sourceLock = async (paths) => {
   const inputs = [];
   for (const relative of paths) {
@@ -130,18 +47,11 @@ const archiveSource = async (source) => {
   const entries = source.inputs.map(entry => ({ ...entry, kind: "runner-input" }));
   const selected = new Set(entries.map(entry => entry.path));
   const unavailableContext = [];
-  for (const relative of ["AGENTS.md", "final-master-plan.md", "implementation-checkpoint.md",
-    "HANDOFF-PROMPT.txt", "RESEARCH-GUIDE.md", "native-package-integration.md",
-    "docs/react-bridge-reference.md", "docs/radix-dialog-reference.md", "docs/native-authoring-reference.md"]) {
-    if (!selected.has(relative)) {
-      try {
-        const bytes = await readFile(path.join(root, relative));
-        entries.push({ path: relative, sha256: sha256(bytes), bytes: bytes.length, kind: "context" });
-      } catch (error) {
-        if (error?.code !== "ENOENT") throw error;
-        unavailableContext.push(relative);
-      }
-    }
+  for (const context of await nativeVerificationContext(root)) {
+    if (selected.has(context.path)) continue;
+    if (!context.available) { unavailableContext.push(context.path); continue; }
+    const bytes = await readFile(path.join(root, context.path));
+    entries.push({ path: context.path, sha256: sha256(bytes), bytes: bytes.length, kind: "context" });
   }
   for (const entry of entries) {
     const bytes = await readFile(path.join(root, entry.path));
@@ -337,7 +247,7 @@ try {
   if (Object.hasOwn(process.env, "CARGO_TARGET_DIR") || Object.hasOwn(process.env, "CARGO_BUILD_TARGET")) {
     throw new Error("Native proof requires the default Cargo target path used by all compiled fixtures; CARGO_TARGET_DIR and CARGO_BUILD_TARGET are unsupported");
   }
-  const paths = await sourcePaths();
+  const paths = await nativeVerificationInputs(root);
   beforeSource = await sourceLock(paths);
   await json(path.join(output, "source-before.json"), beforeSource);
   const rawArchive = await archiveSource(beforeSource);
@@ -374,6 +284,8 @@ try {
   receipt.packageCacheBefore = await archiveTree(priorCache, path.join(output, "packaging-before"));
   await json(path.join(output, "packaging-before.json"), receipt.packageCacheBefore);
 
+  await runStep("native-inputs-contract", process.execPath,
+    ["--test", "compiler/native_verification_inputs_test.mjs"], { deadlineMs: 300_000 });
   await runStep("install", "pnpm", ["install", "--frozen-lockfile", "--ignore-scripts"], { deadlineMs: 900_000 });
   await runStep("cargo-test", "cargo", ["test", "--locked", "--manifest-path", "compiler/oxc-spike/Cargo.toml"],
     { deadlineMs: 900_000 });
@@ -417,9 +329,6 @@ try {
       step.status = "FAIL_COMPILER_CHANGED";
     await json(path.join(output, `steps/${name}.json`), step);
   }
-  await runStep("host-value-baseline", process.execPath,
-    ["--experimental-transform-types", "compiler/compiled_host_value_diff_test.mjs", "--baseline"],
-    { depends: ["install"], deadlineMs: 90_000 });
   const fixtures = ["compiled_direct_intent_test", "compiled_urgent_retained_test",
     "compiled_urgent_retained_three_test", "compiled_boundary_workset_test", "compiled_boundary_reveal_test",
     "native_resource_execution_test", "compiled_joint_transaction_test", "compiled_scoped_collection_test",
@@ -508,7 +417,7 @@ try {
   } catch (error) { receipt.errors.push(`Fixture archive: ${error?.stack ?? error}`); }
   try {
     if (beforeSource) {
-      const after = await sourceLock(await sourcePaths());
+      const after = await sourceLock(await nativeVerificationInputs(root));
       await json(path.join(output, "source-after.json"), after);
       const beforeByPath = new Map(beforeSource.inputs.map((entry) => [entry.path, entry]));
       const afterByPath = new Map(after.inputs.map((entry) => [entry.path, entry]));

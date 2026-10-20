@@ -15,16 +15,18 @@ import { MemoryVDOMHost } from "../src/vdom_snapshot_runtime.ts";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const unit = path.join(root, "implementation/2026-10-19-numeric-owner-effects");
 const mode = process.argv.includes("--baseline") ? "baseline" : "fixed";
-const baselineRecord = JSON.parse(await readFile(path.join(unit, "baseline/provenance.json")));
 const sha = bytes => createHash("sha256").update(bytes).digest("hex");
-const baselineReportBytes = await readFile(path.join(unit, baselineRecord.copiedReport));
-assert.equal(sha(baselineReportBytes), baselineRecord.reportSha256);
-const baselineReport = JSON.parse(baselineReportBytes);
-assert.equal(baselineReport.compilerBinary.sha256, baselineRecord.sha256);
-const baselineBinary = path.join(unit, baselineRecord.copiedPath);
-assert.equal(sha(await readFile(baselineBinary)), baselineRecord.sha256);
-assert.equal(baselineRecord.sha256, "ddeb55aabade62c3258358928c658886049329713ac0fcb1518fcc8bcf610510");
-const compilerBinary = mode === "baseline" ? baselineBinary :
+let baselineRecord = null;
+if (mode === "baseline") {
+  baselineRecord = JSON.parse(await readFile(path.join(unit, "baseline/provenance.json")));
+  const baselineReportBytes = await readFile(path.join(unit, baselineRecord.copiedReport));
+  assert.equal(sha(baselineReportBytes), baselineRecord.reportSha256);
+  const baselineReport = JSON.parse(baselineReportBytes);
+  assert.equal(baselineReport.compilerBinary.sha256, baselineRecord.sha256);
+  assert.equal(sha(await readFile(path.join(unit, baselineRecord.copiedPath))), baselineRecord.sha256);
+  assert.equal(baselineRecord.sha256, "ddeb55aabade62c3258358928c658886049329713ac0fcb1518fcc8bcf610510");
+}
+const compilerBinary = mode === "baseline" ? path.join(unit, baselineRecord.copiedPath) :
   path.join(root, "compiler/oxc-spike/target/debug/ui-graph-compiler-spike");
 const fixture = path.join(root, "compiler/fixtures/native-numeric-owner-effects.tsx");
 const artifact = path.join(root, ".cache", `compiled-numeric-owner-${mode}-${randomUUID()}`);
@@ -54,7 +56,7 @@ const sample = x => ({ sample: { x } });
 const plugin = nativeModuleCompilerPlugin({ root, compilerBinary });
 const context = { addWatchFile() {}, error(message) { throw new Error(String(message)); } };
 const receipt = { mode, status: "STARTED", artifact, compilerSha256: sha(await readFile(compilerBinary)),
-  baselineSha256: baselineRecord.sha256, baselineReportSha256: baselineRecord.reportSha256,
+  baselineSha256: baselineRecord?.sha256 ?? null, baselineReportSha256: baselineRecord?.reportSha256 ?? null,
   runtimeSourceSha256: Object.fromEntries(await Promise.all([
     "src/component_state_runtime.ts", "src/jsx_binding_runtime.ts",
     "src/vdom_snapshot_runtime.ts", "src/compiled_semantic_plan.ts",

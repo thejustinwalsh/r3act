@@ -1,5 +1,17 @@
 # Declarative UI Through a Data-Oriented Runtime
 
+## Portable verification source delivery — 19 October 2026
+
+The platform runner and both Linux transfer stages now share one current-source selector and checked copier. Divergent lists are retired; required examples, current fixtures, Linux/benchmark controls and the frozen Deno lock transfer together. Historical baseline binaries/evidence remain preserved outside routine product delivery. Fixed numeric-owner verification reads its Darwin baseline only in explicit diagnostic mode; routine gates retain current compiled regressions. No runtime identity/version/publication authority or physical layout changes.
+
+A fresh 1199-file tree outside the checkout passes Darwin-v2's 52/52 steps: 1043 runtime tests, 80 Rust tests, 34 compiled fixtures, nine Three cases, three retention checks and thirteen package checks. All 1189 product inputs match before/after, with ten context files archived. All 520 fresh package files match staged/archive/imported bytes; the prior reconstructible cache is preserved. Failed/interrupted gate-v1 and installed proof-v1 remain recorded. Five current tarballs install in proof-v2, which passes ten untimed DOM/Three behavior/lifetime/cleanup stages and actual Native/React Compiler transforms. Eighteen plus three source rows, 1199 staged files, 1617 installed files, compiler, report and assets are bound.
+
+The sole Native-first fresh-process build pair observes 294.328917/392.539166 ms Native/React. Transforms/assets/metadata match untimed proof builds exactly. This potentially warm-cache build observation gives no runtime, cold/memory, CPU/tail, presentation, other-platform or independent-device qualification. Selection/copy/revalidation I/O has no measured savings claim. Human participants stay zero; no maintenance advantage is claimed. Historic wins, dense FAIL, exhausted Recording A and physical HOLD retain scope.
+
+Apple tooling/data/logs remain on Depot with saved one-CPU 256 MiB/container and 512 MiB/build defaults. A bounded native administrator authorization attempt did not complete; Depot stays mode 775, the service remains stopped/unregistered and no VM/server starts or memory increases. Effective VM limits and current Linux execution stay unverified. The full-plan first pass remains active, including authored realtime/async UX, lifecycle/cold/memory/performance and independent-device requirements.
+
+[Source, preserved failures, receipts and limits](implementation/2026-10-19-portable-source-delivery/results.md).
+
 ## Declarative host copy boundary — 19 October 2026
 
 Ordinary invalidated JSX now updates supported reused mutable Three values through an optional public host copy-capture contract. Independent write inputs and primitive comparisons live in existing mounted/binding accepted history; retaining/custom writers keep reference semantics. Private history stays out of public snapshots. Callback-bearing capture validates its method and writer afterward, and bound capture checks live membership. Scoped replacement recognizes only the private copy wrapper while retaining exact actual mounted/version/publication checks. Whole-tree guards, exact acknowledgements, newer actions, fork history and resource authority remain. New capture/reflection/allocation/storage costs are unqualified.

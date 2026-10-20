@@ -6,6 +6,7 @@ import { copyFile, lstat, mkdir, readFile, readdir, readlink, rm, symlink, write
 import { finished } from "node:stream/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { stageNativeVerificationSource } from "../../../scripts/native_verification_inputs.mjs";
 
 const stage = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(stage, "../../..");
@@ -51,51 +52,6 @@ const daemon = () => {
 };
 const baseTag = "docker.io/library/node:24.18.0-bookworm";
 const launcherSha256 = hash(await readFile(fileURLToPath(import.meta.url)));
-const excluded = new Set([".cache", ".git", "node_modules", "target", "dist", "verification", "evidence"]);
-const generated = /^(?:proof|evidence|images?|generated)(?:-|$)/;
-const snapshot = async (destination) => {
-  const selected = ["LICENSE", "README.md", "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml",
-    "deno.json", "deno.browser.json", "deno.native.json", "deno.lock",
-    "implementation/2026-10-16-publication/verification/deno-runtime.lock"];
-  const collect = async (relative) => {
-    for (const entry of await readdir(path.join(root, relative), { withFileTypes: true })) {
-      if (excluded.has(entry.name) || generated.test(entry.name)) continue;
-      const child = path.posix.join(relative, entry.name);
-      if (entry.isDirectory()) await collect(child);
-      else if (entry.isFile()) selected.push(child);
-      else throw new Error(`Unsupported selected source entry: ${child}`);
-    }
-  };
-  for (const entry of await readdir(root)) {
-    if (/^tsconfig(?:\..+)?\.json$/.test(entry) || /^vite[^/]*\.ts$/.test(entry))
-      selected.push(entry);
-  }
-  for (const directory of ["src", "compiler", "packages", "scripts", ".github",
-    "implementation/2026-10-18-native-platforms"]) await collect(directory);
-  for (const unit of ["resource-values", "store-values", "store-subtrees", "store-projections",
-    "joint-async-inputs", "component-forwarding", "authored-lifecycle"]) {
-    for (const name of ["design.md", "source-review.md"])
-      selected.push(`implementation/2026-10-18-${unit}/${name}`);
-  }
-  for (const name of ["contract.ts", "native_arm.tsx", "react_arm.tsx", "entry.ts",
-    "index.html", "vite.config.ts", "build-gate.mjs", "run-pairs.mjs", "README.md"])
-    selected.push(`implementation/2026-10-18-authored-lifecycle/workload/${name}`);
-  selected.sort();
-  assert.equal(new Set(selected).size, selected.length);
-  const files = [];
-  for (const relative of selected) {
-    const from = path.join(root, relative);
-    const to = path.join(destination, relative);
-    await mkdir(path.dirname(to), { recursive: true });
-    const bytes = await readFile(from);
-    await copyFile(from, to);
-    assert.equal(hash(await readFile(to)), hash(bytes), `staging changed: ${relative}`);
-    files.push({ path: relative, sha256: hash(bytes), bytes: bytes.length });
-  }
-  for (const file of files) assert.equal(hash(await readFile(path.join(root, file.path))), file.sha256,
-    `source changed during staging: ${file.path}`);
-  return { schemaVersion: 1, files };
-};
 const mergeEvidence = async (from, to, base = from) => {
   for (const entry of await readdir(from, { withFileTypes: true })) {
     const source = path.join(from, entry.name);
@@ -372,7 +328,7 @@ if (phase === "prepare-image") {
         const temporary = path.join("/private/tmp", `r3act-source-${randomUUID()}`);
         await mkdir(temporary);
         try {
-          const staged = await snapshot(temporary);
+          const staged = await stageNativeVerificationSource(root, temporary);
           receipt.stagedSourceCount = staged.files.length;
           await writeFile(path.join(evidence, "host-source-snapshot-lock.json"), json(staged), { flag: "wx" });
           await transfer("source", temporary);
