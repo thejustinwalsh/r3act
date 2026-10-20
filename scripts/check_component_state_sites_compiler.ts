@@ -4,7 +4,7 @@ try {
   const compile = await new Deno.Command("cargo", {
     args: [
       "run", "--quiet", "--locked", "--manifest-path", "compiler/oxc-spike/Cargo.toml", "--",
-      "compiler/fixtures/component_state_sites.tsx", "--component-state-sites", "--transform-component-state",
+      "compiler/fixtures/component_state_sites.tsx", "--component-state-sites", "--trusted-runtime-module", "react", "--transform-component-state",
       "--out", `${tempDir}/plan.json`, "--emit", `${tempDir}/plan.ts`,
       "--runtime-import", "../component_state_runtime.ts",
       "--jsx-import", "../jsx_binding_runtime.ts",
@@ -78,7 +78,7 @@ try {
     const result = await new Deno.Command("cargo", {
       args: [
         "run", "--quiet", "--locked", "--manifest-path", "compiler/oxc-spike/Cargo.toml", "--",
-        fixture, "--component-state-sites", "--transform-component-state",
+        fixture, "--component-state-sites", "--trusted-runtime-module", "react", "--transform-component-state",
         "--runtime-import", "../component_state_runtime.ts",
         "--jsx-import", "../jsx_binding_runtime.ts",
         "--emit-transform", `${tempDir}/unsupported.tsx`,

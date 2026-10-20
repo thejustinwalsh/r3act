@@ -541,6 +541,7 @@ struct NativeTaskCollector<'s, 'a> {
     helper_module: &'s str,
     source: &'s str,
     semantic: &'s Semantic<'a>,
+    trusted_runtime_modules: &'s BTreeSet<String>,
     helper_import_seen: bool,
     helper_symbols: BTreeSet<SymbolId>,
     aliased_helper_symbols: BTreeSet<SymbolId>,
@@ -560,6 +561,8 @@ struct NativeModuleRequest {
     source: String,
     helper_module: String,
     #[serde(default)]
+    trusted_runtime_modules: Option<Vec<String>>,
+    #[serde(default)]
     component_module: Option<String>,
 }
 
@@ -569,6 +572,8 @@ struct NativeModuleResponse {
     code: String,
     plan: Option<NativeModulePlan>,
     edits: Vec<NativeModuleEdit>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    trusted_runtime_modules: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     component_edits: Option<Vec<NativeModuleEdit>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -887,6 +892,7 @@ struct ComponentStateSiteCollector<'s, 'a> {
     source_file: &'s str,
     source: &'s str,
     semantic: &'s Semantic<'a>,
+    trusted_runtime_modules: &'s BTreeSet<String>,
     host_leaf_facts: HostLeafFacts,
     component_stack: Vec<String>,
     components: BTreeMap<String, ComponentStateSiteIr>,
@@ -941,13 +947,14 @@ struct HostLeafFacts {
     primitive_store_symbols: BTreeSet<SymbolId>,
 }
 
-struct HostLeafImportCollector {
+struct HostLeafImportCollector<'s> {
     facts: HostLeafFacts,
+    trusted_runtime_modules: &'s BTreeSet<String>,
 }
 
-impl<'a> Visit<'a> for HostLeafImportCollector {
+impl<'a> Visit<'a> for HostLeafImportCollector<'_> {
     fn visit_import_declaration(&mut self, node: &ImportDeclaration<'a>) {
-        if is_native_runtime_module(node.source.value.as_str())
+        if is_native_runtime_module(node.source.value.as_str(), self.trusted_runtime_modules)
             && node.import_kind != ImportOrExportKind::Type
         {
             for specifier in node.specifiers.iter().flatten() {
@@ -1032,9 +1039,11 @@ impl<'a> Visit<'a> for HostLeafStoreCollector<'a> {
 fn collect_host_leaf_facts<'a>(
     program: &oxc_ast::ast::Program<'a>,
     semantic: &Semantic<'a>,
+    trusted_runtime_modules: &BTreeSet<String>,
 ) -> HostLeafFacts {
     let mut imports = HostLeafImportCollector {
         facts: HostLeafFacts::default(),
+        trusted_runtime_modules,
     };
     imports.visit_program(program);
     let mut stores = HostLeafStoreCollector {
@@ -1844,19 +1853,23 @@ fn jsx_member_root_reference<'a>(
     }
 }
 
-fn is_native_runtime_module(module: &str) -> bool {
-    matches!(module, "@compiled-ui/runtime" | "@compiled-ui/runtime/core" | "@r3act/core")
-        || module.contains("native_runtime_api.ts")
-        || module.ends_with("native_runtime_api.js")
+fn canonical_runtime_modules() -> BTreeSet<String> {
+    ["@compiled-ui/runtime", "@compiled-ui/runtime/core", "@r3act/core"]
+        .into_iter().map(str::to_owned).collect()
 }
 
-struct KeyedCollectionTypeImportCollector {
+fn is_native_runtime_module(module: &str, trusted_runtime_modules: &BTreeSet<String>) -> bool {
+    trusted_runtime_modules.contains(module)
+}
+
+struct KeyedCollectionTypeImportCollector<'s> {
     symbols: BTreeSet<SymbolId>,
+    trusted_runtime_modules: &'s BTreeSet<String>,
 }
 
-impl<'a> Visit<'a> for KeyedCollectionTypeImportCollector {
+impl<'a> Visit<'a> for KeyedCollectionTypeImportCollector<'_> {
     fn visit_import_declaration(&mut self, node: &ImportDeclaration<'a>) {
-        if !is_native_runtime_module(node.source.value.as_str()) {
+        if !is_native_runtime_module(node.source.value.as_str(), self.trusted_runtime_modules) {
             return;
         }
         for specifier in node.specifiers.iter().flatten() {
@@ -1980,7 +1993,7 @@ impl<'a> Visit<'a> for ComponentStateSiteCollector<'_, 'a> {
 
     fn visit_import_declaration(&mut self, node: &ImportDeclaration<'a>) {
         let module = node.source.value.as_str();
-        let is_native_runtime = is_native_runtime_module(module);
+        let is_native_runtime = is_native_runtime_module(module, self.trusted_runtime_modules);
         if is_native_runtime && self.runtime_import.is_none() {
             self.runtime_import = Some(span(node.span.start, node.span.end));
             self.runtime_module = Some(module.to_owned());
@@ -2031,7 +2044,7 @@ impl<'a> Visit<'a> for ComponentStateSiteCollector<'_, 'a> {
                 }
                 _ => false,
             });
-            if relevant {
+            if relevant && is_native_runtime {
                 if node.import_kind == ImportOrExportKind::Type {
                     self.unsupported_import_shape = true;
                 }
@@ -2898,7 +2911,8 @@ impl<'a> Visit<'a> for NativeTaskCollector<'_, 'a> {
         // Accept the public asyncTask re-export so native files need not import the
         // compiler implementation module.
         let from_helper =
-            source_module == self.helper_module || is_native_runtime_module(source_module);
+            source_module == self.helper_module ||
+            is_native_runtime_module(source_module, self.trusted_runtime_modules);
         if let Some(specifiers) = &node.specifiers {
             for specifier in specifiers {
                 let ImportDeclarationSpecifier::ImportSpecifier(named) = specifier else {
@@ -3223,18 +3237,32 @@ fn byte_offset_to_utf16(source: &str, offset: u32) -> usize {
 
 fn compile_native_module(request: NativeModuleRequest) -> NativeModuleResponse {
     let id = request.id.clone();
+    let trusted_runtime_modules: BTreeSet<String> = request.trusted_runtime_modules
+        .map(|modules| modules.into_iter().collect())
+        .unwrap_or_else(canonical_runtime_modules);
+    let revision_input = serde_json::json!({
+        "source": &request.source,
+        "component": request.component_module.as_deref().unwrap_or(&request.source),
+        "trustedRuntimeModules": &trusted_runtime_modules,
+    }).to_string();
     let revision = module_revision(
         &request.path,
-        &format!("{}\0{}", request.source, request.component_module.as_deref().unwrap_or(&request.source)),
+        &revision_input,
     );
     let fail = |error: String| NativeModuleResponse {
         id: id.clone(),
         code: String::new(),
         plan: None,
         edits: Vec::new(),
+        trusted_runtime_modules: None,
         component_edits: None,
         error: Some(error),
     };
+    if trusted_runtime_modules.iter().any(|module| module.is_empty() ||
+        module.contains('\0') || module.trim() != module) {
+        return fail(format!("{}:1:1: trusted runtime module specifiers must be non-empty exact strings",
+            request.path));
+    }
     if !request.helper_module.is_empty() {
         let source_type = match SourceType::from_path(&request.path) {
             Ok(source_type) => source_type,
@@ -3309,6 +3337,7 @@ fn compile_native_module(request: NativeModuleRequest) -> NativeModuleResponse {
             helper_module: &request.helper_module,
             source: &request.source,
             semantic: &semantic,
+            trusted_runtime_modules: &trusted_runtime_modules,
             helper_import_seen: false,
             helper_symbols: BTreeSet::new(),
             aliased_helper_symbols: BTreeSet::new(),
@@ -3334,7 +3363,8 @@ fn compile_native_module(request: NativeModuleRequest) -> NativeModuleResponse {
             })
             .collect();
         if let Some(component_source) = request.component_module {
-            match compile_native_component_module(&request.path, &component_source, &revision) {
+            match compile_native_component_module(&request.path, &component_source, &revision,
+                &trusted_runtime_modules) {
                 Ok((transformed, components, component_edits)) => {
                     plan.schema_version = 2;
                     plan.component_module = Some(transformed);
@@ -3348,6 +3378,7 @@ fn compile_native_module(request: NativeModuleRequest) -> NativeModuleResponse {
                         code,
                         plan: Some(plan),
                         edits,
+                        trusted_runtime_modules: Some(trusted_runtime_modules.iter().cloned().collect()),
                         component_edits: Some(component_edits),
                         error: None,
                     };
@@ -3362,6 +3393,7 @@ fn compile_native_module(request: NativeModuleRequest) -> NativeModuleResponse {
             code,
             plan: Some(plan),
             edits,
+            trusted_runtime_modules: Some(trusted_runtime_modules.iter().cloned().collect()),
             component_edits: None,
             error: None,
         };
@@ -3392,7 +3424,8 @@ fn compile_native_module(request: NativeModuleRequest) -> NativeModuleResponse {
         components: None,
     };
     let component_source = request.component_module.unwrap_or(request.source);
-    match compile_native_component_module(&request.path, &component_source, &revision) {
+    match compile_native_component_module(&request.path, &component_source, &revision,
+        &trusted_runtime_modules) {
         Ok((transformed, components, component_edits)) => {
             plan.component_module = Some(transformed);
             plan.components = Some(components);
@@ -3405,6 +3438,7 @@ fn compile_native_module(request: NativeModuleRequest) -> NativeModuleResponse {
                 code: String::new(),
                 plan: Some(plan),
                 edits: Vec::new(),
+                trusted_runtime_modules: Some(trusted_runtime_modules.iter().cloned().collect()),
                 component_edits: Some(component_edits),
                 error: None,
             }
@@ -3421,6 +3455,7 @@ fn compile_native_component_module(
     path: &str,
     source: &str,
     revision: &str,
+    trusted_runtime_modules: &BTreeSet<String>,
 ) -> Result<(String, Vec<NativeComponentMetadata>, Vec<NativeModuleEdit>), String> {
     let source_type = SourceType::tsx();
     let allocator = Allocator::default();
@@ -3477,15 +3512,18 @@ fn compile_native_component_module(
         return Err(format_source_error(path, source, location, &diagnostic));
     }
     let semantic = semantic_return.semantic;
-    let host_leaf_facts = collect_host_leaf_facts(&parsed.program, &semantic);
+    let host_leaf_facts = collect_host_leaf_facts(&parsed.program, &semantic,
+        trusted_runtime_modules);
     let mut keyed_collection_type_imports = KeyedCollectionTypeImportCollector {
         symbols: BTreeSet::new(),
+        trusted_runtime_modules,
     };
     keyed_collection_type_imports.visit_program(&parsed.program);
     let mut collector = ComponentStateSiteCollector {
         source_file: path,
         source,
         semantic: &semantic,
+        trusted_runtime_modules,
         host_leaf_facts,
         component_stack: Vec::new(),
         components: BTreeMap::new(),
@@ -3722,7 +3760,7 @@ fn compile_native_component_module(
     }
     if collector.unsupported_import_shape {
         return Err(format!(
-            "{path}:1:1: native hooks require direct named `useState`/`useEffect`/`use`/`useStore` imports from `native_runtime_api.ts`; aliases, type-only imports, and mixed helper declarations are unsupported"
+            "{path}:1:1: native hooks require direct named `useState`/`useEffect`/`use`/`useStore` imports from a trusted native runtime module; aliases, type-only imports, and mixed helper declarations are unsupported"
         ));
     }
     if let Some(at) = collector.reserved_boundary_attributes.first() {
@@ -3738,7 +3776,7 @@ fn compile_native_component_module(
             path,
             source,
             at.start,
-            "qualified native Suspense imports are unsupported; import `Suspense` directly from `native_runtime_api.ts`",
+            "qualified native Suspense imports are unsupported; import `Suspense` directly from a trusted native runtime module",
         ));
     }
     if let Some((at, kind)) = collector.unsupported_component_forms.first() {
@@ -3824,18 +3862,19 @@ fn compile_native_component_module(
         .clone()
         .or_else(|| state_plan.runtime_import.clone())
         .ok_or_else(|| {
-            format!("{path}:1:1: native components require an import from native_runtime_api.ts")
+            format!("{path}:1:1: native components require a trusted native runtime import")
         })?;
     let module_source = state_plan
         .hook_module
         .as_deref()
         .or(state_plan.runtime_module.as_deref());
-    if !module_source.is_some_and(is_native_runtime_module) {
+    if !module_source.is_some_and(|module|
+        is_native_runtime_module(module, trusted_runtime_modules)) {
         return Err(format_source_error(
             path,
             source,
             import_span.start,
-            "native components and hooks must be imported from `native_runtime_api.ts`",
+            "native components and hooks must be imported from a trusted native runtime module",
         ));
     }
     if state_plan.components.is_empty() {
@@ -6445,7 +6484,7 @@ fn transform_native_component_source(
     Ok((transformed, serialized_edits))
 }
 
-fn serve_native() -> Result<(), String> {
+fn serve_native(cli_trusted_runtime_modules: &BTreeSet<String>) -> Result<(), String> {
     let stdin = io::stdin();
     let mut stdout = io::BufWriter::new(io::stdout().lock());
     for line in stdin.lock().lines() {
@@ -6454,12 +6493,20 @@ fn serve_native() -> Result<(), String> {
             continue;
         }
         let response = match serde_json::from_str::<NativeModuleRequest>(&line) {
-            Ok(request) => compile_native_module(request),
+            Ok(mut request) => {
+                if !cli_trusted_runtime_modules.is_empty() {
+                    request.trusted_runtime_modules
+                        .get_or_insert_with(|| canonical_runtime_modules().into_iter().collect())
+                        .extend(cli_trusted_runtime_modules.iter().cloned());
+                }
+                compile_native_module(request)
+            }
             Err(error) => NativeModuleResponse {
                 id: String::new(),
                 code: String::new(),
                 plan: None,
                 edits: Vec::new(),
+                trusted_runtime_modules: None,
                 component_edits: None,
                 error: Some(format!("invalid native-module request JSON: {error}")),
             },
@@ -7697,7 +7744,40 @@ fn compiler_info(target: &str) -> Result<serde_json::Value, String> {
     }))
 }
 
+fn trusted_runtime_modules_from_args(args: &[String]) -> Result<BTreeSet<String>, String> {
+    let mut trusted = BTreeSet::new();
+    let mut index = 0;
+    while index < args.len() {
+        if args[index] == "--trusted-runtime-module" {
+            let module = args.get(index + 1).ok_or_else(|| {
+                "--trusted-runtime-module requires an exact import specifier".to_owned()
+            })?;
+            if module.is_empty() || module.starts_with("--") ||
+                module.contains('\0') || module.trim() != module {
+                return Err("--trusted-runtime-module requires a non-empty exact import specifier".to_owned());
+            }
+            trusted.insert(module.clone());
+            index += 2;
+        } else {
+            index += 1;
+        }
+    }
+    Ok(trusted)
+}
+
+fn standalone_runtime_modules(cli_trusted_runtime_modules: &BTreeSet<String>) -> BTreeSet<String> {
+    let mut trusted = canonical_runtime_modules();
+    trusted.extend(cli_trusted_runtime_modules.iter().cloned());
+    trusted
+}
+
 fn run() -> Result<(), String> {
+    let args: Vec<String> = env::args().skip(1).collect();
+    if args.iter().any(|argument| argument == "--help") {
+        println!("usage: ui-graph-compiler-spike <input.tsx> [--component-state-sites | --transform-component-state] [--trusted-runtime-module EXACT_SPECIFIER]... [--out FILE] [--emit FILE]\n       ui-graph-compiler-spike --serve-native [--trusted-runtime-module EXACT_SPECIFIER]...\n       ui-graph-compiler-spike --compiler-info\nLegacy component-state CLI output has no module revision or HMR contract; use --serve-native for revision-bound compilation.");
+        return Ok(());
+    }
+    let cli_trusted_runtime_modules = trusted_runtime_modules_from_args(&args)?;
     if env::args().nth(1).as_deref() == Some("--compiler-info") {
         if env::args().len() != 2 {
             return Err("usage: ui-graph-compiler-spike --compiler-info".to_owned());
@@ -7706,8 +7786,9 @@ fn run() -> Result<(), String> {
         return Ok(());
     }
     if env::args().any(|argument| argument == "--serve-native") {
-        return serve_native();
+        return serve_native(&cli_trusted_runtime_modules);
     }
+    let standalone_trusted_runtime_modules = standalone_runtime_modules(&cli_trusted_runtime_modules);
     let path = env::args().nth(1).ok_or_else(|| {
         "usage: ui-graph-compiler-spike <input.tsx> [--out <output.json>]".to_owned()
     })?;
@@ -7784,7 +7865,9 @@ fn run() -> Result<(), String> {
             source_file: &path,
             source: &source,
             semantic: &semantic,
-            host_leaf_facts: collect_host_leaf_facts(&parsed.program, &semantic),
+            host_leaf_facts: collect_host_leaf_facts(&parsed.program, &semantic,
+                &standalone_trusted_runtime_modules),
+            trusted_runtime_modules: &standalone_trusted_runtime_modules,
             component_stack: Vec::new(),
             components: BTreeMap::new(),
             hook_import: None,
@@ -8012,6 +8095,29 @@ fn main() {
 mod native_module_tests {
     use super::*;
 
+    fn fixture_runtime_modules() -> Vec<String> {
+        let mut modules: Vec<String> = canonical_runtime_modules().into_iter().collect();
+        modules.push("native_runtime_api.ts".to_owned());
+        modules.push("../native_runtime_api.ts".to_owned());
+        modules
+    }
+
+    #[test]
+    fn standalone_cli_keeps_canonical_defaults_and_adds_exact_flags() {
+        let none = standalone_runtime_modules(&trusted_runtime_modules_from_args(&[]).unwrap());
+        assert!(is_native_runtime_module("@r3act/core", &none));
+        assert!(!is_native_runtime_module("./native_runtime_api.ts", &none));
+        let args = ["--trusted-runtime-module".to_owned(),
+            "./native_runtime_api.ts".to_owned(), "--trusted-runtime-module".to_owned(),
+            "./native_runtime_api.ts".to_owned()];
+        let explicit = trusted_runtime_modules_from_args(&args).unwrap();
+        assert_eq!(explicit.len(), 1);
+        let trusted = standalone_runtime_modules(&explicit);
+        assert!(is_native_runtime_module("@r3act/core", &trusted));
+        assert!(is_native_runtime_module("./native_runtime_api.ts", &trusted));
+        assert!(!is_native_runtime_module("./my_native_runtime_api.ts", &trusted));
+    }
+
     #[test]
     fn compiler_info_reports_embedded_target_and_bounded_node_labels() {
         let embedded = env!("R3ACT_COMPILER_TARGET");
@@ -8039,6 +8145,7 @@ mod native_module_tests {
             path: path.to_owned(),
             source: source.to_owned(),
             helper_module: "@runtime/tasks".to_owned(),
+            trusted_runtime_modules: Some(fixture_runtime_modules()),
             component_module: None,
         })
     }
@@ -8049,8 +8156,85 @@ mod native_module_tests {
             path: path.to_owned(),
             source: source.to_owned(),
             helper_module: String::new(),
+            trusted_runtime_modules: Some(fixture_runtime_modules()),
             component_module: None,
         })
+    }
+
+    #[test]
+    fn untrusted_lookalike_hook_stays_authored_and_does_not_prove_native_import() {
+        let source = r#"import { useState } from "@r3act/core";
+import { use as wrapperUse } from "./my_native_runtime_api.ts";
+export function Panel(props) {
+  const [step] = useState(1);
+  const value = wrapperUse(props.source);
+  return <output data-step={step} data-value={value} />;
+}"#;
+        let response = compile_native_module(NativeModuleRequest {
+            id: "origin-negative".to_owned(),
+            path: "src/native-origin-panel.tsx".to_owned(),
+            source: source.to_owned(),
+            helper_module: String::new(),
+            trusted_runtime_modules: None,
+            component_module: None,
+        });
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let code = response.plan.unwrap().component_module.unwrap();
+        assert!(code.contains("__nativeUseStateAt("), "{code}");
+        assert!(code.contains("wrapperUse(props.source)"), "{code}");
+        assert!(!code.contains("__nativeUseAt("), "{code}");
+        let lookalike_only = compile_native_module(NativeModuleRequest {
+            id: "origin-untrusted-only".to_owned(),
+            path: "src/lookalike-only.tsx".to_owned(),
+            source: "import { use } from './my_native_runtime_api.ts'; export function Panel(props) { const value = use(props.source); return <output>{value}</output>; }".to_owned(),
+            helper_module: String::new(),
+            trusted_runtime_modules: None,
+            component_module: None,
+        });
+        assert!(lookalike_only.error.is_some());
+    }
+
+    #[test]
+    fn explicit_runtime_origin_is_exact_and_revision_is_order_independent() {
+        let source = "import { useState } from './actual-runtime.ts'; export function Panel() { const [value] = useState(1); return <output>{value}</output>; }";
+        let request = |trusted_runtime_modules: Vec<String>| NativeModuleRequest {
+            id: "origin-explicit".to_owned(),
+            path: "file:///project/panel.tsx".to_owned(),
+            source: source.to_owned(),
+            helper_module: String::new(),
+            trusted_runtime_modules: Some(trusted_runtime_modules),
+            component_module: None,
+        };
+        assert!(compile_native_module(request(Vec::new())).error.is_some());
+        let first = compile_native_module(request(vec![
+            "./actual-runtime.ts".to_owned(), "./actual-runtime.ts".to_owned(),
+        ]));
+        assert!(first.error.is_none(), "{:?}", first.error);
+        assert_eq!(first.trusted_runtime_modules,
+            Some(vec!["./actual-runtime.ts".to_owned()]));
+        let first_plan = first.plan.unwrap();
+        assert_eq!(first_plan.source_file, "file:///project/panel.tsx");
+        let duplicate_free = compile_native_module(request(vec![
+            "./actual-runtime.ts".to_owned(),
+        ]));
+        assert_eq!(first_plan.module_revision,
+            duplicate_free.plan.unwrap().module_revision);
+
+        let rejected_canonical = compile_native_module(NativeModuleRequest {
+            id: "origin-resolved-wrapper".to_owned(),
+            path: "src/resolved-wrapper.tsx".to_owned(),
+            source: "import { useState } from './actual-runtime.ts'; import { use as wrapperUse } from '@r3act/core'; export function Panel(props) { const [value] = useState(1); const custom = wrapperUse(props.source); return <output data-value={value} data-custom={custom} />; }".to_owned(),
+            helper_module: String::new(),
+            trusted_runtime_modules: Some(vec!["./actual-runtime.ts".to_owned()]),
+            component_module: None,
+        });
+        assert!(rejected_canonical.error.is_none(), "{:?}", rejected_canonical.error);
+        assert_eq!(rejected_canonical.trusted_runtime_modules,
+            Some(vec!["./actual-runtime.ts".to_owned()]));
+        let code = rejected_canonical.plan.unwrap().component_module.unwrap();
+        assert!(code.contains("__nativeUseStateAt("), "{code}");
+        assert!(code.contains("wrapperUse(props.source)"), "{code}");
+        assert!(!code.contains("__nativeUseAt("), "{code}");
     }
 
     fn emitted_state_layout_revision(code: &str, program_id: &str) -> String {
@@ -8522,6 +8706,7 @@ export { tuple, checked };
             path: "native-module-positive.ts".to_owned(),
             source: task_source.to_owned(),
             helper_module: "@runtime/tasks".to_owned(),
+            trusted_runtime_modules: Some(fixture_runtime_modules()),
             component_module: Some(state_source.to_owned()),
         });
         assert!(response.error.is_none(), "{:?}", response.error);
@@ -9139,9 +9324,10 @@ export function Label() { const [label] = useState("ready"); return <span data-l
             assert!(code.contains("__nativeUseStateAt"));
             assert!(code.contains(module));
         }
-        assert!(!is_native_runtime_module("@compiled-ui/runtime/react"));
-        assert!(!is_native_runtime_module("@r3act/host-dom"));
-        assert!(!is_native_runtime_module("react"));
+        let untrusted = BTreeSet::new();
+        assert!(!is_native_runtime_module("@compiled-ui/runtime/react", &untrusted));
+        assert!(!is_native_runtime_module("@r3act/host-dom", &untrusted));
+        assert!(!is_native_runtime_module("react", &untrusted));
     }
 
     #[test]

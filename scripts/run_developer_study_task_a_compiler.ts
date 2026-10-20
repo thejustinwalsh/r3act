@@ -7,7 +7,7 @@ const command = new Deno.Command("cargo", {
     "compiler/oxc-spike/Cargo.toml",
     "--",
     "compiler/fixtures/developer_study_task_a.tsx",
-    "--component-state-sites",
+    "--component-state-sites", "--trusted-runtime-module", "react",
     "--transform-component-state",
     "--out",
     "results/developer-study-task-a-component-state.json",

@@ -14,6 +14,11 @@ Task cancellation releases its owned task/input interests and prevents stale pub
 
 Declare components as named, capitalized, synchronous `function` declarations or single-declarator `const` arrows at module scope. Const arrows support block and expression bodies, including named exports. Import native hooks, `Suspense`, `createKeyedCollection`, and `asyncTask` as direct, unaliased value imports from `@r3act/core`. The compiler assigns lexical owner and hook site identities. Conditional sites are supported; repeated loops and nested callbacks are not.
 
+Runtime identity follows the resolved module. A local file named `native_runtime_api.ts`, or a wrapper reexporting native helpers, does not acquire native hook semantics. Its ordinary functions keep their authored calls and effects. Vite verifies the actual runtime source or installed `@r3act/core` public export, then passes exact import specifiers to Rust. Loader queries and fragments on runtime imports are unsupported. Historical private runtime aliases remain accepted when they resolve to that same entry.
+
+`nativeModulePlugin()` can verify a Vite alias through the resolver. Mixed `nativeReactPlugins()` fixes React exclusions while reading its configuration, so use the canonical package import or a statically verifiable runtime source path; an alias known only to Vite's async resolver produces a boundary diagnostic. HMR revalidates the origin and conservatively retires the previous revision. Low-level native compiler requests may supply an exclusive `trusted_runtime_modules` array; omitting it uses canonical public package defaults. Successful responses confirm the effective sorted list, and Vite rejects older compilers that cannot confirm it. Standalone diagnostic CLI callers can explicitly add an exact origin with `--trusted-runtime-module SPECIFIER`; legacy component-state output has no revision/HMR guarantee.
+
+
 ```tsx
 import { useState, useEffect } from "@r3act/core";
 

@@ -164,7 +164,7 @@ try {
   startup.artifact.sha256 = sha(delayedScript);
   startup.artifact.bytes = Buffer.byteLength(delayedScript);
   await startup.save();
-  for (const name of ["vite_native_module.ts", "native_compiler_artifact.ts"]) {
+  for (const name of ["vite_native_module.ts", "native_runtime_origin.ts", "native_compiler_artifact.ts"]) {
     await copyFile(path.join(root, "compiler", name), path.join(startup.bin, "..", name));
   }
   const copiedModule = path.join(startup.bin, "..", "vite_native_module.ts");

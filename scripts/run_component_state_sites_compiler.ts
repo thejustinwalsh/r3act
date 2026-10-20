@@ -5,7 +5,7 @@ const emittedModule = Deno.args[1] ?? "src/browser/generated_component_state_sit
 const command = new Deno.Command("cargo", {
   args: [
     "run", "--locked", "--manifest-path", "compiler/oxc-spike/Cargo.toml", "--",
-    "compiler/fixtures/component_state_sites.tsx", "--component-state-sites", "--transform-component-state",
+    "compiler/fixtures/component_state_sites.tsx", "--component-state-sites", "--trusted-runtime-module", "react", "--transform-component-state",
     "--out", output,
     "--emit", emittedModule,
     "--runtime-import", "../component_state_runtime.ts",

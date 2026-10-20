@@ -10,6 +10,7 @@ import {
   resolvePackagedNativeCompiler,
   verifyPackagedNativeCompiler,
 } from "./native_compiler_artifact.ts";
+import { isResolvedRuntimeImport, isStaticRuntimeImport } from "./native_runtime_origin.ts";
 
 type NativePlan = {
   schema_version: number;
@@ -38,6 +39,7 @@ type NativeResponse = {
   plan?: NativePlan;
   edits?: readonly NativeEdit[];
   component_edits?: readonly NativeEdit[] | null;
+  trusted_runtime_modules?: readonly string[];
   error?: string;
 };
 
@@ -54,6 +56,7 @@ type NativeRequest = {
   source: string;
   helper_module: string;
   component_module?: string;
+  trusted_runtime_modules: string[];
 };
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
@@ -182,17 +185,20 @@ const namedImportsFromSource = (source: string): NamedImport[] => {
   return imports;
 };
 
-const helperModuleFromSource = (source: string): string => {
+const helperModuleFromSource = (source: string, trusted: ReadonlySet<string>): string => {
+  let first = "";
   for (const declaration of namedImportsFromSource(source)) {
     if (declaration.names.some((name) => name.imported === "asyncTask" && !name.typeOnly)) {
-      return declaration.module;
+      first ||= declaration.module;
+      if (trusted.has(declaration.module)) return declaration.module;
     }
   }
-  return "";
+  return first;
 };
 
-const componentModuleFromSource = (source: string): string => {
+const componentModuleFromSource = (source: string, trusted: ReadonlySet<string>): string => {
   for (const declaration of namedImportsFromSource(source)) {
+    if (!trusted.has(declaration.module)) continue;
     const hasHook = declaration.names.some((name) =>
       name.imported === "useState" || name.imported === "useEffect" || name.imported === "use" || name.imported === "useStore"
     );
@@ -202,24 +208,26 @@ const componentModuleFromSource = (source: string): string => {
         "jsx", "jsxs", "jsxDEV", "Fragment", "Suspense", "createDOMRoot", "createNativeRoot", "createKeyedCollection",
       ].includes(name.imported)
     );
-    const nativeEntry = declaration.module.includes("native_runtime_api") ||
-      ["@compiled-ui/runtime", "@compiled-ui/runtime/core", "@r3act/core"].includes(declaration.module);
-    if (nativeEntry && (hasHook || (!declaration.declarationTypeOnly && hasRuntimeNativeApi))) {
+    if (hasHook || (!declaration.declarationTypeOnly && hasRuntimeNativeApi)) {
       return declaration.module;
     }
   }
   return "";
 };
 
-/** The native runtime import used by a component module, when present. */
-export const nativeRuntimeModuleFromSource = componentModuleFromSource;
+const staticTrustedModules = (source: string, importer: string): Set<string> =>
+  new Set(namedImportsFromSource(source).map((item) => item.module)
+    .filter((module) => isStaticRuntimeImport(module, importer)));
 
-export const nativeModuleCandidateFromSource = (source: string): boolean => {
-  if (componentModuleFromSource(source)) return true;
-  const helper = helperModuleFromSource(source);
-  return Boolean(helper && (source.includes("// @native-ui") ||
-    helper.includes("native_runtime_api") ||
-    ["@compiled-ui/runtime", "@compiled-ui/runtime/core", "@r3act/core"].includes(helper)));
+/** The statically verifiable native runtime import used by a component module. */
+export const nativeRuntimeModuleFromSource = (source: string, importer: string): string =>
+  componentModuleFromSource(source, staticTrustedModules(source, importer));
+
+export const nativeModuleCandidateFromSource = (source: string, importer: string): boolean => {
+  const trusted = staticTrustedModules(source, importer);
+  if (componentModuleFromSource(source, trusted)) return true;
+  const helper = helperModuleFromSource(source, trusted);
+  return Boolean(helper && (trusted.has(helper) || source.includes("// @native-ui")));
 };
 
 export const isNativeTransformRequest = (id: string): boolean => {
@@ -269,6 +277,19 @@ export const nativeModuleCompilerPlugin = (
   const pending = new Map<string, PendingRequest>();
   const compiledNativeFiles = new Map<string, { revision: string; instance: string }>();
   const pluginInstance = randomUUID();
+
+  const trustedModules = async (
+    source: string,
+    importer: string,
+    resolve?: (source: string, importer: string) => Promise<{ id: string; external?: boolean | string } | null>,
+  ): Promise<Set<string>> => {
+    const trusted = new Set<string>();
+    for (const specifier of new Set(namedImportsFromSource(source).map((item) => item.module))) {
+      const resolved = resolve ? await resolve(specifier, importer) : undefined;
+      if (isResolvedRuntimeImport(specifier, importer, resolved, Boolean(resolve))) trusted.add(specifier);
+    }
+    return trusted;
+  };
 
   const failPending = (error: Error) => {
     for (const request of pending.values()) request.reject(error);
@@ -433,7 +454,7 @@ export const nativeModuleCompilerPlugin = (
   const compile = async (request: Omit<NativeRequest, "id">) => {
     const child = await ensureCompiler();
     const id = `vite-native-${++nextRequestId}`;
-    return await new Promise<NativeResponse>((resolve, reject) => {
+    const response = await new Promise<NativeResponse>((resolve, reject) => {
       pending.set(id, { resolve, reject });
       child.stdin.write(`${JSON.stringify({ id, ...request } satisfies NativeRequest)}\n`, (error) => {
         if (!error) return;
@@ -441,6 +462,16 @@ export const nativeModuleCompilerPlugin = (
         reject(new Error(`Could not send source to Rust compiler: ${error.message}`));
       });
     });
+    if (!response.error) {
+      const expected = [...new Set(request.trusted_runtime_modules)]
+        .sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right)));
+      if (!Array.isArray(response.trusted_runtime_modules) ||
+        response.trusted_runtime_modules.length !== expected.length ||
+        response.trusted_runtime_modules.some((module, index) => module !== expected[index])) {
+        throw new Error("Native compiler does not support the trusted runtime-origin protocol, or returned a mismatched origin list");
+      }
+    }
+    return response;
   };
 
   const shutdownOnServerClose = (server: ViteDevServer) => {
@@ -472,8 +503,13 @@ export const nativeModuleCompilerPlugin = (
       if (!isNativeTransformRequest(id)) return null;
       const cleanId = id.split("?", 1)[0];
       const absolutePath = path.resolve(cleanId);
+      const trusted = await trustedModules(source, cleanId, this.resolve?.bind(this));
+      const helperImport = helperModuleFromSource(source, trusted);
+      const explicitMarker = source.includes("// @native-ui");
+      const helperModule = helperImport && (trusted.has(helperImport) || explicitMarker) ? helperImport : "";
+      const componentModule = componentModuleFromSource(source, trusted);
+      const candidate = Boolean(helperModule || componentModule);
       if (options.reactBoundary) {
-        const candidate = nativeModuleCandidateFromSource(source);
         const covered = options.reactBoundary.sourceRoots.some((entry) =>
           absolutePath === entry || absolutePath.startsWith(`${entry}${path.sep}`));
         if (candidate && !covered) {
@@ -491,36 +527,7 @@ export const nativeModuleCompilerPlugin = (
         }
         return null;
       }
-      const helperModule = helperModuleFromSource(source);
-      const explicitMarker = source.includes("// @native-ui");
-      // Resolve the candidate module through Vite so a similarly named local
-      // module cannot accidentally opt a React file into native compilation.
-      const candidateModule = componentModuleFromSource(source);
-      const moduleToResolve = candidateModule ||
-        (helperModule && namedImportsFromSource(source).some((item) =>
-          item.module === helperModule && item.names.some((name) => name.imported === "asyncTask" && !name.typeOnly)
-        ) ? helperModule : "");
-      let resolvedNativeModule = "";
-      if (moduleToResolve) {
-        const declaration = namedImportsFromSource(source).find((item) => item.module === moduleToResolve);
-        if (declaration) {
-          const resolved = await this.resolve?.(moduleToResolve, cleanId);
-          const resolvedId = resolved?.id.split("?", 1)[0];
-          const publicExternal = resolved?.external && resolvedId === moduleToResolve &&
-            ["@compiled-ui/runtime", "@compiled-ui/runtime/core", "@r3act/core"].includes(moduleToResolve);
-          if (resolvedId && (/(?:^|[\\/])native_runtime_api\.(?:[cm]?[jt]sx?)$/i.test(resolvedId) || publicExternal)) {
-            resolvedNativeModule = moduleToResolve;
-          } else if (!this.resolve && /(?:^|[\\/])native_runtime_api\.(?:[cm]?[jt]sx?)$/i.test(moduleToResolve)) {
-            // Compatibility for the intentionally minimal contexts used by
-            // direct unit tests; normal Vite execution always resolves first.
-            resolvedNativeModule = moduleToResolve;
-          }
-        }
-      }
-      const componentModule = candidateModule
-        ? (resolvedNativeModule || (explicitMarker ? candidateModule : ""))
-        : (explicitMarker ? candidateModule : "");
-      if (!explicitMarker && !resolvedNativeModule) return null;
+      if (!candidate) return null;
       if (!helperModule && !componentModule) return null;
       if (helperModule.startsWith(".")) {
         this.addWatchFile(path.resolve(path.dirname(absolutePath), helperModule));
@@ -532,6 +539,7 @@ export const nativeModuleCompilerPlugin = (
         path: sourcePath,
         source,
         helper_module: helperModule,
+        trusted_runtime_modules: [...trusted],
         ...(componentModule ? { component_module: source } : {}),
       }).catch((error: unknown) => {
         this.error(
@@ -691,6 +699,7 @@ export const nativeModuleCompilerPlugin = (
         compiledNativeFiles.set(absolutePath, { revision: response.plan.module_revision, instance });
         return {
           code: combinedMagic.toString(),
+          meta: { nativeRuntimeModule: componentModule },
           map: combinedMagic.generateMap({
             hires: true,
             includeContent: true,
@@ -703,6 +712,7 @@ export const nativeModuleCompilerPlugin = (
       compiledNativeFiles.set(absolutePath, { revision: response.plan.module_revision, instance });
       return {
         code: taskMagic.toString(),
+        meta: { nativeRuntimeModule: componentModule },
         map: taskMagic.generateMap({
           hires: true,
           includeContent: true,
@@ -712,6 +722,7 @@ export const nativeModuleCompilerPlugin = (
     },
     async handleHotUpdate(context) {
       const changedFile = path.resolve(context.file);
+      const resolveForHot = context.server.pluginContainer?.resolveId.bind(context.server.pluginContainer);
       const affected = new Map<string, { revision: string; instance: string }>();
       const changedModule = compiledNativeFiles.get(changedFile);
       if (changedModule) affected.set(changedFile, changedModule);
@@ -738,22 +749,28 @@ export const nativeModuleCompilerPlugin = (
           changedFile === entry || changedFile.startsWith(`${entry}${path.sep}`))) {
         let source = "";
         try { source = await context.read(); } catch { /* Deleted files leave the boundary. */ }
-        boundaryChanged = options.reactBoundary.excludedFiles.has(changedFile) !==
-          nativeModuleCandidateFromSource(source);
+        const trusted = await trustedModules(source, changedFile, resolveForHot);
+        const helper = helperModuleFromSource(source, trusted);
+        const candidate = Boolean(componentModuleFromSource(source, trusted) ||
+          (helper && (trusted.has(helper) || source.includes("// @native-ui"))));
+        boundaryChanged = options.reactBoundary.excludedFiles.has(changedFile) !== candidate;
       }
       if (!affected.size && !boundaryChanged) return;
       const acceptedChangedModule = affected.get(changedFile);
       if (acceptedChangedModule) {
         const source = await context.read();
         await transformWithOxc(source, changedFile, { lang: "tsx" });
-        const helperModule = helperModuleFromSource(source);
-        const componentModule = componentModuleFromSource(source);
-        if (nativeModuleCandidateFromSource(source) && (helperModule || componentModule)) {
+        const trusted = await trustedModules(source, changedFile, resolveForHot);
+        const helperImport = helperModuleFromSource(source, trusted);
+        const helperModule = helperImport && (trusted.has(helperImport) || source.includes("// @native-ui")) ? helperImport : "";
+        const componentModule = componentModuleFromSource(source, trusted);
+        if (helperModule || componentModule) {
           const sourcePath = path.relative(sourceRoot, changedFile).split(path.sep).join("/");
           const response = await compile({
             path: sourcePath,
             source,
             helper_module: helperModule,
+            trusted_runtime_modules: [...trusted],
             ...(componentModule ? { component_module: source } : {}),
           });
           if (response.error) {

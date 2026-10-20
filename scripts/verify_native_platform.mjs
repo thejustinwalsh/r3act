@@ -318,6 +318,7 @@ try {
   for (const [name, script] of [
     ["hmr-revision-plugin", "compiler/native_hmr_revision_test.mjs"],
     ["react-composition-plugin", "compiler/native_react_composition_test.mjs"],
+    ["runtime-origin-plugin", "compiler/native_runtime_origin_test.mjs"],
   ]) {
     const before = await compilerHash();
     await runStep(name, process.execPath, ["--experimental-transform-types", script],
@@ -344,7 +345,7 @@ try {
     "compiled_held_reader_progress_test", "compiled_closed_arrow_authoring_test",
     "compiled_numeric_owner_effects_test", "compiled_collection_owner_effects_test",
     "native_collection_execution_test", "compiled_host_value_diff_test",
-    "compiled_reentrant_replacement_test"];
+    "compiled_reentrant_replacement_test", "compiled_runtime_origin_test"];
   for (const [index, fixture] of fixtures.entries()) {
     const name = `compiled-${String(index + 1).padStart(2, "0")}`;
     const before = await compilerHash();

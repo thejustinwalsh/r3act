@@ -2,7 +2,7 @@ import type { Plugin } from "vite";
 import { transformWithOxc } from "vite";
 import path from "node:path";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { isNativeTransformRequest, nativeModuleCandidateFromSource, nativeModuleCompilerPlugin, nativeRuntimeModuleFromSource, type NativeCompilerOptions } from "./vite_native_module.ts";
+import { isNativeTransformRequest, nativeModuleCandidateFromSource, nativeModuleCompilerPlugin, type NativeCompilerOptions } from "./vite_native_module.ts";
 import { generateHostJSXDeclarations, GENERATED_HOST_JSX_HEADER, type HostJSXDeclarationOptions } from "./host_jsx_declarations.ts";
 
 export { generateHostJSXDeclarations } from "./host_jsx_declarations.ts";
@@ -36,7 +36,7 @@ const scanNativeFiles = (root: string, sourceRoots: readonly string[]): Set<stri
       const child = path.join(filename, entry.name);
       if (entry.isDirectory()) visit(child);
       else if (entry.isFile() && child.endsWith(".tsx") &&
-        nativeModuleCandidateFromSource(readFileSync(child, "utf8"))) files.add(path.resolve(child));
+        nativeModuleCandidateFromSource(readFileSync(child, "utf8"), child)) files.add(path.resolve(child));
     }
   };
   for (const sourceRoot of sourceRoots) {
@@ -46,7 +46,7 @@ const scanNativeFiles = (root: string, sourceRoots: readonly string[]): Set<stri
       throw new Error(`Native React source root must stay inside the Vite root: ${sourceRoot}`);
     }
     if (location.endsWith(".tsx")) {
-      if (existsSync(location) && nativeModuleCandidateFromSource(readFileSync(location, "utf8"))) files.add(location);
+      if (existsSync(location) && nativeModuleCandidateFromSource(readFileSync(location, "utf8"), location)) files.add(location);
     } else visit(location);
   }
   return files;
@@ -159,7 +159,7 @@ export const nativeModulePlugin = (options: NativeModulePluginOptions = {}): Plu
       const compiled = await callPluginHook(compiler.transform, this, source, id);
       if (!compiled || typeof compiled === "string") return compiled ?? null;
 
-      const runtimeModule = nativeRuntimeModuleFromSource(source);
+      const runtimeModule = (compiled.meta as { nativeRuntimeModule?: string } | undefined)?.nativeRuntimeModule;
       // Leave asyncTask-only modules without a native factory for downstream JSX lowering.
       if (!runtimeModule) return compiled;
       // Import the classic jsx/Fragment factory within this native module only.
