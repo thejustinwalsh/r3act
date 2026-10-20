@@ -1,5 +1,18 @@
 # Final master plan: classify, measure, then choose
 
+## Declarative host copy boundary — 19 October 2026
+
+Ordinary invalidated JSX now updates supported reused mutable Three values through an optional public host copy-capture contract. Independent write inputs and primitive comparisons live in existing mounted/binding accepted history; retaining/custom writers keep reference semantics. Private history stays out of public snapshots. Callback-bearing capture validates its method and writer afterward, and bound capture checks live membership. Scoped replacement recognizes only the private copy wrapper while retaining exact actual mounted/version/publication checks. Whole-tree guards, exact acknowledgements, newer actions, fork history and resource authority remain. New capture/reflection/allocation/storage costs are unqualified.
+
+Darwin-v4 passes 52/52 steps, 1043 runtime tests, 80 Rust tests, 34 actual compiled fixtures, nine Three cases, three retention checks and thirteen package checks. Its 1319 inputs match before/after; 1328 raw/context inputs are archived. The immutable committed-runtime diagnostic reproduces stale [1,2,3] position after input mutation. Three failed gates and two installed proofs remain preserved. Product/compiler/fixed fixture are unchanged after v4; separately locked consumer follow-ons correct tuple typing and React's retained Three reveal group.
+
+Fresh five-tarball proof-v3 passes ten untimed DOM/Three stages, public custom-host capture, mutable position/rotation, DOM style removal, retained identity, keyed lifetimes, independent reveal and cleanup. Eighteen plus two source rows, 1617 selected installed files, compiler, package report, transforms and assets are bound. React Row/PendingScene/PendingDom/Hot/App have actual CompileSuccess events. The sole Native-first click-to-DOM-observer pair is 5.300000004470348/2.100000001490116 ms, Native slower in this observation. Timer quantum is unmeasured; no speed/CPU/tail/cold/memory/presentation/independent-device qualification follows. Unequal graph JS sizes are 2649710/1070577 bytes; React's Three graph uses explicit layout effects.
+
+The full-plan first pass remains active, including other-platform and authored realtime/lifecycle/performance/independent-device requirements. Human participants stay zero with no maintenance claim. Historic wins, dense FAIL, exhausted Recording A and physical HOLD retain scope. No VM/server or memory increase occurs. Saved Apple defaults remain one CPU, 256 MiB/container and 512 MiB/build; no VM process was found, while effective limits remain unverified behind Depot startup permissions.
+
+[Source, failures, receipts and limits](implementation/2026-10-19-host-value-diff/results.md).
+
+
 ## Collection owner effect and lifetime boundary — 19 October 2026
 
 Whole-owner and mapper proofs now gate automatic collection skipping. Opaque helpers/getters/captures and unsafe inputs retain generic evaluation; runtime-owned scalar inputs and unchanged canonical collection APIs are admitted before callbacks. Automatic insert/replace stays generic. Captured Entry stamps and private owner replacement preserve remove/reinsert lifetimes even after history expiry. Immutable descriptors retain stamps only; mounted ancestor child arrays retire after acceptance. Canonical keyed-bucket revision replaces VNode identity as the scoped region generation marker, preserving independent nested moves and rejecting same-region/getter reentry. Exact acknowledgements, newer actions, fork history, live ownership, journal snapshots and whole-tree guards remain. New allocation/admission/revision/fallback costs are unqualified.

@@ -105,7 +105,8 @@ const sourcePaths = async () => {
     "implementation/2026-10-19-held-reader-progress",
     "implementation/2026-10-19-closed-arrow-authoring",
     "implementation/2026-10-19-numeric-owner-effects",
-    "implementation/2026-10-19-collection-owner-effects"]) {
+    "implementation/2026-10-19-collection-owner-effects",
+    "implementation/2026-10-19-host-value-diff"]) {
     try { if ((await stat(path.join(root, relative))).isDirectory()) await walk(path.join(root, relative)); }
     catch (error) { if (error?.code !== "ENOENT") throw error; }
   }
@@ -176,7 +177,7 @@ const archiveTree = async (source, destination) => {
   files.sort((left, right) => left.path.localeCompare(right.path));
   return { status: "ARCHIVED", files };
 };
-const fixturePrefix = /^(compiled-|native-resource-execution-|compiler-artifact-conformance-)/;
+const fixturePrefix = /^(compiled-|native-resource-execution-|native-collection-execution-|compiler-artifact-conformance-)/;
 const fixtureFiles = async () => {
   const cache = path.join(root, ".cache");
   let entries;
@@ -416,6 +417,9 @@ try {
       step.status = "FAIL_COMPILER_CHANGED";
     await json(path.join(output, `steps/${name}.json`), step);
   }
+  await runStep("host-value-baseline", process.execPath,
+    ["--experimental-transform-types", "compiler/compiled_host_value_diff_test.mjs", "--baseline"],
+    { depends: ["install"], deadlineMs: 90_000 });
   const fixtures = ["compiled_direct_intent_test", "compiled_urgent_retained_test",
     "compiled_urgent_retained_three_test", "compiled_boundary_workset_test", "compiled_boundary_reveal_test",
     "native_resource_execution_test", "compiled_joint_transaction_test", "compiled_scoped_collection_test",
@@ -430,7 +434,7 @@ try {
     "native_arrow_components_execution_test", "compiled_publication_callbacks_execution_test",
     "compiled_held_reader_progress_test", "compiled_closed_arrow_authoring_test",
     "compiled_numeric_owner_effects_test", "compiled_collection_owner_effects_test",
-    "native_collection_execution_test"];
+    "native_collection_execution_test", "compiled_host_value_diff_test"];
   for (const [index, fixture] of fixtures.entries()) {
     const name = `compiled-${String(index + 1).padStart(2, "0")}`;
     const before = await compilerHash();
@@ -460,7 +464,8 @@ try {
     await json(path.join(output, `steps/${name}.json`), step);
   }
   await runStep("three-host-7", process.execPath,
-    ["--experimental-transform-types", "--test", "compiler/three_host_capability_test.mjs"],
+    ["--experimental-transform-types", "--test", "compiler/three_host_capability_test.mjs",
+      "compiler/three_property_copy_test.mjs"],
     { depends: ["install"], deadlineMs: 300_000 });
   await runStep("direct-intent-gc", process.execPath,
     ["--experimental-transform-types", "--expose-gc", "scripts/verify_direct_intent_retention.mjs"],

@@ -2,6 +2,20 @@
 
 **Research position paper · Deno Jupyter project · 14 October 2026**
 
+
+## Declarative host copy boundary — 19 October 2026
+
+Ordinary invalidated JSX now updates supported reused mutable Three values through an optional public host copy-capture contract. Independent write inputs and primitive comparisons live in existing mounted/binding accepted history; retaining/custom writers keep reference semantics. Private history stays out of public snapshots. Callback-bearing capture validates its method and writer afterward, and bound capture checks live membership. Scoped replacement recognizes only the private copy wrapper while retaining exact actual mounted/version/publication checks. Whole-tree guards, exact acknowledgements, newer actions, fork history and resource authority remain. New capture/reflection/allocation/storage costs are unqualified.
+
+Darwin-v4 passes 52/52 steps, 1043 runtime tests, 80 Rust tests, 34 actual compiled fixtures, nine Three cases, three retention checks and thirteen package checks. Its 1319 inputs match before/after; 1328 raw/context inputs are archived. The immutable committed-runtime diagnostic reproduces stale [1,2,3] position after input mutation. Three failed gates and two installed proofs remain preserved. Product/compiler/fixed fixture are unchanged after v4; separately locked consumer follow-ons correct tuple typing and React's retained Three reveal group.
+
+Fresh five-tarball proof-v3 passes ten untimed DOM/Three stages, public custom-host capture, mutable position/rotation, DOM style removal, retained identity, keyed lifetimes, independent reveal and cleanup. Eighteen plus two source rows, 1617 selected installed files, compiler, package report, transforms and assets are bound. React Row/PendingScene/PendingDom/Hot/App have actual CompileSuccess events. The sole Native-first click-to-DOM-observer pair is 5.300000004470348/2.100000001490116 ms, Native slower in this observation. Timer quantum is unmeasured; no speed/CPU/tail/cold/memory/presentation/independent-device qualification follows. Unequal graph JS sizes are 2649710/1070577 bytes; React's Three graph uses explicit layout effects.
+
+The full-plan first pass remains active, including other-platform and authored realtime/lifecycle/performance/independent-device requirements. Human participants stay zero with no maintenance claim. Historic wins, dense FAIL, exhausted Recording A and physical HOLD retain scope. No VM/server or memory increase occurs. Saved Apple defaults remain one CPU, 256 MiB/container and 512 MiB/build; no VM process was found, while effective limits remain unverified behind Depot startup permissions.
+
+[Source, failures, receipts and limits](implementation/2026-10-19-host-value-diff/results.md).
+
+
 ## Declared resource transaction boundary — 19 October 2026
 
 Explicit native transactions now select canonical resources alongside cells, Stores and keyed collections. One root preparation and VDOM composite stage selected boundaries together; exact per-root queue capabilities order overlapping intent. Selected A/B retain accepted fallback until both can publish, while supported independent health and urgent Store work progress. Existing source versions, live owner/code/writer checks, exact acknowledgements, newer actions, fork histories and partial-host failure rules remain authoritative. Whole-tree replacements remain conservatively guarded; opaque authoring stays generic.

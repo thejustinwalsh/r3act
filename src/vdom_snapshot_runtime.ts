@@ -1,5 +1,9 @@
 import { evaluateClosedNumericExpression } from "./closed_numeric_expression.ts";
-import type { HostPropertyCapability } from "./host_property_contract.ts";
+import type {
+  HostCopyComparisonScalar,
+  HostCopyValueCapture,
+  HostPropertyCapability,
+} from "./host_property_contract.ts";
 import {
   Fragment,
   closedExpressionForBinding,
@@ -34,10 +38,52 @@ type VElement = {
   props: Readonly<Record<string, unknown>>;
   /** Authored reads for an unbound style whose accepted data was copied into props. */
   scopedSourceProps?: Readonly<Record<string, unknown>>;
+  acceptedCopyProps?: Readonly<Record<string, AcceptedCopyValue>>;
   children: readonly VNode[];
   keyedRegionId: string | null;
 };
 type VNode = VText | VElement;
+
+type AcceptedCopyValue = Readonly<{
+  sourceValue: unknown;
+  writeValue: unknown;
+  comparison: readonly HostCopyComparisonScalar[];
+}>;
+
+const captureCopyValue = (capture: HostCopyValueCapture | null, sourceValue: unknown):
+  AcceptedCopyValue | null => {
+    if (capture === null) return null;
+    const fields = Object.getOwnPropertyDescriptors(capture);
+    const comparisonSource = fields.comparison?.value;
+    const writeValue = fields.writeValue?.value;
+    if (fields.kind?.value !== "copy" || !Array.isArray(comparisonSource) ||
+      !fields.writeValue || !("value" in fields.writeValue)) {
+      throw new TypeError("Invalid host copy capture");
+    }
+    if (sourceValue !== null &&
+      (typeof sourceValue === "object" || typeof sourceValue === "function") &&
+      Object.is(writeValue, sourceValue)) {
+      throw new TypeError("Host copy capture must own its write value");
+    }
+    const comparison: HostCopyComparisonScalar[] = [];
+    for (const value of comparisonSource) {
+      if (value !== null && value !== undefined && typeof value !== "string" &&
+        typeof value !== "number" && typeof value !== "boolean" &&
+        typeof value !== "bigint") {
+        throw new TypeError("Invalid host copy comparison value");
+      }
+      comparison.push(value);
+    }
+    return Object.freeze({
+      sourceValue,
+      writeValue,
+      comparison: Object.freeze(comparison),
+    });
+  };
+
+const sameCopyValue = (a: AcceptedCopyValue, b: AcceptedCopyValue) =>
+  a.comparison.length === b.comparison.length &&
+  a.comparison.every((value, index) => Object.is(value, b.comparison[index]));
 
 const isCompiledOwnerUpdatePrimitive = (
   value: unknown,
@@ -64,7 +110,12 @@ type MountedKeyIndex<H> = {
   detach?(node: MountedNode<H>): void;
   attachKey?(node: MountedNode<H>): void;
   detachKey?(node: MountedNode<H>): void;
-  refreshProp?(node: MountedNode<H>, name: string, next: unknown): void;
+  refreshProp?(
+    node: MountedNode<H>,
+    name: string,
+    next: unknown,
+    acceptedCopy?: AcceptedCopyValue | null,
+  ): void;
 };
 
 type BoundPropGroup<H> = {
@@ -78,6 +129,7 @@ type BoundPropGroup<H> = {
   sources: readonly ScalarSource[];
   rawValue: unknown;
   lastValue: unknown;
+  lastValueIsCopy?: boolean;
   forceWrite?: boolean;
   columnStageToken?: symbol;
   columnRowsStageEpoch?: number;
@@ -259,6 +311,12 @@ export interface VDOMHost<H, Parent = H> {
   createText(text: string): H;
   setText(node: H, text: string): void;
   setProp(node: H, name: string, value: unknown, previous: unknown): void;
+  /** Optional stable input and comparison history for a copied property write. */
+  capturePropertyValue?(
+    node: H,
+    name: string,
+    next: unknown,
+  ): HostCopyValueCapture | null;
   /** Optional observation; generic writes and host lifetime remain authoritative. */
   describePropertyWrite?(
     node: H,
@@ -297,6 +355,22 @@ const hostPropWriter = <H, Parent>(host: VDOMHost<H, Parent>) => {
   }
   return null;
 };
+const hostCopyCapture = <H, Parent>(host: VDOMHost<H, Parent>) => {
+  let target: object | null = host;
+  while (target) {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      target,
+      "capturePropertyValue",
+    );
+    if (descriptor) {
+      return typeof descriptor.value === "function"
+        ? descriptor.value as NonNullable<VDOMHost<H, Parent>["capturePropertyValue"]>
+        : null;
+    }
+    target = Object.getPrototypeOf(target);
+  }
+  return null;
+};
 const hostTextWriter = <H, Parent>(host: VDOMHost<H, Parent>) => {
   let target: object | null = host;
   while (target) {
@@ -324,7 +398,16 @@ const sameBoundValueCanSkipWrite = (
   lastValue: unknown,
   nextValue: unknown,
   forceWrite = false,
+  lastIsCopy = false,
+  nextIsCopy = false,
 ) => {
+  if (lastIsCopy || nextIsCopy) {
+    if (!lastIsCopy || !nextIsCopy || forceWrite) return false;
+    const last = lastValue as AcceptedCopyValue;
+    const next = nextValue as AcceptedCopyValue;
+    return Object.is(last.sourceValue, next.sourceValue) &&
+      sameCopyValue(last, next);
+  }
   if (!Object.is(lastValue, nextValue)) return false;
   return !forceWrite || nextValue === null ||
     (typeof nextValue !== "object" && typeof nextValue !== "function");
@@ -497,7 +580,19 @@ const sameMountedElementHeader = (left: VNode, right: VNode): boolean =>
   left.tag === right.tag && left.key === right.key &&
   left.props === right.props &&
   left.keyedRegionId === right.keyedRegionId &&
-  left.scopedSourceProps === right.scopedSourceProps;
+  left.scopedSourceProps === right.scopedSourceProps &&
+  left.acceptedCopyProps === right.acceptedCopyProps;
+
+const matchesAcceptedCopyCandidate = (mounted: VNode, candidate: VNode) =>
+  mounted === candidate ||
+  (mounted.kind === "element" && candidate.kind === "element" &&
+    mounted.acceptedCopyProps !== undefined &&
+    candidate.acceptedCopyProps === undefined &&
+    mounted.tag === candidate.tag && mounted.key === candidate.key &&
+    mounted.props === candidate.props &&
+    mounted.children === candidate.children &&
+    mounted.keyedRegionId === candidate.keyedRegionId &&
+    mounted.scopedSourceProps === candidate.scopedSourceProps);
 
 const mountedChildren = <H>(node: MountedNode<H>): MountedNode<H>[] =>
   node.keyedChildren
@@ -547,12 +642,21 @@ const keyedChildrenFor = <H>(
   );
 };
 
+const publicElementSnapshot = (
+  vnode: VElement,
+  children: readonly VNode[],
+): VElement => {
+  const snapshot = { ...vnode, children };
+  delete snapshot.acceptedCopyProps;
+  return snapshot;
+};
+
 const serializeMounted = <H>(node: MountedNode<H>): VNode => {
   if (node.vnode.kind === "text") return node.vnode;
-  return {
-    ...node.vnode,
-    children: mountedChildren(node).map(serializeMounted),
-  };
+  return publicElementSnapshot(
+    node.vnode,
+    mountedChildren(node).map(serializeMounted),
+  );
 };
 
 type AcceptedBucketUndo<H> =
@@ -654,10 +758,10 @@ class AcceptedMountedJournal<H> {
     const children = keyed
       ? this.#children(keyed)
       : before?.children ?? node.children;
-    return {
-      ...vnode,
-      children: children.map((child) => this.#serializeNode(child)),
-    };
+    return publicElementSnapshot(
+      vnode,
+      children.map((child) => this.#serializeNode(child)),
+    );
   }
 }
 
@@ -706,22 +810,32 @@ const applyProps = <H, P>(
   previous: Readonly<Record<string, unknown>>,
   next: Readonly<Record<string, unknown>>,
   previousWriters?: ReadonlyMap<string, readonly BoundPropGroup<H>[]>,
-  afterProp?: (name: string, next: unknown) => void,
+  afterProp?: (
+    name: string,
+    next: unknown,
+    acceptedCopy?: AcceptedCopyValue | null,
+  ) => void,
   acceptedBefore?: Readonly<Record<string, unknown>>,
+  previousCopies?: Readonly<Record<string, AcceptedCopyValue>>,
 ) => {
   let writtenStyle: unknown = noStructuredWrite;
+  const acceptedCopies: Record<string, AcceptedCopyValue> = Object.create(null);
   const names = new Set([...Object.keys(previous), ...Object.keys(next)]);
   for (const name of names) {
     // Diff against the writer's last committed value: BoundValue may already expose
     // a newer source and would incorrectly suppress this host write.
     const previousWriter = previousWriters?.get(name);
+    let boundWholeProp: BoundPropGroup<H> | undefined;
     let before: unknown;
     if (previousWriter?.length) {
       const wholeProp = previousWriter.find((group) =>
         group.styleProperty === undefined
       );
       if (wholeProp) {
-        before = wholeProp.lastValue;
+        boundWholeProp = wholeProp;
+        before = wholeProp.lastValueIsCopy
+          ? (wholeProp.lastValue as AcceptedCopyValue).writeValue
+          : wholeProp.lastValue;
       } else if (name === "style") {
         const oldStyle = previous[name];
         const style = oldStyle && typeof oldStyle === "object" &&
@@ -730,7 +844,9 @@ const applyProps = <H, P>(
           : {};
         for (const group of previousWriter) {
           if (group.styleProperty !== undefined) {
-            style[group.styleProperty] = group.lastValue;
+            style[group.styleProperty] = group.lastValueIsCopy
+              ? (group.lastValue as AcceptedCopyValue).writeValue
+              : group.lastValue;
           }
         }
         before = style;
@@ -748,13 +864,34 @@ const applyProps = <H, P>(
     const value = materializeProp(name, next[name], name === "style"
       ? () => { styleHasBinding = true; }
       : undefined);
-    if (!Object.is(before, value)) {
-      host.setProp(handle, name, value, before);
-      if (name === "style" && !styleHasBinding) writtenStyle = value;
+    const capture = value !== null && typeof value === "object"
+      ? host.capturePropertyValue
+      : undefined;
+    const captured = capture
+      ? captureCopyValue(capture.call(host, handle, name, value), value)
+      : null;
+    if (capture && capture !== host.capturePropertyValue) {
+      throw new Error("Host copy capture changed during property write");
     }
-    afterProp?.(name, next[name]);
+    const priorCopy = boundWholeProp
+      ? boundWholeProp.lastValueIsCopy
+        ? boundWholeProp.lastValue as AcceptedCopyValue
+        : undefined
+      : previousCopies?.[name];
+    if (priorCopy) before = priorCopy.writeValue;
+    const changed = captured
+      ? !priorCopy || !Object.is(priorCopy.sourceValue, value) ||
+        !sameCopyValue(priorCopy, captured)
+      : !!priorCopy || !Object.is(before, value);
+    if (captured) acceptedCopies[name] = changed ? captured : priorCopy!;
+    if (changed) {
+      const written = captured ? captured.writeValue : value;
+      host.setProp(handle, name, written, before);
+      if (name === "style" && !styleHasBinding) writtenStyle = written;
+    }
+    afterProp?.(name, next[name], acceptedCopies[name] ?? null);
   }
-  return writtenStyle;
+  return { writtenStyle, acceptedCopies: Object.freeze(acceptedCopies) };
 };
 
 const noStructuredWrite = Symbol("no structured host write");
@@ -762,16 +899,20 @@ const noStructuredWrite = Symbol("no structured host write");
 const acceptedStructuredVNode = (
   vnode: VElement,
   writtenStyle: unknown,
+  acceptedCopies: Readonly<Record<string, AcceptedCopyValue>>,
 ): VElement => {
+  const copyVNode = Object.keys(acceptedCopies).length
+    ? { ...vnode, acceptedCopyProps: acceptedCopies }
+    : vnode;
   if (writtenStyle === noStructuredWrite || Object.isFrozen(vnode.props)) {
-    return vnode;
+    return copyVNode;
   }
   let snapshot;
   try { snapshot = snapshotScopedHostProp(vnode.tag, "style", writtenStyle); }
-  catch { return vnode; }
-  if (!snapshot.accepted) return vnode;
+  catch { return copyVNode; }
+  if (!snapshot.accepted) return copyVNode;
   const props = { ...vnode.props, style: snapshot.value };
-  const accepted = { ...vnode, props };
+  const accepted = { ...copyVNode, props };
   Object.defineProperty(accepted, "scopedSourceProps", { value: vnode.props });
   return accepted;
 };
@@ -980,7 +1121,12 @@ const createMounted = <H, P>(
     parent,
     materializeCreationProps(vnode.props),
   );
-  const writtenStyle = applyProps(host, handle, {}, vnode.props);
+  const { writtenStyle, acceptedCopies } = applyProps(
+    host,
+    handle,
+    {},
+    vnode.props,
+  );
   const children = reconcileChildren(
     host,
     handle as unknown as P,
@@ -989,7 +1135,7 @@ const createMounted = <H, P>(
     keyIndex,
   );
   const mounted: MountedNode<H> = {
-    vnode: acceptedStructuredVNode(vnode, writtenStyle),
+    vnode: acceptedStructuredVNode(vnode, writtenStyle, acceptedCopies),
     handle,
     children,
     parent: null,
@@ -1051,16 +1197,18 @@ const updateMounted = <H, P>(
     return old;
   }
   if (next.kind === "element" && old.vnode.kind === "element") {
-    const writtenStyle = applyProps(
+    const { writtenStyle, acceptedCopies } = applyProps(
       host,
       old.handle,
       old.vnode.scopedSourceProps ?? old.vnode.props,
       next.props,
       old.scalarBindingGroups,
       keyIndex?.refreshProp
-        ? (name, value) => keyIndex.refreshProp!(old, name, value)
+        ? (name, value, acceptedCopy) =>
+          keyIndex.refreshProp!(old, name, value, acceptedCopy)
         : undefined,
       old.vnode.scopedSourceProps ? old.vnode.props : undefined,
+      old.vnode.acceptedCopyProps,
     );
     const children = reconcileChildren(
       host,
@@ -1077,12 +1225,12 @@ const updateMounted = <H, P>(
     if (old.vnode.keyedRegionId !== next.keyedRegionId) {
       if (keyIndex?.detachKey) keyIndex.detachKey(old);
       else keyIndex?.detach?.(old);
-      old.vnode = acceptedStructuredVNode(next, writtenStyle);
+      old.vnode = acceptedStructuredVNode(next, writtenStyle, acceptedCopies);
       if (keyIndex?.attachKey) keyIndex.attachKey(old);
       else keyIndex?.attach?.(old);
       return old;
     }
-    old.vnode = acceptedStructuredVNode(next, writtenStyle);
+    old.vnode = acceptedStructuredVNode(next, writtenStyle, acceptedCopies);
     return old;
   }
   throw new Error("Incompatible VDOM node kinds reached update path");
@@ -1331,6 +1479,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     this.#profileCounter = profileCounter;
     this.keyIndexMaintenance = keyIndexMaintenance;
     this.bindingIndexMaintenance = bindingIndexMaintenance;
+    const copyCapture = hostCopyCapture(host);
     this.#renderHost = {
       createElement: (tag, parent, props) =>
         host.createElement(tag, parent, props),
@@ -1343,6 +1492,30 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           host.setProp(node, name, value, previous);
         }
       },
+      capturePropertyValue: copyCapture
+        ? (node, name, value) => {
+          if (hostCopyCapture(host) !== copyCapture) {
+            throw new Error("Host copy capture changed before property write");
+          }
+          const writer = hostPropWriter(host);
+          if (!writer) return null;
+          const result = captureCopyValue(
+            copyCapture.call(host, node, name, value),
+            value,
+          );
+          if (hostCopyCapture(host) !== copyCapture) {
+            throw new Error("Host copy capture changed during property write");
+          }
+          if (hostPropWriter(host) !== writer) {
+            throw new Error("Host property writer changed during copy capture");
+          }
+          return result && {
+            kind: "copy" as const,
+            writeValue: result.writeValue,
+            comparison: result.comparison,
+          };
+        }
+        : undefined,
       setStyleProp: host.setStyleProp
         ? (node, name, value, previous) =>
           host.setStyleProp!(node, name, value, previous)
@@ -1400,7 +1573,10 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       const group = this.#pendingHistoryGroups[index];
       const flags = this.#pendingHistoryFlags[index];
       if (flags & 1) group.lastSourceValue = this.#pendingHistorySources[index];
-      if (flags & 2) group.lastValue = this.#pendingHistoryValues[index];
+      if (flags & 2) {
+        group.lastValue = this.#pendingHistoryValues[index];
+        group.lastValueIsCopy = !!(flags & 4);
+      }
       group.acceptedWriteGeneration =
         (group.acceptedWriteGeneration ?? 0) + 1;
     }
@@ -1443,6 +1619,13 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       : group.lastValue;
   }
 
+  #effectiveLastValueIsCopy(group: BoundPropGroup<H>): boolean {
+    const index = this.#pendingHistoryIndex(group);
+    return index !== null && (this.#pendingHistoryFlags[index] & 2)
+      ? !!(this.#pendingHistoryFlags[index] & 4)
+      : !!group.lastValueIsCopy;
+  }
+
   #effectiveLastSourceValue(group: BoundPropGroup<H>): number | undefined {
     const index = this.#pendingHistoryIndex(group);
     return index !== null && (this.#pendingHistoryFlags[index] & 1)
@@ -1450,16 +1633,46 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       : group.lastSourceValue;
   }
 
-  #stageLastValue(group: BoundPropGroup<H>, value: unknown) {
+  #stageLastValue(
+    group: BoundPropGroup<H>,
+    value: unknown,
+    isCopy = false,
+  ) {
     if (!this.#publicationToken) {
       group.lastValue = value;
+      group.lastValueIsCopy = isCopy;
       group.acceptedWriteGeneration =
         (group.acceptedWriteGeneration ?? 0) + 1;
       return;
     }
     const index = this.#stageHistoryIndex(group);
     this.#pendingHistoryValues[index] = value;
-    this.#pendingHistoryFlags[index] |= 2;
+    this.#pendingHistoryFlags[index] =
+      (this.#pendingHistoryFlags[index] & ~4) | 2 | (isCopy ? 4 : 0);
+  }
+
+  #prepareBoundCopy(
+    group: BoundPropGroup<H>,
+    next: unknown,
+  ): AcceptedCopyValue | null {
+    if (group.styleProperty !== undefined) return null;
+    const capture = next !== null && typeof next === "object"
+      ? this.#renderHost.capturePropertyValue
+      : undefined;
+    if (!capture) return null;
+    const result = captureCopyValue(
+      capture.call(this.#renderHost, group.handle, group.name, next),
+      next,
+    );
+    if (capture !== this.#renderHost.capturePropertyValue) {
+      throw new Error("Host copy capture changed during binding write");
+    }
+    if (group.sources.some((source) => this.#compiledGraph
+      ? !this.#groupsByCompiledSource.get(source)?.includes(group)
+      : !this.#groupsBySource.get(source)?.has(group))) {
+      throw new Error("Bound host copy writer changed during capture");
+    }
+    return result;
   }
 
   #stageLastSourceValue(group: BoundPropGroup<H>, value: number | undefined) {
@@ -1711,7 +1924,13 @@ export class VDOMSnapshotRoot<H, Parent = H> {
                     node: MountedNode<H>,
                     name: string,
                     value: unknown,
-                  ) => this.#refreshScalarBindingProp(node, name, value),
+                    acceptedCopy?: AcceptedCopyValue | null,
+                  ) => this.#refreshScalarBindingProp(
+                    node,
+                    name,
+                    value,
+                    acceptedCopy,
+                  ),
                 }
                 : {}),
             }
@@ -2827,12 +3046,12 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       return true;
     });
     const captureNew = (node: MountedNode<H>, vnode: VNode): boolean => {
-      if (node.vnode !== vnode || node.hostDisposed ||
+      if (!matchesAcceptedCopyCandidate(node.vnode, vnode) || node.hostDisposed ||
         (vnode.kind === "element" && (node.children.length !== vnode.children.length ||
           !node.children.every((child, index) =>
             captureNew(child, vnode.children[index])
           )))) return false;
-      newNodes.push({ node, vnode, handle: node.handle,
+      newNodes.push({ node, vnode: node.vnode, handle: node.handle,
         parent: node.parent, index: node.parentIndex });
       return true;
     };
@@ -2860,7 +3079,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         newCurrent() && targets.every(({ key, parent, index,
           bucket, afterKey, applied, next }) => {
           if (!applied || applied.hostDisposed || applied.parent !== parent ||
-            applied.vnode !== next || parent?.hostDisposed ||
+            !matchesAcceptedCopyCandidate(applied.vnode, next) ||
+            parent?.hostDisposed ||
             this.#nodesByKey.get(key)?.size !== 1 ||
             !this.#nodesByKey.get(key)?.has(applied)) return false;
           return bucket ? parent?.keyedChildren === bucket &&
@@ -2905,6 +3125,10 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           setText: (node, text) => this.#renderHost.setText(node, text),
           setProp: (node, name, value, previous) =>
             this.#renderHost.setProp(node, name, value, previous),
+          capturePropertyValue: this.#renderHost.capturePropertyValue
+            ? (node, name, value) =>
+              this.#renderHost.capturePropertyValue!(node, name, value)
+            : undefined,
           setStyleProp: this.#renderHost.setStyleProp
             ? (node, name, value, previous) =>
               this.#renderHost.setStyleProp!(node, name, value, previous)
@@ -3301,8 +3525,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
             if (countVisits) newIndexVisits++;
             this.#addToKeyIndex(node);
           },
-          refreshProp: (node, name, value) =>
-            this.#refreshScalarBindingProp(node, name, value),
+          refreshProp: (node, name, value, acceptedCopy) =>
+            this.#refreshScalarBindingProp(node, name, value, acceptedCopy),
         };
         const bindingAttachStart = this.#bindingIndexAttachOperations;
         const bindingDetachStart = this.#bindingIndexDetachOperations;
@@ -3927,15 +4151,26 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       for (let index = 0; index < record.groups.length; index++) {
         const group = record.groups[index];
         const next = record.outputs[index];
-        if (!sameBoundValueCanSkipWrite(
+        const preparedCopy = this.#prepareBoundCopy(group, next);
+        const prepared = preparedCopy ?? next;
+        const shouldWrite = !sameBoundValueCanSkipWrite(
           this.#effectiveLastValue(group),
-          next,
+          prepared,
           group.forceWrite,
-        )) {
-          this.#writeBoundGroup(group, next);
+          this.#effectiveLastValueIsCopy(group),
+          !!preparedCopy,
+        );
+        if (shouldWrite) {
+          this.#writeBoundGroup(group, prepared, !!preparedCopy);
           wrote = true;
         }
-        this.#stageLastValue(group, next);
+        this.#stageLastValue(
+          group,
+          shouldWrite ? prepared : this.#effectiveLastValue(group),
+          shouldWrite
+            ? !!preparedCopy
+            : this.#effectiveLastValueIsCopy(group),
+        );
         if (group.sources.length === 1) {
           this.#stageLastSourceValue(group, record.sourceValues[index]);
         }
@@ -4484,18 +4719,22 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           for (let index = 0; index < this.#programAffectedSinkCount; index++) {
             const group = this.#programAffectedSinks[index]!;
             const next = this.#programOutputValues[index];
+            const preparedCopy = this.#prepareBoundCopy(group, next);
+            const prepared = preparedCopy ?? next;
             if (
               sameBoundValueCanSkipWrite(
                 this.#effectiveLastValue(group),
-                next,
+                prepared,
                 group.forceWrite,
+                this.#effectiveLastValueIsCopy(group),
+                !!preparedCopy,
               )
             ) {
               skipCount++;
               continue;
             }
-            this.#writeBoundGroup(group, next);
-            this.#stageLastValue(group, next);
+            this.#writeBoundGroup(group, prepared, !!preparedCopy);
+            this.#stageLastValue(group, prepared, !!preparedCopy);
             writeCount++;
           }
         } finally {
@@ -4579,17 +4818,21 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     let projectedIndex = 0;
     for (const group of affected) {
       const next = projectedValues[projectedIndex++];
+      const preparedCopy = this.#prepareBoundCopy(group, next);
+      const prepared = preparedCopy ?? next;
       if (
         sameBoundValueCanSkipWrite(
           this.#effectiveLastValue(group),
-          next,
+          prepared,
           group.forceWrite,
+          this.#effectiveLastValueIsCopy(group),
+          !!preparedCopy,
         )
       ) {
         continue;
       }
-      this.#writeBoundGroup(group, next);
-      this.#stageLastValue(group, next);
+      this.#writeBoundGroup(group, prepared, !!preparedCopy);
+      this.#stageLastValue(group, prepared, !!preparedCopy);
     }
     return true;
   }
@@ -4776,20 +5019,24 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         const group = this.#columnRowsScratchGroups[index]!;
         const sourceValue = this.#columnRowsScratchSources[index]!;
         const next = this.#columnRowsScratchValues[index];
+        const preparedCopy = this.#prepareBoundCopy(group, next);
+        const prepared = preparedCopy ?? next;
         if (
           sameBoundValueCanSkipWrite(
             this.#effectiveLastValue(group),
-            next,
+            prepared,
             group.forceWrite,
+            this.#effectiveLastValueIsCopy(group),
+            !!preparedCopy,
           )
         ) {
           this.#stageLastSourceValue(group, sourceValue);
           continue;
         }
-        this.#writeBoundGroup(group, next);
+        this.#writeBoundGroup(group, prepared, !!preparedCopy);
         if (this.#columnRowsScratchCancelled) break;
         this.#stageLastSourceValue(group, sourceValue);
-        this.#stageLastValue(group, next);
+        this.#stageLastValue(group, prepared, !!preparedCopy);
         wrote = true;
       }
       return wrote;
@@ -4910,20 +5157,24 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           continue;
         }
         const next = this.#columnRowsScratchValues[index];
+        const preparedCopy = this.#prepareBoundCopy(group, next);
+        const prepared = preparedCopy ?? next;
         if (
           sameBoundValueCanSkipWrite(
             this.#effectiveLastValue(group),
-            next,
+            prepared,
             group.forceWrite,
+            this.#effectiveLastValueIsCopy(group),
+            !!preparedCopy,
           )
         ) {
           this.#stageLastSourceValue(group, sourceValue);
           continue;
         }
-        this.#writeBoundGroup(group, next);
+        this.#writeBoundGroup(group, prepared, !!preparedCopy);
         if (this.#columnRowsScratchCancelled) break;
         this.#stageLastSourceValue(group, sourceValue);
-        this.#stageLastValue(group, next);
+        this.#stageLastValue(group, prepared, !!preparedCopy);
         wrote = true;
       }
       return wrote;
@@ -5226,10 +5477,12 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           const record = this.#ownerRowInputRecordScratch[inputIndex]!;
           const next = this.#ownerRowStagedValues[index];
           const group = record.sinks![sinkIndex];
-          this.#writeBoundGroup(group, next);
+          const preparedCopy = this.#prepareBoundCopy(group, next);
+          const prepared = preparedCopy ?? next;
+          this.#writeBoundGroup(group, prepared, !!preparedCopy);
           wrote = true;
           if (this.#ownerRowExecutionCancelled) break;
-          this.#stageLastValue(group, next);
+          this.#stageLastValue(group, prepared, !!preparedCopy);
         }
       } else {
         // Explicit changed-slot fanouts preserve the generic first-touch order.
@@ -5278,17 +5531,21 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           if (this.#ownerRowExecutionCancelled) break;
           const group = this.#ownerRowGroupScratch[index]!;
           const next = this.#ownerRowValueScratch[index];
+          const preparedCopy = this.#prepareBoundCopy(group, next);
+          const prepared = preparedCopy ?? next;
           if (
             sameBoundValueCanSkipWrite(
               this.#effectiveLastValue(group),
-              next,
+              prepared,
               group.forceWrite,
+              this.#effectiveLastValueIsCopy(group),
+              !!preparedCopy,
             )
           ) continue;
-          this.#writeBoundGroup(group, next);
+          this.#writeBoundGroup(group, prepared, !!preparedCopy);
           wrote = true;
           if (this.#ownerRowExecutionCancelled) break;
-          this.#stageLastValue(group, next);
+          this.#stageLastValue(group, prepared, !!preparedCopy);
         }
       }
       return wrote;
@@ -5425,20 +5682,24 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           continue;
         }
         const next = this.#columnRowsScratchValues[index];
+        const preparedCopy = this.#prepareBoundCopy(group, next);
+        const prepared = preparedCopy ?? next;
         if (
           sameBoundValueCanSkipWrite(
             this.#effectiveLastValue(group),
-            next,
+            prepared,
             group.forceWrite,
+            this.#effectiveLastValueIsCopy(group),
+            !!preparedCopy,
           )
         ) {
           this.#stageLastSourceValue(group, sourceValue);
           continue;
         }
-        this.#writeBoundGroup(group, next);
+        this.#writeBoundGroup(group, prepared, !!preparedCopy);
         if (this.#columnRowsScratchCancelled) break;
         this.#stageLastSourceValue(group, sourceValue);
-        this.#stageLastValue(group, next);
+        this.#stageLastValue(group, prepared, !!preparedCopy);
         wrote = true;
       }
       return wrote;
@@ -5661,46 +5922,61 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       const group = groups[index];
       const sourceValue = sourceValues[index];
       const next = nextValues[index];
+      const preparedCopy = this.#prepareBoundCopy(group, next);
+      const prepared = preparedCopy ?? next;
       if (
         sameBoundValueCanSkipWrite(
           this.#effectiveLastValue(group),
-          next,
+          prepared,
           group.forceWrite,
+          this.#effectiveLastValueIsCopy(group),
+          !!preparedCopy,
         )
       ) {
         this.#stageLastSourceValue(group, sourceValue);
         continue;
       }
-      this.#writeBoundGroup(group, next);
+      this.#writeBoundGroup(group, prepared, !!preparedCopy);
       this.#stageLastSourceValue(group, sourceValue);
-      this.#stageLastValue(group, next);
+      this.#stageLastValue(group, prepared, !!preparedCopy);
       wrote = true;
     }
     return wrote;
   }
 
-  #writeBoundGroup(group: BoundPropGroup<H>, next: unknown) {
+  #writeBoundGroup(
+    group: BoundPropGroup<H>,
+    next: unknown,
+    nextIsCopy = false,
+  ) {
+    const written = nextIsCopy
+      ? (next as AcceptedCopyValue).writeValue
+      : next;
+    const previous = this.#effectiveLastValue(group);
+    const before = this.#effectiveLastValueIsCopy(group)
+      ? (previous as AcceptedCopyValue).writeValue
+      : previous;
     if (group.styleProperty !== undefined) {
       if (group.styleWriter) {
-        group.styleWriter(next, this.#effectiveLastValue(group));
+        group.styleWriter(written, before);
       } else if (this.#renderHost.setStyleProp) {
         this.#renderHost.setStyleProp(
           group.handle,
           group.styleProperty,
-          next,
-          this.#effectiveLastValue(group),
+          written,
+          before,
         );
       } else {
         this.#renderHost.setProp(group.handle, "style", {
-          [group.styleProperty]: next,
-        }, { [group.styleProperty]: this.#effectiveLastValue(group) });
+          [group.styleProperty]: written,
+        }, { [group.styleProperty]: before });
       }
     } else {
       this.#renderHost.setProp(
         group.handle,
         group.name,
-        next,
-        this.#effectiveLastValue(group),
+        written,
+        before,
       );
     }
   }
@@ -5720,6 +5996,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     node: MountedNode<H>,
     name: string,
     rawValue: unknown,
+    acceptedCopy?: AcceptedCopyValue | null,
   ): { groups: BoundPropGroup<H>[]; incompatible: boolean } {
     const incompatible = hasNonScalarBindingMetadata(name, rawValue);
     if (
@@ -5741,7 +6018,15 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           project: binding.project,
           sources: binding.sources ?? [binding.source],
           rawValue: binding,
-          lastValue: readBoundValue(binding),
+          lastValue: styleProperty === undefined
+            ? (acceptedCopy === undefined && node.vnode.kind === "element"
+              ? node.vnode.acceptedCopyProps?.[name]
+              : acceptedCopy) ?? readBoundValue(binding)
+            : readBoundValue(binding),
+          lastValueIsCopy: styleProperty === undefined &&
+            !!(acceptedCopy === undefined && node.vnode.kind === "element"
+              ? node.vnode.acceptedCopyProps?.[name]
+              : acceptedCopy),
           forceWrite: !!binding.read,
         });
       }
@@ -5755,7 +6040,14 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         name,
         sources,
         rawValue,
-        lastValue: materializeProp(name, rawValue),
+        lastValue: (acceptedCopy === undefined && node.vnode.kind === "element"
+          ? node.vnode.acceptedCopyProps?.[name]
+          : acceptedCopy) ??
+          materializeProp(name, rawValue),
+        lastValueIsCopy: !!(acceptedCopy === undefined &&
+            node.vnode.kind === "element"
+          ? node.vnode.acceptedCopyProps?.[name]
+          : acceptedCopy),
         forceWrite: hasStableDerivedBinding(rawValue),
       }],
       incompatible,
@@ -5998,18 +6290,37 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     node: MountedNode<H>,
     name: string,
     rawValue: unknown,
+    acceptedCopy?: AcceptedCopyValue | null,
   ) {
     const oldGroups = node.scalarBindingGroups?.get(name) ?? [];
     const oldIncompatible = node.scalarIncompatibleBindingProps?.has(name) ??
       false;
-    const plan = this.#makeScalarBindingGroups(node, name, rawValue);
+    const plan = this.#makeScalarBindingGroups(
+      node,
+      name,
+      rawValue,
+      acceptedCopy,
+    );
     const nextGroups = plan.groups;
     const nextIncompatible = plan.incompatible;
     const unchangedGroups = oldGroups.length === nextGroups.length &&
       oldGroups.every((old, index) =>
         old.rawValue === nextGroups[index].rawValue
       );
-    if (unchangedGroups && oldIncompatible === nextIncompatible) return;
+    if (unchangedGroups && oldIncompatible === nextIncompatible) {
+      for (let index = 0; index < oldGroups.length; index++) {
+        const group = oldGroups[index];
+        if (group.styleProperty === undefined &&
+          (acceptedCopy || this.#effectiveLastValueIsCopy(group))) {
+          this.#stageLastValue(
+            group,
+            nextGroups[index].lastValue,
+            !!nextGroups[index].lastValueIsCopy,
+          );
+        }
+      }
+      return;
+    }
     const sameMembership = oldGroups.length === nextGroups.length &&
       oldGroups.every((old, index) => {
         const next = nextGroups[index];
@@ -6029,7 +6340,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         }
         old.rawValue = next.rawValue;
         old.project = next.project;
-        this.#stageLastValue(old, next.lastValue);
+        this.#stageLastValue(old, next.lastValue, !!next.lastValueIsCopy);
         old.forceWrite = next.forceWrite;
         for (const source of old.sources) {
           const slot = this.#programSourceSlots.get(source);
@@ -6201,9 +6512,10 @@ export class VDOMSnapshotRoot<H, Parent = H> {
                   : {}),
                 sources: [binding.source],
                 rawValue: binding.binding,
-                lastValue: column
+                lastValue: node.vnode.acceptedCopyProps?.[name] ?? (column
                   ? binding.binding!.project(column.values[columnIndex!])
-                  : binding.binding!.project(binding.source.value),
+                  : binding.binding!.project(binding.source.value)),
+                lastValueIsCopy: !!node.vnode.acceptedCopyProps?.[name],
               };
               this.#activateBoundPropGroup(group);
               const bindingGroups = byBinding.get(binding.bindingId);
@@ -6245,7 +6557,12 @@ export class VDOMSnapshotRoot<H, Parent = H> {
                   project: binding.project,
                   rawValue: binding,
                   sources: binding.sources ?? [binding.source],
-                  lastValue: readBoundValue(binding),
+                  lastValue: styleProperty === undefined
+                    ? node.vnode.acceptedCopyProps?.[name] ??
+                      readBoundValue(binding)
+                    : readBoundValue(binding),
+                  lastValueIsCopy: styleProperty === undefined &&
+                    !!node.vnode.acceptedCopyProps?.[name],
                   forceWrite: !!binding.read,
                 };
                 this.#activateBoundPropGroup(group);
@@ -6290,7 +6607,9 @@ export class VDOMSnapshotRoot<H, Parent = H> {
               name,
               sources,
               rawValue,
-              lastValue: materializeProp(name, rawValue),
+              lastValue: node.vnode.acceptedCopyProps?.[name] ??
+                materializeProp(name, rawValue),
+              lastValueIsCopy: !!node.vnode.acceptedCopyProps?.[name],
               forceWrite: hasStableDerivedBinding(rawValue),
             };
             (node.scalarBindingGroups ??= new Map()).set(name, [group]);

@@ -1,0 +1,46 @@
+(node:66755) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+file:///Volumes/Depot/Developer/r3act/compiler/compiled_resource_transaction_test.mjs:333
+  throw new AggregateError([...(primaryError ? [primaryError] : []), ...cleanupErrors],
+        ^
+
+AggregateError: Compiled resource transaction failed
+    at file:///Volumes/Depot/Developer/r3act/compiler/compiled_resource_transaction_test.mjs:333:9 {
+  [errors]: [
+    AssertionError [ERR_ASSERTION]: {
+      status: 'failed',
+      transitionId: 'resource-transaction-0a46662d-5789-44f5-b019-c845c5cfb6c3',
+      roots: [
+        'resource-dom-0fa675ff-0dcb-4f6e-8dbd-315b2ab8711d',
+        'resource-three-5b4000e7-ba3e-42ed-b96e-fa51e530ffe4'
+      ],
+      reason: 'Grouped host commit failed; roots require remount',
+      error: Error: Scoped host subtree changed during application
+          at Object.commit (/Volumes/Depot/Developer/r3act/src/vdom_snapshot_runtime.ts:3191:19)
+          at Object.commit (/Volumes/Depot/Developer/r3act/src/vdom_snapshot_runtime.ts:3329:22)
+          at Object.commitHost (/Volumes/Depot/Developer/r3act/src/component_state_runtime.ts:7231:28)
+          at Object.commitHost (/Volumes/Depot/Developer/r3act/src/component_state_runtime.ts:2884:16)
+          at Object.commit (/Volumes/Depot/Developer/r3act/src/native_root_work_queue.ts:407:55)
+          at RootWorkQueue.#commitReady (/Volumes/Depot/Developer/r3act/src/root_work_queue.ts:600:22)
+          at RootWorkQueue.#drain (/Volumes/Depot/Developer/r3act/src/root_work_queue.ts:460:59)
+          at RootWorkQueue.#refreshDynamic (/Volumes/Depot/Developer/r3act/src/root_work_queue.ts:385:16)
+          at refresh (/Volumes/Depot/Developer/r3act/src/root_work_queue.ts:410:44)
+          at <anonymous> (/Volumes/Depot/Developer/r3act/src/native_root_work_queue.ts:681:9)
+    }
+    + actual - expected
+    
+    + 'failed'
+    - 'committed'
+    
+        at file:///Volumes/Depot/Developer/r3act/compiler/compiled_resource_transaction_test.mjs:268:10 {
+      generatedMessage: false,
+      code: 'ERR_ASSERTION',
+      actual: 'failed',
+      expected: 'committed',
+      operator: 'strictEqual',
+      diff: 'simple'
+    }
+  ]
+}
+
+Node.js v24.18.0

@@ -224,6 +224,10 @@ The example assumes Joint and the domain handles from the preceding section. Up 
 
 The emitted target function/site and module revision must match at admission. Stale code, removed owners, changed source inputs or revoked writers invalidate the scoped candidate. No authored wrapper is invoked during closed preparation. The [source contract](../implementation/2026-10-18-component-forwarding/design.md) and [actual compiled DOM/Three/fork fixture](../compiler/compiled_component_forwarding_test.mjs) define this subset. Consolidated Darwin verification passes 978 runtime tests, 63 Rust tests and all 21 compiled fixtures, including exact wrapper owner lineage, grouped updates, generic retry and cleanup. These correctness results do not establish a performance advantage.
 
+## Host values and invalidation
+
+Supported Three copy props retain accepted component values, so a reused mutable vector or tuple can update through ordinary JSX after a component/source invalidation. Unchanged references and components skip; distinct references preserve writer callbacks. Unknown or retaining props keep reference equality. Mutation itself does not schedule an untracked source. The finite built-in shapes, optional public host capture protocol and failure/lifetime rules are specified in the [Three reference](three-host-reference.md#copied-prop-inputs). DOM styles retain their accepted copy/removal behavior. These semantics do not establish a speed or presentation advantage.
+
 ## Diagnostics, fallback, and bridge boundary
 
 | Outcome | Examples |

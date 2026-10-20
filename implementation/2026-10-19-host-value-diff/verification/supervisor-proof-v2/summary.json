@@ -1,0 +1,61 @@
+{
+  "cwd": "/Volumes/Depot/Developer/r3act",
+  "environment": {
+    "PATH": "/private/tmp/radix-dialog-darwin-v1-bin:/Users/mini/.local/share/mise/installs/node/24.18.0/bin:/Users/mini/.cargo/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "CI": "true",
+    "CARGO_HOME": "/Volumes/Depot/Developer/r3act/.cache/cargo",
+    "CARGO_BUILD_JOBS": "1",
+    "R3ACT_SOURCE_COMMIT": "a47df85cc28acb04119a6d9c09fe52ea6ac07a33",
+    "unset": [
+      "CARGO_TARGET_DIR",
+      "CARGO_BUILD_TARGET",
+      "npm_config_store_dir"
+    ]
+  },
+  "phases": [
+    {
+      "phase": "prepare",
+      "argv": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "implementation/2026-10-19-host-value-diff/prepare.mjs",
+        "--proof-dir",
+        "implementation/2026-10-19-host-value-diff/proof-v2"
+      ],
+      "start_utc": "2026-10-20T00:25:41.251879+00:00",
+      "end_utc": "2026-10-20T00:25:43.895844+00:00",
+      "exit_code": 0,
+      "stdout_bytes": 226,
+      "stderr_bytes": 0
+    },
+    {
+      "phase": "build-pair",
+      "argv": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "implementation/2026-10-19-host-value-diff/run-build-pair.mjs",
+        "--proof-dir",
+        "implementation/2026-10-19-host-value-diff/proof-v2"
+      ],
+      "start_utc": "2026-10-20T00:25:43.896251+00:00",
+      "end_utc": "2026-10-20T00:25:45.043352+00:00",
+      "exit_code": 0,
+      "stdout_bytes": 156,
+      "stderr_bytes": 0
+    },
+    {
+      "phase": "browser-proof",
+      "argv": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "implementation/2026-10-19-host-value-diff/verify-browser.mjs",
+        "--proof-dir",
+        "implementation/2026-10-19-host-value-diff/proof-v2",
+        "--phase",
+        "proof"
+      ],
+      "start_utc": "2026-10-20T00:25:45.043870+00:00",
+      "end_utc": "2026-10-20T00:25:49.327547+00:00",
+      "exit_code": 1,
+      "stdout_bytes": 0,
+      "stderr_bytes": 584
+    }
+  ]
+}

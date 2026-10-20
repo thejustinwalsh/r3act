@@ -154,6 +154,8 @@ export const createWorld = () => new OwnerStateWorld();
 
 export type { VDOMHost } from "./vdom_snapshot_runtime.ts";
 export type {
+  HostCopyComparisonScalar,
+  HostCopyValueCapture,
   HostPropertyCapability,
   HostResourceDescription,
   HostResourceOwnership,

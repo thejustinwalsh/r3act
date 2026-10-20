@@ -4,8 +4,10 @@ import {
   createThreePropertyWriterResolver,
   describeThreePropertyWrite,
 } from "./three_property_writer.ts";
+import { captureThreePropertyCopy } from "./three_property_copy.ts";
 import {
   declaredHostValuePolicy,
+  type HostCopyValueCapture,
   type HostPropertyCapability,
   type HostResourceDescription,
   type HostResourceOwnership,
@@ -78,6 +80,11 @@ export interface ThreeHostDiagnostics {
 
 export interface ThreeHost extends VDOMHost<ThreeHandle, ThreeParent> {
   readonly diagnostics: ThreeHostDiagnostics;
+  capturePropertyValue(
+    handle: ThreeHandle,
+    name: string,
+    next: unknown,
+  ): HostCopyValueCapture | null;
   describePropertyWrite(
     handle: ThreeHandle,
     name: string,
@@ -632,6 +639,14 @@ const writeGenericProp = (handle: ThreeHandle, name: string, value: unknown) => 
       const writer = propertyWriters[name];
       if (writer) writer(handle, value, previous);
       else writeGenericProp(handle, name, value);
+    },
+    capturePropertyValue(handle, name, next): HostCopyValueCapture | null {
+      if (hostDisposed || !handle.live || propertyWriters[name] ||
+        eventTypeForProp(name) || typeof next !== "object" || next === null) {
+        return null;
+      }
+      const instance = handle.kind === "object" ? handle.object : handle.resource;
+      return captureThreePropertyCopy(instance, name, next);
     },
     describePropertyWrite(handle, name, next): HostPropertyCapability {
       if (hostDisposed || !handle.live) {
