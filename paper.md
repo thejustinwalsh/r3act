@@ -1,5 +1,17 @@
 # A VDOM-First, Data-Oriented Runtime for Declarative UI
 
+## Three resource handle lifetimes — 20 October 2026
+
+One host-local lifetime Map replaces the owned-resource Set. Shared geometry/material handles and primitive aliases retain host-owned resources until their final release; borrowed-only assets stay caller-owned. Cleanup attempts attachment restoration and resource release independently, preserves original/cleanup errors, prevents disposal reentry/readmission and rejects duplicate live Object3D handles. Factory/metadata reentry validates retirement after the last creation getter, with one in-flight count preserving known borrowed assets until cleanup. Cross-host and direct args/property borrows remain caller-managed; no global identity/version registry, compiler purity grant or traversal redesign is added.
+
+An immutable old-source run reproduces early shared disposal and skipped cleanup, with 331 unchanged inputs. Two failed consolidated gates remain preserved. Darwin-v3 passes 60/60 phases: 1066 runtime tests, 83 Rust tests, 41 compiled fixtures, twenty actual Three tests, three retention checks and thirteen package checks. All 1324 runner inputs match, with 1334 source/context files archived. The compiled fixture verifies grouped DOM/Three updates, shared-host roots, keyed retirement, retained identity, failed-group old acceptance/quarantine and cleanup.
+
+Fresh five-tarball proof passes eighteen assertions and six public installed lifetime checks. The unchanged async application passes complete fork/urgent/cancel/disposal episodes; 3163 selected installed files and 1334 staged rows are bound. Both browser phases match 9140 hashes before/after and close cleanly. The sole Native-first timing pair has higher Native median/p95: 1.0/1.8 ms versus React 0.3/0.5 ms, with C settlement 1.2/0.6 ms. About 0.1 ms observed quantum and descriptive observer delivery establish no speed, CPU, paint, population-tail, alias/disposal-cost, cold/memory or independent-device qualification.
+
+The full-plan first pass remains active, including release performance/cold/memory, current other-platform and independent-device requirements. Human participants remain zero with no maintenance claim; historic wins, dense FAIL, exhausted Recording A and physical HOLD retain scope. No VM/server or memory increase occurs. Saved Apple limits remain one CPU, 256 MiB/container and 512 MiB/build on Depot, with startup permissions and effective limits unverified.
+
+[Source, failures, receipts and limits](implementation/2026-10-20-three-resource-lifetime/results.md).
+
 ## Installed forked async interaction — 20 October 2026
 
 The complete forked DOM/Three application now executes from five freshly installed packages with separate Native and React graphs. Native app/scene/controller bytes and the React comparator's statements remain unchanged; only its React JSX pragma is added. A real button listener delivers twenty urgent actions while B/C providers remain pending. The source inventory now includes valid dated units from 19 October onward, replacing its hard-coded single-day selection. Runtime/compiler/publication authority and physical layouts remain unchanged.

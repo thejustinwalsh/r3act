@@ -352,7 +352,8 @@ try {
     "native_collection_execution_test", "compiled_host_value_diff_test",
     "compiled_reentrant_replacement_test", "compiled_runtime_origin_test",
     "native_root_queue_execution_test", "native_task_transition_execution_test",
-    "native_promise_store_race_execution_test", "numeric_state_layout_execution_test"];
+    "native_promise_store_race_execution_test", "numeric_state_layout_execution_test",
+    "compiled_three_resource_lifetime_test"];
   for (const [index, fixture] of fixtures.entries()) {
     const name = `compiled-${String(index + 1).padStart(2, "0")}`;
     const before = await compilerHash();

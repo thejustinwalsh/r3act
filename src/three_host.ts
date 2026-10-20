@@ -344,7 +344,10 @@ const writeGenericProp = (handle: ThreeHandle, name: string, value: unknown) => 
     Map<string, (event: NativeThreePointerEvent) => void>
   >();
   const handles = new Set<ThreeHandle>();
-  const liveResources = new Set<THREE.BufferGeometry | THREE.Material>();
+  const resourceLifetimes = new Map<
+    THREE.BufferGeometry | THREE.Material,
+    { liveHandles: number; owned: boolean }
+  >();
   const disposedResources = new WeakSet<
     THREE.BufferGeometry | THREE.Material
   >();
@@ -359,37 +362,87 @@ const writeGenericProp = (handle: ThreeHandle, name: string, value: unknown) => 
   let createdResourceCount = 0;
   let disposedResourceCount = 0;
   let hostDisposed = false;
+  let pendingCreations = 0;
   const fallbackGeometry = new THREE.BufferGeometry();
   const fallbackMaterial = new THREE.MeshBasicMaterial();
 
   const describeResource = (
     object: unknown,
-    handle: ThreeHandle,
   ): HostResourceDescription | null => {
     if (!(object instanceof THREE.BufferGeometry ||
       object instanceof THREE.Material)) return null;
+    const lifetime = resourceLifetimes.get(object);
     const ownership: HostResourceOwnership = object === fallbackGeometry ||
       object === fallbackMaterial
       ? "shared-owned"
-      : handle.kind === "resource" && handle.resource === object
-      ? (handle.owned ? "owned" : "borrowed")
-      : liveResources.has(object) ? "owned" : "borrowed";
+      : lifetime?.owned
+      ? lifetime.liveHandles > 1 ? "shared-owned" : "owned"
+      : "borrowed";
     return Object.freeze({ object, ownership });
-  };
-
-  const ownResource = <T extends THREE.BufferGeometry | THREE.Material>(
-    resource: T,
-  ) => {
-    liveResources.add(resource);
-    createdResourceCount++;
-    return resource;
   };
 
   const disposeResource = (resource: THREE.BufferGeometry | THREE.Material) => {
     if (disposedResources.has(resource)) return;
     disposedResources.add(resource);
-    if (liveResources.delete(resource)) disposedResourceCount++;
     resource.dispose();
+  };
+
+  const rejectProducedCreation = (
+    produced: THREE.Object3D | THREE.BufferGeometry | THREE.Material,
+    kind: "object" | "geometry" | "material",
+    owned: boolean,
+    reason: unknown,
+  ): never => {
+    if (kind !== "object" && owned &&
+      produced !== fallbackGeometry && produced !== fallbackMaterial &&
+      !resourceLifetimes.has(produced as THREE.BufferGeometry | THREE.Material) &&
+      !disposedResources.has(produced as THREE.BufferGeometry | THREE.Material)) {
+      try {
+        disposeResource(produced as THREE.BufferGeometry | THREE.Material);
+      } catch (cleanupError) {
+        throw new AggregateError(
+          [reason, cleanupError],
+          "Three node creation and cleanup failed.",
+        );
+      }
+    }
+    throw reason;
+  };
+
+  const retainResource = (handle: ThreeResourceHandle) => {
+    const resource = handle.resource;
+    if (disposedResources.has(resource)) {
+      throw new Error("Cannot create a Three handle for a disposed resource.");
+    }
+    const owned = handle.owned && resource !== fallbackGeometry &&
+      resource !== fallbackMaterial;
+    const lifetime = resourceLifetimes.get(resource);
+    if (lifetime) {
+      lifetime.liveHandles++;
+      if (owned && !lifetime.owned) {
+        lifetime.owned = true;
+        createdResourceCount++;
+      }
+      return;
+    }
+    resourceLifetimes.set(resource, {
+      liveHandles: 1,
+      owned,
+    });
+    if (owned) createdResourceCount++;
+  };
+
+  const releaseResource = (handle: ThreeResourceHandle) => {
+    const resource = handle.resource;
+    const lifetime = resourceLifetimes.get(resource);
+    if (!lifetime) return;
+    lifetime.liveHandles--;
+    if (lifetime.liveHandles > 0) return;
+    if (hostDisposed && !lifetime.owned) return;
+    resourceLifetimes.delete(resource);
+    if (!lifetime.owned) return;
+    disposedResourceCount++;
+    disposeResource(resource);
   };
 
   const removeEvents = (object: THREE.Object3D) => {
@@ -413,43 +466,54 @@ const writeGenericProp = (handle: ThreeHandle, name: string, value: unknown) => 
 
   const releaseHandle = (handle: ThreeHandle, errors: unknown[] = []) => {
     if (!handle.live) return;
+    if (!handles.has(handle)) {
+      errors.push(new Error("Three handle belongs to another host."));
+      return;
+    }
     handle.live = false;
     handles.delete(handle);
     propertyResolvers.delete(handle);
-    try {
-      if (handle.kind === "object") {
-        removeEvents(handle.object);
-        if (!handle.owned) restoreBorrowedObject(handle);
-      } else {
-        restoreAttachment(handle);
-        if (handle.owned) disposeResource(handle.resource);
+    if (handle.kind === "object") {
+      if (objectHandles.get(handle.object) === handle) {
+        objectHandles.delete(handle.object);
       }
-    } catch (error) {
-      errors.push(error);
+      removeEvents(handle.object);
+      if (!handle.owned) {
+        try { restoreBorrowedObject(handle); } catch (error) { errors.push(error); }
+      }
+      return;
     }
+    try { restoreAttachment(handle); } catch (error) { errors.push(error); }
+    try { releaseResource(handle); } catch (error) { errors.push(error); }
   };
 
   const restoreAttachment = (handle: ThreeResourceHandle) => {
     const attachment = handle.attachment;
     if (!attachment) return;
+    handle.attachment = undefined;
     const parent = attachment.parent as unknown as Record<string, unknown>;
     const propertyStates = attachmentStates.get(attachment.parent);
     const state = propertyStates?.get(attachment.property);
-    const isCurrent = parent[attachment.property] === handle.resource;
+    let isCurrent = false;
+    try {
+      isCurrent = parent[attachment.property] === handle.resource;
+    } finally {
+      if (state) {
+        const index = state.handles.indexOf(handle);
+        if (index >= 0) state.handles.splice(index, 1);
+        if (state.handles.length === 0) {
+          propertyStates?.delete(attachment.property);
+        }
+      }
+    }
     if (state) {
-      const index = state.handles.indexOf(handle);
-      if (index >= 0) state.handles.splice(index, 1);
       if (isCurrent) {
         const replacement = state.handles.at(-1);
         parent[attachment.property] = replacement?.resource ?? state.baseValue;
       }
-      if (state.handles.length === 0) {
-        propertyStates?.delete(attachment.property);
-      }
     } else if (isCurrent) {
       parent[attachment.property] = attachment.previous;
     }
-    handle.attachment = undefined;
   };
 
   const attachResource = (
@@ -505,95 +569,118 @@ const writeGenericProp = (handle: ThreeHandle, name: string, value: unknown) => 
       return Object.freeze({
         createdResources: createdResourceCount,
         disposedResources: disposedResourceCount,
-        liveResources: liveResources.size,
+        liveResources: createdResourceCount - disposedResourceCount,
         liveHandles: handles.size,
         eventRegistrations,
       });
     },
     createElement(tag, parent, creationProps = {}) {
       if (hostDisposed) throw new Error("Three host is disposed.");
-      if (creationProps.args !== undefined && !Array.isArray(creationProps.args)) throw new TypeError("Three constructor args must be an array.");
-      const args = Array.isArray(creationProps.args) ? creationProps.args : [];
-      let produced: THREE.Object3D | THREE.BufferGeometry | THREE.Material;
-      let owned = tag !== "primitive";
-      if (tag === "primitive") {
-        const primitive = creationProps.object;
-        if (
-          !(primitive instanceof THREE.Object3D ||
-            primitive instanceof THREE.BufferGeometry ||
-            primitive instanceof THREE.Material)
-        ) {
-          throw new TypeError(
-            "Three <primitive> requires an Object3D, BufferGeometry, or Material object prop.",
+      pendingCreations++;
+      try {
+        const suppliedArgs = creationProps.args;
+        if (suppliedArgs !== undefined && !Array.isArray(suppliedArgs)) throw new TypeError("Three constructor args must be an array.");
+        if (hostDisposed) throw new Error("Three host is disposed.");
+        const args = suppliedArgs ?? [];
+        let produced: THREE.Object3D | THREE.BufferGeometry | THREE.Material;
+        let owned = tag !== "primitive";
+        if (tag === "primitive") {
+          const primitive = creationProps.object;
+          if (
+            !(primitive instanceof THREE.Object3D ||
+              primitive instanceof THREE.BufferGeometry ||
+              primitive instanceof THREE.Material)
+          ) {
+            throw new TypeError(
+              "Three <primitive> requires an Object3D, BufferGeometry, or Material object prop.",
+            );
+          }
+          produced = primitive;
+          owned = false;
+        } else {
+          const customFactory = customFactories[tag];
+          if (customFactory) {
+            produced = customFactory(args, creationProps);
+          } else {
+            if (!constructorCache.has(tag)) {
+              constructorCache.set(
+                tag,
+                resolveThreeConstructor(namespace, tag) ?? null,
+              );
+            }
+            const resolution = constructorCache.get(tag) ?? undefined;
+            if (resolution?.kind === "not-constructor") {
+              throw new TypeError(
+                `Three namespace export ${resolution.exportName} for <${tag}> is not constructable.`,
+              );
+            }
+            if (!resolution) {
+              throw new Error(`Unsupported Three host tag <${tag}>.`);
+            }
+            // Default Mesh resources are host-owned fallbacks, not hidden
+            // constructor allocations. All explicit arguments retain Three semantics.
+            const constructorArgs = resolution.constructor === THREE.Mesh
+              ? [args[0] ?? fallbackGeometry, args[1] ?? fallbackMaterial, ...args.slice(2)]
+              : args;
+            produced = constructorFactory(resolution.constructor)(constructorArgs, creationProps);
+          }
+        }
+        const kind = resourceType(produced);
+        let handle: ThreeHandle;
+        try {
+          if (kind === "object") {
+            const object = produced as THREE.Object3D;
+            const originalParent = tag === "primitive" ? object.parent : null;
+            const originalIndex = originalParent?.children.indexOf(object) ?? -1;
+            handle = {
+              kind,
+              tag,
+              object,
+              owned,
+              creationArgs: args,
+              live: true,
+              ...(tag === "primitive" ? { originalParent, originalIndex } : {}),
+            };
+          } else {
+            const requestedAttachment = creationProps.attach;
+            handle = {
+              kind: "resource",
+              tag,
+              resource: produced as THREE.BufferGeometry | THREE.Material,
+              resourceKind: kind,
+              owned,
+              creationArgs: args,
+              ...(typeof requestedAttachment === "string"
+                ? { requestedAttachment }
+                : {}),
+              live: true,
+            };
+          }
+        } catch (error) {
+          return rejectProducedCreation(produced, kind, owned, error);
+        }
+        if (hostDisposed) {
+          rejectProducedCreation(
+            produced,
+            kind,
+            owned,
+            new Error("Three host is disposed."),
           );
         }
-        produced = primitive;
-        owned = false;
-      } else {
-        const customFactory = customFactories[tag];
-        if (customFactory) {
-          produced = customFactory(args, creationProps);
-        } else {
-          if (!constructorCache.has(tag)) {
-            constructorCache.set(
-              tag,
-              resolveThreeConstructor(namespace, tag) ?? null,
-            );
+        if (handle.kind === "object") {
+          if (objectHandles.get(handle.object)?.live) {
+            throw new Error("Cannot create a second live Three handle for one Object3D.");
           }
-          const resolution = constructorCache.get(tag) ?? undefined;
-          if (resolution?.kind === "not-constructor") {
-            throw new TypeError(
-              `Three namespace export ${resolution.exportName} for <${tag}> is not constructable.`,
-            );
-          }
-          if (!resolution) {
-            throw new Error(`Unsupported Three host tag <${tag}>.`);
-          }
-          // Default Mesh resources are host-owned fallbacks, not hidden
-          // constructor allocations. All explicit arguments retain Three semantics.
-          const constructorArgs = resolution.constructor === THREE.Mesh
-            ? [args[0] ?? fallbackGeometry, args[1] ?? fallbackMaterial, ...args.slice(2)]
-            : args;
-          produced = constructorFactory(resolution.constructor)(constructorArgs, creationProps);
-        }
+          objectHandles.set(handle.object, handle);
+        } else retainResource(handle);
+        handles.add(handle);
+        // Resource elements attach at insertion, after their parent exists.
+        void parent;
+        return handle;
+      } finally {
+        pendingCreations--;
+        if (hostDisposed && pendingCreations === 0) resourceLifetimes.clear();
       }
-      const kind = resourceType(produced);
-      const handle: ThreeHandle = kind === "object"
-        ? {
-          kind,
-          tag,
-          object: produced as THREE.Object3D,
-          owned,
-          creationArgs: args,
-          live: true,
-          ...(tag === "primitive"
-            ? {
-              originalParent: (produced as THREE.Object3D).parent,
-              originalIndex:
-                (produced as THREE.Object3D).parent?.children.indexOf(
-                  produced as THREE.Object3D,
-                ) ?? -1,
-            }
-            : {}),
-        }
-        : {
-          kind: "resource",
-          tag,
-          resource: produced as THREE.BufferGeometry | THREE.Material,
-          resourceKind: kind,
-          owned,
-          creationArgs: args,
-          ...(typeof creationProps.attach === "string"
-            ? { requestedAttachment: creationProps.attach }
-            : {}),
-          live: true,
-        };
-      if (handle.kind === "object") objectHandles.set(handle.object, handle);
-      else if (owned) ownResource(handle.resource);
-      handles.add(handle);
-      // Resource elements attach at insertion, after their parent exists.
-      void parent;
-      return handle;
     },
     createText() {
       throw new Error(
@@ -670,7 +757,7 @@ const writeGenericProp = (handle: ThreeHandle, name: string, value: unknown) => 
           return Object.freeze({
             valuePolicy: "unknown",
             targetResource: null,
-            valueResource: describeResource(next, handle),
+            valueResource: describeResource(next),
             mayThrow: true,
           });
         }
@@ -684,9 +771,9 @@ const writeGenericProp = (handle: ThreeHandle, name: string, value: unknown) => 
           ? declaredHostValuePolicy(propertyCapabilities[name])
           : observation!.valuePolicy,
         targetResource: observation
-          ? describeResource(observation.target, handle)
+          ? describeResource(observation.target)
           : null,
-        valueResource: describeResource(next, handle),
+        valueResource: describeResource(next),
         mayThrow: true,
       });
     },
@@ -755,6 +842,7 @@ const writeGenericProp = (handle: ThreeHandle, name: string, value: unknown) => 
           errors.push(error);
         }
       }
+      if (pendingCreations === 0) resourceLifetimes.clear();
       if (errors.length) {
         throw new AggregateError(errors, "Three host cleanup failed.");
       }
