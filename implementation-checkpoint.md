@@ -1,5 +1,13 @@
 # Implementation checkpoint
 
+## Disposable test container layout correction — 20 October 2026
+
+The user requires binaries and launchd service files on the system drive, with images, VM disks, volumes, caches and logs on Depot. The previous Depot-root chmod request is withdrawn; no volume permission change is authorized by that earlier request. These are disposable Linux test instances, not durable services. Apple uses launchd to supervise even ephemeral VM runtimes.
+
+Released 1.5.0 binaries now live at `/Users/mini/.local/share/apple-container/1.5.0`, and the CLI wrapper selects that installation while retaining Depot data/log roots. Luna verifies all 17 copied files, all seven executable signatures, wrapper syntax/version and unchanged saved one-CPU/256-MiB container/512-MiB builder settings. Per-VM service-file separation remains unresolved in the standard configuration; no custom Apple build, service or VM start occurs. Current Linux verification and the original full-plan acceptance remain incomplete.
+
+[Change, verification and exact limits](implementation/2026-10-20-container-layout/results.md). This section supersedes earlier instructions to wait for or perform Depot chmod.
+
 ## Portability admission — 20 October 2026
 
 Pinned Apple Container 1.5.0 source places an ordinary VM's disks and runtime launchd plist in the same container bundle. A HOME-only control-root workaround cannot establish VM storage on Depot, so no such experiment runs. Read-only evidence confirms Depot root:wheel mode 0775, API service unregistered and no matching apiserver/Colima/QEMU processes. Saved defaults remain one CPU, 256 MiB/container and 512 MiB/build; effective caps remain unverified. No configuration, permissions, service or VM changes occur.
