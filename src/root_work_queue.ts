@@ -174,6 +174,11 @@ export class RootWorkQueue<T = unknown> {
     return version;
   }
 
+  /** Whether this exact work is inside its synchronous commit boundary. */
+  isCommitting(id: string): boolean {
+    return this.#work.get(id)?.committing ?? false;
+  }
+
   /** Register a new or remounted root. Remount clears its terminal failure. */
   attachRoot(rootId: string, version = 0): void {
     if (this.#versions.has(rootId)) {
@@ -212,6 +217,7 @@ export class RootWorkQueue<T = unknown> {
     }
     let cancelled = 0;
     for (const record of [...this.#work.values()]) {
+      if (record.status !== "pending") continue;
       if (!record.definition.roots.includes(rootId)) continue;
       this.#settle(record, {
         status: "cancelled",
@@ -240,21 +246,6 @@ export class RootWorkQueue<T = unknown> {
       pending: Object.freeze([...(definition.pending ?? [])]),
     };
 
-    if (definition.key !== undefined) {
-      const replacedId = this.#keys.get(definition.key);
-      const replaced = replacedId === undefined
-        ? undefined
-        : this.#work.get(replacedId);
-      if (replaced && !replaced.committing) {
-        this.#settle(replaced, {
-          status: "cancelled",
-          transitionId: replaced.definition.id,
-          roots: replaced.definition.roots,
-          reason: `Replaced by transition ${definition.id}`,
-        });
-      }
-    }
-
     const record: WorkRecord<T> = {
       definition,
       pending: new Set(definition.pending ?? []),
@@ -271,10 +262,25 @@ export class RootWorkQueue<T = unknown> {
       deferSettledNotification: false,
       settledNotified: false,
     };
+    const replacedId = definition.key === undefined
+      ? undefined
+      : this.#keys.get(definition.key);
+    const replaced = replacedId === undefined
+      ? undefined
+      : this.#work.get(replacedId);
     this.#work.set(definition.id, record);
     if (definition.key !== undefined) {
       this.#keys.set(definition.key, definition.id);
     }
+    if (replaced && !replaced.committing) {
+      this.#settle(replaced, {
+        status: "cancelled",
+        transitionId: replaced.definition.id,
+        roots: replaced.definition.roots,
+        reason: `Replaced by transition ${definition.id}`,
+      });
+    }
+    if (record.status !== "pending") return this.#handle(record);
     if (record.pending.size === 0) this.#markReady(record);
     this.#drain();
     return this.#handle(record);
@@ -805,7 +811,7 @@ export class RootWorkQueue<T = unknown> {
     record.resolution = resolution;
     record.dynamicPending.clear();
     record.dynamicPendingWave++;
-    this.#work.delete(record.definition.id);
+    if (!record.committing) this.#work.delete(record.definition.id);
     const key = record.definition.key;
     if (key !== undefined && this.#keys.get(key) === record.definition.id) {
       this.#keys.delete(key);
@@ -818,6 +824,9 @@ export class RootWorkQueue<T = unknown> {
       record.status === "pending" || record.deferSettledNotification ||
       record.settledNotified
     ) return;
+    if (this.#work.get(record.definition.id) === record) {
+      this.#work.delete(record.definition.id);
+    }
     record.settledNotified = true;
     try {
       record.definition.onSettled?.(record.resolution as RootWorkSettled);

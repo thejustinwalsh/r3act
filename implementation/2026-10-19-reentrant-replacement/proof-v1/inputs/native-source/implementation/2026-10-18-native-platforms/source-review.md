@@ -1,0 +1,17 @@
+# Native-platform slice source review
+
+Source basis: `609333c`; integrated slice remains unverified. No current-source platform or timing PASS follows from this review.
+
+The lifecycle fixture now obtains its final execution tuple from the actual newly built debug compiler. Synthetic selector checks retain explicit target cases; the lifecycle execution checks actual Node platform/architecture and Rust info. Linux requires positive glibc identification. Windows remains outside this POSIX route.
+
+The shared runner freezes product inputs before dependency installation, checks pinned toolchains and actual OS/CPU, runs consolidated compiler/runtime/fixture/host/package gates with bounded owned process groups, records raw exits and dependency skips, and archives fresh package and changed fixture artifacts. Final source inventory detects edits, additions and deletions in selected source roots. Existing historical cache evidence requires restoration after the Darwin gate; generated Linux output stays isolated. Receipt source hashes, actual compiler identities and archived package manifests remain the authority.
+
+The Apple container 1.5.0 route replaces the Docker/Colima draft. Bootstrap excludes changing image/evidence output, locks copied sources and later validates them before execution. Copied control executes from the owned volume; the host launcher, bootstrap source lock and toolchain proof are hash-bound. Normal/failure/interrupt cleanup checks owned labels and distinguishes not-found from inspection failures. Failed bootstrap still permits an explicitly incomplete archive receipt and owned-volume finalization. Container names fit Apple's 63-character limit.
+
+Apple uses a shared singleton builder. The replacement instead pulls a digest-pinned official Node base and installs checksummed Rustup/Deno and pinned Rust/pnpm into the owned workspace volume in a named bounded container. No shared builder is started or stopped. Interrupted base pulls can leave a partial service-side transfer; that setup limitation is recorded. Hosted CI configuration remains source only until an actual runner receipt exists.
+
+The shared runner now rejects explicitly set `CARGO_TARGET_DIR` and `CARGO_BUILD_TARGET` (including empty values): existing compiled execution fixtures use the default debug compiler path. It hashes and queries that same executable, checking Cargo's actual native host target. This proof limitation prevents an unrelated override binary from being credited for fixture execution. Default VM and CI configurations do not set either override.
+
+Apple setup uses the signed official 1.5.0 payload on Depot. Both existing-data copies were verified with sparse extent hashes before switching the compatibility path. Depot initially has filesystem ownership disabled; launchd rejects service plists stored there. Native administrator authorization to enable ownership is pending. No Linux startup, volume persistence or project gate has passed yet.
+
+Primary source review releases the consolidated Darwin correctness gate against this frozen source. Linux setup smoke and Linux correctness remain unreleased pending native service availability. Luna owns all execution; no project gate has passed yet. The benchmark retains one hash-authorized native-first fresh-process pair with no timing retry; untimed proof builds may prime filesystem caches. No cold-cache, runtime, independent-device or general performance claim is available.

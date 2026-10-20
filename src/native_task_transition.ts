@@ -114,6 +114,8 @@ type OwnedExecution = {
   unsubs: Map<string, () => void>;
 };
 
+class TaskTransitionInterrupted extends Error {}
+
 let nextOperationId = 0;
 const freezeRecord = (input: InputRecord): Record<string, unknown> => {
   const result: Record<string, unknown> = Object.create(null);
@@ -151,6 +153,8 @@ const resolutionFor = (
   ...(reason === undefined ? {} : { reason }),
   ...(error === undefined ? {} : { error }),
 });
+const currentOperationStatus = (operation: Operation<any>): RootWorkStatus =>
+  operation.status;
 
 /**
  * Owns task executions and live-input observers for native root publications.
@@ -225,18 +229,31 @@ export class NativeTaskTransitionQueue {
       capturing: false,
       disposed: false,
     };
+    const handle: NativeTaskTransitionHandle = {
+      id,
+      get status() {
+        return operation.status;
+      },
+      get resolution() {
+        return operation.resolution;
+      },
+      completion,
+      snapshot: () => this.#snapshot(operation),
+      cancel: (reason) => this.#cancel(operation, reason),
+    };
     this.#operations.set(id, operation);
     if (options.key !== undefined) {
       const key = options.key;
       const prior = this.#keys.get(key);
+      this.#keys.set(key, id);
       if (prior) {
         const previous = this.#operations.get(prior);
         if (previous) {
           this.#cancel(previous, "Replaced by explicit operation key");
         }
       }
-      this.#keys.set(key, id);
     }
+    if (operation.status !== "pending") return handle;
     try {
       for (const descriptor of descriptors) {
         if (descriptor.root.retired) {
@@ -249,6 +266,7 @@ export class NativeTaskTransitionQueue {
       operation.capturing = true;
       operation.roots = this.#captureAll(operation, descriptors);
       operation.capturing = false;
+      if (operation.status !== "pending") return handle;
       if (operation.refreshRequested && operation.status === "pending") {
         this.#requestRefresh(operation);
       }
@@ -257,26 +275,30 @@ export class NativeTaskTransitionQueue {
       }
     } catch (error) {
       operation.capturing = false;
+      if (operation.status !== "pending") {
+        if (error instanceof TaskTransitionInterrupted) return handle;
+        throw error;
+      }
       this.#terminate(operation, "failed", error, undefined, true);
       throw error;
     }
-    return {
-      id,
-      get status() {
-        return operation.status;
-      },
-      get resolution() {
-        return operation.resolution;
-      },
-      completion,
-      snapshot: () => this.#snapshot(operation),
-      cancel: (reason) => this.#cancel(operation, reason),
-    };
+    return handle;
   }
 
   dispose(): void {
     if (this.#disposed) return;
     this.#disposed = true;
+    if ([...this.#operations.values()].some((operation) =>
+      operation.status === "pending" &&
+      this.#queue.isApplying(operation.id + ":generation:" + operation.generation)
+    )) {
+      queueMicrotask(() => this.#finishDispose());
+      return;
+    }
+    this.#finishDispose();
+  }
+
+  #finishDispose(): void {
     for (const operation of [...this.#operations.values()]) {
       if (operation.status === "pending") {
         this.#cancel(operation, "Task transition queue disposed");
@@ -295,6 +317,9 @@ export class NativeTaskTransitionQueue {
     descriptor: RootDescriptor<Tasks>,
     attempt = 0,
   ): CapturedRoot<Tasks> {
+    if (operation.status !== "pending") {
+      throw new TaskTransitionInterrupted();
+    }
     const root = descriptor.root;
     const transaction = new StoreRenderTransaction(root.rootId, {
       transitions: operation.options.transitions,
@@ -321,6 +346,9 @@ export class NativeTaskTransitionQueue {
           source,
           "native-task:" + operation.id + ":" + key,
         );
+        if (operation.status !== "pending") {
+          throw new TaskTransitionInterrupted();
+        }
       }
       captured = {
         root,
@@ -334,10 +362,16 @@ export class NativeTaskTransitionQueue {
       };
       if (stores.size) {
         captured.release = root.holdStoreDependencies(stores);
+        if (operation.status !== "pending") {
+          throw new TaskTransitionInterrupted();
+        }
         for (const store of stores) {
           captured.unsubs.push(
             store.subscribe(root.rootId, () => this.#requestRefresh(operation)),
           );
+          if (operation.status !== "pending") {
+            throw new TaskTransitionInterrupted();
+          }
         }
       }
       // Recheck after observer registration so an update cannot fall between
@@ -345,16 +379,29 @@ export class NativeTaskTransitionQueue {
       if (!transaction.validate()) {
         this.#releaseRoot(captured);
         transaction.discard();
+        if (operation.status !== "pending") {
+          throw new TaskTransitionInterrupted();
+        }
         if (attempt < 2) {
           return this.#capture(operation, descriptor, attempt + 1);
         }
         throw new Error("Could not capture a stable live task input cut");
       }
+      if (operation.status !== "pending") {
+        throw new TaskTransitionInterrupted();
+      }
       return captured;
     } catch (error) {
-      if (captured) this.#releaseRoot(captured);
-      transaction.discard();
-      throw error;
+      const cleanupErrors: unknown[] = [];
+      if (captured) {
+        try { this.#releaseRoot(captured); }
+        catch (cleanupError) { cleanupErrors.push(cleanupError); }
+      }
+      try { transaction.discard(); }
+      catch (cleanupError) { cleanupErrors.push(cleanupError); }
+      throw cleanupErrors.length
+        ? new AggregateError([error, ...cleanupErrors], "Task input capture cleanup failed")
+        : error;
     }
   }
 
@@ -419,14 +466,23 @@ export class NativeTaskTransitionQueue {
           group.values,
           { maxConcurrency: operation.options.maxConcurrency },
         );
+        if (operation.status !== "pending") {
+          throw new TaskTransitionInterrupted();
+        }
         operation.executions.add(group.execution);
         this.#trackExecution(
           group.execution,
           group.roots.map(({ root }) => root),
         );
+        if (operation.status !== "pending") {
+          throw new TaskTransitionInterrupted();
+        }
         for (const root of group.roots) {
           root.execution = group.execution;
           root.groupInputs = group.values;
+        }
+        if (operation.status !== "pending") {
+          throw new TaskTransitionInterrupted();
         }
       }
 
@@ -435,16 +491,28 @@ export class NativeTaskTransitionQueue {
           prior.execution.cancel("Live task input changed");
         }
       }
+      if (operation.status !== "pending") {
+        throw new TaskTransitionInterrupted();
+      }
 
       operation.execution = groups[0]?.execution;
-      const trees = operation.roots.map((root) => ({
-        root: root.root,
-        tree: root.buildTree(root.execution!, root.root),
-      }));
+      const trees: { root: NativeRoot; tree: RuntimeNode }[] = [];
+      for (const root of operation.roots) {
+        trees.push({
+          root: root.root,
+          tree: root.buildTree(root.execution!, root.root),
+        });
+        if (operation.status !== "pending") {
+          throw new TaskTransitionInterrupted();
+        }
+      }
       this.#rememberPublicationDependencies(
         operation,
         operation.roots.map(({ root, stores }) => ({ root, stores })),
       );
+      if (operation.status !== "pending") {
+        throw new TaskTransitionInterrupted();
+      }
       const handle = this.#queue.enqueue({
         id: operation.id + ":generation:" + generation,
         key: operation.options.key,
@@ -476,7 +544,25 @@ export class NativeTaskTransitionQueue {
         operation.native = handle;
       }
     } catch (error) {
-      this.#terminate(operation, "failed", error, undefined, true);
+      if (currentOperationStatus(operation) === "committed") throw error;
+      const cleanupErrors: unknown[] = [];
+      for (const execution of new Set([
+        ...priorGroups.map(({ execution }) => execution),
+        ...groups.flatMap(({ execution }) => execution ? [execution] : []),
+      ])) {
+        try { execution.cancel("Task transition setup failed"); }
+        catch (cleanupError) { cleanupErrors.push(cleanupError); }
+        try { execution.dispose(); }
+        catch (cleanupError) { cleanupErrors.push(cleanupError); }
+      }
+      const failure = cleanupErrors.length
+        ? new AggregateError([error, ...cleanupErrors], "Task transition setup cleanup failed")
+        : error;
+      if (operation.status !== "pending") {
+        if (failure instanceof TaskTransitionInterrupted) return;
+        throw failure;
+      }
+      this.#terminate(operation, "failed", failure, undefined, true);
     }
   }
 
@@ -491,14 +577,27 @@ export class NativeTaskTransitionQueue {
       try {
         for (const descriptor of descriptors) {
           captured.push(this.#capture(operation, descriptor));
+          if (operation.status !== "pending") {
+            throw new TaskTransitionInterrupted();
+          }
         }
         if (captured.every((root) => root.transaction.validate())) {
+          if (operation.status !== "pending") {
+            throw new TaskTransitionInterrupted();
+          }
           return captured;
         }
       } catch (error) {
-        for (const root of captured) this.#releaseRoot(root);
-        for (const root of captured) root.transaction.discard();
-        throw error;
+        const cleanupErrors: unknown[] = [];
+        for (const root of captured) {
+          try { this.#releaseRoot(root); }
+          catch (cleanupError) { cleanupErrors.push(cleanupError); }
+          try { root.transaction.discard(); }
+          catch (cleanupError) { cleanupErrors.push(cleanupError); }
+        }
+        throw cleanupErrors.length
+          ? new AggregateError([error, ...cleanupErrors], "Task root capture cleanup failed")
+          : error;
       }
       for (const root of captured) this.#releaseRoot(root);
       for (const root of captured) root.transaction.discard();
@@ -605,6 +704,10 @@ export class NativeTaskTransitionQueue {
         this.#launch(operation, priorGroups);
       }
     } catch (error) {
+      if (operation.status !== "pending") {
+        if (error instanceof TaskTransitionInterrupted) return;
+        throw error;
+      }
       this.#terminate(operation, "failed", error, undefined, true);
     } finally {
       operation.restarting = false;
@@ -659,6 +762,11 @@ export class NativeTaskTransitionQueue {
 
   #cancel(operation: Operation<any>, reason?: string): RootWorkResolution {
     if (operation.status !== "pending") return operation.resolution;
+    if (
+      this.#queue.isApplying(
+        operation.id + ":generation:" + operation.generation,
+      )
+    ) return operation.resolution;
     operation.disposed = true;
     return this.#terminate(operation, "cancelled", undefined, reason, true);
   }
@@ -801,10 +909,19 @@ export class NativeTaskTransitionQueue {
     try {
       for (const { root, stores } of retainedDependencies) {
         releases.push(root.holdStoreDependencies(stores));
+        if (operation.status !== "pending") {
+          throw new TaskTransitionInterrupted();
+        }
       }
     } catch (error) {
-      for (const release of releases.splice(0)) release();
-      throw error;
+      const cleanupErrors: unknown[] = [];
+      for (const release of releases.splice(0)) {
+        try { release(); }
+        catch (cleanupError) { cleanupErrors.push(cleanupError); }
+      }
+      throw cleanupErrors.length
+        ? new AggregateError([error, ...cleanupErrors], "Task publication lease cleanup failed")
+        : error;
     }
     const previous = operation.storeDependencyLease;
     operation.publicationDependencies = merged;

@@ -4,6 +4,12 @@
 
 Native components use `@r3act/core` and the mandatory Rust/OXC transform in `@r3act/vite`. Configure TypeScript with `jsx: "react-jsx"` and `jsxImportSource: "@r3act/core"`. JSX helpers alone do not lower owner sites, hooks, collection maps, task dependencies, or Suspense sites. Calling an authored hook without compilation throws. `@r3act/host-dom` and `@r3act/host-three` re-export host APIs from the same core runtime graph; `@r3act/react-bridge` supplies explicit DOM migration boundaries; hooks retain their owning runtime semantics. Both migration directions are described in the [bridge reference](react-bridge-reference.md), including independent React commits and DOM-only boundaries.
 
+## Explicit transition replacement
+
+Task and root publication queues keep independent operations alive even when they share a root. An explicit equal `key` replaces pending work under that key. A new operation registers its key before notifying the displaced operation. If that notification enqueues another operation with the same key, the nested registration is newer and wins; the outer enqueue returns a cancelled handle without starting its work. A group already applying host writes finishes its existing publication boundary.
+
+Task cancellation releases its owned task/input interests and prevents stale publication. It does not undo dispatched Store actions or external provider effects. A cancelled operation cannot install new input captures or queued publication after a selector, provider setup or tree builder reenters the queue. Caller exceptions remain errors; they are not reclassified as successful cancellation. The [reentrant replacement slice](../implementation/2026-10-19-reentrant-replacement/design.md) describes the current verification boundary.
+
 ## Components and imports
 
 Declare components as named, capitalized, synchronous `function` declarations or single-declarator `const` arrows at module scope. Const arrows support block and expression bodies, including named exports. Import native hooks, `Suspense`, `createKeyedCollection`, and `asyncTask` as direct, unaliased value imports from `@r3act/core`. The compiler assigns lexical owner and hook site identities. Conditional sites are supported; repeated loops and nested callbacks are not.

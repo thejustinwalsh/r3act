@@ -1,5 +1,17 @@
 # A VDOM-First, Data-Oriented Runtime for Declarative UI
 
+## Reentrant transition replacement — 19 October 2026
+
+Explicit keyed replacement now claims the existing key before settling displaced work. A callback's newer nested enqueue wins; cancelled outer work does not capture or start providers. The task adapter reads the lower queue's existing exact committing record, preserving applying groups through callbacks. That record retires before final notification. Queue disposal rejects new work immediately and defers destructive cleanup during application. Local capture/setup reentry releases staged interests/executions; real caller and cleanup errors remain distinct from internal cancellation. No new identity/version/publication registry or physical layout is added.
+
+An immutable old-module characterization reproduces both successors committing in both resolution orders. Darwin-v3 passes 53/53 steps: 1056 runtime tests, 80 Rust tests, 35 compiled fixtures, nine Three cases, three retention checks and thirteen package checks. All 1213 runner inputs match, with 1223 raw/context files archived. Two failed gates remain preserved (typed status narrowing, then missing declared test inputs). Runtime/compiler/fixed fixtures remain v3-identical; the separately locked installed consumer hoists task arrays after a preserved authoring rejection.
+
+Fresh five-tarball proof-v2 passes four Native/React episodes and 28 stages: A/B cancelled, B never starts, C wins, urgent work progresses, primary DOM/Three/fork outputs agree, and cleanup balances. Sixteen plus five source rows, 1223 staged files, 1617 installed files, compiler/report/transforms/assets are bound. Actual React Result/Hot/App emit _c(6)/_c(2)/_c(2). The sole Native-first fresh-process build pair is 348.550791/377.210042 ms, with exact proof transform/asset/metadata equality. Potentially warm caches and unequal graphs give no runtime, CPU/tail, cold/memory, presentation, other-platform or independent-device qualification; new setup/lifetime costs are unqualified.
+
+The full-plan first pass remains active. A separate concrete Vite/Rust runtime-import-origin finding is next: substring recognition may rewrite a similarly named module's overridden hook; it is source-grounded, unexecuted and unfixed. Broader authored realtime/async UX, lifecycle/performance/cold/memory and independent-device requirements remain. Historic wins, dense FAIL, exhausted Recording A, physical HOLD and zero human participants/no maintenance claim retain scope. Apple remains stopped, tooling/data/logs on Depot; saved one-CPU 256 MiB/container and 512 MiB/build defaults stay unchanged, with effective VM limits unverified. No server/VM or authorization prompt ran.
+
+[Source, failures, receipts and limits](implementation/2026-10-19-reentrant-replacement/results.md).
+
 ## Portable verification source delivery — 19 October 2026
 
 The platform runner and both Linux transfer stages now share one current-source selector and checked copier. Divergent lists are retired; required examples, current fixtures, Linux/benchmark controls and the frozen Deno lock transfer together. Historical baseline binaries/evidence remain preserved outside routine product delivery. Fixed numeric-owner verification reads its Darwin baseline only in explicit diagnostic mode; routine gates retain current compiled regressions. No runtime identity/version/publication authority or physical layout changes.

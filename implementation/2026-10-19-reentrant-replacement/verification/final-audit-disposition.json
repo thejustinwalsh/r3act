@@ -1,0 +1,61 @@
+{
+  "artifactHistory": {
+    "auditJson": "The receipt was temporarily edited while attempting targeted corrections, then restored to the original FAIL fields and timestamp using the observed initial receipt contents. No pre-edit byte hash existed, so byte-for-byte identity with the first-written JSON cannot be independently asserted.",
+    "currentFiles": "The current final-audit.json and final-audit.raw.log are the restored initial FAIL-form receipt/log. This supplement binds the current receipt hash.",
+    "rawLog": "Targeted correction text was appended, then truncated at the first TARGETED marker to restore the initial audit log boundary. The intermediate appended raw log was not saved as a separate file before truncation; byte identity to the first-written raw log is therefore not independently asserted."
+  },
+  "auditAssumptionsCorrected": [
+    "Baseline provenance is at implementation/2026-10-19-reentrant-replacement/baseline/provenance.json; the copied source path is relative to the unit directory. The original lookup used verification/baseline-v1/provenance.json.",
+    "Source archive context rows use kind=context. Current live source differs from the frozen v3 gate snapshot only by the exact allowlist already passing in the original audit; archive verification compares preserved bytes to the frozen manifest."
+  ],
+  "disposition": "The original bounded audit remains status FAIL because two assertions used incorrect audit-script assumptions. Targeted direct checks passed for the correct baseline and archived-source locations. This disposition supplements the FAIL; it does not relabel it.",
+  "originalAuditPath": "/Volumes/Depot/Developer/r3act/implementation/2026-10-19-reentrant-replacement/verification/final-audit.json",
+  "originalAuditRawLogPath": "/Volumes/Depot/Developer/r3act/implementation/2026-10-19-reentrant-replacement/verification/final-audit.raw.log",
+  "originalAuditSha256": "681f65f8794d6bb564790a399b302f1e369285962498853b5e6d83605a8a15f4",
+  "originalAuditStatus": "FAIL",
+  "qualificationGaps": [
+    "Compiler import-origin finding remains parked and unexecuted.",
+    "Other platforms and independent devices are unqualified.",
+    "One build-pair measurement does not qualify runtime latency, CPU tails, cold behavior, or memory.",
+    "Human participant count is zero."
+  ],
+  "recordedAtUtc": "2026-10-20T01:25:52.671497+00:00",
+  "schemaVersion": 1,
+  "status": "TARGETED_DISPOSITION_RECORDED",
+  "targetedChecks": {
+    "baseline": {
+      "orders": [
+        [
+          "C",
+          "B"
+        ],
+        [
+          "B",
+          "C"
+        ]
+      ],
+      "provenancePath": "/Volumes/Depot/Developer/r3act/implementation/2026-10-19-reentrant-replacement/baseline/provenance.json",
+      "resultPath": "/Volumes/Depot/Developer/r3act/implementation/2026-10-19-reentrant-replacement/verification/baseline-v1/result.json",
+      "resultStatus": "EXPECTED_BUG_REPRODUCED",
+      "scenarioCount": 2,
+      "sourceBytes": 27921,
+      "sourcePath": "/Volumes/Depot/Developer/r3act/implementation/2026-10-19-reentrant-replacement/baseline/root_work_queue.ts",
+      "sourceSha256": "b31c821bea9540acdb355f2e99241790434c1686dfe2bf75690f93685d00e6c7",
+      "status": "PASS"
+    },
+    "darwinV3SourceArchive": {
+      "allFrozenArchiveCopiesHashAndSizeMatch": true,
+      "contextInputs": 10,
+      "livePostgateAnnotationsAreSeparatelyCoveredByOriginalAllowedChangeCheck": true,
+      "manifestPath": "/Volumes/Depot/Developer/r3act/implementation/2026-10-19-reentrant-replacement/verification/darwin-v3/source-archive.json",
+      "rawRows": 1223,
+      "runnerInputs": 1213,
+      "sourceBeforeAfterManifestsEqual": true,
+      "status": "PASS"
+    },
+    "gateCountsSupplement": {
+      "packageConsumerChecks": 13,
+      "threeHostTestCases": 9
+    }
+  }
+}

@@ -590,6 +590,11 @@ export class NativeRootWorkQueue {
     return this.#queue.getVersion(root.rootId);
   }
 
+  /** @internal Read the existing synchronous publication state for exact work. */
+  isApplying(id: string): boolean {
+    return this.#queue.isCommitting(id);
+  }
+
   /** Detach coordinator registrations; roots and action scopes remain caller-owned. */
   dispose(): void {
     if (this.#disposed) return;
