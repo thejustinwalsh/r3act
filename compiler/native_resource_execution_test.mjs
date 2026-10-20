@@ -78,7 +78,7 @@ try{
  root.mount(jsx(app.App,{}));
  const warmHost=new MemoryVDOMHost(),warmContainer=warmHost.createContainer();
  const warmRoot=createNativeRoot(warmHost,warmContainer,{rootId:'compiled-native-warm',world});roots.push(warmRoot);
- const warmCandidate=warmRoot.prepare(jsx(app.Warm,{}));
+ const warmCandidate=warmRoot.prepare(jsx(app.Warm,{}), { renderPreparation: "repeatable" });
  assert.equal(warmCandidate.pendingResources.length,2,'A first pending sibling prevented observation of a distinct second resource');
  warmCandidate.commitHost();warmCandidate.publish();warmCandidate.runEffects();
  assert.equal(text(container),'left waitingright waiting','Sibling boundaries did not both discover pending resources during startup');
@@ -119,7 +119,7 @@ try{
  assert.ok(app.effectSetups>=4&&app.effectCleanups>=2,'Replacement/error path did not exercise lifecycle cleanup');
 
  app.resourceStore.dispatch(app.candidatePending.promise);await flush();
- const candidate= root.prepare(jsx(app.Candidate,{}));
+ const candidate= root.prepare(jsx(app.Candidate,{}), { renderPreparation: "repeatable" });
  assert.ok(candidate.pendingResources.length>0,'Candidate did not observe the pending resource');
  candidate.discard();
  assert.equal(app.activeEffects,2,'Discarded candidate activated or cleaned live effects');

@@ -42,7 +42,7 @@ const byProp = (
   }
   return undefined;
 };
-const manualRoot = (world?: OwnerStateWorld, rootId?: string) => {
+const manualRoot = (world?: OwnerStateWorld, rootId?: string, renderPreparation?: "repeatable") => {
   const host = new MemoryVDOMHost();
   const container = host.createContainer();
   const scheduled: Array<() => void> = [];
@@ -50,6 +50,7 @@ const manualRoot = (world?: OwnerStateWorld, rootId?: string) => {
     ...(world ? { world } : {}),
     ...(rootId ? { rootId } : {}),
     scheduleCommit: (commit) => scheduled.push(commit),
+    renderPreparation,
   });
   return { root, host, container, scheduled };
 };
@@ -266,7 +267,7 @@ Deno.test("numeric source identity survives an invalid value and recovers cached
     });
   }, { propOnlySites: ["value"] });
   const world = new OwnerStateWorld();
-  const { root, container } = manualRoot(world, "source-recovery");
+  const { root, container } = manualRoot(world, "source-recovery", "repeatable");
   root.mount(jsx(Counter, {}));
   const owner = world.findOwner(
     world.findOwner(null, "@component-root:source-recovery")!,

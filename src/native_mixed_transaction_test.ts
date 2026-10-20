@@ -151,7 +151,7 @@ Deno.test("pending resource work retains its view while a joint interaction publ
   );
   try {
     const original = f.nodes();
-    const loading = queue.enqueue({
+    const loading = queue.enqueue({ renderPreparation: "repeatable",
       id: "load-health",
       roots: [{
         root: f.root,

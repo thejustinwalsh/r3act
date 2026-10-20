@@ -158,7 +158,7 @@ try {
   stage.dispatch("B", { kind: "transition", transitionId: "arrow-B" });
   let resolvePublished;
   const published = new Promise((resolve) => { resolvePublished = resolve; });
-  queue.enqueue({ id: "compiled-arrow-B", roots: [
+  queue.enqueue({ renderPreparation: "repeatable", id: "compiled-arrow-B", roots: [
     { root: dom, tree: domTree(initial) }, { root: three.root, tree: threeTree(initial) },
   ], transitions: ["arrow-B"], finishTransitions: true, onSettled: resolvePublished });
   assert.equal((await withDeadline(published, "coordinated arrow publication")).status, "committed");
@@ -170,7 +170,7 @@ try {
 
   const failedProvider = deferred();
   const failedResource = new AsyncResource(failedProvider.promise);
-  const failed = queue.enqueue({ id: "compiled-arrow-failure", roots: [
+  const failed = queue.enqueue({ renderPreparation: "repeatable", id: "compiled-arrow-failure", roots: [
     { root: dom, tree: domTree(failedResource) },
     { root: three.root, tree: threeTree(failedResource) },
   ] });
@@ -188,7 +188,7 @@ try {
   assert.ok(scene.getObjectByName("result-error-first-provider-failed"));
   const staleProvider = deferred();
   const staleResource = new AsyncResource(staleProvider.promise);
-  const stale = queue.enqueue({ id: "compiled-arrow-stale", roots: [
+  const stale = queue.enqueue({ renderPreparation: "repeatable", id: "compiled-arrow-stale", roots: [
     { root: dom, tree: domTree(staleResource) },
     { root: three.root, tree: threeTree(staleResource) },
   ] });
@@ -198,7 +198,7 @@ try {
   assert.equal(stale.cancel("new arrow retry superseded it").status, "cancelled");
   const finalProvider = deferred();
   const finalResource = new AsyncResource(finalProvider.promise);
-  const final = queue.enqueue({ id: "compiled-arrow-retry", roots: [
+  const final = queue.enqueue({ renderPreparation: "repeatable", id: "compiled-arrow-retry", roots: [
     { root: dom, tree: domTree(finalResource) },
     { root: three.root, tree: threeTree(finalResource) },
   ] });
@@ -216,7 +216,7 @@ try {
   assert.equal(by(container, "data-row", "a")?.props["data-count"], 3);
   const retiringProvider = deferred();
   const retiringResource = new AsyncResource(retiringProvider.promise);
-  const retiring = queue.enqueue({ id: "compiled-arrow-retire", roots: [
+  const retiring = queue.enqueue({ renderPreparation: "repeatable", id: "compiled-arrow-retire", roots: [
     { root: dom, tree: domTree(retiringResource) },
     { root: three.root, tree: threeTree(retiringResource) },
   ] });

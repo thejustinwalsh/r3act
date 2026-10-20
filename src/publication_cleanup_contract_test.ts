@@ -46,7 +46,7 @@ Deno.test("candidate host failure retains original error and deferred disposal e
   ]));
   const candidate = root.prepare(jsx("section", { "data-value": "new" }, [
     jsx("i", {}), jsx("b", {}),
-  ]));
+  ]), { renderPreparation: "repeatable" });
   armed = true;
   let failure: unknown;
   try {
@@ -109,7 +109,7 @@ Deno.test("group failure continues cleanup after another member cleanup throws",
   second.mount(jsx("output", { "data-value": "old" }));
   const queue = new NativeRootWorkQueue();
   armed = true;
-  const handle = queue.enqueue({
+  const handle = queue.enqueue({ renderPreparation: "repeatable",
     id: "cleanup-contract-group",
     roots: [
       { root: first, tree: jsx("output", { "data-value": "new" }) },

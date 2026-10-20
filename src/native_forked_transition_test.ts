@@ -27,6 +27,7 @@ const root = (rootId: string) => {
   const value = new ComponentStateRoot(host, container, {
     rootId,
     scheduleCommit: () => {},
+    renderPreparation: "repeatable",
   });
   return { value, text: () => container.children.map(text).join("") };
 };
@@ -244,7 +245,7 @@ Deno.test("grouped transition notifies live task work after every root leaves pu
     query.dispatch("C", { kind: "transition", transitionId: "fork-notify-C" });
     unsubscribe = query.subscribe(roots[0].value.rootId, () => { observed.push(readAll()); });
     const settled: string[] = [];
-    const publication = publicationQueue.enqueue({
+    const publication = publicationQueue.enqueue({ renderPreparation: "repeatable",
       id: "fork-notify-C",
       roots: roots.map(({ value }) => ({ root: value, tree: tree(accepted, true) })),
       transitions: ["fork-notify-C"],

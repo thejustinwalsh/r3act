@@ -23,11 +23,16 @@ const equal = (actual: unknown, expected: unknown, message: string) => {
 };
 const textContent = (node: MemoryNode): string =>
   (node.text ?? "") + node.children.map(textContent).join("");
-const harness = (rootId: string, host = new MemoryVDOMHost()) => {
+const harness = (
+  rootId: string,
+  host = new MemoryVDOMHost(),
+  renderPreparation?: "repeatable",
+) => {
   const container = host.createContainer();
   const root = new ComponentStateRoot(host, container, {
     rootId,
     scheduleCommit: () => {},
+    renderPreparation,
   });
   return { root, container };
 };
@@ -190,6 +195,7 @@ Deno.test("selective store candidates retry a reentrant stale read cut before ho
   const { root, container } = harness(
     "store-owner-invalidation-reentrant",
     new RecordingHost(),
+    "repeatable",
   );
   root.mount(jsx(Pair, {}));
   reenter = true;

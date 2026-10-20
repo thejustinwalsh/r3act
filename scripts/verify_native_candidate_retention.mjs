@@ -13,11 +13,11 @@ const retainedCandidates=[];
 function prepare(){
  const discardedValue={bytes:new Uint8Array(8192)};
  const discardedWeak=new WeakRef(discardedValue);
- const discarded=root.prepare(jsx(Child,{record:discardedValue}));
+ const discarded=root.prepare(jsx(Child,{record:discardedValue}), { renderPreparation: "repeatable" });
  discarded.discard();retainedCandidates.push(discarded);
  const publishedValue={bytes:new Uint8Array(8192)};
  const publishedWeak=new WeakRef(publishedValue);
- const published=root.prepare(jsx(Child,{record:publishedValue}));
+ const published=root.prepare(jsx(Child,{record:publishedValue}), { renderPreparation: "repeatable" });
  published.commitHost();published.publish();published.runEffects();retainedCandidates.push(published);
  root.update(jsx('p',{},'Still mounted'));
  return {discardedWeak,publishedWeak,control:new WeakRef({control:true})};

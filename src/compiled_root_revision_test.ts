@@ -36,7 +36,7 @@ Deno.test("a prepared compiled owner cannot publish after its module revision ch
   });
   try {
     const Old = defineComponent(`${sourceFile}#component:Old`, () => jsx("span", {}, "old"));
-    const candidate = root.prepare(jsx(Old, {}));
+    const candidate = root.prepare(jsx(Old, {}), { renderPreparation: "repeatable" });
     assert(candidate.validate(), "initial candidate should validate");
     registerCompiledSemanticPlan(plan(sourceFile, "revision-b"));
     assert(!candidate.validate(), "revision change must stale prepared candidate");

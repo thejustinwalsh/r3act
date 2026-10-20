@@ -58,6 +58,7 @@ Deno.test("native collection delta renders only changed rows and preserves survi
   const root = new ComponentStateRoot(host, container, {
     scheduleCommit: (commit) => scheduled.push(commit),
     profileCounter: (values) => counters.push(values),
+    renderPreparation: "repeatable",
   });
   root.mount(jsx(List, { collection }));
   const list = container.children[0];
@@ -129,6 +130,7 @@ Deno.test("collection delta work stays bounded at 1k, 10k, and 50k rows", () => 
     const root = new ComponentStateRoot(host, container, {
       scheduleCommit: () => {},
       profileCounter: (values) => counters.push(values),
+      renderPreparation: "repeatable",
     });
     root.mount(jsx(List, { collection }));
     const list = container.children[0];

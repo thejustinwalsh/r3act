@@ -77,7 +77,7 @@ export function mountNative(host: HTMLElement) {
       : [{ root: primary, tree: domTree("primary", initial) },
         { root: three.root, tree: sceneTree(initial) },
         { root: fork, tree: domTree("fork", initial) }];
-    publications.enqueue({ id, roots: entries,
+    publications.enqueue({ renderPreparation: "repeatable", id, roots: entries,
       transitions: [transition], finishTransitions,
       onSettled(outcome) {
         settlementTrace.push({ id, status: outcome.status });
@@ -142,7 +142,7 @@ export function mountNative(host: HTMLElement) {
         { root: primary, buildTree: (execution) => domTree("primary", execution.resource("panel")) },
         { root: three.root, buildTree: (execution) => sceneTree(execution.resource("panel")) },
         { root: fork, buildTree: (execution) => domTree("fork", execution.resource("panel")) },
-      ], { id: "detail-frontier", inputs: { "$request": request },
+      ], { id: "detail-frontier", renderPreparation: "repeatable", inputs: { "$request": request },
         liveInputs: { "$query": query },
         onSettled(outcome) { settlementTrace.push({ id: "detail-frontier", status: outcome.status }); } });
       return snapshot();

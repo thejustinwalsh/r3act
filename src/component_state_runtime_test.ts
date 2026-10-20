@@ -250,7 +250,7 @@ Deno.test("state updates rerun only the owning component and match a forced full
   );
   const host = new MemoryVDOMHost();
   const container = host.createContainer();
-  const root = new ComponentStateRoot(host, container);
+  const root = new ComponentStateRoot(host, container, { renderPreparation: "repeatable" });
   const tree = () => jsx("section", {}, [jsx(Counter, {}), jsx(Sibling, {})]);
 
   root.mount(tree());
@@ -385,7 +385,7 @@ Deno.test("structural owner updates reconcile one keyed region and preserve chil
   );
   const host = new MemoryVDOMHost();
   const container = host.createContainer();
-  const root = new ComponentStateRoot(host, container);
+  const root = new ComponentStateRoot(host, container, { renderPreparation: "repeatable" });
   root.mount(jsx("main", {}, [
     jsx(App, { key: "app", initialIds: ["a", "b", "c"] }),
     jsx(Sibling, {}),
@@ -641,6 +641,7 @@ Deno.test("indexed leaf updates remain local beneath Fragment-only component gro
   const container = host.createContainer();
   const root = new ComponentStateRoot(host, container, {
     invalidationPlan: componentStateSitesPlan.invalidation_graph,
+    renderPreparation: "repeatable",
   });
   const tree = () =>
     jsx(
@@ -709,6 +710,7 @@ Deno.test("batched state writes update multiple owner regions in one indexed com
   const container = host.createContainer();
   const root = new ComponentStateRoot(host, container, {
     invalidationPlan: componentStateSitesPlan.invalidation_graph,
+    renderPreparation: "repeatable",
   });
   root.mount(
     jsx(
@@ -908,6 +910,7 @@ Deno.test("compiled keyed-owner reuse skips generic expansion for same-key reord
   const paths: string[] = [];
   const root = new ComponentStateRoot(host, container, {
     keyedOwnerReuse: true,
+    renderPreparation: "repeatable",
     profile: (phase) => paths.push(phase),
     profileCounter: (counters) => Object.assign(observed, counters),
   });
@@ -979,6 +982,7 @@ Deno.test("token keyed-owner reuse skips eligibility rows and mismatches before 
   const observed: Record<string, number> = {};
   const root = new ComponentStateRoot(host, container, {
     keyedOwnerReuseMode: "token",
+    renderPreparation: "repeatable",
     profileCounter: (counters) => Object.assign(observed, counters),
   });
   const version1 = createKeyedOwnerVersion();

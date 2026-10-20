@@ -93,6 +93,7 @@ Deno.test("mixed collection and compiled numeric work share one candidate", () =
   const root = new ComponentStateRoot(host, container, {
     scheduleCommit() {},
     profileCounter: (values) => counters.push(values),
+    renderPreparation: "repeatable",
   });
   root.mount(jsx(Root, {}));
   const list = container.children[0].children[1];
@@ -203,7 +204,7 @@ Deno.test("preparePending composes queued numeric and collection cuts without ho
     { type: "insert", key: "b", value: { id: "b", value: 2 }, beforeKey: null },
   ]);
 
-  const candidate = root.preparePending();
+  const candidate = root.preparePending({ renderPreparation: "repeatable" });
   if (!candidate) throw new Error("pending work did not produce a candidate");
   assert(candidate.validate(), "prepared mixed candidate was not valid");
   equal(
@@ -252,7 +253,7 @@ Deno.test("preparePending returns null only for no work and otherwise falls back
     "empty pending cut produced a candidate",
   );
   setValue(2);
-  const candidate = root.preparePending();
+  const candidate = root.preparePending({ renderPreparation: "repeatable" });
   if (!candidate) throw new Error("unsupported pending work did not fall back");
   equal(
     container.children[0].props.value,
@@ -448,6 +449,7 @@ Deno.test("mixed candidate folds collection-row and outside store readers into o
   const root = new ComponentStateRoot(host, container, {
     scheduleCommit() {},
     profileCounter: (next) => counters = next,
+    renderPreparation: "repeatable",
   });
   root.mount(jsx(App, {}));
   const initialRow = container.children[0].children[0].children[0];
@@ -648,7 +650,7 @@ Deno.test("stale mixed candidate leaves host, effects, and collection cut untouc
     ]).ok,
     "collection batch rejected",
   );
-  const candidate = root.preparePending();
+  const candidate = root.preparePending({ renderPreparation: "repeatable" });
   if (!candidate) throw new Error("mixed pending work did not prepare");
   setValue(3);
   store.dispatch("after");
@@ -781,7 +783,7 @@ Deno.test("post-host same-identity reentry preserves the newer action after mixe
   collection.apply(collection.version, [
     { type: "insert", key: "b", value: { id: "b", value: 2 }, beforeKey: null },
   ]);
-  const candidate = root.preparePending();
+  const candidate = root.preparePending({ renderPreparation: "repeatable" });
   if (!candidate) throw new Error("mixed pending work did not prepare");
   armed = true;
   candidate.commitHost();
@@ -929,9 +931,11 @@ Deno.test("shared-store mixed candidates coordinate across roots with transition
   );
   const candidateA = rootA.preparePending({
     transitions: ["shared-transition"],
+    renderPreparation: "repeatable",
   });
   const candidateB = rootB.preparePending({
     transitions: ["shared-transition"],
+    renderPreparation: "repeatable",
   });
   if (!candidateA || !candidateB) {
     throw new Error("both roots must prepare mixed candidates");

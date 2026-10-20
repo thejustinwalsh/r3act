@@ -30,7 +30,7 @@ export function App({search,model}:{search:any,model:any}){
  return <section><input data-draft="yes" value={draft} onInput={(event:Event)=>setDraft((event.target as HTMLInputElement).value)}/><button data-move="yes" data-position={position} onClick={()=>setPosition(n=>n+1)}>Move</button><Suspense fallback={<p>waiting</p>}><SearchFirst search={search} model={model}/></Suspense></section>;
 }
 `;
-const plugin=nativeModuleCompilerPlugin({root:directory});const context={addWatchFile(){},error(message){throw Error(String(message))}};
+const plugin=nativeModuleCompilerPlugin({root:directory});const context={addWatchFile(){},error(message){throw Error(String(message))},async resolve(specifier){return specifier===api?{id:path.join(directory,'src/native_runtime_api.ts')}:null;}};
 const roots=[];const queue=new NativeTaskTransitionQueue();
 const find=(node,key)=>node.props[key]==='yes'?node:node.children.map(c=>find(c,key)).find(Boolean);
 const text=n=>(n.text??'')+n.children.map(text).join('');
@@ -40,7 +40,7 @@ try{
  assert.ok(transformed.code.includes(`asyncTask('search',["$query"],`)||transformed.code.includes(`asyncTask('search', ["$query"],`),'Compiler did not supply search edge');
  assert.ok(transformed.code.includes('compiledNativeComponentPlan'));
  assert.ok(transformed.code.includes('__nativeBoundarySite'));
- const emitted=await transformWithOxc(transformed.code,'.cache/native-task-transition.tsx',{lang:'tsx',jsx:{runtime:'classic'}});
+ const emitted=await transformWithOxc(transformed.code,'.cache/native-task-transition.tsx',{lang:'tsx',jsx:{runtime:'classic',pragma:'jsx',pragmaFrag:'Fragment'}});
  await mkdir('.cache',{recursive:true});const file=path.join(directory,'.cache/native-task-transition.mjs');await writeFile(file,emitted.code);
  const app=await import(pathToFileURL(file).href+'?test='+Date.now());
  const world=createWorld();
@@ -51,7 +51,7 @@ try{
  await tick();left.root.flush();right.root.flush();
  const leftDraft=find(left.container,'data-draft'),rightDraft=find(right.container,'data-draft');
  leftDraft.props.onInput({target:{value:'Kept left'}});left.root.flush();rightDraft.props.onInput({target:{value:'Kept right'}});right.root.flush();
- const handle=queue.enqueue(app.tasks,[left,right].map(({root})=>({root,buildTree:execution=>jsx(app.App,{search:execution.resource('search'),model:execution.resource('panel')})})),{inputs:{'$request':Object.freeze({locale:'en'})},liveInputs:{'$query':app.query}});
+ const handle=queue.enqueue(app.tasks,[left,right].map(({root})=>({root,buildTree:execution=>jsx(app.App,{search:execution.resource('search'),model:execution.resource('panel')})})),{renderPreparation:'repeatable',inputs:{'$request':Object.freeze({locale:'en'})},liveInputs:{'$query':app.query}});
  assert.deepEqual(app.starts,['search:old','catalog'],'DAG did not prewarm the task hidden behind SearchFirst');
  await tick();assert.equal(text(find(left.container,'data-model')),'initial:en');
  find(left.container,'data-move').props.onClick();left.root.flush();

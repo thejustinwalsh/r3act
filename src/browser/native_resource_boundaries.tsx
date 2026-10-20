@@ -263,6 +263,7 @@ function startReplacement(kind: "normal" | "reject" = "normal") {
   try {
     const handle = queue.enqueue({
       id: operationId,
+      renderPreparation: "repeatable",
       roots: rootWork,
       transitions: [transitionId],
       finishTransitions: true,

@@ -117,7 +117,7 @@ try {
   const publish = async (id, roots, transition, finishTransitions) => {
     let resolveSettled;
     const settled = new Promise(resolve => { resolveSettled = resolve; });
-    publications.enqueue({ id, roots, transitions: [transition], finishTransitions,
+    publications.enqueue({ renderPreparation: "repeatable", id, roots, transitions: [transition], finishTransitions,
       onSettled: resolveSettled });
     const outcome = await withDeadline(settled, id);
     if (outcome.status !== "committed")
@@ -150,7 +150,7 @@ try {
     { root: primary.root, buildTree: execution => domTree("primary", execution.resource("panel")) },
     { root: three.root, buildTree: execution => threeTree(execution.resource("panel")) },
     { root: fork.root, buildTree: execution => domTree("fork", execution.resource("panel")) },
-  ], { id: "compiled-detail", inputs: { "$request": request }, liveInputs: { "$query": query } });
+  ], { id: "compiled-detail", renderPreparation: "repeatable", inputs: { "$request": request }, liveInputs: { "$query": query } });
   const taskContext = () => JSON.stringify({
     task: detail.snapshot(),
     resolution: { ...detail.resolution,
@@ -210,7 +210,7 @@ try {
   const abandonedProvider = deferred();
   const abandoned = transitions.enqueue(app.tasks, [
     { root: primary.root, buildTree: execution => domTree("primary", execution.resource("panel")) },
-  ], { id: "compiled-early-disposal",
+  ], { id: "compiled-early-disposal", renderPreparation: "repeatable",
     inputs: { "$request": { catalog: "shared-catalog", load: () => abandonedProvider.promise } },
     liveInputs: { "$query": query } });
   assert.equal(abandoned.status, "pending");

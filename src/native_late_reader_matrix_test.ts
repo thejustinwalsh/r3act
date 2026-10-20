@@ -26,6 +26,7 @@ function harness(id: string) {
   const root = new ComponentStateRoot(host, container, {
     rootId: id,
     scheduleCommit: () => {},
+    renderPreparation: "repeatable",
   });
   return {
     host,

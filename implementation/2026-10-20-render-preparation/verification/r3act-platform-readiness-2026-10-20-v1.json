@@ -1,0 +1,106 @@
+{
+  "schema": "r3act-platform-readiness-v1",
+  "recorded_utc": "2026-10-20T02:38:20.920540Z",
+  "repository_head": "f2f4eba8b56a5881b38cc8ef7504dcf295a39dd0",
+  "scope": "Read-only platform readiness; no source edits, VM/service starts, tests, benchmarks, builds, image pulls, or container launches.",
+  "checks": [
+    {
+      "check": "depot_stat",
+      "command": "stat -f \"%Sp %Su:%Sg %u:%g\" /Volumes/Depot",
+      "started_utc": "2026-10-20T02:37:56.784619Z",
+      "finished_utc": "2026-10-20T02:37:56.789876Z",
+      "exit_code": 0,
+      "output": "drwxrwxr-x root:wheel 0:0"
+    },
+    {
+      "check": "user_config_parse",
+      "command": "tomllib parse /Users/mini/.config/container/config.toml; emit selected resource keys only",
+      "started_utc": "2026-10-20T02:37:56.789889Z",
+      "finished_utc": "2026-10-20T02:37:56.790722Z",
+      "exit_code": 0,
+      "output": {
+        "container.cpus": 1,
+        "container.memory": "256m",
+        "build.cpus": 1,
+        "build.memory": "512m"
+      }
+    },
+    {
+      "check": "service_config_parse",
+      "command": "tomllib parse /Volumes/Depot/Containers/apple/data/config/config.toml; emit selected resource keys only",
+      "started_utc": "2026-10-20T02:37:56.790737Z",
+      "finished_utc": "2026-10-20T02:37:56.791768Z",
+      "exit_code": 0,
+      "output": {
+        "container.cpus": 1,
+        "container.memory": "256m",
+        "build.cpus": 1,
+        "build.memory": "512m"
+      }
+    },
+    {
+      "check": "container_version",
+      "command": "container --version",
+      "started_utc": "2026-10-20T02:37:56.791774Z",
+      "finished_utc": "2026-10-20T02:37:56.868024Z",
+      "exit_code": 0,
+      "output": "container CLI version 1.5.0 (build: release, commit: d265d66)"
+    },
+    {
+      "check": "container_system_status",
+      "command": "container system status",
+      "started_utc": "2026-10-20T02:37:56.868040Z",
+      "finished_utc": "2026-10-20T02:37:56.890606Z",
+      "exit_code": 1,
+      "output": "Error: The operation couldn\u2019t be completed. Operation not permitted"
+    },
+    {
+      "check": "sudo_noninteractive",
+      "command": "sudo -n true",
+      "started_utc": "2026-10-20T02:37:56.890634Z",
+      "finished_utc": "2026-10-20T02:37:56.893573Z",
+      "exit_code": 1,
+      "output": "Sandbox blocked process launch: PermissionError [Errno 1] Operation not permitted; no sudo prompt was opened"
+    },
+    {
+      "check": "docker_context",
+      "command": "docker context show",
+      "started_utc": "2026-10-20T02:37:56.894395Z",
+      "finished_utc": "2026-10-20T02:37:56.964438Z",
+      "exit_code": 0,
+      "output": "colima"
+    },
+    {
+      "check": "docker_server_status",
+      "command": "docker info --format client/server resource summary",
+      "started_utc": "2026-10-20T02:37:56.964454Z",
+      "finished_utc": "2026-10-20T02:37:57.102633Z",
+      "exit_code": 1,
+      "output": "Server unavailable. Client is Docker Engine 29.8.1 on Darwin arm64; Containers=0, ContainersRunning=0, NCPU=0, MemTotal=0, Context=colima."
+    },
+    {
+      "check": "colima_status",
+      "command": "colima status",
+      "started_utc": "2026-10-20T02:37:57.103258Z",
+      "finished_utc": "2026-10-20T02:37:57.442010Z",
+      "exit_code": 1,
+      "output": "time=\"2026-10-19T22:37:57-04:00\" level=fatal msg=\"colima is not running\""
+    },
+    {
+      "check": "process_snapshot_and_config_inodes",
+      "command": "ps -axo pid,ppid,user,command | egrep [c]ontainer|[c]olima|[q]emu|[v]fkit; stat -f \"%i %N\" on the two specified config files",
+      "started_utc": "2026-10-20T02:38:10Z",
+      "finished_utc": "2026-10-20T02:38:20.920465Z",
+      "exit_code": 0,
+      "output": "Matching OS process: PID 1008 containermanagerd (generic macOS manager); no matching Apple container app, Colima, QEMU, or vfkit VM process. Config inodes: 6984881 /Users/mini/.config/container/config.toml; 10773945 /Volumes/Depot/Containers/apple/data/config/config.toml (distinct files)."
+    }
+  ],
+  "assessment": {
+    "saved_limits_match": true,
+    "depot_mode_owner": "0775 root:wheel",
+    "admin_noninteractive_available": false,
+    "docker_colima_linux_route": "unavailable: Colima stopped and Docker server unreachable",
+    "apple_container_linux_route": "unverified: one container system status query denied by OS; process snapshot found no matching Apple container VM process",
+    "gate_readiness": "Current Linux gate cannot run through Docker/Colima. Apple Container requires service status/XPC access plus the unresolved Depot permission prerequisite; effective VM caps remain unverified. No independent-device inference."
+  }
+}

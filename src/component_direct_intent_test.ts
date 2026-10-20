@@ -33,6 +33,7 @@ function scene(
   onSelectedStoreRead: () => void = () => {},
   scheduleCommit: (commit: () => void) => void = () => {},
   moduleSource?: string,
+  renderPreparation?: "repeatable",
 ) {
   const oldGate = deferred<string>();
   const pendingGate = deferred<string>();
@@ -50,7 +51,7 @@ function scene(
     (_: AsyncResource<string>, action: AsyncResource<string>) => action);
   const container = host.createContainer();
   const root = new ComponentStateRoot(host, container, {
-    rootId: id, scheduleCommit,
+    rootId: id, scheduleCommit, renderPreparation,
   });
   let setLocal!: (value: number) => boolean;
   let cleanups = 0;
@@ -233,13 +234,13 @@ Deno.test("older prepared full candidate cannot supersede a blocked newer direct
     f.oldValue.resolve("old-choice");
     await Promise.resolve();
     f.root.mount(f.tree("old", f.oldResource));
-    const older = f.root.prepare(f.tree("older", f.oldResource));
+    const older = f.root.prepare(f.tree("older", f.oldResource), { renderPreparation: "repeatable" });
     f.gate.dispatch(f.pendingGateResource);
     f.root.flush();
     f.root.update(f.tree("newer", f.selection));
     assertEquals(older.validate(), false);
     older.discard();
-    const pending = f.root.preparePending();
+    const pending = f.root.preparePending({ renderPreparation: "repeatable" });
     assertEquals(pending?.blocked, true);
     pending?.discard();
     f.firstValue.resolve("first-value");
@@ -322,7 +323,7 @@ Deno.test("a later prepared full candidate supersedes only its captured pending 
     f.root.update(f.tree("pending", f.selection));
     f.pendingGate.resolve("ready-gate");
     await Promise.resolve();
-    const queued = f.root.prepare(f.tree("queued", f.oldResource));
+    const queued = f.root.prepare(f.tree("queued", f.oldResource), { renderPreparation: "repeatable" });
     assertEquals(queued.validate(), true);
     queued.commitHost();
     queued.publish();
@@ -407,7 +408,7 @@ Deno.test("disposing a blocked direct intent releases its newly observed Store l
 
 Deno.test("three stale direct attempts reject instead of retaining an unwakeable tree", async () => {
   let mutate = () => {};
-  const f = scene("direct-intent-stale-exhaustion", undefined, () => mutate());
+  const f = scene("direct-intent-stale-exhaustion", undefined, () => mutate(), undefined, undefined, "repeatable");
   try {
     f.oldGate.resolve("old-gate");
     f.oldValue.resolve("old-choice");

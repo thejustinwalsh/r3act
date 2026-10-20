@@ -123,12 +123,12 @@ try {
     { root: fork.root, buildTree: execution => domTree("fork", execution.resource("panel")) },
   ];
   let c;
-  const a = transitions.enqueue(app.tasks, roots(), { id: "compiled-a", key: "route",
+  const a = transitions.enqueue(app.tasks, roots(), { id: "compiled-a", renderPreparation: "repeatable", key: "route",
     inputs: { "$query": "A", "$request": request },
     onSettled: result => {
       outcomes.push(`a:${result.status}`);
       if (result.status === "cancelled") {
-        c = transitions.enqueue(app.tasks, roots(), { id: "compiled-c", key: "route",
+        c = transitions.enqueue(app.tasks, roots(), { id: "compiled-c", renderPreparation: "repeatable", key: "route",
           inputs: { "$query": "C", "$request": request },
           onSettled: current => outcomes.push(`c:${current.status}`) });
       }
@@ -146,7 +146,7 @@ try {
   assert.ok(scene.getObjectByName("urgent-1"));
   assert.equal(scene.getObjectByName("result-A"), acceptedResult);
   assert.deepEqual(life, { starts: 2, cleanups: 0 });
-  const b = transitions.enqueue(app.tasks, roots(), { id: "compiled-b", key: "route",
+  const b = transitions.enqueue(app.tasks, roots(), { id: "compiled-b", renderPreparation: "repeatable", key: "route",
     inputs: { "$query": "B", "$request": request },
     onSettled: result => outcomes.push(`b:${result.status}`),
   });

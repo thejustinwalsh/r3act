@@ -68,7 +68,7 @@ Deno.test("HMR retires accepted effects and pending tasks without touching anoth
         fallback: jsx("i", {}, "waiting"),
         children: jsx(Pending, { execution }),
       }),
-    }]);
+    }], { renderPreparation: "repeatable" });
     assertEquals(handle.status, "pending");
     assertEquals(setups, 1);
     registerCompiledSemanticPlan(plan(firstSource, "a"));
@@ -146,7 +146,7 @@ Deno.test("first prepared mount loses its lease when its compiled module retires
   const app = rootFor("hmr-prepared-first");
   const View = defineComponent(`${source}#component:View`, () => jsx("b", {}, "old"));
   try {
-    const candidate = app.root.prepare(jsx(View, {}));
+    const candidate = app.root.prepare(jsx(View, {}), { renderPreparation: "repeatable" });
     assertEquals(candidate.validate(), true);
     invalidateCompiledSemanticPlan(source, "a");
     assertEquals(candidate.validate(), false);
@@ -230,7 +230,7 @@ Deno.test("HMR inside a host writer delays retirement callbacks and keeps accept
     assertEquals(root.publicationVersion, accepted);
     root.onRetire(() => { lateRetireCallbacks++; });
     assertEquals(lateRetireCallbacks, 2);
-    assertThrows(() => queue.enqueue({ id: "retired", roots: [{ root, tree: jsx(View, { count: 7 }) }] }),
+    assertThrows(() => queue.enqueue({ id: "retired", renderPreparation: "repeatable", roots: [{ root, tree: jsx(View, { count: 7 }) }] }),
       Error, "retired");
   } finally {
     queue.dispose();

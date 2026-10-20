@@ -327,7 +327,7 @@ Deno.test("a full-tree candidate remains stale after an unrelated retained publi
   const f = retainedFixture("retained-full-tree", ["position", "health"]);
   try {
     const liveHealthSetter = f.setter("health");
-    const full = f.root.prepare(f.tree());
+    const full = f.root.prepare(f.tree(), { renderPreparation: "repeatable" });
     assertEquals(liveHealthSetter(9), true);
     const health = f.handle("health");
     const retained = f.root.prepareRetained([health]);

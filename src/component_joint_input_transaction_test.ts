@@ -225,7 +225,7 @@ Deno.test("same-key row owner replacement initializes its new numeric history", 
       { type: "remove", key: "a" },
       { type: "insert", key: "a", value: { id: "a", initial: 7 }, beforeKey: null },
     ]).ok);
-    const replacement = root.preparePending();
+    const replacement = root.preparePending({ renderPreparation: "repeatable" });
     assert(replacement, "same-key row replacement did not prepare");
     assertEquals(renders.list, 1, "replacement fell back to whole-list rendering");
     publish(replacement);

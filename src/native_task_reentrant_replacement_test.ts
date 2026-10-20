@@ -15,7 +15,9 @@ const text = (node: MemoryNode): string =>
   (node.text ?? "") + node.children.map(text).join("");
 const root = (rootId: string, host = new MemoryVDOMHost()) => {
   const container = host.createContainer();
-  const native = new ComponentStateRoot(host, container, { rootId, scheduleCommit: () => {} });
+  const native = new ComponentStateRoot(host, container, {
+    rootId, scheduleCommit: () => {}, renderPreparation: "repeatable",
+  });
   native.mount(jsx("b", {}, "accepted"));
   return { native, text: () => container.children.map(text).join("") };
 };

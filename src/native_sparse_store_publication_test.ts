@@ -69,6 +69,7 @@ Deno.test("store region publication stages numeric writes before new refs and co
   let sparseCommitted = false;
   const root = new ComponentStateRoot(host, container, {
     scheduleCommit() {},
+    renderPreparation: "repeatable",
     profileCounter(counters) {
       sparseCommitted ||= counters["store.sparse.reader-owner-renders"] === 1;
     },
@@ -133,7 +134,7 @@ Deno.test("urgent store region publication invalidates an older prepared root ca
     scheduleCommit() {},
   });
   root.mount(jsx(App, { pending: false }));
-  const candidate = root.prepare(jsx(App, { pending: true }));
+  const candidate = root.prepare(jsx(App, { pending: true }), { renderPreparation: "repeatable" });
   equal(candidate.validate(), true, "older preparation initially valid");
   store.dispatch(1);
   root.flush();

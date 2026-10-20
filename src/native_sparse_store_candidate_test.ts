@@ -73,6 +73,7 @@ Deno.test("sparse store candidates scale by all leaf readers and preserve reader
     const root = new ComponentStateRoot(host, container, {
       rootId: `sparse-store-scale-${size}`,
       scheduleCommit: () => {},
+      renderPreparation: "repeatable",
       profileCounter: (next) => counters = next,
     });
     root.mount(
@@ -250,6 +251,7 @@ Deno.test("leaf reader source changes use the sparse transaction without store n
   const root = new ComponentStateRoot(host, container, {
     rootId: "sparse-store-source-switch",
     scheduleCommit: () => {},
+    renderPreparation: "repeatable",
     profileCounter: (next) => counters = next,
   });
   root.mount(jsx("main", {}, jsx(List, {})));

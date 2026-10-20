@@ -54,6 +54,7 @@ Deno.test("prepare keeps host, effects, and committed owners private until phase
     world,
     rootId: "candidate-private",
     scheduleCommit: () => {},
+    renderPreparation: "repeatable",
   });
   let effects = 0;
   let setter!: (value: number) => boolean;
@@ -68,7 +69,7 @@ Deno.test("prepare keeps host, effects, and committed owners private until phase
     }, String(value));
   });
   const beforeWrites = host.writes;
-  const candidate = root.prepare(jsx(Child, {}));
+  const candidate = root.prepare(jsx(Child, {}), { renderPreparation: "repeatable" });
   equal(host.writes, beforeWrites, "prepare wrote to host");
   equal(effects, 0, "prepare ran effect setup");
   equal(
@@ -102,8 +103,8 @@ Deno.test("independent candidates isolate new owners and stale after a sibling p
       return jsx("i", {}, String(state));
     },
   );
-  const first = root.prepare(jsx(Item, { value: 1 }));
-  const second = root.prepare(jsx(Item, { value: 2 }));
+  const first = root.prepare(jsx(Item, { value: 1 }), { renderPreparation: "repeatable" });
+  const second = root.prepare(jsx(Item, { value: 2 }), { renderPreparation: "repeatable" });
   assert(
     first.validate() && second.validate(),
     "overlapping candidates should coexist before publication",
@@ -148,7 +149,7 @@ Deno.test("urgent numeric publication stales a candidate and direct binding flus
     });
   }, { propOnlySites: ["value"] });
   root.mount(jsx(Counter, {}));
-  const candidate = root.prepare(jsx(Counter, {}));
+  const candidate = root.prepare(jsx(Counter, {}), { renderPreparation: "repeatable" });
   equal(set(5), true);
   root.flush();
   assert(
@@ -179,7 +180,7 @@ Deno.test("candidate store reads use the requested transition projection", () =>
     "candidate-store-reader",
     () => jsx("b", {}, String(useStoreAt("value", store))),
   );
-  const candidate = root.prepare(jsx(Reader, {}), { transitions: ["like"] });
+  const candidate = root.prepare(jsx(Reader, {}), { transitions: ["like"], renderPreparation: "repeatable" });
   equal(
     container.children.length,
     0,
@@ -202,8 +203,8 @@ Deno.test("discarding one of several store candidates retains the other candidat
     "candidate-store-holds-reader",
     () => jsx("span", {}, String(useStoreAt("value", store))),
   );
-  const first = root.prepare(jsx(Reader, {}));
-  const second = root.prepare(jsx(Reader, {}));
+  const first = root.prepare(jsx(Reader, {}), { renderPreparation: "repeatable" });
+  const second = root.prepare(jsx(Reader, {}), { renderPreparation: "repeatable" });
   equal(store.diagnostics().roots, 1);
   first.discard();
   equal(first.stores.size, 0, "discarded candidate retained its store set");
@@ -232,10 +233,10 @@ Deno.test("failed store preparation releases only its own root hold", () => {
     useStoreAt("value", store);
     throw new Error("controlled candidate render failure");
   });
-  const other = root.prepare(jsx(Reader, {}));
+  const other = root.prepare(jsx(Reader, {}), { renderPreparation: "repeatable" });
   let failed = false;
   try {
-    root.prepare(jsx(Failing, {}));
+    root.prepare(jsx(Failing, {}), { renderPreparation: "repeatable" });
   } catch {
     failed = true;
   }
@@ -250,7 +251,7 @@ Deno.test("failed store preparation releases only its own root hold", () => {
 
   failed = false;
   try {
-    root.prepare(jsx(Failing, {}));
+    root.prepare(jsx(Failing, {}), { renderPreparation: "repeatable" });
   } catch {
     failed = true;
   }
@@ -280,8 +281,8 @@ Deno.test("manual group phases expose both roots before either effect setup", ()
       return jsx("span", {}, label);
     },
   );
-  const ca = a.root.prepare(jsx(Probe, { label: "a" }));
-  const cb = b.root.prepare(jsx(Probe, { label: "b" }));
+  const ca = a.root.prepare(jsx(Probe, { label: "a" }), { renderPreparation: "repeatable" });
+  const cb = b.root.prepare(jsx(Probe, { label: "b" }), { renderPreparation: "repeatable" });
   ca.commitHost();
   cb.commitHost();
   ca.publish();
@@ -306,12 +307,12 @@ Deno.test("host failure is terminal for all candidates in a manual group", () =>
   const failed = new ComponentStateRoot(
     failedHost,
     failedHost.createContainer(),
-    { rootId: "candidate-host-fail", scheduleCommit: () => {} },
+    { rootId: "candidate-host-fail", scheduleCommit: () => {}, renderPreparation: "repeatable" },
   );
   const other = harness("candidate-host-peer");
   const tree = jsx("div", {}, "candidate");
   const a = failed.prepare(tree);
-  const b = other.root.prepare(tree);
+  const b = other.root.prepare(tree, { renderPreparation: "repeatable" });
   let error: unknown;
   try {
     a.commitHost();
@@ -374,7 +375,7 @@ Deno.test("effect setup that disposes its root immediately cleans its returned r
     });
     return jsx("div", {});
   });
-  const candidate = candidateRoot.root.prepare(jsx(Candidate, {}));
+  const candidate = candidateRoot.root.prepare(jsx(Candidate, {}), { renderPreparation: "repeatable" });
   candidate.commitHost();
   candidate.publish();
   candidate.runEffects();
@@ -392,6 +393,7 @@ Deno.test("candidate publication barrier defers store-listener flush until effec
   const root = new ComponentStateRoot(host, container, {
     rootId: "candidate-publication-barrier",
     scheduleCommit: (commit) => scheduled.push(commit),
+    renderPreparation: "repeatable",
   });
   const store = createAsyncStore(
     0,
@@ -471,6 +473,7 @@ Deno.test("host callbacks cannot reenter root commits during candidate host muta
   const root = new ComponentStateRoot(host, container, {
     rootId: "candidate-host-reentrant",
     scheduleCommit: (commit) => commit(),
+    renderPreparation: "repeatable",
   });
   let set!: (value: number) => boolean;
   const Counter = defineComponent(

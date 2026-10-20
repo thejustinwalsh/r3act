@@ -1,0 +1,29 @@
+{
+  "schema": "r3act-platform-readiness-escalated-v1",
+  "recorded_utc": "2026-10-20T02:39:08.271216Z",
+  "scope": "Environment-refinement supplement only; two bounded read-only/noninteractive checks. No VM/service starts, permission changes, workload, or broad checks.",
+  "checks": [
+    {
+      "check": "container_system_status",
+      "command": "container system status",
+      "started_utc": "2026-10-20T02:39:03.494773Z",
+      "finished_utc": "2026-10-20T02:39:03.567685Z",
+      "exit_code": 1,
+      "output": "apiserver is not running and not registered with launchd"
+    },
+    {
+      "check": "sudo_noninteractive",
+      "command": "sudo -n true",
+      "started_utc": "2026-10-20T02:39:03.567744Z",
+      "finished_utc": "2026-10-20T02:39:03.589335Z",
+      "exit_code": 1,
+      "output": "sudo: a password is required"
+    }
+  ],
+  "assessment": {
+    "apple_container_api_service": "stopped and not registered with launchd",
+    "noninteractive_sudo_available": false,
+    "interactive_admin_capability": "unverified; no prompt was opened",
+    "linux_gate": "Apple Container Linux route remains unavailable until service/Depot startup prerequisites are resolved; no VM or service was started."
+  }
+}

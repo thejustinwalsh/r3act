@@ -353,7 +353,7 @@ Deno.test("same-region overlap stales even when an independent region can publis
 Deno.test("full-tree candidate remains strict after scoped collection publication", () => {
   const f = fixture("scoped-structure-full-strict");
   try {
-    const full = f.root.prepare(f.tree());
+    const full = f.root.prepare(f.tree(), { renderPreparation: "repeatable" });
     move(f.left, "c", "a");
     const scoped = f.root.prepareCollections([f.left]);
     assert(scoped);

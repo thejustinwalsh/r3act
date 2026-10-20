@@ -115,6 +115,7 @@ try {
   const renderFrames = [];
   root = createNativeRoot(host, container, {
     rootId: `compiled-scoped-${attempt}`,
+    renderPreparation: "repeatable",
     scheduleCommit() {},
     profileCounter(frame) { renderFrames.push(frame); },
   });

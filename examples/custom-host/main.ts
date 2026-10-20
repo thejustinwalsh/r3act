@@ -149,7 +149,7 @@ export function mountNative(host: HTMLElement) {
       const settled = new Promise<Settled>((resolve) => { resolveSettled = resolve; });
       stage.beginTransition("stage-B", [dom.rootId, three.root.rootId, canvas.rootId]);
       stage.dispatch("B", { kind: "transition", transitionId: "stage-B" });
-      publications.enqueue({ id: "stage-B-all", transitions: ["stage-B"],
+      publications.enqueue({ renderPreparation: "repeatable", id: "stage-B-all", transitions: ["stage-B"],
         finishTransitions: true,
         roots: [{ root: dom, tree: domTree() }, { root: three.root, tree: threeTree() },
           { root: canvas, tree: canvasTree() }],

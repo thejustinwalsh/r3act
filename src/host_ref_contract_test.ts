@@ -130,14 +130,14 @@ Deno.test("discarded candidates never attach refs and invalid refs fail before h
   const container = host.createContainer();
   const root = createNativeRoot(host, container, { scheduleCommit: () => {} });
   let attached = 0;
-  const candidate = root.prepare(jsx("mesh", { ref: () => attached++ }));
+  const candidate = root.prepare(jsx("mesh", { ref: () => attached++ }), { renderPreparation: "repeatable" });
   candidate.discard();
   assertEquals(attached, 0);
   assertEquals(container.children.length, 0);
 
   let rejected = false;
   try {
-    root.prepare(jsx("mesh", { ref: "invalid" }));
+    root.prepare(jsx("mesh", { ref: "invalid" }), { renderPreparation: "repeatable" });
   } catch (error) {
     rejected = error instanceof TypeError;
   }
@@ -185,7 +185,7 @@ Deno.test("grouped root queue publishes all host trees and owner state before re
     () => jsx("section", {}, "right"),
   );
   const queue = new NativeRootWorkQueue();
-  const handle = queue.enqueue({
+  const handle = queue.enqueue({ renderPreparation: "repeatable",
     id: "refs-group-commit",
     roots: [
       { root: left, tree: jsx(Probe, {}) },

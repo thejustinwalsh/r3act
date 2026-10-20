@@ -30,6 +30,7 @@ const harness = (id: string) => {
   const root = new ComponentStateRoot(host, container, {
     rootId: id,
     scheduleCommit: () => {},
+    renderPreparation: "repeatable",
   });
   return { root, container, text: () => container.children.map(text).join("") };
 };
@@ -39,6 +40,22 @@ const boundary = (child: RuntimeNode) =>
     fallback: jsx("i", {}, "loading"),
     children: child,
   });
+
+Deno.test("task transition declines before undeclared providers and builders", () => {
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new ComponentStateRoot(host, container);
+  const queue = new NativeTaskTransitionQueue();
+  let providers = 0, builders = 0;
+  const tasks = [asyncTask("value", [], () => { providers++; return "ready"; })] as const;
+  assertThrows(() => queue.enqueue(tasks, [{
+    root, buildTree: () => { builders++; return jsx("i", {}, "ready"); },
+  }]), Error, "requires repeatable render preparation");
+  assertEquals([providers, builders], [0, 0]);
+  assertEquals(container.children.length, 0);
+  queue.dispose();
+  root.dispose();
+});
 
 Deno.test("task transition shares one execution across equal cuts and commits after true fan-in", async () => {
   const app = harness("task-transition-fanin");

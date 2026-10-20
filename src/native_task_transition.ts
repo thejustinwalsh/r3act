@@ -38,6 +38,8 @@ export type NativeTaskTransitionOptions = {
   finishTransitions?: boolean;
   maxConcurrency?: number;
   key?: string;
+  /** Declares generic task trees safe to prepare, discard, and repeat. */
+  renderPreparation?: "repeatable";
   onSettled?: (resolution: RootWorkResolution) => void;
 };
 
@@ -182,6 +184,18 @@ export class NativeTaskTransitionQueue {
     if (!roots.length) throw new Error("Task transition requires roots");
     if (new Set(roots.map(({ root }) => root.rootId)).size !== roots.length) {
       throw new Error("Task transition cannot contain duplicate roots");
+    }
+    if (options.renderPreparation !== undefined &&
+      options.renderPreparation !== "repeatable") {
+      throw new Error("Task transition renderPreparation must be repeatable");
+    }
+    for (const { root } of roots) {
+      if (options.renderPreparation !== "repeatable" &&
+        root.renderPreparation !== "repeatable") {
+        throw new Error(
+          `Task tree builder requires repeatable render preparation: ${root.rootId}`,
+        );
+      }
     }
     const publicId = options.id;
     if (
@@ -517,6 +531,7 @@ export class NativeTaskTransitionQueue {
         id: operation.id + ":generation:" + generation,
         key: operation.options.key,
         roots: trees,
+        renderPreparation: operation.options.renderPreparation,
         transitions: operation.options.transitions,
         finishTransitions: operation.options.finishTransitions,
         validateWork: () =>

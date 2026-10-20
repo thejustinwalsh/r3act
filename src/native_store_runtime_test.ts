@@ -159,6 +159,7 @@ Deno.test("native store transaction rebuilds a stale read cut before host public
   const root = new ComponentStateRoot(host, container, {
     rootId: "native-store-reentrant-root",
     scheduleCommit: () => {},
+    renderPreparation: "repeatable",
   });
   root.mount(jsx(Pair, {}));
   reenter = true;

@@ -107,9 +107,10 @@ try {
   const rowSite = componentSite(transformed.code, "Row");
   const boardSite = componentSite(transformed.code, "Board");
   const stateSites = [0, 1, 2].map((slot) => `${rowSite}#state:${slot}`);
-  const layoutMatch = transformed.code.match(/stateLayout:\s*\{\s*schemaVersion:\s*1,\s*slots:\s*\[([^\]]*)\]/s);
+  const layoutMatch = transformed.code.match(/stateLayout:\s*\{\s*schemaVersion:\s*1,\s*programId:\s*"([^"]+)",\s*moduleRevision:\s*"([^"]+)",\s*slots:\s*\[([^\]]*)\]/s);
   assert.ok(layoutMatch, "Row component must carry a compiled state layout");
-  const layoutEntries = [...layoutMatch[1].matchAll(/\{\s*siteId:\s*"([^"]+)",\s*slot:\s*(\d+)\s*\}/g)];
+  assert.equal(layoutMatch[1], rowSite, "layout owner must be Row's compiled component site");
+  const layoutEntries = [...layoutMatch[3].matchAll(/\{\s*siteId:\s*"([^"]+)",\s*slot:\s*(\d+)\s*\}/g)];
   assert.deepEqual(layoutEntries.map((entry) => [entry[1], Number(entry[2])]), stateSites.map((site, slot) => [site, slot]));
   assert.match(transformed.code, /__nativeUseStateAt\(/, "compiled useState calls must use the native hook ABI");
   await writeFile(emittedPath, transformed.code, { flag: "wx" });
@@ -239,7 +240,8 @@ try {
   const savedHostStyles = [structuredClone(nodeA.props.style), structuredClone(nodeC.props.style)];
   const savedControls = app.trace.controls;
   app.trace.candidateMutationKey = "a";
-  const candidate = root.prepare(jsx(app.Board, {}));
+  // Declared preparation still isolates a render-time write to new private state.
+  const candidate = root.prepare(jsx(app.Board, {}), { renderPreparation: "repeatable" });
   assert.ok(app.trace.candidateMutations > 0, "authored candidate render performed its private setter");
   const candidateValid = candidate.validate();
   assert.equal(candidateValid, false, "private render-time setter rejects candidate");

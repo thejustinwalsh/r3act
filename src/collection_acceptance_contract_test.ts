@@ -104,7 +104,7 @@ Deno.test("a later mixed reader readiness failure leaves every group frontier ol
     }, { propOnlySites: ["value"] });
     const host = new MemoryVDOMHost();
     const root = new ComponentStateRoot(host, host.createContainer(), {
-      rootId: id, scheduleCommit() {},
+      rootId: id, scheduleCommit() {}, renderPreparation: "repeatable",
     });
     root.mount(jsx(View, {}));
     const accepted = root.publicationVersion;

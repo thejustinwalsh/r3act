@@ -74,7 +74,7 @@ Deno.test("host reentry defers root teardown until application exits", () => {
   let failed = false;
   try {
     root.mount(jsx(View, { value: 0 }));
-    const candidate = root.prepare(jsx(View, { value: 2 }));
+    const candidate = root.prepare(jsx(View, { value: 2 }), { renderPreparation: "repeatable" });
     armed = true;
     let commitError: unknown;
     try {
@@ -125,7 +125,7 @@ Deno.test("effect failure follows publication without terminal host quarantine",
   let failed = false;
   try {
     root.mount(jsx(View, { value: 0 }));
-    const candidate = root.prepare(jsx(View, { value: 2 }));
+    const candidate = root.prepare(jsx(View, { value: 2 }), { renderPreparation: "repeatable" });
     candidate.commitHost();
     candidate.publish();
     let effectError: unknown;
@@ -140,7 +140,7 @@ Deno.test("effect failure follows publication without terminal host quarantine",
       "effect failure reported",
     );
     equal(root.version, 2, "host publication remains accepted");
-    const recovery = root.prepare(jsx(View, { value: 3 }));
+    const recovery = root.prepare(jsx(View, { value: 3 }), { renderPreparation: "repeatable" });
     recovery.commitHost();
     recovery.publish();
     recovery.runEffects();
@@ -191,7 +191,7 @@ Deno.test("newer host callback state survives exact candidate acknowledgement", 
   let failed = false;
   try {
     root.mount(jsx(View, { value: 0 }));
-    const candidate = root.prepare(jsx(View, { value: 2 }));
+    const candidate = root.prepare(jsx(View, { value: 2 }), { renderPreparation: "repeatable" });
     armed = true;
     candidate.commitHost();
     candidate.publish();
@@ -253,7 +253,7 @@ Deno.test("accepted structural snapshot remains visible through partial host fai
     const candidate = root.prepare(jsx("section", {}, [
       jsx("output", { key: "a", "data-value": "new" }),
       jsx("output", { key: "b", "data-value": "added" }),
-    ]));
+    ]), { renderPreparation: "repeatable" });
     armed = true;
     let commitError: unknown;
     try {

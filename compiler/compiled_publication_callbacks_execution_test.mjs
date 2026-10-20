@@ -178,7 +178,7 @@ try {
     assert.equal(JSON.stringify(b.root.snapshot), bAccepted,
       "closed-only decline changed B's accepted fallback");
     assert.equal(app.newer.getState(), 0);
-    const generic = queue.enqueue({ id: `publication-callbacks-generic-${randomUUID()}`,
+    const generic = queue.enqueue({ renderPreparation: "repeatable", id: `publication-callbacks-generic-${randomUUID()}`,
       roots: [{ root: a.root, tree: treeA }, { root: b.root, tree: treeB }] });
     genericStatus = generic.status;
     assert.equal(generic.status, "committed",

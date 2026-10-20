@@ -197,7 +197,7 @@ Deno.test("disjoint Store leaves merge through one ancestor while overlap and fu
   try {
     f.position.dispatch(2);
     second.dispatch(3);
-    const full = f.root.prepare(f.tree());
+    const full = f.root.prepare(f.tree(), { renderPreparation: "repeatable" });
     const mesh = f.root.prepareStores([f.position]);
     const duplicate = f.root.prepareStores([f.position]);
     const outline = f.root.prepareStores([second]);

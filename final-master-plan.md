@@ -1,5 +1,17 @@
 # Final master plan: classify, measure, then choose
 
+## Explicit generic render preparation — 20 October 2026
+
+Generic staged rendering now requires an explicit repeatable declaration on root/call/work/task options. It permits discard, suspension and retry without granting compiler purity or rollback of escaped effects. Unmarked direct renders run once per attempt, retain pending intent/resource wakes, and staged partial/sparse/collection routes decline before unknown bodies. Closed scoped admission and existing identity/version/publication authority remain; whole-tree guards and resource/failure semantics stay intact.
+
+An immutable baseline characterizes two old opaque execution/replay behaviors. Darwin-v1's seven failed phases remain preserved. Corrected Darwin-v2 passes 59/59 phases: 1066 runtime tests, 83 Rust tests, forty compiled fixtures, nine Three cases, three retention checks and thirteen package checks. All 1301 runner inputs match, with 1311 source/context files archived. New tests distinguish accepted setters from private discarded setters; original candidate isolation and stale assertions remain. Four previously omitted compiled fixtures join the gate with corrected current compiler setup.
+
+Fresh installed proof passes seventeen assertions and complete async/fork/urgent/cancel/disposal episodes; application/scene/React bodies stay unchanged and Native controller changes only two capability declarations. Five tarballs, 3163 selected installed files and 1312 staged source/context rows are bound. Both browser phases match 9092 hashes before/after, preserve identities, balance cleanup and close cleanly. The sole Native-first timing pair has higher Native median/p95: 0.9/1.5 ms versus React 0.2/0.5 ms; C settlement is 1.7/0.7 ms. About 0.1 ms timer quantum and descriptive observer delivery give no speed, CPU, paint, cold/memory, population-tail or independent-device qualification.
+
+The full-plan first pass remains active, including release performance/cold/memory, current other-platform and independent-device requirements. Human participants remain zero with no maintenance claim; historic wins, dense FAIL, exhausted Recording A and physical HOLD retain scope. Saved Apple limits remain one CPU, 256 MiB/container and 512 MiB/build on Depot; no VM/server starts or memory increases, and effective limits remain unverified behind startup permissions.
+
+[Source, failures, receipts and limits](implementation/2026-10-20-render-preparation/results.md).
+
 ## Installed forked async interaction — 20 October 2026
 
 The complete forked DOM/Three application now executes from five freshly installed packages with separate Native and React graphs. Native app/scene/controller bytes and the React comparator's statements remain unchanged; only its React JSX pragma is added. A real button listener delivers twenty urgent actions while B/C providers remain pending. The source inventory now includes valid dated units from 19 October onward, replacing its hard-coded single-day selection. Runtime/compiler/publication authority and physical layouts remain unchanged.

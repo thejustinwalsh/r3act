@@ -61,7 +61,7 @@ const harness = (
 Deno.test("React island receives committed props and preserves its root through replacement and keyed move", () => {
   const app = harness();
   const first = { label: "first" };
-  const candidate = app.root.prepare(jsx(app.Island, first));
+  const candidate = app.root.prepare(jsx(app.Island, first), { renderPreparation: "repeatable" });
   first.label = "mutated after preparation";
   same(app.records.length, 0, "preparation created an island root");
   candidate.commitHost();
@@ -99,8 +99,8 @@ Deno.test("React island receives committed props and preserves its root through 
 Deno.test("stale and discarded candidates cannot deliver island props", () => {
   const app = harness();
   app.root.mount(jsx(app.Island, { label: "accepted" }));
-  const stale = app.root.prepare(jsx(app.Island, { label: "stale" }));
-  const discarded = app.root.prepare(jsx(app.Island, { label: "discarded" }));
+  const stale = app.root.prepare(jsx(app.Island, { label: "stale" }), { renderPreparation: "repeatable" });
+  const discarded = app.root.prepare(jsx(app.Island, { label: "discarded" }), { renderPreparation: "repeatable" });
   discarded.discard();
   app.root.render(jsx(app.Island, { label: "winner" }));
   assert(!stale.validate(), "old candidate stayed valid");
@@ -149,8 +149,8 @@ Deno.test("grouped native roots publish both accepted owners before either islan
       };
     },
   });
-  const a = left.root.prepare(jsx(Island, { label: "left" }));
-  const b = right.root.prepare(jsx(Island, { label: "right" }));
+  const a = left.root.prepare(jsx(Island, { label: "left" }), { renderPreparation: "repeatable" });
+  const b = right.root.prepare(jsx(Island, { label: "right" }), { renderPreparation: "repeatable" });
   a.commitHost();
   b.commitHost();
   same(seen.length, 0, "host phase delivered island props");
@@ -205,7 +205,7 @@ Deno.test("host failure before ref publication does not create an island root", 
     },
   });
   const root = new ComponentStateRoot(host, container, { scheduleCommit() {} });
-  const candidate = root.prepare(jsx(Island, { label: "uncommitted" }));
+  const candidate = root.prepare(jsx(Island, { label: "uncommitted" }), { renderPreparation: "repeatable" });
   let failed = false;
   try {
     candidate.commitHost();
@@ -259,7 +259,7 @@ Deno.test("partial host failure cannot deliver candidate props to an accepted is
   const acceptedOwners = root.diagnostics().ownerCount;
   same(renders.join(","), "accepted", "initial island props");
   host.fail = true;
-  const candidate = root.prepare(tree("candidate", "candidate"));
+  const candidate = root.prepare(tree("candidate", "candidate"), { renderPreparation: "repeatable" });
   let failure: unknown;
   try {
     candidate.commitHost();
@@ -275,7 +275,7 @@ Deno.test("partial host failure cannot deliver candidate props to an accepted is
     "failed host batch replaced accepted owners");
   let terminal = false;
   try {
-    root.prepare(tree("replay", "accepted"));
+    root.prepare(tree("replay", "accepted"), { renderPreparation: "repeatable" });
   } catch {
     terminal = true;
   }

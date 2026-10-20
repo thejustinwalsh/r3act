@@ -98,7 +98,7 @@ try {
   function replace(provider) {
     const resource = new AsyncResource(provider.promise);
     const id = `node-recovery-${++number}`;
-    const handle = queue.enqueue({ id, roots: [
+    const handle = queue.enqueue({ renderPreparation: "repeatable", id, roots: [
       { root: dom, tree: jsx(app.AppDom, { resource }) },
       { root: fork, tree: jsx(app.AppDom, { resource }) },
       { root: three.root, tree: jsx(app.AppThree, { resource }) },

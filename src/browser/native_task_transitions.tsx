@@ -292,6 +292,7 @@ function startWorkload(delay: number, label: string) {
       { root: roots.get(ROOTS[1])!, buildTree: (execution) => rootTree(execution, ROOTS[1]) },
     ], {
       id: shared.id,
+      renderPreparation: "repeatable",
       inputs: { "$request": { id, delay, label, fail } satisfies Request },
       liveInputs: { "$query": queryStore },
       transitions: [shared.scopeId],
@@ -315,6 +316,7 @@ function startWorkload(delay: number, label: string) {
       buildTree: (execution) => { fork.execution = execution; return rootTree(execution, ROOTS[1]); },
     }], {
       id: fork.id,
+      renderPreparation: "repeatable",
       inputs: { "$request": { id: `${id}-fork`, delay: forkDelay, label: `${label} sidecar`, fail } satisfies Request },
       liveInputs: { "$query": queryStore },
       transitions: [fork.scopeId],

@@ -66,7 +66,7 @@ export function mountNative(host: HTMLElement) {
       const transition = `arrow-stage-${++sequence}`;
       stage.beginTransition(transition, [dom.rootId, three.root.rootId]);
       stage.dispatch(next, { kind: "transition", transitionId: transition });
-      await new Promise<void>((resolve, reject) => queue.enqueue({
+      await new Promise<void>((resolve, reject) => queue.enqueue({ renderPreparation: "repeatable",
         id: transition, roots: [{ root: dom, tree: domTree(resource) },
           { root: three.root, tree: sceneTree(resource) }],
         transitions: [transition], finishTransitions: true,
@@ -81,7 +81,7 @@ export function mountNative(host: HTMLElement) {
       retiredProvider = provider;
       provider = deferred<Panel>();
       const next = new AsyncResource(provider.promise);
-      const candidate = queue.enqueue({ id: `arrow-detail-${++sequence}`, roots: [
+      const candidate = queue.enqueue({ renderPreparation: "repeatable", id: `arrow-detail-${++sequence}`, roots: [
         { root: dom, tree: domTree(next) }, { root: three.root, tree: sceneTree(next) },
       ], onSettled(outcome) { if (outcome.status === "committed") resource = next; } });
       active = candidate;

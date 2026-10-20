@@ -1228,6 +1228,8 @@ export const renderCollectionAt = <T>(
 };
 
 export type ComponentStateRootOptions = {
+  /** Allow isolated generic renders to be discarded and repeated. */
+  renderPreparation?: "repeatable";
   /** Defer one commit after state writes; defaults to a microtask scheduler. */
   scheduleCommit?: (commit: () => void) => void;
   /** Optional OXC-emitted state-site-to-component invalidation graph. */
@@ -1362,6 +1364,7 @@ const hasNestedComponent = (
  * site IDs; explicit helpers remain available to host adapters and extensions.
  */
 export class ComponentStateRoot<H, Parent = H> {
+  readonly #renderPreparation: "repeatable" | undefined;
   readonly world: OwnerStateWorld;
   readonly #rootOwner: OwnerId;
   readonly #rootId: string;
@@ -1480,6 +1483,11 @@ export class ComponentStateRoot<H, Parent = H> {
     container: Parent,
     options: ComponentStateRootOptions = {},
   ) {
+    if (options.renderPreparation !== undefined &&
+      options.renderPreparation !== "repeatable") {
+      throw new TypeError("Unknown render preparation capability");
+    }
+    this.#renderPreparation = options.renderPreparation;
     this.world = options.world ?? new OwnerStateWorld();
     let resourceTable = worldResourceTables.get(this.world);
     if (!resourceTable) {
@@ -1666,8 +1674,10 @@ export class ComponentStateRoot<H, Parent = H> {
     options: {
       readonly transitions?: readonly string[];
       readonly autoRetryResources?: boolean;
+      readonly renderPreparation?: "repeatable";
     } = {},
   ): NativeRootCandidate<H, Parent> {
+    this.#requireRepeatableRender(options.renderPreparation);
     const held = this.#publicationIntents.values().next().value;
     if (held) return this.#prepareBlockedPublication([held.wait]);
     return this.#prepareCandidate(tree, options, true, new Set(), new Set());
@@ -1675,8 +1685,12 @@ export class ComponentStateRoot<H, Parent = H> {
 
   /** Prepare tracked root work without requiring callers to provide a full tree. */
   preparePending(
-    options: { readonly transitions?: readonly string[] } = {},
+    options: {
+      readonly transitions?: readonly string[];
+      readonly renderPreparation?: "repeatable";
+    } = {},
   ): NativeRootCandidate<H, Parent> | null {
+    this.#validateRenderPreparation(options.renderPreparation);
     this.#assertActive();
     this.#assertNoPublicationBarrier("prepare");
     if (this.#terminalHostFailed) {
@@ -1685,6 +1699,7 @@ export class ComponentStateRoot<H, Parent = H> {
     const held = this.#publicationIntents.values().next().value;
     if (held) return this.#prepareBlockedPublication([held.wait]);
     if (this.#pendingDirectIntent) {
+      this.#requireRepeatableRender(options.renderPreparation);
       return this.#prepareCandidate(
         this.#pendingDirectIntent.tree,
         { transitions: options.transitions ?? [] },
@@ -1701,7 +1716,9 @@ export class ComponentStateRoot<H, Parent = H> {
     const mixed = this.#prepareMixedCollectionCandidate(changes, {
       storeGeneration: this.#storeNotificationGeneration,
       transitions: options.transitions ?? [],
+      renderPreparation: options.renderPreparation,
     });
+    if (!mixed) this.#requireRepeatableRender(options.renderPreparation);
     return mixed ?? this.#prepareCandidate(
       this.#tree,
       { transitions: options.transitions ?? [] },
@@ -3020,6 +3037,7 @@ export class ComponentStateRoot<H, Parent = H> {
     directOnlyOwners: ReadonlySet<OwnerId>,
     storeGenerationAtPrepare: number,
   ): NativeRootCandidate<H, Parent> | null {
+    if (this.#renderPreparation !== "repeatable") return null;
     if (
       readerOwners.size === 0 || this.#everReadResource ||
       this.#everHadNativeBoundary || this.#pendingCollectionRegionKeys.size > 0
@@ -3778,6 +3796,23 @@ export class ComponentStateRoot<H, Parent = H> {
       effectFailureMessage:
         "Component effects failed after candidate publication",
     });
+  }
+
+  /** Root-wide declaration that generic render preparation may repeat. */
+  get renderPreparation(): "repeatable" | undefined {
+    return this.#renderPreparation;
+  }
+
+  #requireRepeatableRender(capability?: "repeatable"): void {
+    this.#validateRenderPreparation(capability);
+    if (capability === "repeatable" || this.#renderPreparation === "repeatable") return;
+    throw new Error("Isolated generic preparation requires renderPreparation: repeatable");
+  }
+
+  #validateRenderPreparation(capability?: "repeatable"): void {
+    if (capability !== undefined && capability !== "repeatable") {
+      throw new TypeError("Unknown render preparation capability");
+    }
   }
 
   /** Stable identifier used when coordinating transitions across native roots. */
@@ -5252,7 +5287,12 @@ export class ComponentStateRoot<H, Parent = H> {
           candidate.discard();
           return false;
         }
-        if (collectionRetry >= 2 && directIntent) {
+        if (directIntent && this.#renderPreparation !== "repeatable" &&
+          candidate.pendingResources.length > 0) {
+          holdDirectFrontier(candidate, directIntent);
+        }
+        if (collectionRetry >= 2 && directIntent &&
+          this.#renderPreparation === "repeatable") {
           if (candidate.pendingResources.length === 0) {
             throw new Error("Direct update stayed stale without a dependency wake");
           }
@@ -5263,7 +5303,7 @@ export class ComponentStateRoot<H, Parent = H> {
           }
         }
         candidate.discard();
-        if (collectionRetry < 2) {
+        if (this.#renderPreparation === "repeatable" && collectionRetry < 2) {
           return this.#renderAndCommit(
             tree,
             forceRender,
@@ -5274,7 +5314,9 @@ export class ComponentStateRoot<H, Parent = H> {
             directIntent,
           );
         }
-        if (!directIntent) this.#schedule();
+        if (!directIntent && this.#renderPreparation === "repeatable") {
+          this.#schedule();
+        }
         return false;
       }
       candidate.commitHost();
@@ -5282,7 +5324,8 @@ export class ComponentStateRoot<H, Parent = H> {
       candidate.runEffects();
       return true;
     } catch (error) {
-      if (error instanceof StaleCollectionCandidate && collectionRetry < 2) {
+      if (error instanceof StaleCollectionCandidate &&
+        this.#renderPreparation === "repeatable" && collectionRetry < 2) {
         return this.#renderAndCommit(
           tree,
           forceRender,
@@ -5436,6 +5479,7 @@ export class ComponentStateRoot<H, Parent = H> {
   }
 
   #tryPartialOwnerCommit(owner: OwnerId): boolean {
+    if (this.#renderPreparation !== "repeatable") return false;
     const cached = this.#componentCache.get(owner);
     if (!cached || cached.subtreeOwners.size !== 1) return false;
     const oldKey = singleHostRootKey(cached.expandedResult);
@@ -5486,6 +5530,7 @@ export class ComponentStateRoot<H, Parent = H> {
    * the region are reconciled by the VDOM without rerunning unchanged rows.
    */
   #tryStructuralOwnerCommit(owner: OwnerId): boolean {
+    if (this.#renderPreparation !== "repeatable") return false;
     const cached = this.#componentCache.get(owner);
     if (!cached) {
       this.#profile?.("dispatch.structural-bail.cache-missing", 0);
@@ -5880,6 +5925,7 @@ export class ComponentStateRoot<H, Parent = H> {
   }
 
   #tryPartialOwnerCommits(owners: readonly OwnerId[]): boolean {
+    if (this.#renderPreparation !== "repeatable") return false;
     const keys = new Map<OwnerId, string>();
     const seenKeys = new Set<string>();
     for (const owner of owners) {
@@ -6268,8 +6314,11 @@ export class ComponentStateRoot<H, Parent = H> {
       readonly acceptedCollections?: readonly (() => boolean)[];
       readonly acceptedResources?: ReadonlySet<AsyncResource<any>>;
       readonly acceptedCollectionFootprint?: readonly KeyedCollection<any>[];
+      readonly renderPreparation?: "repeatable";
     },
   ): NativeRootCandidate<H, Parent> | null {
+    const repeatable = this.#renderPreparation === "repeatable" ||
+      options.renderPreparation === "repeatable";
     if (this.#pendingCollectionRegionKeys.size === 0 ||
       (!options.scopedStructural &&
         (this.#everReadResource || this.#everHadNativeBoundary))
@@ -6450,6 +6499,11 @@ export class ComponentStateRoot<H, Parent = H> {
       if (preparationFailed || stages.size === 0) {
         throw new SparseCandidateIneligible();
       }
+      if (!repeatable &&
+        [...stages.values()].some((stage) =>
+          stage.read.batches.some((batch) => batch.operations.some((operation) =>
+            operation.type !== "move" && operation.type !== "remove"
+          )))) throw new SparseCandidateIneligible();
       if (options.scopedStructural) {
         for (const stage of stages.values()) {
           for (const batch of stage.read.batches) {
@@ -6692,6 +6746,9 @@ export class ComponentStateRoot<H, Parent = H> {
               if (inserting && operation.beforeKey !== null && !anchor) {
                 throw new SparseCandidateIneligible();
               }
+              if (!repeatable) {
+                throw new SparseCandidateIneligible();
+              }
               const rendered = stage.region.renderRow(operation.value);
               if (
                 !rendered || Array.isArray(rendered) ||
@@ -6843,6 +6900,9 @@ export class ComponentStateRoot<H, Parent = H> {
                 continue;
               }
               const rendered = row.node as RuntimeElement;
+              if (!repeatable) {
+                throw new SparseCandidateIneligible();
+              }
               const prepared = prepareRenderedRow(
                 stage,
                 rowLocation.key,
@@ -6874,6 +6934,9 @@ export class ComponentStateRoot<H, Parent = H> {
               const key = singleHostRootKey(cache.expandedResult);
               if (!key) throw new SparseCandidateIneligible();
               this.#count("owner.component-visits");
+              if (!repeatable) {
+                throw new SparseCandidateIneligible();
+              }
               const prepared = this.#prepareOwnerRender(owner, {
                 preparation,
                 stores,
@@ -7499,6 +7562,10 @@ export class ComponentStateRoot<H, Parent = H> {
       return false;
     }
     if (collectionOwnerNeedsGenericRows(parentCache, read.batches)) return false;
+    if (this.#renderPreparation !== "repeatable" &&
+      read.batches.some((batch) => batch.operations.some((operation) =>
+        operation.type !== "move" && operation.type !== "remove"
+      ))) return false;
     if (read.batches.length === 0) {
       if (!region.reader.acknowledge(read.toVersion)) return false;
       this.#pendingCollectionRegionKeys.delete(regionKey);

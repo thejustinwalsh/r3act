@@ -57,7 +57,7 @@ Deno.test("a later root's Store preparation callback cannot leave an accepted gr
     leftStore.dispatch(1);
     rightStore.dispatch(1);
     armed = true;
-    const work = queue.enqueue({ id: "publication-reader-preparation-fault", roots: [
+    const work = queue.enqueue({ id: "publication-reader-preparation-fault", renderPreparation: "repeatable", roots: [
       { root: left.root, tree: leftTree },
       { root: right.root, tree: rightTree },
     ] });
@@ -125,7 +125,7 @@ Deno.test("a later nonthrowing Store callback revokes an earlier root before gro
     leftStore.dispatch(1);
     rightStore.dispatch(1);
     armed = true;
-    const work = queue.enqueue({ id: "publication-reader-retires-earlier-root", roots: [
+    const work = queue.enqueue({ id: "publication-reader-retires-earlier-root", renderPreparation: "repeatable", roots: [
       { root: left.root, tree: leftTree },
       { root: right.root, tree: rightTree },
     ] });
@@ -200,7 +200,7 @@ Deno.test("a default Proxy around a registered component keeps generic grouped p
     const callsBefore = calls.proxied;
     firstStore.dispatch(1);
     secondStore.dispatch(1);
-    const work = queue.enqueue({ id: "publication-proxy-component", roots: [
+    const work = queue.enqueue({ id: "publication-proxy-component", renderPreparation: "repeatable", roots: [
       { root: first.root, tree: firstTree },
       { root: second.root, tree: secondTree },
     ] });
@@ -276,7 +276,7 @@ Deno.test("a Proxy AsyncResource with bound public methods keeps generic grouped
     assertEquals(effects.fallbackSetup, 1);
     const versions = roots.map(({ root }) => root.publicationVersion);
     store.dispatch(1);
-    const work = queue.enqueue({ id: "publication-opaque-resource", roots: [
+    const work = queue.enqueue({ id: "publication-opaque-resource", renderPreparation: "repeatable", roots: [
       { root: left.root, tree: leftTree },
       { root: right.root, tree: rightTree },
     ] });

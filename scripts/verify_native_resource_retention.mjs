@@ -22,7 +22,7 @@ async function stage(){
  const candidate=root.prepare(jsx(Suspense,{
   __nativeBoundarySite:'resource-retention-boundary',
   fallback:jsx('p',{},'waiting'),children:jsx(View,{}),
- }));
+ }), { renderPreparation: "repeatable" });
  assert.equal(candidate.pendingResources.length,1);
  candidate.discard();
  assert.equal(candidate.pendingResources.length,0,'Discard retained its pending resource list');

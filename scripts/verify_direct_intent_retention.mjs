@@ -33,14 +33,14 @@ async function cycle(id,publish){
   const payload={bytes:new Uint8Array(8192)};
   const weak=new WeakRef(payload);
   root.update(jsx('section',{},[gate,jsx(Child,{key:'child',record:payload})]));
-  const blocked=root.preparePending();
+  const blocked=root.preparePending({renderPreparation:'repeatable'});
   assert.ok(blocked?.blocked,'Desired tree must remain blocked');
   blocked.discard();
   retainedCandidates.push(blocked);
   if(publish){
     resolvePending('ready');
     await setImmediate();
-    const accepted=root.preparePending();
+    const accepted=root.preparePending({renderPreparation:'repeatable'});
     assert.ok(accepted && !accepted.blocked,'Settled desired tree must prepare');
     accepted.commitHost();accepted.publish();accepted.runEffects();
     retainedCandidates.push(accepted);

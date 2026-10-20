@@ -87,7 +87,8 @@ const archiveTree = async (source, destination) => {
   files.sort((left, right) => left.path.localeCompare(right.path));
   return { status: "ARCHIVED", files };
 };
-const fixturePrefix = /^(compiled-|native-resource-execution-|native-collection-execution-|compiler-artifact-conformance-)/;
+const fixturePrefix = /^(compiled-|native-resource-execution-|native-collection-execution-|compiler-artifact-conformance-|numeric-state-layout$)/;
+const fixedFixtureOutput = /^(native-queue-execution|native-task-transition|native-promise-store-race)\.(mjs|json)$/;
 const fixtureFiles = async () => {
   const cache = path.join(root, ".cache");
   let entries;
@@ -105,8 +106,12 @@ const fixtureFiles = async () => {
         { sha256: await shaFile(filename), bytes: (await stat(filename)).size });
     }
   };
-  for (const entry of entries) if (entry.isDirectory() && fixturePrefix.test(entry.name)) {
-    await walk(path.join(cache, entry.name));
+  for (const entry of entries) {
+    const filename = path.join(cache, entry.name);
+    if (entry.isDirectory() && fixturePrefix.test(entry.name)) await walk(filename);
+    else if (entry.isFile() && fixedFixtureOutput.test(entry.name)) {
+      files.set(entry.name, { sha256: await shaFile(filename), bytes: (await stat(filename)).size });
+    }
   }
   return files;
 };
@@ -345,7 +350,9 @@ try {
     "compiled_held_reader_progress_test", "compiled_closed_arrow_authoring_test",
     "compiled_numeric_owner_effects_test", "compiled_collection_owner_effects_test",
     "native_collection_execution_test", "compiled_host_value_diff_test",
-    "compiled_reentrant_replacement_test", "compiled_runtime_origin_test"];
+    "compiled_reentrant_replacement_test", "compiled_runtime_origin_test",
+    "native_root_queue_execution_test", "native_task_transition_execution_test",
+    "native_promise_store_race_execution_test", "numeric_state_layout_execution_test"];
   for (const [index, fixture] of fixtures.entries()) {
     const name = `compiled-${String(index + 1).padStart(2, "0")}`;
     const before = await compilerHash();

@@ -34,7 +34,7 @@ const publish = (
   root: ComponentStateRoot<MemoryNode, MemoryNode>,
   tree: ReturnType<typeof jsx>,
 ) => {
-  const candidate = root.prepare(tree);
+  const candidate = root.prepare(tree, { renderPreparation: "repeatable" });
   candidate.commitHost();
   candidate.publish();
   candidate.runEffects();
@@ -60,7 +60,7 @@ Deno.test("native boundary discovers later pending siblings and commits only loc
     __nativeBoundarySite: "boundary",
     fallback: jsx("p", { id: "fallback" }, "loading"),
     children: [jsx(A, {}), jsx(B, {})],
-  }));
+  }), { renderPreparation: "repeatable" });
   equal(candidate.pendingResources.length, 2);
   candidate.commitHost();
   candidate.publish();
@@ -175,7 +175,7 @@ Deno.test("nested native boundaries keep pending work local", () => {
       children: jsx(Inner, {}),
     }),
     jsx("aside", {}, "outer-after"),
-  ]));
+  ]), { renderPreparation: "repeatable" });
   equal(candidate.pendingResources.length, 1);
   candidate.commitHost();
   candidate.publish();
@@ -381,7 +381,7 @@ Deno.test("retained primary blocks when its current store-held resource still su
   ready.resolve("old");
   await new Promise<void>((resolve) => setTimeout(resolve, 0));
   store.dispatch(pending.promise);
-  const candidate = root.prepare(tree());
+  const candidate = root.prepare(tree(), { renderPreparation: "repeatable" });
   assert(
     candidate.blocked,
     "retained primary that re-suspends must block publication",
@@ -504,7 +504,7 @@ Deno.test("discarded candidate store dependency leases outlive candidate release
       fallback: jsx("i", {}, "waiting"),
       children: jsx(View, {}),
     }),
-    { autoRetryResources: false },
+    { autoRetryResources: false, renderPreparation: "repeatable" },
   );
   const release = candidate.retainStoreDependencies();
   candidate.discard();

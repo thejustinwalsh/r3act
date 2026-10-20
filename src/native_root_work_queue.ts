@@ -58,6 +58,8 @@ export type NativeRootWork = {
   readonly validateWork?: () => boolean;
   /** Decide whether stale native or external inputs should be rebuilt. */
   readonly onStaleWork?: () => "retry" | "reject";
+  /** Declares generic tree preparation safe to discard and repeat. */
+  readonly renderPreparation?: "repeatable";
   /** Task-only store scopes included in this work's publication. */
   readonly publicationDependencies?: readonly {
     readonly root: NativeRoot;
@@ -145,12 +147,26 @@ export class NativeRootWorkQueue {
   }
 
   enqueue(work: NativeRootWork): NativeRootWorkHandle {
+    this.#assertActive();
+    if (work.renderPreparation !== undefined &&
+      work.renderPreparation !== "repeatable") {
+      throw new Error("Native work renderPreparation must be repeatable");
+    }
+    for (const { root } of work.roots) {
+      if (work.renderPreparation !== "repeatable" &&
+        root.renderPreparation !== "repeatable") {
+        throw new Error(
+          `Generic native work requires repeatable render preparation: ${root.rootId}`,
+        );
+      }
+    }
     return this.#enqueuePrepared(
       work,
       work.roots.map(({ root, tree }) => ({ root, tree })),
       ({ root, tree }, transitions) => root.prepare(tree, {
         transitions,
         autoRetryResources: false,
+        renderPreparation: work.renderPreparation,
       }),
     );
   }

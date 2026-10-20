@@ -191,6 +191,7 @@ Deno.test("native direct bindings retain keyed hosts across insert and move and 
   const root = new ComponentStateRoot(host, container, {
     scheduleCommit() {},
     profileCounter: (values) => counters.push(values),
+    renderPreparation: "repeatable",
   });
   const Item = defineComponent<{ row: Row }>("direct-writer-keyed-row", ({ row }) => {
     const [value, set] = useStateAt("value", row.initial);
@@ -262,6 +263,7 @@ Deno.test("empty-start roots use direct style writers after keyed schema discove
   const root = new ComponentStateRoot(host, container, {
     scheduleCommit() {},
     profileCounter: (values) => counters.push(values),
+    renderPreparation: "repeatable",
   });
   const StyledRow = defineComponent<{ row: Row }>("direct-writer-first-keyed-row", ({ row }) => {
     rowRenders++;

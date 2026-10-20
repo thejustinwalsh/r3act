@@ -36,7 +36,7 @@ export function CollectionRow({row}:{row:{id:string}}){
 export function CollectionApp(){return <ul>{rows.map(row=><CollectionRow key={row.id} row={row}/>)}</ul>;}
 `;
 const plugin=nativeModuleCompilerPlugin({root:directory});
-const context={addWatchFile(){},error(message){throw new Error(String(message))}};
+const context={addWatchFile(){},error(message){throw new Error(String(message))},async resolve(specifier){return specifier===nativeImport?{id:path.join(directory,'src/native_runtime_api.ts')}:null;}};
 const roots=[];
 const errors=[];
 const queue=new NativeRootWorkQueue({onError:error=>errors.push(error)});
@@ -44,7 +44,7 @@ try{
  const transformed=await plugin.transform.call(context,authored,path.join(directory,'.cache/native-queue-execution.tsx'));
  assert.ok(transformed.code.includes('useStoreAt'));
  assert.match(transformed.code, /__nativeBindStateProps?At\(/);
- const emitted=await transformWithOxc(transformed.code,'.cache/native-queue-execution.tsx',{lang:'tsx',jsx:{runtime:'classic'}});
+ const emitted=await transformWithOxc(transformed.code,'.cache/native-queue-execution.tsx',{lang:'tsx',jsx:{runtime:'classic',pragma:'jsx',pragmaFrag:'Fragment'}});
  await mkdir('.cache',{recursive:true});const filename=path.join(directory,'.cache/native-queue-execution.mjs');await writeFile(filename,emitted.code);
  const app=await import(pathToFileURL(filename).href+'?test='+Date.now());
  const world=createWorld();
@@ -58,7 +58,7 @@ try{
  const start=(id,deltaA,deltaB)=>{
   for(const store of [app.a,app.b])store.beginTransition(id,roots.map(root=>root.rootId));
   app.a.dispatch(deltaA,{kind:'transition',transitionId:id});app.b.dispatch(deltaB,{kind:'transition',transitionId:id});
-  return queue.enqueue({id,roots:[left,right].map(({root})=>({root,tree:jsx(app.App,{phase:id})})),pending:['ready'],transitions:[id],finishTransitions:true});
+  return queue.enqueue({ renderPreparation: "repeatable",id,roots:[left,right].map(({root})=>({root,tree:jsx(app.App,{phase:id})})),pending:['ready'],transitions:[id],finishTransitions:true});
  };
  const slow=start('slow',10,100),fast=start('fast',2,20);
  app.a.dispatch(1);find(left.container,'data-move').props.onClick();left.root.flush();right.root.flush();
@@ -73,10 +73,10 @@ try{
  assert.deepEqual(observed,[['144','144',14,130],['144','144',14,130]]);
  assert.equal(app.activeEffects,2,'Keyed lifecycle replacements leaked effects');
  find(left.container,'data-move').props.onClick();left.root.flush();assert.equal(find(left.container,'data-move').props['data-position'],7,'Canonical source binding was lost after candidate publication');
- const canceled=queue.enqueue({id:'cancelled',roots:[{root:left.root,tree:jsx(app.App,{phase:'never'})}],pending:['ready']});canceled.cancel();canceled.resolve('ready');assert.equal(canceled.status,'cancelled');assert.equal(total(left),'144');
+ const canceled=queue.enqueue({ renderPreparation: "repeatable",id:'cancelled',roots:[{root:left.root,tree:jsx(app.App,{phase:'never'})}],pending:['ready']});canceled.cancel();canceled.resolve('ready');assert.equal(canceled.status,'cancelled');assert.equal(total(left),'144');
  const collectionHost=new MemoryVDOMHost();const collectionContainer=collectionHost.createContainer();
  const collectionRoot=createNativeRoot(collectionHost,collectionContainer,{rootId:'compiled-queue-collection',world,scheduleCommit(){}});roots.push(collectionRoot);
- assert.equal(queue.enqueue({id:'collection-init',roots:[{root:collectionRoot,tree:jsx(app.CollectionApp,{})}]}).status,'committed');
+ assert.equal(queue.enqueue({ renderPreparation: "repeatable",id:'collection-init',roots:[{root:collectionRoot,tree:jsx(app.CollectionApp,{})}]}).status,'committed');
  const rowById=id=>collectionContainer.children[0].children.find(node=>node.props['data-row']===id);
  const rowA=rowById('a'),inputA=rowA.children[0];inputA.props.onInput({target:{value:'Row draft'}});collectionRoot.flush();
  rowA.children[1].props.onClick();collectionRoot.flush();assert.equal(rowA.props['data-tick'],1);

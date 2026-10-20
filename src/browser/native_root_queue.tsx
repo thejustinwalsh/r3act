@@ -186,6 +186,7 @@ function startBatch() {
       : [forkRoot];
     const handle = queue.enqueue({
       id: operation.id,
+      renderPreparation: "repeatable",
       roots: participatingRoots.map((root) => ({
         root,
         tree: root.rootId === MAIN_ROOT_ID

@@ -7,6 +7,8 @@ one DOM root and one Three root sharing a World and Stores. The example uses
 ordinary keyed array rows, row-local state, refs, events, a conditional
 activation effect, Suspense, and coordinated Store publication.
 
+Its queued generic stage and detail publications declare repeatable render preparation per operation because pending detail candidates can be discarded and retried. Direct local updates keep their ordinary root boundary.
+
 The browser controller is exposed as `window.arrowComponents`. Its `snapshot`,
 `click`, `reorder`, `urgent`, `publishStage`, `beginDetail`, `resolveDetail`,
 `rejectDetail`, `resolveRetiredDetail`, `retireDetail`, and `dispose` methods make

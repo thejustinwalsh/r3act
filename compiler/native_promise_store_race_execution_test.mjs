@@ -47,7 +47,7 @@ export function Pair(){
 `;
 
 const plugin=nativeModuleCompilerPlugin({root:directory});
-const context={addWatchFile(){},error(message){throw new Error(String(message))}};
+const context={addWatchFile(){},error(message){throw new Error(String(message))},async resolve(specifier){return specifier===nativeImport?{id:path.join(directory,'src/native_runtime_api.ts')}:null;}};
 const roots=[];
 const errors=[];
 const queue=new NativeRootWorkQueue({onError:error=>errors.push(error)});
@@ -78,7 +78,7 @@ try{
  assert.ok(transformed?.code,'Native compiler did not transform authored TSX');
  assert.ok(transformed.code.includes('useStoreAt')&&transformed.code.includes('useAt'),'Nested use(use(source)) was not lowered');
  assert.ok(transformed.code.includes('#component:Reader#store:0')&&transformed.code.includes('#component:Reader#store:1'),'Compiler did not emit stable distinct read sites');
- const emitted=await transformWithOxc(transformed.code,'.cache/native-promise-store-race.tsx',{lang:'tsx',jsx:{runtime:'classic'}});
+ const emitted=await transformWithOxc(transformed.code,'.cache/native-promise-store-race.tsx',{lang:'tsx',jsx:{runtime:'classic',pragma:'jsx',pragmaFrag:'Fragment'}});
  await mkdir('.cache',{recursive:true});
  const filename=path.join(directory,'.cache/native-promise-store-race.mjs');
  await writeFile(filename,emitted.code);
@@ -104,7 +104,7 @@ try{
  for(const store of [app.modeStore,app.storeB])store.beginTransition('held-mode-B',['promise-race-lead','promise-race-fork']);
  app.modeStore.dispatch('B',{kind:'transition',transitionId:'held-mode-B'});
  app.storeB.dispatch(app.oldB.promise,{kind:'transition',transitionId:'held-mode-B'});
- const held=queue.enqueue({id:'held-mode-B',roots:[lead,fork].map(side=>({root:side.root,tree:jsx(app.Pair,{})})),transitions:['held-mode-B'],finishTransitions:true});
+ const held=queue.enqueue({ renderPreparation: "repeatable",id:'held-mode-B',roots:[lead,fork].map(side=>({root:side.root,tree:jsx(app.Pair,{})})),transitions:['held-mode-B'],finishTransitions:true});
  assert.equal(held.status,'pending','Mode B candidate should wait for its selected store promise');
  assert.equal(app.active,6,'A suspended B candidate activated reader effects before publication');
  for(const side of [lead,fork])expect(side,'left','left:A:base-A:0');
@@ -145,14 +145,14 @@ try{
  // Rejection renders each reader's local error boundary. A fresh store-held
  // promise retries the same compiled boundary sites with fresh reader lifetimes.
  app.storeB.dispatch(app.rejectedB.promise);
- const rejecting=queue.enqueue({id:'reject-mode-B',roots:[lead,fork].map(side=>({root:side.root,tree:jsx(app.Pair,{})}))});
+ const rejecting=queue.enqueue({ renderPreparation: "repeatable",id:'reject-mode-B',roots:[lead,fork].map(side=>({root:side.root,tree:jsx(app.Pair,{})}))});
  await settle();assert.equal(rejecting.status,'pending');
  app.rejectedB.reject(new Error('B failed'));await settle();
  assert.equal(rejecting.status,'committed','Rejected resource should publish its authored local error branches');
  for(const side of [lead,fork])for(const label of ['left','right'])assert.ok(walk(side.container,node=>node.props['data-error']===label),`${side.root.rootId}/${label} did not show its local rejection`);
  assert.equal(app.active,3,'Only the untouched lag root readers should survive the grouped rejection');
  app.storeB.dispatch(Promise.resolve('retry-B'));
- const retry=queue.enqueue({id:'retry-mode-B',roots:[lead,fork].map(side=>({root:side.root,tree:jsx(app.Pair,{})}))});
+ const retry=queue.enqueue({ renderPreparation: "repeatable",id:'retry-mode-B',roots:[lead,fork].map(side=>({root:side.root,tree:jsx(app.Pair,{})}))});
  await settle();assert.equal(retry.status,'committed');
  for(const side of [lead,fork])for(const label of ['left','right'])expect(side,label,`${label}:B:retry-B:1`);
  assert.equal(app.active,7,'Rejection/retry leaked or duplicated reader effects');

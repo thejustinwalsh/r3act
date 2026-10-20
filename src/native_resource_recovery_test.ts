@@ -56,7 +56,7 @@ Deno.test("accepted rejection retains its error until replacement succeeds", asy
       Promise.reject("discarded"),
     );
     await Promise.resolve();
-    const declined = root.prepare(tree(discardedRejection));
+    const declined = root.prepare(tree(discardedRejection), { renderPreparation: "repeatable" });
     declined.discard();
     const waiting = deferred<string>();
     const pending = new AsyncResource(waiting.promise);
@@ -72,7 +72,7 @@ Deno.test("accepted rejection retains its error until replacement succeeds", asy
 
     const replacement = deferred<string>();
     const replacementResource = new AsyncResource(replacement.promise);
-    const waitingCandidate = root.prepare(tree(replacementResource));
+    const waitingCandidate = root.prepare(tree(replacementResource), { renderPreparation: "repeatable" });
     assertEquals(waitingCandidate.validate(), true);
     waitingCandidate.commitHost();
     waitingCandidate.publish();
@@ -133,7 +133,7 @@ Deno.test("outer suspension rolls back an inner rejection before retaining its v
     assertEquals(text(container), "firstsibling");
     await Promise.resolve();
 
-    const candidate = root.prepare(tree(rejectedInner, siblingPending));
+    const candidate = root.prepare(tree(rejectedInner, siblingPending), { renderPreparation: "repeatable" });
     assertEquals(candidate.validate(), true);
     candidate.commitHost();
     candidate.publish();
@@ -166,12 +166,12 @@ Deno.test("replaced and disposed pending queue work ignores late resource comple
     assertEquals(text(container.children[0]), "base");
 
     const oldWait = deferred<string>();
-    const old = queue.enqueue({
+    const old = queue.enqueue({ renderPreparation: "repeatable",
       id: "old", key: "selection",
       roots: [{ root, tree: tree(new AsyncResource(oldWait.promise)) }],
     });
     assertEquals(old.status, "pending");
-    const next = queue.enqueue({
+    const next = queue.enqueue({ renderPreparation: "repeatable",
       id: "next", key: "selection",
       roots: [{ root, tree: tree(new AsyncResource(Promise.resolve("next"))) }],
     });
@@ -186,7 +186,7 @@ Deno.test("replaced and disposed pending queue work ignores late resource comple
     assertEquals(text(container.children[0]), "next");
 
     const abandonedWait = deferred<string>();
-    const abandoned = queue.enqueue({
+    const abandoned = queue.enqueue({ renderPreparation: "repeatable",
       id: "abandoned",
       roots: [{ root, tree: tree(new AsyncResource(abandonedWait.promise)) }],
     });
@@ -213,7 +213,7 @@ Deno.test("early root disposal cancels resource preparation and ignores settleme
     jsx("output", {}, useAt("recovery-disposed-read", wait.promise) as string));
   try {
     root.mount(jsx("div", {}, "accepted"));
-    const work = queue.enqueue({
+    const work = queue.enqueue({ renderPreparation: "repeatable",
       id: "dispose-pending-resource",
       roots: [{ root, tree: jsx(Suspense, {
         __nativeBoundarySite: "recovery-disposed-boundary",

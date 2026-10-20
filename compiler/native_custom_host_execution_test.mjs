@@ -186,7 +186,7 @@ try {
   stage.dispatch("B", { kind: "transition", transitionId: "stage-B" });
   let resolveSettled;
   const settled = new Promise((resolve) => { resolveSettled = resolve; });
-  queue.enqueue({ id: "compiled-custom-stage-B", transitions: ["stage-B"],
+  queue.enqueue({ renderPreparation: "repeatable", id: "compiled-custom-stage-B", transitions: ["stage-B"],
     finishTransitions: true,
     roots: [{ root: dom, tree: domTree() }, { root: three.root, tree: threeTree() },
       { root: canvas, tree: canvasTree() }], onSettled: resolveSettled });

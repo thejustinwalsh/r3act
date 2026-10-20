@@ -385,7 +385,8 @@ try {
   const savedPositions = [structuredClone(nodeA.props.position), structuredClone(nodeC.props.position)];
   const savedControls = { ...app.trace.controls };
   app.trace.candidateMutationKey = "a";
-  const candidate = root.prepare(jsx(app.Board, {}));
+  // Declared preparation still isolates a render-time write to new private state.
+  const candidate = root.prepare(jsx(app.Board, {}), { renderPreparation: "repeatable" });
   assert.ok(app.trace.candidateMutations > 0, "candidate render attempts a private setter");
   const candidateValid = candidate.validate();
   assert.equal(candidateValid, false, "private render-time setter rejects candidate");

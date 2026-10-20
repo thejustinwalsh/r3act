@@ -30,6 +30,7 @@ function harness(id: string, host = new MemoryVDOMHost()) {
   const root = new ComponentStateRoot(host, container, {
     rootId: id,
     scheduleCommit: () => {},
+    renderPreparation: "repeatable",
   });
   return {
     host,
@@ -38,6 +39,25 @@ function harness(id: string, host = new MemoryVDOMHost()) {
     text: () => container.children.map(text).join(""),
   };
 }
+
+Deno.test("generic queued work declines before an undeclared component renders", () => {
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new ComponentStateRoot(host, container);
+  const queue = new NativeRootWorkQueue();
+  let renders = 0;
+  const Opaque = defineComponent("queue-undeclared-opaque", () => {
+    renders++;
+    return jsx("i", {}, "opaque");
+  });
+  assertThrows(() => queue.enqueue({
+    id: "undeclared", roots: [{ root, tree: jsx(Opaque, {}) }],
+  }), Error, "requires repeatable render preparation");
+  assertEquals(renders, 0);
+  assertEquals(container.children.length, 0);
+  queue.dispose();
+  root.dispose();
+});
 
 Deno.test("native queue coexists on one root and rebases reverse-ready store work", () => {
   const app = harness("queue-overlap");
