@@ -1,5 +1,9 @@
 # Authored lifecycle cost reference
 
+The current [installed-package observation](../implementation/2026-10-19-installed-lifecycle/results.md) uses the same 256-row, sixty-update episode with separate Native and React code graphs. Its sole fixed-order timing pair observes update median/p95 3.1/4.6 ms Native versus 0.5/0.7 ms React and measured subtotals 222.1/44.3 ms. Native is slower. Separate forced-GC released-controller used-heap deltas are 1940900/933536 bytes, with DOM-node deltas 0/0 and listener deltas 0/+1. Per-arm JS is 696195/578824 bytes with unequal runtime feature graphs. These are descriptive costs, not release, cold/memory, leak-absence or independent-device qualification. Complete source binding and preserved failures are in that report.
+
+The following paragraphs retain the **18 October checkout-alias observation** and its original numbers; they are historical evidence with their own source scope.
+
 This reference identifies what the current application-level timing and heap fields mean. It describes one Darwin ARM64 observation; it does not define a release budget or a general runtime performance claim.
 
 The [Native application](../implementation/2026-10-18-authored-lifecycle/workload/native_arm.tsx) imports the public @r3act/core surface, resolved explicitly to checkout source for this evaluation. It renders 256 keyed stateful buttons from an ordinary array Store, reads a shared numeric step Store, updates declarative style/text, and mounts two independent resource boundaries. The [React comparator](../implementation/2026-10-18-authored-lifecycle/workload/react_arm.tsx) uses external-store subscriptions and React Compiler, including memo output in the actual row. Native activation effects and React layout effects retain their documented meanings. This checkout resolution is separate from installed-package evidence.

@@ -1,5 +1,17 @@
 # Final master plan: classify, measure, then choose
 
+## Installed authored lifecycle — 19 October 2026
+
+The complete 256-row, sixty-update authored episode now runs from five fresh installed packages with separate Native and React production graphs. Native and the shared contract retain their frozen bytes; React changes only two obsolete type-suppression comments and its JSX pragma. Runtime/compiler/publication authority and physical layouts are unchanged. Actual Native lowering and ReactRow `_c(13)` are verified.
+
+Darwin-v2 passes 55/55 steps: 1056 runtime tests, 83 Rust tests, 36 compiled fixtures, nine Three cases, three retention checks and thirteen package checks. All 1261 gate inputs match before/after; 1271 raw/context files are archived. A later consumer TypeScript option and review note are separately bound by fresh installed proof-v3. The failed directory launch, proof-v1 typecheck and proof-v2 sandbox browser launch remain preserved. Proof-v3, timing and heap each pass 9006 before/after hash checks and both complete 67-stage arm episodes with balanced cleanup, empty hosts and no application Store interests.
+
+The sole Native-first timing pair is slower for Native: update median/p95 3.1/4.6 ms versus React 0.5/0.7 ms; mount+60 updates+edit+disposal subtotal 222.1/44.3 ms at about 0.1 ms timer quantum. A separate untimed forced-GC pair observes released-controller used-heap deltas of 1940900/933536 bytes, DOM node deltas 0/0 and listener deltas 0/+1. Separate JavaScript graphs are 696195/578824 bytes. These are descriptive observations, not population-tail, cold setup, allocation attribution, leak-absence, memory-budget, presentation or independent-device qualification. Historical wins and losses retain their own source scope.
+
+The full-plan first pass remains active; release performance, cold/memory, other-platform and independent-device requirements remain open. Human participants remain zero with no maintenance claim; exhausted Recording A and physical HOLD remain. Apple user and service configurations now both save one CPU, 256 MiB/container and 512 MiB/build, with original service-file permissions restored. No service/VM/server or memory increase occurs; effective VM limits and the Depot startup permission prerequisite remain unverified/unresolved.
+
+[Source, failures, raw receipts and limits](implementation/2026-10-19-installed-lifecycle/results.md).
+
 ## Verified runtime import authority — 19 October 2026
 
 Vite and Rust now share an exact per-request runtime-import authority. Real source/package export identity replaces filename/substring admission; an explicit verified list overrides public defaults, contributes to revision and is confirmed in every successful response. Vite rejects older executables that ignore it. Hook, collection and host proofs, JSX factory selection, React exclusions and HMR preflight follow that authority. Ordinary lookalike-wrapper calls remain authored JavaScript. Loader-qualified origins decline; mixed React composition diagnoses aliases unavailable to its static boundary. Legacy diagnostic runners explicitly declare their React translation input. No runtime identity/version/publication registry or physical layout changes.

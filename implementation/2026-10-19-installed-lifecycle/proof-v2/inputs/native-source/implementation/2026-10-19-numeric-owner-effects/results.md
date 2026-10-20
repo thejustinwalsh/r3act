@@ -1,0 +1,51 @@
+# Numeric owner effect boundary outcome
+
+Source basis: main `98b15bf94291d6b7f4c699a0d064ff7cfdd2c927` plus the archived changes. Remote main/HEAD remain initial published `a694d72959970eca750d2fa09c91d0b64ae5494a`; no push or PR occurs. See the [contract](design.md), [source review](source-review.md), [protocol](README.md) and [native authoring reference](../../docs/native-authoring-reference.md).
+
+## Observed bug and implementation
+
+The isolated [baseline receipt](../../.cache/compiled-numeric-owner-baseline-5354e7cf-6ffc-4c18-8e73-c5965b08e434/receipt.json) executes the immutable prior compiler (`ddeb55aa…0510`) against the current runtime, whose source hashes are bound. It is a compiler-metadata diagnostic, not a frozen old-product comparison or timing control. After explicit local invalidation, numeric output advances to 2 while the opaque sibling stays A instead of B; callback/getter deltas are both zero. A later throwing getter is suppressed (`error: null`). The initializer control still executes once, so this baseline does not reproduce an initializer failure.
+
+The compiler no longer treats a named function's individually closed numeric sink as proof that its whole owner can be skipped. Functions and const arrows share one finite whole-body proof. Unknown render helpers/getters/captures/assignments, conditional hook bodies and state-dependent host keys remain generic. Individually pure bindings survive on opaque owners; only whole-owner proof grants propOnlySites, state layout and owner-update programs. The original lexical initializer, hook/site/revision authority and separate host-leaf hint remain.
+
+The finite proof supports primitive derived locals, exact native activation-effect registration, intrinsic output, immutable primitive prop keys, a narrow stable-setter DOM listener form and stable module-local ref identity. Effect/ref callback bodies are not declared pure. Supported i/li styles and their compound position arrays reuse exact final certified sink spans; raw/opaque arrays decline. All destructured prop names are captured, including unused reads. Reserved key/ref input reads decline rather than emitting invalid metadata.
+
+Existing ComponentCache and PreparedRender records capture primitive state values actually read by the accepted render. Numeric admission also checks current canonical World cells. Required primitive props must come from runtime-owned immutable private copies; unowned/object/Proxy values remain generic, and later freezing an unowned private copy cannot upgrade it. Same-valued owned-to-unowned replacements invalidate admission. Row/lane retries retain VDOM's live-token preflight/refresh authority; source and direct-only routes retain live binding membership. renderCollectionAt now preserves the existing brand only when copying an already-owned JSX row. No parallel mutable identity/version registry or whole-tree copying is introduced.
+
+The fixed [actual compiled receipt](../../.cache/compiled-numeric-owner-fixed-473bdee0-25a9-4910-af9b-ea25c4d08173/receipt.json) reaches numeric 2/opaque B with exactly one callback/getter read and stable host/effect identity. It delivers the getter exception before host changes, keeps the previous accepted host, and leaves the unrelated Three resource waiting. It also verifies safe numeric controls, generic object/Proxy inputs, explicit source rereads, attempted owned-prop mutation, late private freeze, independent accepted roots, resource reveal to [4,0,0], exact revision retirement and cleanup. Other unchanged runtime gates retain shared-history, acknowledgement, reentry, quarantine and lifetime coverage.
+
+## Consolidated correctness and preserved failures
+
+[Darwin-v5](verification/darwin-v5/receipt.json) passes **47/47 steps**, **1031 runtime tests**, **79 Rust tests**, **31 actual compiled fixtures**, two source proofs, seven Three cases, both retention checks and **13 fresh-package checks**. At that gate boundary all **1102 runner inputs** match; **1111 raw source/context files** are archived before commands, with no unavailable context.
+
+Live fixture migrations remove intrusive render counters from specialized owners and move setter capture to activation setup. Flush profiling is named explicitly; test-local World/preparation first-hook observers preserve exact mount/manual-candidate execution checks. Opaque inline-ref/source-switch probes remain generic alongside separate closed controls. The original keyed order, binding detach/attach, ref lifetime, row generation, reentry, private-candidate rejection, failure and cleanup checks remain. The same Board has its original one-child normal topology; its opaque probe appears only in the explicit private-candidate branch.
+
+All earlier failures remain: v1's Rust temporary lifetimes and stale-token preflight; v2's old whole-owner expectations/intrusive fixtures and premature package-report dependency; v3's lost keyed JSX ownership, global descriptor count and mistaken Proxy reread premise; v4's TypeScript predicate narrowing and extra inserted-row allocation caused by a permanent null sibling. No timing episode ran during those repairs. [Recovered provenance](verification/provenance/recovered-provenance.json) preserves numeric tool exits and original outputs; supervisor wall-clock timestamps for older invocations were unavailable and are not invented. Original runner steps retain exact timestamps/durations. Final proof and measurement supervisors record live command times/exits.
+
+## Installed proof and single comparison
+
+Fresh [proof-v4](proof-v4/build-proof.json) installs five current private tarballs outside the checkout and passes type/build and [untimed production execution](proof-v4/browser-untimed.json). Seventeen unit source rows, two external fixture rows, 1612 selected installed files, tarballs, package-report source hashes, compiler, transforms and exact assets are bound and checked before/after phases. Product/compiler/fixed-fixture source remains v5-identical. Later harness checks, snapshot-only scene-name fields and the React opaque-control directive are separately bound by proof-v4.
+
+Proof-v1 preserves the wrong metadata-name assertion: actual resource-valued use emits the existing schema-5 closedStoreHostProgram. Proof-v2 preserves a mistaken replacement-identity assertion: Native retains the keyed Three group, clears its waiting name and adds the [4,0,0] mesh. Proof-v3 preserves actual React Compiler caching of the zero-argument opaque getter, outside React's tracked-state purity assumptions. Final React OpaqueSibling explicitly uses `use no memo` and is AST-verified uncompiled. This is an untimed generic control, not a React bug or Native advantage claim. The measured HotCounter and App still emit actual `_c(4)` and `_c(8)` with CompileSuccess and react/jsx-runtime.
+
+Both arms pass safe and opaque updates, retained DOM identity, one callback/getter read on the opaque update, unchanged activation setup, independent pending scene and final reveal. The Native group keeps identity; React's authored scene replaces it. Both clear the waiting name and reach [4,0,0]. Disposal balances one mount/cleanup per hot/opaque body and leaves Native DOM/Three owners, pending actions, host handles/resources/events empty. Browser and context close with no errors.
+
+After primary review, the [hash-bound authorization](proof-v4/run-authorization.json) permits exactly one Native-first safe HotCounter button-click-to-data-hot MutationObserver pair while the scene remains pending. The [sole pair](proof-v4/browser-one-pair.json) observes **3.5 ms Native / 1.5 ms React**; Native is slower in this observation. Both arms reach hot=2 and retain the unchanged opaque/pending output before cleanup. There is no timing retry. Timer quantum is unmeasured; the prepaint interval establishes no speed, CPU/tail/cold/setup/retained-memory/presentation or independent-device qualification. Unminified JavaScript is **2609439/1051820 bytes**; the graphs differ, so this is not equivalent-feature size evidence.
+
+Compiler analysis, metadata, freezing/copying, per-cell primitive checks, conservative lost specialization, preparation and retained-cache costs remain unqualified. No project server or VM starts. Saved Apple limits remain one CPU, 256 MiB/container and 512 MiB/build with Depot storage; effective VM limits remain unverified behind service-startup permissions. No memory increase occurs.
+
+The [final evidence audit](evidence/final-audit.json) matches all 1111 archived inputs and the final installed proof, explicitly enumerating six later unit harness/consumer/document changes separately locked by proof-v4. The first 216 notebook cells and metadata are unchanged, with one appended cell. A separate [read-only process/configuration receipt](evidence/memory-status.json) finds no matching Apple/Colima VM processes and confirms the saved low-memory defaults; it does not exercise effective VM limits. Luna's earlier sandbox-denied process check remains recorded as unknown.
+
+## Receipt identities and remaining scope
+
+| Receipt | SHA-256 |
+| --- | --- |
+| Darwin-v5 | `92aababe0ab93dc615e07aa5f9cbedf3e2073b819483c28c1ce9004535a1a6c3` |
+| Debug compiler | `e686004831230257b370b19e4143a8e44d9c0ee765b6cd14e8de90d982058321` |
+| Packaged compiler | `e90bcc974c2b24289df02ad600c049fa4e8bacd4cdaf7dbffebcd17bef78a99a` |
+| Installed build | `c52171b7810279e2c47fe9cf8c6d5ce42cc836f59a1ccc99f247da4738df3bf5` |
+| Untimed build pair | `344330647d38ea1a8b1d7968c1a9dceff3e6fca793fee363fedd0d208a531ea6` |
+| Untimed browser | `27f3c6da3773c821cb2a4b52f63c56cf5ba11da541421f6026ceac7df5bb70e0` |
+| Sole runtime pair | `03338dbbf8d72e1eab5dcca930ded32ffdad5f02fb41bc46949924d6546c4a8e` |
+
+The full-plan first-pass goal remains active. Current other-platform execution, authored realtime/lifecycle/cold/memory/presentation and independent-device finish-line requirements remain open. Human participants remain zero, with no maintenance-advantage claim. Historic stable-binding wins, qualified dense FAIL, exhausted Recording A and physical HOLD keep their original scope. Correctness and this single scalar interaction do not complete the product requirements.
