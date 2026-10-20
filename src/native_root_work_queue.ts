@@ -3,7 +3,9 @@ import {
   batchStorePublication,
 } from "./async_store_runtime.ts";
 import {
+  admitPreparedNativeGroup,
   claimPreparedNativeGroup,
+  commitAdmittedNativeCandidate,
   ComponentStateRoot,
   isNativeRootHostPublicationBusy,
   publishPreparedNativeGroup,
@@ -477,6 +479,41 @@ export class NativeRootWorkQueue {
           }
           groupClaim = claim;
           groupWasPartial = false;
+          let admitted = false;
+          let admissionThrew = false;
+          let admissionError: unknown;
+          try {
+            let publicCurrent = true;
+            for (const { value } of candidates) {
+              if (!value.validate()) publicCurrent = false;
+            }
+            if (work.validateWork?.() === false) publicCurrent = false;
+            admitted = publicCurrent && admitPreparedNativeGroup(
+              candidates.map(({ value }) => value),
+            );
+          } catch (error) {
+            admissionThrew = true;
+            admissionError = error;
+          }
+          if (!admitted) {
+            const cleanupErrors: unknown[] = [];
+            for (const { value } of candidates) {
+              try { value.discard(); } catch (error) { cleanupErrors.push(error); }
+            }
+            if (groupClaim === claim) groupClaim = undefined;
+            try { claim.release(); } catch (error) { cleanupErrors.push(error); }
+            if (admissionThrew && cleanupErrors.length) {
+              throw new AggregateError(
+                [admissionError, ...cleanupErrors],
+                "Grouped admission and cleanup failed",
+              );
+            }
+            if (admissionThrew) throw admissionError;
+            if (cleanupErrors.length) throw new AggregateError(
+              cleanupErrors, "Grouped admission cleanup failed",
+            );
+            return false;
+          }
           return () => {
             if (groupClaim === claim) groupClaim = undefined;
             claim.release();
@@ -486,7 +523,7 @@ export class NativeRootWorkQueue {
           try {
             // Queue validation admitted the full prepared group before this
             // callback. A host writer may still reenter and change live inputs.
-            for (const { value } of candidates) value.commitHost();
+            for (const { value } of candidates) commitAdmittedNativeCandidate(value);
             if (work.validateWork && !work.validateWork()) {
               throw new Error(
                 "External work inputs became stale after grouped host commit",

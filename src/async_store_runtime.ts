@@ -196,6 +196,10 @@ export interface StoreSource<S> {
 export class StoreRenderSnapshot<S, A = StoreAction<S, S>> {
   #pending = new Map<string, Map<object, unknown>>();
   #committed = false;
+  readonly #capturedStore: AsyncStore<S, A>;
+  readonly #capturedRootId: string;
+  readonly #capturedVersion: number;
+  readonly #capturedRootEpoch: object;
 
   constructor(
     private readonly store: AsyncStore<S, A>,
@@ -206,7 +210,12 @@ export class StoreRenderSnapshot<S, A = StoreAction<S, S>> {
     private readonly rootEpoch: object,
     /** Legacy name for canonical callback-free capture, including selected record paths. */
     readonly closedNumeric = false,
-  ) {}
+  ) {
+    this.#capturedStore = store;
+    this.#capturedRootId = rootId;
+    this.#capturedVersion = version;
+    this.#capturedRootEpoch = rootEpoch;
+  }
 
   capturedRootStamp(): StoreRootStamp {
     return Object.freeze({ version: this.version, rootEpoch: this.rootEpoch });
@@ -241,6 +250,14 @@ export class StoreRenderSnapshot<S, A = StoreAction<S, S>> {
         : this.store._validateRender(this.rootId, this.version, this.rootEpoch));
   }
 
+  /** Check the captured Store cut without invoking replaceable Store methods. */
+  validatePreparedCanonical(): boolean {
+    return !this.#committed && canonicalValidateRenderStamp.call(
+      this.#capturedStore, this.#capturedRootId,
+      this.#capturedVersion, this.#capturedRootEpoch,
+    );
+  }
+
   validatePublicationInputs(): boolean {
     return !this.#committed &&
       (!this.closedNumeric ||
@@ -261,7 +278,8 @@ export class StoreRenderSnapshot<S, A = StoreAction<S, S>> {
   validatePublicationInputsCanonical(): boolean {
     return !this.#committed &&
       canonicalValidateRenderLineage.call(
-        this.store, this.rootId, this.version, this.rootEpoch,
+        this.#capturedStore, this.#capturedRootId,
+        this.#capturedVersion, this.#capturedRootEpoch,
       );
   }
 
@@ -933,6 +951,14 @@ export class AsyncStore<S, A = StoreAction<S, S>> implements StoreSource<S> {
       this.getRootVersion(rootId) === version;
   }
 
+  _validateRenderStampCanonical(
+    rootId: string, version: number, rootEpoch: object,
+  ): boolean {
+    return this.#knownRoots.has(rootId) &&
+      this.#rootEpochs.get(rootId) === rootEpoch &&
+      (this.#rootVersions.get(rootId) ?? 0) === version;
+  }
+
   _validateRenderLineage(
     rootId: string,
     version: number,
@@ -1100,12 +1126,15 @@ const closedNumericPrototypeDescriptors = new Map(
 const canonicalClosedNumericStore = AsyncStore.prototype._isClosedNumericCanonical;
 const canonicalBeginClosedProjectionRender = AsyncStore.prototype._beginClosedProjectionRender;
 const canonicalValidateRender = AsyncStore.prototype._validateRender;
+const canonicalValidateRenderStamp = AsyncStore.prototype._validateRenderStampCanonical;
 const canonicalValidateRenderLineage = AsyncStore.prototype._validateRenderLineage;
 const canonicalPrepareReaderValues = AsyncStore.prototype._prepareReaderValues;
 const canonicalPublishReaderValues = AsyncStore.prototype._publishPreparedReaderValues;
 const canonicalCaptureReaderReceipt = AsyncStore.prototype._captureCanonicalReaderReceipt;
 const canonicalInspectReaderReceipt = AsyncStore.prototype._inspectCanonicalReaderReceipt;
 const canonicalSnapshotRootStamp = StoreRenderSnapshot.prototype.capturedRootStamp;
+const canonicalValidateSnapshotPrepared = StoreRenderSnapshot.prototype.validatePreparedCanonical;
+const canonicalValidateSnapshotLineage = StoreRenderSnapshot.prototype.validatePublicationInputsCanonical;
 
 export function captureCanonicalStoreReaderReceipt(
   store: AnyAsyncStore,
@@ -1597,6 +1626,12 @@ export class StoreRenderTransaction {
     return !this.#closed && !this.#discoveredAfterMutation &&
       [...this.#snapshots.values()].every((snapshot) => snapshot.validate());
   }
+  validatePreparedCanonical(): boolean {
+    return !this.#closed && !this.#discoveredAfterMutation &&
+      [...this.#snapshots.values()].every((snapshot) =>
+        canonicalValidateSnapshotPrepared.call(snapshot)
+      );
+  }
   validatePublicationInputs(): boolean {
     return !this.#closed && !this.#discoveredAfterMutation &&
       [...this.#snapshots.values()].every((snapshot) =>
@@ -1606,7 +1641,7 @@ export class StoreRenderTransaction {
   validatePublicationInputsCanonical(): boolean {
     return !this.#closed && !this.#discoveredAfterMutation &&
       [...this.#snapshots.values()].every((snapshot) =>
-        snapshot.validatePublicationInputsCanonical()
+        canonicalValidateSnapshotLineage.call(snapshot)
       );
   }
   /** Complete fallible reader validation and staging before accepted publication. */

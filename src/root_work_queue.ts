@@ -99,8 +99,8 @@ export type RootWorkDefinition<T> = {
    * before returning, prepare remains responsible for any partial resources.
    */
   discard?(candidate: RootWorkCandidate<T>): void;
-  /** Final callback-free admission before root commit flags and host writes. */
-  admit?(candidates: readonly RootWorkCandidate<T>[]): void | (() => void);
+  /** Return false for a stale prewrite group; release owned claims before returning. */
+  admit?(candidates: readonly RootWorkCandidate<T>[]): void | (() => void) | false;
   /** One synchronous callback owns the whole root group commit boundary. */
   commit(candidates: readonly RootWorkCandidate<T>[]): void;
   /** Whether a failed commit may have changed a host; defaults to true. */
@@ -602,7 +602,7 @@ export class RootWorkQueue<T = unknown> {
           continue;
         }
 
-        let releaseAdmission: void | (() => void);
+        let releaseAdmission: void | (() => void) | false;
         try {
           releaseAdmission = definition.admit?.(candidates);
         } catch (error) {
@@ -615,6 +615,17 @@ export class RootWorkQueue<T = unknown> {
           record.deferSettledNotification = false;
           this.#notifySettled(record);
           return;
+        }
+        if (releaseAdmission === false) {
+          const retry = this.#shouldRetry(
+            definition, record, attempt, candidates,
+            "Candidate became stale during grouped admission",
+          );
+          this.#discardCandidates(definition, candidates);
+          record.deferSettledNotification = false;
+          this.#notifySettled(record);
+          if (!retry) return;
+          continue;
         }
         if (record.status !== "pending") {
           try { releaseAdmission?.(); } catch (error) {

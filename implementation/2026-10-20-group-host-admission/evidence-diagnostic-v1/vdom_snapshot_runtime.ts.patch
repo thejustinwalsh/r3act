@@ -1,0 +1,87 @@
+--- product/src/vdom_snapshot_runtime.ts
++++ diagnostic/src/vdom_snapshot_runtime.ts
+@@ -1,3 +1,13 @@
++const __vdomIds = new WeakMap<object, number>();
++let __nextVdomId = 1;
++const __diag = (label: string, value: boolean, root: object, enabled = true): boolean => {
++  if (enabled && !value) {
++    let id = __vdomIds.get(root);
++    if (!id) __vdomIds.set(root, id = __nextVdomId++);
++    console.error(`[GROUP-DIAG] vdom-${id} ${label}`);
++  }
++  return value;
++};
+ import { evaluateClosedNumericExpression } from "./closed_numeric_expression.ts";
+ import type {
+   HostCopyComparisonScalar,
+@@ -2830,10 +2840,10 @@
+         );
+       },
+       validatePreparedPrivate: () =>
+-        state === "prepared" && admittedHost !== null && !this.#publicationFailed &&
+-        (scoped ? validateScoped() :
+-          this.#version === baseVersion && validateTargets()) &&
+-        (!hasLeafRegions || preparedLeaves!.validatePreparedPrivate()),
++        __diag("keyed.state", state === "prepared" && admittedHost !== null && !this.#publicationFailed, this) &&
++        __diag("keyed.structural", scoped ? validateScoped() :
++          this.#version === baseVersion && validateTargets(), this) &&
++        __diag("keyed.leaves", !hasLeafRegions || preparedLeaves!.validatePreparedPrivate(), this),
+       validate: () => hostMethodsCurrent() && admittedHost?.current() !== false &&
+         state === "prepared" && !this.#publicationFailed &&
+         (scoped ? validateScoped() :
+@@ -3423,16 +3433,16 @@
+           !plan.overlapsStoreTargets(store))) &&
+         (!retained || this.#isRetainedSourceDeltaCurrent(retained, undefined, true)) &&
+         (!store || this.isStorePropDeltaCurrent(store)),
+-      validatePreparedPrivate: () => state === "prepared" &&
+-        structural.every((plan) => plan.validatePreparedPrivate()) &&
++      validatePreparedPrivate: () => __diag("composite.state", state === "prepared", this) &&
++        __diag("composite.structural", structural.every((plan) => plan.validatePreparedPrivate()), this) &&
+         (!retained || structural.every((plan) =>
+           !plan.overlapsRetainedTargets(retained))) &&
+         (!store || structural.every((plan) =>
+           !plan.overlapsStoreTargets(store))) &&
+-        (!retained || this.#isRetainedSourceDeltaCurrent(
++        __diag("composite.retained", !retained || this.#isRetainedSourceDeltaCurrent(
+           retained, undefined, true, true,
+-        )) &&
+-        (!store || this.#isStorePropDeltaCurrent(store, false, false, true)),
++        ), this) &&
++        __diag("composite.store", !store || this.#isStorePropDeltaCurrent(store, false, false, true), this),
+       validatePostHost: () => state === "committed" &&
+         structural.every((plan) => plan.validatePostHost()) &&
+         (!retained || this.#isRetainedSourceDeltaCurrent(
+@@ -4252,7 +4262,7 @@
+     privateOnly = false,
+   ): boolean {
+     const record = this.#retainedSourceDeltas.get(delta);
+-    if (!record || record.root !== this || this.#publicationFailed ||
++    if (!__diag("retained.record", !!record && record.root === this && !this.#publicationFailed, this, privateOnly) ||
+       (!scoped && this.#version !== record.structuralVersion) ||
+       (!options?.afterHost && (this.#publicationToken !== null ||
+         record.applied)) ||
+@@ -4264,18 +4274,18 @@
+         const source = record.readSources[index];
+         const value = privateOnly
+           ? canonicalScalarSourceValue(source) : source.value;
+-        if (value === null || !Object.is(value, record.readValues[index])) {
++        if (!__diag("retained.scalarValue", value !== null && Object.is(value, record.readValues[index]), this, privateOnly)) {
+           return false;
+         }
+       }
+     }
+     for (let index = 0; index < record.groups.length; index++) {
+       const group = record.groups[index];
+-      if ((group.acceptedWriteGeneration ?? 0) !==
+-          record.generations[index] ||
+-        !this.#programSinkSlotByGroup.has(group) ||
+-        !closedExpressionForBinding(group.rawValue as import("./jsx_binding_runtime.ts").BoundValue) ||
+-        !this.#retainedGroupSourcesCurrent(group, privateOnly)) return false;
++      if (!__diag("retained.writerGeneration", (group.acceptedWriteGeneration ?? 0) ===
++          record.generations[index], this, privateOnly) ||
++        !__diag("retained.sinkSlot", this.#programSinkSlotByGroup.has(group), this, privateOnly) ||
++        !__diag("retained.closedBinding", !!closedExpressionForBinding(group.rawValue as import("./jsx_binding_runtime.ts").BoundValue), this, privateOnly) ||
++        !__diag("retained.sources", this.#retainedGroupSourcesCurrent(group, privateOnly), this, privateOnly)) return false;
+     }
+     return true;
+   }

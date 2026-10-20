@@ -1,6 +1,7 @@
 import {
   AsyncResource,
   AsyncResourceTable,
+  captureCanonicalResourceReads,
   type AsyncResourceStatus,
   type FulfilledResourceStatus,
 } from "./async_resource_runtime.ts";
@@ -40,6 +41,7 @@ export class ResourceReadSet {
     observedVersion: number;
     canonicalVersion: number | null;
     closed: boolean;
+    hasCanonicalReads?: boolean;
   }>();
   #closed = false;
 
@@ -50,17 +52,38 @@ export class ResourceReadSet {
     const resource = source instanceof AsyncResource
       ? source
       : this.table.from(source);
+    let capturedCanonical: number | null = null;
     if (!this.#versions.has(resource)) {
       const observedVersion = resource.version;
-      let capturedCanonical: number | null = null;
       try { capturedCanonical = canonicalVersion.call(resource); } catch { /* opaque source */ }
       this.#versions.set(resource, {
-        observedVersion, canonicalVersion: capturedCanonical, closed: false,
+        observedVersion, canonicalVersion: null, closed: false,
       });
     }
     // Record pending/rejected reads too: a boundary decides whether to retry,
     // preserve prior content or reveal an error; the read set never hides them.
-    return resource.read();
+    let observedCanonical = false;
+    try {
+      return captureCanonicalResourceReads(() => resource.read(), (actual, version) => {
+        observedCanonical = true;
+        const previous = this.#versions.get(actual);
+        if (previous === undefined) {
+          this.#versions.set(actual, {
+            observedVersion: version, canonicalVersion: version, closed: false,
+          });
+        } else if (previous.observedVersion === version) {
+          previous.canonicalVersion = version;
+        }
+      });
+    } finally {
+      if (observedCanonical && capturedCanonical !== null) {
+        const captured = this.#versions.get(resource);
+        if (captured) captured.canonicalVersion = capturedCanonical;
+      } else if (observedCanonical) {
+        const captured = this.#versions.get(resource);
+        if (captured) captured.hasCanonicalReads = true;
+      }
+    }
   }
 
   /** Capture a fulfilled canonical resource without calling its public methods. */
@@ -100,6 +123,28 @@ export class ResourceReadSet {
       catch { return false; }
     }
     return true;
+  }
+
+  validatePreparedCanonical(): boolean {
+    return this.preparedCanonicalStatus() === "current";
+  }
+
+  preparedCanonicalStatus(): "current" | "stale" | "unsupported" {
+    if (this.#closed) return "stale";
+    for (const [resource, captured] of this.#versions) {
+      if (captured.canonicalVersion === null) {
+        // Opaque wrappers remain publicly validated; actual forwarded reads give
+        // a canonical dependency cut, not proof about hidden wrapper reads.
+        if (captured.hasCanonicalReads) continue;
+        return "unsupported";
+      }
+      try {
+        if (canonicalVersion.call(resource) !== captured.canonicalVersion) return "stale";
+      } catch {
+        return "stale";
+      }
+    }
+    return "current";
   }
 
   discard(): void {

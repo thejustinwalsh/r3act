@@ -1,0 +1,15 @@
+# Primary integration review
+
+The source defect crosses candidate boundaries: a per-member public check can revoke another member after that member's previous validation. Accepted-pointer validation alone cannot prevent the earlier physical prefix. The regression must fire an actual host descriptor trap only while the host claim is held; arming before the queue's second validation would test an earlier, already guarded boundary.
+
+The integration keeps public validation under all claimed domains, followed by an all-member private sweep. Exact prepared Store versions are distinct from posthost lineage. The private checks must bypass replaceable methods on caller-supplied Worlds and public scalar getters. Standalone opaque behavior keeps its previous checks rather than inheriting stricter group eligibility.
+
+Resource compatibility requires observing actual canonical reads through bound proxies. An ephemeral synchronous read observer restores its previous context in finally and records actual resource versions in the existing read-set Map. This records known runtime dependencies; it does not prove an opaque wrapper's hidden external reads pure or complete. Wrappers with no canonical read have no private resource freshness evidence and decline grouped work explicitly before writes. Existing bound-resource grouped reveal remains an acceptance requirement.
+
+Admitted host application pins callable targets captured during callback-bearing preparation, with a per-root scoped context restored in finally. Claims and publication barriers defer reentrant mutation through the runtime. Original public posthost validation and quarantine remain: arbitrary adapter implementation effects and external host method/object mutation do not gain rollback or a private generation merely from capture.
+
+Source review rejected freezing the mutable binding array that root preparation subsequently rebinds. The existing closed-binding capability instead owns its source-list provenance and controlled rebind. Descriptor checks on actual owned objects reject accessor replacement without invoking it. No second version/identity authority is added.
+
+This review is source-only until the consolidated boundary. No test, benchmark or performance outcome is claimed here. Preserved failures and final verification scope will be recorded in results.md.
+
+Darwin-v1 is preserved as FAIL: one missing closing parenthesis in the scoped VDOM guard prevents runtime/tooling/compiled/package parsing (10 phases pass, 51 fail, one dependent package phase skips). All 1377 selected inputs match before/after. Baseline-v1 also remains failed and immutable: intrinsic collection rows are ineligible for the intended scoped move, so its callback is never reached. A distinct v2 characterization uses a stable component row; its archived production source remains the same 328-file commit. These are source/fixture corrections, not favorable timing retries; no timing or browser proof ran.

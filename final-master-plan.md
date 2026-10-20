@@ -1,5 +1,17 @@
 # Final master plan: classify, measure, then choose
 
+## Group host admission — 20 October 2026
+
+Grouped publication now completes public preflight under all host claims, then checks every private prepared cut before the first writer. Existing receipts retain exact Store/cell/resource/collection/code/ownership guards, whole-tree bases and accepted histories. Admitted host calls pin callable targets; original application-phase copy/writer checks remain. Branded scalar data, owned binding provenance and actual canonical resource-read capture avoid caller getters in the final sweep. Bound resource proxies and repeatable generic manual bindings remain supported; opaque inputs without canonical freshness decline before writes. Arbitrary hidden wrapper reads and adapter effects gain no purity, rollback or visual-atomicity guarantee. No parallel version registry or physical redesign is added.
+
+The corrected 328-source baseline reproduces an avoidable first-member placement after peer revocation. Baseline setup failure, three failed consolidated gates and both diagnostic command outcomes remain preserved. Final Darwin-v4 passes 62/62 phases: 1087 runtime tests, 83 Rust tests, 43 actual compiled fixtures, twenty Three cases, three retention checks and thirteen package checks. All 1377 runner inputs match; each gate archives 1387 source/context rows. The isolated diagnostic identifies an unnecessary source-array object-identity requirement; exact source identities and all live guards remain.
+
+Fresh five-package proof passes twenty assertions, four public admission controls, four domain controls and six resource controls. All 9265 before/after hash checks match in complete untimed async/fork/urgent/cancel/disposal proof and the sole timing pair, with clean browser closure. The unchanged authored application observes Native urgent median/p95 0.9/1.5 ms versus React Compiler 0.3/0.5 ms; Native is slower in this fixed-order observation. About 0.1 ms quantum, small dependent samples and unequal graphs establish no CPU, paint, tail, cold/memory, admission-cost or release qualification.
+
+The full-plan first pass remains active; release performance/cold/memory, current other-platform and independent-device requirements remain open. Historic wins, qualified dense FAIL, exhausted Recording A and physical HOLD retain scope. Human participants remain zero with no maintenance advantage claimed. Apple tooling/data/logs remain on Depot with saved one CPU, 256 MiB/container and 512 MiB/build defaults; no VM/server, administrator prompt or memory increase occurs, and startup/effective caps remain unverified.
+
+[Source, preserved failures, receipts and limits](implementation/2026-10-20-group-host-admission/results.md).
+
 ## Shared host publication domains — 20 October 2026
 
 One WeakMap keyed by exact host identity closes cross-root and cross-queue application reentry. Groups claim domains all or none; contention defers unknown bodies and writes, while distinct hosts outside a failed group remain independent. Existing private receipts carry claims, exact acknowledgements and accepted histories remain, and no parallel identity/version registry or tree copying is introduced. Lazy waiters distinguish explicit flush from automatic scheduling. Safe unwind preserves synchronous same-root cleanup under its claim; foreign teardown waits. Partial writers/removals quarantine the domain. A private lifecycle/base recheck after public validation rejects disposal before application.

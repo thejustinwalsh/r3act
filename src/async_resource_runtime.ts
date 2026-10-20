@@ -8,6 +8,21 @@
 const pendingTokenBrand: unique symbol = Symbol("native.resource.pending");
 const rejectionBrand: unique symbol = Symbol("native.resource.rejection");
 
+type CanonicalReadObserver = (resource: AsyncResource<any>, version: number) => void;
+let canonicalReadObserver: CanonicalReadObserver | undefined;
+
+/** @internal Capture actual runtime resource reads through opaque bound wrappers. */
+export function captureCanonicalResourceReads<T>(
+  read: () => T, observe: CanonicalReadObserver,
+): T {
+  const previous = canonicalReadObserver;
+  canonicalReadObserver = previous
+    ? (resource, version) => { previous(resource, version); observe(resource, version); }
+    : observe;
+  try { return read(); }
+  finally { canonicalReadObserver = previous; }
+}
+
 export type PendingResourceToken<T = unknown> = Readonly<{
   readonly [pendingTokenBrand]: true;
   readonly kind: "pending-resource";
@@ -105,6 +120,7 @@ export class AsyncResource<T> {
 
   read(): Awaited<T> {
     const status = this.#status;
+    canonicalReadObserver?.(this, status.version);
     if (status.status === "fulfilled") return status.value;
     if (status.status === "rejected") throw status.rejection;
     throw this.#pendingToken;

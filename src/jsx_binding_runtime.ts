@@ -135,8 +135,21 @@ const freezeChild = (node: RuntimeNode): RuntimeNode => {
 };
 
 export class ScalarSource {
+  readonly #owned = true;
   constructor(readonly id: number, public value: number) {}
+
+  static canonicalValue(source: ScalarSource): number | undefined {
+    if (typeof source !== "object" || source === null || !(#owned in source)) return undefined;
+    const descriptor = Object.getOwnPropertyDescriptor(source, "value");
+    return descriptor && "value" in descriptor && typeof descriptor.value === "number"
+      ? descriptor.value : undefined;
+  }
 }
+const canonicalScalarValue = ScalarSource.canonicalValue;
+
+/** Read only a runtime-created scalar's own data value, without caller getters. */
+export const canonicalScalarSourceValue = (source: ScalarSource): number | null =>
+  canonicalScalarValue.call(ScalarSource, source) ?? null;
 
 /** Legacy compiler proof for a fixed numeric source program. */
 export type NumericBindingProgramDescriptorV1 = Readonly<{
@@ -227,38 +240,122 @@ export type BoundValue<T = unknown> = {
 export const bind = <T = number>(
   source: ScalarSource,
   project: (value: number) => T = ((value) => value as T),
-): BoundValue<T> => ({
+): BoundValue<T> => ownBinding({
   [bindingTag]: true,
   source,
   project,
 });
 
+/** @internal Build an owned generic state binding without granting closed-expression proof. */
+export const bindStateSource = <T>(
+  source: ScalarSource, project: (value: number) => T,
+  numericProgram?: NumericBindingProgramDescriptor,
+): BoundValue<T> => {
+  const sources = [source];
+  return ownBinding({
+    [bindingTag]: true, source, project, sources,
+    read: () => project(sources[0].value),
+    ...(numericProgram ? { numericProgram } : {}),
+  });
+};
+
 type ClosedBindingCapability = {
-  expression: ClosedNumericExpression;
+  expression: ClosedNumericExpression | null;
   project: BoundValue["project"];
   read: BoundValue["read"];
   projectInputs: BoundValue["projectInputs"];
-  sources: readonly ScalarSource[];
+  sources: ScalarSource[] | null;
+  sourceSnapshot: readonly ScalarSource[];
 };
 const closedBindings = new WeakMap<object, ClosedBindingCapability>();
+const ownBinding = <T>(binding: BoundValue<T>, expression: ClosedNumericExpression | null = null): BoundValue<T> => {
+  closedBindings.set(binding, {
+    expression, project: binding.project, read: binding.read,
+    projectInputs: binding.projectInputs,
+    sources: binding.sources as ScalarSource[] | undefined ?? null,
+    sourceSnapshot: Object.freeze([...(binding.sources ?? [binding.source])]),
+  });
+  return binding;
+};
 
-/** Resolve only runtime-created data programs whose callbacks remain intact. */
-export const closedExpressionForBinding = (
-  binding: BoundValue,
-): ClosedNumericExpression | null => {
+const capturedBindingCurrent = (binding: BoundValue): boolean => {
   const capability = closedBindings.get(binding);
-  if (!capability) return null;
+  if (!capability) return false;
   const data = Object.getOwnPropertyDescriptors(binding);
   const matches = (name: string, expected: unknown) => {
     const descriptor = data[name];
     return descriptor ? "value" in descriptor && descriptor.value === expected
       : expected === undefined;
   };
-  return matches("project", capability.project) &&
-      matches("read", capability.read) &&
-      matches("projectInputs", capability.projectInputs) &&
-      matches("sources", capability.sources)
+  if (!matches("project", capability.project) || !matches("read", capability.read) ||
+    !matches("projectInputs", capability.projectInputs) ||
+    !matches("sources", capability.sources ?? undefined) ||
+    !matches("source", capability.sourceSnapshot[0])) return false;
+  if (capability.sources) {
+    if (capability.sources.length !== capability.sourceSnapshot.length) return false;
+    for (let index = 0; index < capability.sourceSnapshot.length; index++) {
+      const descriptor = Object.getOwnPropertyDescriptor(capability.sources, String(index));
+      if (!descriptor || !("value" in descriptor) ||
+        descriptor.value !== capability.sourceSnapshot[index]) return false;
+    }
+  }
+  return true;
+};
+
+/** @internal Check whether a captured binding can take canonical sources without getters. */
+export const canRebindCapturedBindingSources = (
+  binding: BoundValue,
+  canonical: readonly ScalarSource[],
+): boolean => {
+  const capability = closedBindings.get(binding);
+  if (!capability || canonical.length !== capability.sourceSnapshot.length ||
+    !capturedBindingCurrent(binding)) return false;
+  const source = Object.getOwnPropertyDescriptor(binding, "source")!;
+  if (source.value !== canonical[0] && !source.writable) return false;
+  if (capability.sources) for (let index = 0; index < canonical.length; index++) {
+    const descriptor = Object.getOwnPropertyDescriptor(capability.sources, String(index))!;
+    if (descriptor.value !== canonical[index] && !descriptor.writable) return false;
+  }
+  return true;
+};
+
+/** Resolve only runtime-created data programs whose callbacks remain intact. */
+export const closedExpressionForBinding = (
+  binding: BoundValue,
+): ClosedNumericExpression | null => {
+  const capability = closedBindings.get(binding);
+  if (!capability?.expression) return null;
+  return capturedBindingCurrent(binding)
     ? capability.expression : null;
+};
+
+/** @internal Return only the validated runtime-owned source array. */
+export const canonicalCapturedBindingSourceArray = (
+  binding: BoundValue,
+): readonly ScalarSource[] | null => {
+  const capability = closedBindings.get(binding);
+  return capability?.sources &&
+      capturedBindingCurrent(binding)
+    ? capability.sources : null;
+};
+
+/** @internal Rebind a runtime-owned closed binding without invoking authored setters. */
+export const rebindCapturedBindingSources = (
+  binding: BoundValue,
+  canonical: readonly ScalarSource[],
+): boolean => {
+  const capability = closedBindings.get(binding);
+  if (!capability || !canRebindCapturedBindingSources(binding, canonical)) return false;
+  if (capability.sources) for (let index = 0; index < canonical.length; index++) {
+    if (capability.sources[index] !== canonical[index]) {
+      capability.sources[index] = canonical[index];
+    }
+  }
+  if (binding.source !== canonical[0]) {
+    (binding as { source: ScalarSource }).source = canonical[0];
+  }
+  capability.sourceSnapshot = Object.freeze([...canonical]);
+  return true;
 };
 
 /** Bind one prop to several sources; the value is read after a source batch. */
@@ -276,36 +373,33 @@ export const bindSources = <T>(
   if (expression) {
     derive = (values) => evaluateClosedNumericExpression(expression, values) as T;
   }
+  const boundSources = [...sources];
   let read: () => T;
   if (numericProgram) {
     // Compiler-proven numeric programs use one stable scratch array per
     // activation. Legacy/manual derived bindings retain fresh-array semantics.
-    const inputValues = new Array<number>(sources.length);
+    const inputValues = new Array<number>(boundSources.length);
     read = () => {
-      for (let index = 0; index < sources.length; index++) {
-        inputValues[index] = sources[index].value;
+      for (let index = 0; index < boundSources.length; index++) {
+        inputValues[index] = boundSources[index].value;
       }
       return derive(inputValues);
     };
   } else {
-    read = () => derive(sources.map((source) => source.value));
+    read = () => derive(boundSources.map((source) => source.value));
   }
   const binding: BoundValue<T> = {
     [bindingTag]: true,
-    source: sources[0],
-    sources,
-    project: expression && sources.length === 1
+    source: boundSources[0],
+    sources: boundSources,
+    project: expression && boundSources.length === 1
       ? (value) => evaluateClosedNumericExpression(expression, [value]) as T
       : () => read(),
     read,
     ...(numericProgram?.schemaVersion === 2 ? { projectInputs: derive } : {}),
     ...(numericProgram ? { numericProgram } : {}),
   };
-  if (expression) closedBindings.set(binding, Object.freeze({
-    expression, project: binding.project, read: binding.read,
-    projectInputs: binding.projectInputs, sources,
-  }));
-  return binding;
+  return ownBinding(binding, expression);
 };
 
 /** A stable tuple binding for vector-like host props such as R3F position. */
@@ -315,19 +409,20 @@ export const bindVector3 = (
   z: ScalarSource,
 ): BoundValue<[number, number, number]> => {
   const tuple: [number, number, number] = [x.value, y.value, z.value];
+  const sources = [x, y, z];
   const read = () => {
-    tuple[0] = x.value;
-    tuple[1] = y.value;
-    tuple[2] = z.value;
+    tuple[0] = sources[0].value;
+    tuple[1] = sources[1].value;
+    tuple[2] = sources[2].value;
     return tuple;
   };
-  return {
+  return ownBinding({
     [bindingTag]: true,
     source: x,
-    sources: [x, y, z],
+    sources,
     project: () => read(),
     read,
-  };
+  });
 };
 
 export const readBoundValue = <T>(binding: BoundValue<T>): T =>
@@ -343,7 +438,7 @@ export const bindCompiled = <T = number>(
   bindingId: number,
   sourceSlot: number,
   project: (value: number) => T = ((value) => value as T),
-): BoundValue<T> => ({
+): BoundValue<T> => ownBinding({
   [bindingTag]: true,
   source,
   project,

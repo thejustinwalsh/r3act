@@ -83,8 +83,10 @@ import {
   type StateCellHandle,
 } from "./owner_state_world.ts";
 import {
-  bind,
   bindSources,
+  bindStateSource,
+  canRebindCapturedBindingSources,
+  canonicalScalarSourceValue,
   type BoundValue,
   type ComponentType,
   copyKeyedOwnerMetadata,
@@ -101,6 +103,7 @@ import {
   type RuntimeElement,
   type RuntimeNode,
   type ScalarSource,
+  rebindCapturedBindingSources,
 } from "./jsx_binding_runtime.ts";
 import {
   type PreparedNumericCellProgram,
@@ -214,6 +217,8 @@ export type NativeRootCandidate<H, Parent = H> = {
   failGroup(error: unknown): void;
 };
 const groupPublicationReceipts = new WeakMap<object, {
+  preHostCurrent(): boolean;
+  commitAdmitted(): void;
   current(): boolean;
   accept(): void;
   domain: HostPublicationDomain;
@@ -224,8 +229,30 @@ const groupPublicationReceipts = new WeakMap<object, {
   ): void;
 }>();
 
+/** Recheck every private cut after the last grouped caller callback. */
+export const admitPreparedNativeGroup = <H, Parent>(
+  candidates: readonly NativeRootCandidate<H, Parent>[],
+): boolean => candidates.every((candidate) =>
+  groupPublicationReceipts.get(candidate)?.preHostCurrent() === true
+);
+
+/** Apply one already-admitted group member without repeating public preflight. */
+export const commitAdmittedNativeCandidate = <H, Parent>(
+  candidate: NativeRootCandidate<H, Parent>,
+): void => {
+  const receipt = groupPublicationReceipts.get(candidate);
+  if (!receipt) throw new Error("Native candidate has no live publication receipt");
+  receipt.commitAdmitted();
+};
+
 class HostPublicationBusyError extends Error {
   constructor() { super("Host publication domain is busy"); }
+}
+
+export class UnsupportedGroupOpaqueFreshnessError extends Error {
+  constructor(kind = "input") {
+    super(`Grouped host admission requires canonical freshness for opaque ${kind}`);
+  }
 }
 
 const rootHostPublicationDomain = Symbol("native.root.host-publication-domain");
@@ -418,6 +445,7 @@ type ClosedStoreOutputCut = {
   readonly inputResources: ReadonlySet<AsyncResource<any>>;
   current(): boolean;
   privateCurrent(): boolean;
+  privatePreparedCurrent(): boolean;
   publish(): void;
   release(): void;
 };
@@ -435,9 +463,11 @@ type CandidateLifecycleSpec<H, Parent> = {
   codeCurrent(): boolean;
   referencesCompiledSource?: (sourceFile: string) => boolean;
   validatePrepared(): boolean;
+  validatePreparedPrivate(): boolean;
   validatePostHost(): boolean;
   finalGroupCurrent(): boolean;
   commitHost(): void;
+  commitHostAdmitted(): void;
   preparePublication(): void;
   publish(): void;
   accepted?(): void;
@@ -782,6 +812,69 @@ const cacheCodeCurrent = (caches: Iterable<ComponentCache>): boolean => {
 const cacheCodeCurrentPrivate = (caches: Iterable<ComponentCache>): boolean => {
   for (const cache of caches) if (!componentCodeCurrentPrivate(cache.type)) return false;
   return true;
+};
+const capturedScalarCurrent = (source: ScalarSource, value: number): boolean => {
+  const current = canonicalScalarSourceValue(source);
+  return current !== null && Object.is(current, value);
+};
+const prepareAdmittedBindings = (
+  items: readonly { binding: BoundValue<unknown>; owner: OwnerId;
+    sites: readonly string[] }[],
+  resolve: (owner: OwnerId, site: string) => ScalarSource | null,
+): ScalarSource[][] | null => {
+  const captured: ScalarSource[][] = [];
+  for (const item of items) {
+    const canonical: ScalarSource[] = [];
+    for (const site of item.sites) {
+      const source = resolve(item.owner, site);
+      if (!source) return null;
+      canonical.push(source);
+    }
+    if (!canRebindCapturedBindingSources(item.binding, canonical)) return null;
+    captured.push(canonical);
+  }
+  return captured;
+};
+const applyAdmittedBindings = (
+  items: readonly { binding: BoundValue<unknown> }[],
+  captured: readonly (readonly ScalarSource[])[],
+): void => {
+  if (captured.length !== items.length) throw new Error("Binding admission changed");
+  for (let index = 0; index < items.length; index++) {
+    if (!rebindCapturedBindingSources(items[index].binding, captured[index])) {
+      throw new Error("Binding admission changed");
+    }
+  }
+};
+const canonicalWorldIsAlive = OwnerStateWorld.prototype.isAlive;
+const canonicalWorldIsWithin = OwnerStateWorld.prototype.isWithin;
+const canonicalWorldFindOwner = OwnerStateWorld.prototype.findOwner;
+const canonicalWorldScalarSource = OwnerStateWorld.prototype.scalarSource;
+const canonicalWorldScalarSourceForCell = OwnerStateWorld.prototype.scalarSourceForCell;
+const canonicalWorldVersion = OwnerStateWorld.prototype.version;
+const canonicalWorldVersionForCell = OwnerStateWorld.prototype.versionForCell;
+const canonicalResourceCutCurrent = (reads: ResourceReadSet): boolean => {
+  const status = reads.preparedCanonicalStatus();
+  if (status === "unsupported") throw new UnsupportedGroupOpaqueFreshnessError("resource");
+  return status === "current";
+};
+const canonicalCollectionCutCurrent = (
+  collection: KeyedCollection<any>, version: number | null,
+): boolean => {
+  const current = canonicalCollectionVersion(collection);
+  if (current === null || version === null) {
+    throw new UnsupportedGroupOpaqueFreshnessError("collection");
+  }
+  return current === version;
+};
+const canonicalResourceVersionCurrent = (
+  resource: AsyncResource<any>, version: number | null,
+): boolean => {
+  const current = canonicalResourceVersion(resource);
+  if (current === null || version === null) {
+    throw new UnsupportedGroupOpaqueFreshnessError("resource");
+  }
+  return current === version;
 };
 const captureCodeRevisions = (
   caches: Iterable<ComponentCache>,
@@ -1138,12 +1231,7 @@ export const bindStatePropAt = <T>(
   // mutable object. The scalar source still drives the normal binding protocol.
   const binding = validatedProgram?.closedExpression
     ? bindSources(sources, ([value]) => project(value), validatedProgram)
-    : {
-      ...bind(source, project),
-      sources,
-      read: () => project(sources[0].value),
-      ...(validatedProgram ? { numericProgram: validatedProgram } : {}),
-    };
+    : bindStateSource(source, project, validatedProgram);
   if (numericOwner) Object.assign(binding, { numericOwner });
   active.captureBinding?.(
     binding as BoundValue<unknown>,
@@ -2043,7 +2131,7 @@ export class ComponentStateRoot<H, Parent = H> {
     }
     const acceptedCurrent = () => [...accepted].every(([owner, tree]) =>
       this.#boundaryPrimaries.get(String(owner))?.tree === tree &&
-      this.#liveOwners.has(owner) && this.world.isAlive(owner));
+      this.#liveOwners.has(owner) && canonicalWorldIsAlive.call(this.world, owner));
     if (inputs.collections?.length) {
       const selectedKeys = new Set<string>();
       const acceptedCollections: Array<() => boolean> = [];
@@ -2127,9 +2215,11 @@ export class ComponentStateRoot<H, Parent = H> {
       pendingResources, blocked: true,
       codeCurrent: () => false,
       validatePrepared: () => false,
+      validatePreparedPrivate: () => false,
       validatePostHost: () => false,
       finalGroupCurrent: () => false,
       commitHost: () => { throw new Error("Resource candidate is blocked"); },
+      commitHostAdmitted: () => { throw new Error("Resource candidate is blocked"); },
       preparePublication: () => {}, publish: () => {},
       installSubscriptions: () => [], runEffects: () => [],
       discard: () => stores.discard(), releaseArtifacts: () => {},
@@ -2169,6 +2259,19 @@ export class ComponentStateRoot<H, Parent = H> {
         (!resourceLease || this.#publicationIntents.has(resourceLease)),
       codeCurrent: current,
       validatePrepared: () => current() && stores.validate(),
+      validatePreparedPrivate: () => (!resourceLease ||
+        this.#publicationIntents.has(resourceLease)) &&
+        !this.#resourceHoldWait(
+          new Set(resourceVersions.map(([resource]) => resource)), resourceLease,
+          { collections: collectionVersions.map(([collection]) => collection) },
+        ) && [...accepted].every(([owner, tree]) =>
+        this.#boundaryPrimaries.get(String(owner))?.tree === tree &&
+        this.#liveOwners.has(owner) && canonicalWorldIsAlive.call(this.world, owner)
+      ) && collectionVersions.every(([collection, version]) =>
+        canonicalCollectionCutCurrent(collection, version)
+      ) && resourceVersions.every(([resource, version]) =>
+        canonicalResourceVersionCurrent(resource, version)
+      ) && stores.validatePreparedCanonical(),
       validatePostHost: () => current() && stores.validatePublicationInputs(),
       finalGroupCurrent: () => [...accepted].every(([owner, tree]) =>
         this.#boundaryPrimaries.get(String(owner))?.tree === tree &&
@@ -2180,6 +2283,7 @@ export class ComponentStateRoot<H, Parent = H> {
         version === null || canonicalResourceVersion(resource) === version
       ) && stores.validatePublicationInputsCanonical(),
       commitHost: () => {},
+      commitHostAdmitted: () => {},
       preparePublication: () => stores.preparePublicationAfterHost(),
       publish: () => { stores.publishAccepted(); this.#publicationVersion++; },
       installSubscriptions: () => [], runEffects: () => {
@@ -2380,14 +2484,14 @@ export class ComponentStateRoot<H, Parent = H> {
       if (this.#publicationIntents.get(release) !== hold) return false;
     }
     for (const [owner, { cache, resource }] of state.boundaries) {
-      if (!this.#liveOwners.has(owner) || !this.world.isAlive(owner) ||
+      if (!this.#liveOwners.has(owner) || !canonicalWorldIsAlive.call(this.world, owner) ||
         this.#componentCache.get(owner) !== cache ||
         !cacheCodeCurrentPrivate([cache]) ||
         cache.pendingResource !== resource) return false;
       for (const heldOwner of cache.subtreeOwners) {
         if (!this.#liveOwners.has(heldOwner) ||
-          !this.world.isAlive(heldOwner) ||
-          !this.world.isWithin(heldOwner, owner) ||
+          !canonicalWorldIsAlive.call(this.world, heldOwner) ||
+          !canonicalWorldIsWithin.call(this.world, heldOwner, owner) ||
           !this.#componentCache.has(heldOwner)) return false;
       }
     }
@@ -2607,7 +2711,7 @@ export class ComponentStateRoot<H, Parent = H> {
       return visit(host, previous, next) ? { regions: staged, changed } : null;
     };
     const current = (privateOnly = false) => [...owners].every(([owner, { cache, inputs }]) =>
-      this.#liveOwners.has(owner) && this.world.isAlive(owner) &&
+      this.#liveOwners.has(owner) && canonicalWorldIsAlive.call(this.world, owner) &&
       this.#componentCache.get(owner) === cache &&
       (privateOnly ? componentCodeCurrentPrivate(cache.type) :
         componentCodeCurrent(cache.type)) &&
@@ -2706,6 +2810,8 @@ export class ComponentStateRoot<H, Parent = H> {
       return {
         owners: ownerIds, regions, current: () => current(),
         privateCurrent: () => current(true), inputStores, inputResources,
+        privatePreparedCurrent: () => current(true) &&
+          canonicalResourceCutCurrent(resources),
         publish: () => {
           for (const [owner, { next }] of owners) {
             const cache = this.#componentCache.get(owner)!;
@@ -2821,6 +2927,25 @@ export class ComponentStateRoot<H, Parent = H> {
       codeCurrent,
       validatePrepared: () => program!.validate() && this.#validateRetainedCells(writes, false) &&
         (closed?.current() ?? true) && stores.validate(),
+      validatePreparedPrivate: () => program!.validatePreparedPrivate() &&
+        (!resourceLease || this.#publicationIntents.has(resourceLease)) &&
+        !this.#resourceHoldWait(
+          new Set(acceptedResourceVersions.map(([resource]) => resource)),
+          resourceLease, { cells: handles,
+            stores: [...selected, ...(closed?.inputStores ?? [])],
+            collections: acceptedCollectionVersions.map(([collection]) => collection) },
+        ) &&
+        this.#validateRetainedCellsPrivate(writes) &&
+        (closed?.privatePreparedCurrent() ?? true) &&
+        stores.validatePreparedCanonical() && acceptedCurrent() &&
+        acceptedCollectionVersions.every(([collection, version]) =>
+          canonicalCollectionCutCurrent(collection, version)
+        ) && acceptedResourceVersions.every(([resource, version]) =>
+          canonicalResourceVersionCurrent(resource, version)
+        ) && writes.every(({ handle }) => {
+          const cache = this.#componentCache.get(handle.owner);
+          return cache !== undefined && componentCodeCurrentPrivate(cache.type);
+        }),
       validatePostHost: () => program!.validatePostHost() && this.#validateRetainedCells(writes, true) &&
         (closed?.current() ?? true) && stores.validatePublicationInputs(),
       finalGroupCurrent: () => program!.validatePostHostPrivate() &&
@@ -2836,6 +2961,7 @@ export class ComponentStateRoot<H, Parent = H> {
           return cache !== undefined && componentCodeCurrentPrivate(cache.type);
         }),
       commitHost: () => program!.commit(),
+      commitHostAdmitted: () => program!.commitAdmitted(),
       preparePublication: () => stores.preparePublicationAfterHost(),
       publish: () => {
         stores.publishAccepted();
@@ -2895,6 +3021,15 @@ export class ComponentStateRoot<H, Parent = H> {
         version !== null && (afterHost ? version >= write.version : version === write.version) &&
         (afterHost && version > write.version || Object.is(Object.getOwnPropertyDescriptor(write.source, "value")?.value, write.value));
     });
+  }
+
+  #validateRetainedCellsPrivate(writes: readonly RetainedCellWrite[]): boolean {
+    return writes.every((write) =>
+      this.#liveOwners.has(write.handle.owner) &&
+      canonicalWorldScalarSourceForCell.call(this.world, write.handle) === write.source &&
+      canonicalWorldVersionForCell.call(this.world, write.handle) === write.version &&
+      capturedScalarCurrent(write.source, write.value)
+    );
   }
 
   #createCandidateLifecycle(
@@ -3038,6 +3173,56 @@ export class ComponentStateRoot<H, Parent = H> {
       this.#publicationVersion === admittedVersion &&
       this.#vdom.appliedVersion === admittedVDOMVersion + appliedVDOMDelta &&
       spec.finalGroupCurrent();
+    const preHostLifecycleCurrent = () => phase === "prepared" && !released &&
+      !this.#disposed && !this.#disposeRequested &&
+      !this.#terminalHostFailed && !this.#hostPublicationDomain.failed &&
+      !this.#codeInvalidated &&
+      (scopedDelta || this.#publicationIntents.size === 0 ||
+        (spec.permitHeldFullCandidate?.() ?? false)) &&
+      (!scopedDelta || spec.permitPendingDirectIntent?.() ||
+        this.#pendingDirectIntent === null) &&
+      (scopedDelta || (this.#publicationVersion === spec.baseVersion &&
+        this.#vdom.version === spec.baseVDOMVersion));
+    const preHostPrivateCurrent = () => preHostLifecycleCurrent() &&
+      spec.validatePreparedPrivate();
+    const commitHostInternal = (admitted: boolean) => {
+      if (phase !== "prepared") throw new Error(`Candidate is ${phase}`);
+      this.#assertNoPublicationBarrier("commit another candidate");
+      if ((!admitted && !candidate.validate()) ||
+        !(admitted ? preHostPrivateCurrent() : preHostLifecycleCurrent())) {
+        if (phase === "prepared" && !released) finishUnpublished("discarded");
+        throw new Error("Native root candidate is stale");
+      }
+      const claim = groupClaim ?? this.#activeRootClaim ??
+        createHostPublicationClaim();
+      if (tryClaimHostPublicationDomains(
+        [this.#hostPublicationDomain], claim,
+      ) === "busy") throw new HostPublicationBusyError();
+      if (!groupClaim && !this.#activeRootClaim) ownClaim = claim;
+      admittedVersion = this.#publicationVersion;
+      admittedVDOMVersion = this.#vdom.version;
+      this.#publicationBarrier = candidate;
+      try {
+        this.#vdom.beginPublication();
+        this.#candidateHostCommit = true;
+        enteredHostApplication = true;
+        groupEntered?.();
+        if (admitted) spec.commitHostAdmitted();
+        else spec.commitHost();
+        if (
+          phase !== "prepared" || this.#disposed || this.#disposeRequested
+        ) {
+          throw new Error(
+            "Native root candidate was cancelled during host commit",
+          );
+        }
+        phase = "host-committed";
+      } catch (error) {
+        failUnpublished(error);
+      } finally {
+        this.#candidateHostCommit = false;
+      }
+    };
     const candidate: NativeRootCandidate<H, Parent> = {
       rootId: this.#rootId,
       get baseVersion() {
@@ -3071,46 +3256,7 @@ export class ComponentStateRoot<H, Parent = H> {
           this.#pendingDirectIntent === null) &&
         (spec.admissionCurrent?.() ?? true) &&
         spec.codeCurrent(),
-      commitHost: () => {
-        if (phase !== "prepared") throw new Error(`Candidate is ${phase}`);
-        this.#assertNoPublicationBarrier("commit another candidate");
-        if (!candidate.validate() || phase !== "prepared" || released ||
-          this.#disposed || this.#disposeRequested || this.#codeInvalidated ||
-          this.#terminalHostFailed || this.#hostPublicationDomain.failed ||
-          (!scopedDelta && (this.#publicationVersion !== spec.baseVersion ||
-            this.#vdom.version !== spec.baseVDOMVersion))) {
-          if (phase === "prepared" && !released) finishUnpublished("discarded");
-          throw new Error("Native root candidate is stale");
-        }
-        const claim = groupClaim ?? this.#activeRootClaim ??
-          createHostPublicationClaim();
-        if (tryClaimHostPublicationDomains(
-          [this.#hostPublicationDomain], claim,
-        ) === "busy") throw new HostPublicationBusyError();
-        if (!groupClaim && !this.#activeRootClaim) ownClaim = claim;
-        admittedVersion = this.#publicationVersion;
-        admittedVDOMVersion = this.#vdom.version;
-        this.#publicationBarrier = candidate;
-        try {
-          this.#vdom.beginPublication();
-          this.#candidateHostCommit = true;
-          enteredHostApplication = true;
-          groupEntered?.();
-          spec.commitHost();
-          if (
-            phase !== "prepared" || this.#disposed || this.#disposeRequested
-          ) {
-            throw new Error(
-              "Native root candidate was cancelled during host commit",
-            );
-          }
-          phase = "host-committed";
-        } catch (error) {
-          failUnpublished(error);
-        } finally {
-          this.#candidateHostCommit = false;
-        }
-      },
+      commitHost: () => commitHostInternal(false),
       validatePostHost: () =>
         (phase === "host-committed" || phase === "publication-ready") && !this.#disposed &&
         !this.#disposeRequested && !this.#terminalHostFailed &&
@@ -3235,6 +3381,8 @@ export class ComponentStateRoot<H, Parent = H> {
     };
     candidateHandle = candidate;
     groupPublicationReceipts.set(candidate, {
+      preHostCurrent: preHostPrivateCurrent,
+      commitAdmitted: () => commitHostInternal(true),
       current: finalPrivateCurrent,
       accept: acceptPrepared,
       domain: this.#hostPublicationDomain,
@@ -3456,6 +3604,39 @@ export class ComponentStateRoot<H, Parent = H> {
       }
     }
     const capturedCodeRevisions = captureCodeRevisions(cachePatches.values());
+    let admittedBindings: ScalarSource[][] | null = null;
+    const validateAdmittedBindings = () => {
+      admittedBindings = prepareAdmittedBindings(capturedBindings,
+        (owner, site) => canonicalWorldIsAlive.call(this.world, owner)
+          ? canonicalWorldScalarSource.call(this.world, owner, site) : null);
+      if (admittedBindings === null) {
+        throw new UnsupportedGroupOpaqueFreshnessError("binding");
+      }
+      return true;
+    };
+    const commitSparseHost = (admitted: boolean) => {
+      preparation.beginHostApplication();
+      if (admitted) applyAdmittedBindings(capturedBindings, admittedBindings ?? []);
+      else for (const item of capturedBindings) {
+        const canonical = item.sites.map((site, index) =>
+          this.world.isAlive(item.owner)
+            ? this.world.scalarSource(item.owner, site) ?? item.sources[index]
+            : item.sources[index]
+        );
+        if (rebindCapturedBindingSources(item.binding, canonical)) continue;
+        const mutable = item.binding.sources as ScalarSource[] | undefined;
+        if (mutable) {
+          for (let index = 0; index < canonical.length; index++) {
+            mutable[index] = canonical[index];
+          }
+        }
+        (item.binding as { source: ScalarSource }).source = canonical[0];
+      }
+      if (admitted) preparedHost!.commitAdmitted();
+      else preparedHost!.commit();
+      preparedHost = null;
+      this.#applyCandidateNumericWrites(numericWrites);
+    };
     return this.#createCandidateLifecycle({
       baseVersion,
       baseVDOMVersion,
@@ -3468,7 +3649,22 @@ export class ComponentStateRoot<H, Parent = H> {
         this.#storeNotificationGeneration === storeGenerationAtPrepare &&
         preparation.validate() && !preparation.hasStateWrites() &&
         stores.validate() && validateNumericWrites() &&
-        (resourceReads?.validate() ?? false),
+        (resourceReads?.validate() ?? false) &&
+        (preparedHost?.validate?.() ?? false),
+      validatePreparedPrivate: () =>
+        this.#storeNotificationGeneration === storeGenerationAtPrepare &&
+        preparation.validate() && !preparation.hasStateWrites() &&
+        stores.validatePreparedCanonical() &&
+        numericWrites.every((write) =>
+          canonicalWorldIsAlive.call(this.world, write.owner) &&
+          canonicalWorldVersion.call(this.world, write.owner, write.site) === write.version &&
+          canonicalWorldScalarSource.call(this.world, write.owner, write.site) === write.source &&
+          capturedScalarCurrent(write.source, write.current)
+        ) && (resourceReads ? canonicalResourceCutCurrent(resourceReads) : false) &&
+        (preparedHost?.validatePreparedPrivate() ?? false) &&
+        validateAdmittedBindings() &&
+        cacheCodeCurrentPrivate(cachePatches.values()) &&
+        codeRevisionsCurrent(capturedCodeRevisions),
       validatePostHost: () =>
         preparation.validatePublicationInputs() &&
         !preparation.hasStateWrites() &&
@@ -3486,26 +3682,8 @@ export class ComponentStateRoot<H, Parent = H> {
         preparation.preparePublicationAfterHost();
         stores.preparePublicationAfterHost();
       },
-      commitHost: () => {
-        preparation.beginHostApplication();
-        for (const item of capturedBindings) {
-          const canonical = item.sites.map((site, index) =>
-            this.world.isAlive(item.owner)
-              ? this.world.scalarSource(item.owner, site) ?? item.sources[index]
-              : item.sources[index]
-          );
-          const mutable = item.binding.sources as ScalarSource[] | undefined;
-          if (mutable) {
-            for (let index = 0; index < canonical.length; index++) {
-              mutable[index] = canonical[index];
-            }
-          }
-          (item.binding as { source: ScalarSource }).source = canonical[0];
-        }
-        preparedHost!.commit();
-        preparedHost = null;
-        this.#applyCandidateNumericWrites(numericWrites);
-      },
+      commitHost: () => commitSparseHost(false),
+      commitHostAdmitted: () => commitSparseHost(true),
       publish: () => {
         preparation.publishAccepted();
         stores.publishAccepted();
@@ -3582,6 +3760,7 @@ export class ComponentStateRoot<H, Parent = H> {
         resourceReads = null;
       },
       releaseArtifacts: () => {
+        admittedBindings = null;
         resourceReads?.discard();
         resourceReads = null;
         cachePatches.clear();
@@ -3781,10 +3960,12 @@ export class ComponentStateRoot<H, Parent = H> {
       capturedChanges: capturedChanges as typeof capturedChanges | null,
       numericWrites: numericWrites as CandidateNumericWrite[] | null,
     };
+    let admittedBindings: ScalarSource[][] | null = null;
     let artifactsReleased = false;
     const releaseCandidateArtifacts = (published: boolean) => {
       if (artifactsReleased) return;
       artifactsReleased = true;
+      admittedBindings = null;
       resourceReads?.discard();
       resourceReads = null;
       candidatePendingResources.length = 0;
@@ -3844,9 +4025,54 @@ export class ComponentStateRoot<H, Parent = H> {
         const version = canonicalCollectionVersion(region.collection);
         return version === null || version >= region.snapshotVersion;
       });
+    const validatesPreparedCollectionsCanonical = () =>
+      [...(artifacts.keyedRegions?.values() ?? [])].every((region) =>
+        !region.collection || canonicalCollectionCutCurrent(
+          region.collection.collection, region.collection.snapshotVersion,
+        )
+      ) && [...(artifacts.collectionRegions?.values() ?? [])].every((region) =>
+        canonicalCollectionCutCurrent(region.collection, region.snapshotVersion)
+      );
     const capturedCodeRevisions = captureCodeRevisions(
       artifacts.nextCache?.values() ?? [],
     );
+    const validateAdmittedBindings = () => {
+      admittedBindings = prepareAdmittedBindings(
+        artifacts.capturedBindings ?? [],
+        (owner, site) => canonicalWorldIsAlive.call(this.world, owner)
+          ? canonicalWorldScalarSource.call(this.world, owner, site)
+          : artifacts.preparation!.scalarSource(owner, site),
+      );
+      if (admittedBindings === null) {
+        throw new UnsupportedGroupOpaqueFreshnessError("binding");
+      }
+      return true;
+    };
+    const commitFullHost = (admitted: boolean) => {
+      artifacts.preparation!.beginHostApplication();
+      if (admitted) applyAdmittedBindings(
+        artifacts.capturedBindings ?? [], admittedBindings ?? [],
+      );
+      else for (const item of artifacts.capturedBindings ?? []) {
+        const canonical = item.sites.map((site, index) =>
+          this.world.isAlive(item.owner)
+            ? this.world.scalarSource(item.owner, site) ?? item.sources[index]
+            : item.sources[index]
+        );
+        if (rebindCapturedBindingSources(item.binding, canonical)) continue;
+        const mutable = item.binding.sources as ScalarSource[] | undefined;
+        if (mutable) {
+          for (let index = 0; index < canonical.length; index++) {
+            mutable[index] = canonical[index];
+          }
+        }
+        (item.binding as { source: ScalarSource }).source = canonical[0];
+      }
+      if (admitted) artifacts.preparedHost!.commitAdmitted();
+      else artifacts.preparedHost!.commit();
+      artifacts.preparedHost = null;
+      this.#applyCandidateNumericWrites(artifacts.numericWrites ?? []);
+    };
     return this.#createCandidateLifecycle({
       baseVersion,
       baseVDOMVersion,
@@ -3871,7 +4097,26 @@ export class ComponentStateRoot<H, Parent = H> {
         artifacts.stores !== null && artifacts.stores.validate() &&
         validateNumericWrites() &&
         (resourceReads?.validate() ?? false) &&
-        !boundaryState.blocked && validatesCollections(),
+        !boundaryState.blocked && validatesCollections() &&
+        (artifacts.preparedHost?.validate?.() ?? false),
+      validatePreparedPrivate: () =>
+        artifacts.preparation !== null && artifacts.preparation.validate() &&
+        !artifacts.preparation.hasStateWrites() &&
+        artifacts.stores !== null && artifacts.stores.validatePreparedCanonical() &&
+        (artifacts.numericWrites ?? []).every((write) =>
+          canonicalWorldIsAlive.call(this.world, write.owner) &&
+          canonicalWorldVersion.call(this.world, write.owner, write.site) === write.version &&
+          canonicalWorldScalarSource.call(this.world, write.owner, write.site) === write.source &&
+          capturedScalarCurrent(write.source, write.current)
+        ) && !boundaryState.blocked &&
+        validatesPreparedCollectionsCanonical() &&
+        this.#pendingDirectIntent === directIntentAtPrepare &&
+        (!heldGenericState || this.#heldGenericStateCurrent(heldGenericState)) &&
+        cacheCodeCurrentPrivate(artifacts.nextCache?.values() ?? []) &&
+        codeRevisionsCurrent(capturedCodeRevisions) &&
+        (resourceReads ? canonicalResourceCutCurrent(resourceReads) : false) &&
+        (artifacts.preparedHost?.validatePreparedPrivate() ?? false) &&
+        validateAdmittedBindings(),
       validatePostHost: () =>
         artifacts.preparation !== null &&
         artifacts.preparation.validatePublicationInputs() &&
@@ -3906,26 +4151,8 @@ export class ComponentStateRoot<H, Parent = H> {
           throw new Error("Full candidate inputs changed before publication");
         }
       },
-      commitHost: () => {
-        artifacts.preparation!.beginHostApplication();
-        for (const item of artifacts.capturedBindings ?? []) {
-          const canonical = item.sites.map((site, index) =>
-            this.world.isAlive(item.owner)
-              ? this.world.scalarSource(item.owner, site) ?? item.sources[index]
-              : item.sources[index]
-          );
-          const mutable = item.binding.sources as ScalarSource[] | undefined;
-          if (mutable) {
-            for (let index = 0; index < canonical.length; index++) {
-              mutable[index] = canonical[index];
-            }
-          }
-          (item.binding as { source: ScalarSource }).source = canonical[0];
-        }
-        artifacts.preparedHost!.commit();
-        artifacts.preparedHost = null;
-        this.#applyCandidateNumericWrites(artifacts.numericWrites ?? []);
-      },
+      commitHost: () => commitFullHost(false),
+      commitHostAdmitted: () => commitFullHost(true),
       publish: () => {
         artifacts.preparation!.publishAccepted();
         artifacts.stores!.publishAccepted();
@@ -5017,6 +5244,7 @@ export class ComponentStateRoot<H, Parent = H> {
       pendingReaderIds: ReadonlySet<string>;
       current(): boolean;
       privateCurrent(): boolean;
+      privatePreparedCurrent(): boolean;
       publish(): void;
       installSubscriptions(): void;
       runEffects(): unknown[];
@@ -5072,6 +5300,12 @@ export class ComponentStateRoot<H, Parent = H> {
     }
     const handles = writes.map(({ handle }) => handle);
     const versions = writes.map(({ version }) => version);
+    const acceptedCollectionVersions = acceptedCollectionFootprint.map((collection) =>
+      [collection, canonicalCollectionVersion(collection)] as const
+    );
+    const acceptedResourceVersions = [...acceptedResources].map((resource) =>
+      [resource, canonicalResourceVersion(resource)] as const
+    );
     const stageCurrent = () => stages.every((stage) => stage.current()) &&
       acceptedCollections.every((validate) => validate()) &&
       (closed?.current() ?? true) && writes.every(({ handle }) => {
@@ -5102,6 +5336,32 @@ export class ComponentStateRoot<H, Parent = H> {
         !preparation.hasStateWrites() && stores.validate() &&
         (reads?.validate() ?? false) && (program?.validate() ?? false) &&
         this.#validateRetainedCells(writes, false) && stageCurrent(),
+      validatePreparedPrivate: () => (!resourceLease ||
+        this.#publicationIntents.has(resourceLease)) && preparation.validate() &&
+        !this.#resourceHoldWait(new Set([
+          ...acceptedResourceVersions.map(([resource]) => resource),
+          ...stages.flatMap((stage) => [...stage.dependencies]),
+          ...(closed?.inputResources ?? []),
+        ]), resourceLease, {
+          cells: handles, stores: [...selectedStores,
+            ...stages.flatMap((stage) => [...stage.storeInputs]),
+            ...(closed?.inputStores ?? [])],
+          collections: acceptedCollectionVersions.map(([collection]) => collection),
+        }) &&
+        !preparation.hasStateWrites() && stores.validatePreparedCanonical() &&
+        (reads ? canonicalResourceCutCurrent(reads) : false) &&
+        (program?.validatePreparedPrivate() ?? false) &&
+        this.#validateRetainedCellsPrivate(writes) &&
+        stages.every((stage) => stage.privateCurrent()) &&
+        (closed?.privatePreparedCurrent() ?? true) &&
+        acceptedCollectionVersions.every(([collection, version]) =>
+          canonicalCollectionCutCurrent(collection, version)
+        ) && acceptedResourceVersions.every(([resource, version]) =>
+          canonicalResourceVersionCurrent(resource, version)
+        ) && writes.every(({ handle }) => {
+          const cache = this.#componentCache.get(handle.owner);
+          return cache !== undefined && componentCodeCurrentPrivate(cache.type);
+        }),
       validatePostHost: () => preparation.validatePublicationInputs() &&
         !preparation.hasStateWrites() && stores.validatePublicationInputs() &&
         (reads?.validate() ?? false) && (program?.validatePostHost() ?? false) &&
@@ -5118,6 +5378,10 @@ export class ComponentStateRoot<H, Parent = H> {
           return cache !== undefined && componentCodeCurrentPrivate(cache.type);
         }),
       commitHost: () => { preparation.beginHostApplication(); program!.commit(); },
+      commitHostAdmitted: () => {
+        preparation.beginHostApplication();
+        program!.commitAdmitted();
+      },
       preparePublication: () => {
         preparation.preparePublicationAfterHost();
         stores.preparePublicationAfterHost();
@@ -5415,16 +5679,16 @@ export class ComponentStateRoot<H, Parent = H> {
         closedResourceStatus(resource)?.status === "fulfilled" &&
         !this.#codeInvalidated &&
         this.#componentCache.get(boundaryOwner) === boundaryCache &&
-        this.#liveOwners.has(boundaryOwner) && this.world.isAlive(boundaryOwner) &&
+        this.#liveOwners.has(boundaryOwner) && canonicalWorldIsAlive.call(this.world, boundaryOwner) &&
         [...fallbackCaches].every(([owner, { cache, revision }]) =>
           this.#componentCache.get(owner) === cache &&
-          this.#liveOwners.has(owner) && this.world.isAlive(owner) &&
+          this.#liveOwners.has(owner) && canonicalWorldIsAlive.call(this.world, owner) &&
           !this.#ownerHasStoreReaders(owner) &&
           (!revision || isCompiledSemanticRevisionCurrent(revision))
         ) && retiredEffects.every(([key, effect]) => this.#liveEffects.get(key) === effect) &&
         !this.#boundaryPrimaries.has(String(boundaryOwner)) &&
         boundaryCache.pendingResource === resource &&
-        this.world.findOwner(boundaryOwner, first.siteId, first.ownerKey) === undefined &&
+        canonicalWorldFindOwner.call(this.world, boundaryOwner, first.siteId, first.ownerKey) === undefined &&
         [...pendingReaders].every(([id, membership]) =>
           this.#liveStoreReaders.get(id) === membership) &&
         preparation.validatePublicationInputs();
@@ -5449,6 +5713,7 @@ export class ComponentStateRoot<H, Parent = H> {
         stores,
         current: () => sourceCurrent() && current(),
         privateCurrent: () => sourceCurrent() && current(),
+        privatePreparedCurrent: () => sourceCurrent() && current(),
         publish: () => {
           for (const owner of retired) this.#retireOwnerAccepted(owner);
           for (const [key] of retiredEffects) this.#liveEffects.delete(key);
@@ -6664,6 +6929,7 @@ export class ComponentStateRoot<H, Parent = H> {
       pendingReaderIds: ReadonlySet<string>;
       current(): boolean;
       privateCurrent(): boolean;
+      privatePreparedCurrent(): boolean;
       publish(): void;
       installSubscriptions(): void;
       runEffects(): unknown[];
@@ -7417,10 +7683,12 @@ export class ComponentStateRoot<H, Parent = H> {
         touchedCollections.every((stage) =>
           componentCodeCurrent(stage.parentCache.type)
         );
+      let admittedBindings: ScalarSource[][] | null = null;
       const artifactsReleased = { value: false };
       const releaseArtifacts = () => {
         if (artifactsReleased.value) return;
         artifactsReleased.value = true;
+        admittedBindings = null;
         preparedProgram?.discard();
         preparedProgram = null;
         committedProgram = null;
@@ -7458,6 +7726,67 @@ export class ComponentStateRoot<H, Parent = H> {
             .flatMap((row) => row ? [row.cache] : [])
         ),
       ]);
+      const acceptedCollectionVersions = (options.acceptedCollectionFootprint ?? [])
+        .map((collection) => [collection, canonicalCollectionVersion(collection)] as const);
+      const acceptedResourceVersions = [...(options.acceptedResources ?? [])]
+        .map((resource) => [resource, canonicalResourceVersion(resource)] as const);
+      const validateAdmittedBindings = () => {
+        admittedBindings = prepareAdmittedBindings(capturedBindings,
+          (owner, site) => privateOwners.has(owner)
+            ? preparation.scalarSource(owner, site)
+            : canonicalWorldIsAlive.call(this.world, owner)
+            ? canonicalWorldScalarSource.call(this.world, owner, site) : null);
+        if (admittedBindings === null) {
+          throw new UnsupportedGroupOpaqueFreshnessError("binding");
+        }
+        return true;
+      };
+      const validateMixedPreparedPrivate = () => {
+        return (!options.resourceLease ||
+            this.#publicationIntents.has(options.resourceLease)) &&
+          !this.#resourceHoldWait(new Set([
+            ...acceptedResourceVersions.map(([resource]) => resource),
+            ...resourceStages.flatMap((stage) => [...stage.dependencies]),
+            ...(closedStoreOutputs?.inputResources ?? []),
+          ]), options.resourceLease, {
+            cells: scopedHandles,
+            stores: [...(options.scopedStores ?? []),
+              ...resourceStages.flatMap((stage) => [...stage.storeInputs]),
+              ...(closedStoreOutputs?.inputStores ?? [])],
+            collections: [...touchedCollections.map((stage) => stage.region.collection),
+              ...acceptedCollectionVersions.map(([collection]) => collection)],
+          }) &&
+          (options.scopedStructural ||
+            this.#storeNotificationGeneration === storeGenerationAtPrepare) &&
+          preparation.validate() && !preparation.hasStateWrites() &&
+          stores.validatePreparedCanonical() &&
+          numericWrites.every((write) =>
+            canonicalWorldIsAlive.call(this.world, write.owner) &&
+            canonicalWorldVersion.call(this.world, write.owner, write.site) === write.version &&
+            canonicalWorldScalarSource.call(this.world, write.owner, write.site) === write.source &&
+            capturedScalarCurrent(write.source, write.current)
+          ) &&
+          touchedCollections.every((stage) =>
+            canonicalCollectionCutCurrent(stage.region.collection, stage.read.toVersion)
+          ) && validateScopedCachePrivate() &&
+          (resourceReads ? canonicalResourceCutCurrent(resourceReads) : false) &&
+          (preparedProgram?.validatePreparedPrivate() ?? false) &&
+          this.#validateRetainedCellsPrivate(scopedCellWrites) &&
+          resourceStages.every((stage) => stage.privatePreparedCurrent()) &&
+          (closedStoreOutputs?.privatePreparedCurrent() ?? true) &&
+          acceptedCollectionVersions.every(([collection, version]) =>
+            canonicalCollectionCutCurrent(collection, version)
+          ) && acceptedResourceVersions.every(([resource, version]) =>
+            canonicalResourceVersionCurrent(resource, version)
+          ) && cacheCodeCurrentPrivate(leafCaches.values()) &&
+          [...stages.values()].every((stage) =>
+            componentCodeCurrentPrivate(stage.parentCache.type) &&
+            [...stage.rows.values(), ...stage.previousRows.values()].every((row) =>
+              !row || componentCodeCurrentPrivate(row.cache.type)
+            )
+          ) && codeRevisionsCurrent(capturedCodeRevisions) &&
+          validateAdmittedBindings();
+      };
       return this.#createCandidateLifecycle({
         baseVersion,
         baseVDOMVersion,
@@ -7510,6 +7839,7 @@ export class ComponentStateRoot<H, Parent = H> {
           (preparedProgram?.validate() ?? false) &&
           preparation.validate() && validateScopedCells(false) &&
           (closedStoreOutputs?.current() ?? true) && stores.validate(),
+        validatePreparedPrivate: validateMixedPreparedPrivate,
         validatePostHost: () =>
           preparation.validatePublicationInputs() &&
           !preparation.hasStateWrites() &&
@@ -7563,6 +7893,7 @@ export class ComponentStateRoot<H, Parent = H> {
                 : this.world.scalarSource(item.owner, site) ??
                   item.sources[index]
             );
+            if (rebindCapturedBindingSources(item.binding, canonical)) continue;
             const mutable = item.binding.sources as ScalarSource[] | undefined;
             if (mutable) {
               for (let index = 0; index < canonical.length; index++) {
@@ -7581,6 +7912,18 @@ export class ComponentStateRoot<H, Parent = H> {
               "numeric.candidate-source-updates",
               numericWrites.length,
             );
+          }
+        },
+        commitHostAdmitted: () => {
+          preparation.beginHostApplication();
+          applyAdmittedBindings(capturedBindings, admittedBindings ?? []);
+          committedProgram = preparedProgram;
+          preparedProgram!.commitAdmitted();
+          preparedProgram = null;
+          this.#applyCandidateNumericWrites(numericWrites);
+          if (numericWrites.length > 0) {
+            this.#count("numeric.candidate-batches");
+            this.#count("numeric.candidate-source-updates", numericWrites.length);
           }
         },
         publish: () => {

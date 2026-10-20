@@ -1,0 +1,110 @@
+--- product/src/component_state_runtime.ts
++++ diagnostic/src/component_state_runtime.ts
+@@ -1,3 +1,7 @@
++const __diag = (label: string, value: boolean, root: string): boolean => {
++  if (!value) console.error(`[GROUP-DIAG] ${root} ${label}`);
++  return value;
++};
+ import { normalizeClosedNumericExpression } from "./closed_numeric_expression.ts";
+ import {
+   type ClosedComponentForwardProgram,
+@@ -3173,18 +3177,18 @@
+       this.#publicationVersion === admittedVersion &&
+       this.#vdom.appliedVersion === admittedVDOMVersion + appliedVDOMDelta &&
+       spec.finalGroupCurrent();
+-    const preHostLifecycleCurrent = () => phase === "prepared" && !released &&
+-      !this.#disposed && !this.#disposeRequested &&
+-      !this.#terminalHostFailed && !this.#hostPublicationDomain.failed &&
+-      !this.#codeInvalidated &&
+-      (scopedDelta || this.#publicationIntents.size === 0 ||
+-        (spec.permitHeldFullCandidate?.() ?? false)) &&
+-      (!scopedDelta || spec.permitPendingDirectIntent?.() ||
+-        this.#pendingDirectIntent === null) &&
+-      (scopedDelta || (this.#publicationVersion === spec.baseVersion &&
+-        this.#vdom.version === spec.baseVDOMVersion));
++    const preHostLifecycleCurrent = () => __diag("lifecycle.phase", phase === "prepared", this.#rootId) && __diag("lifecycle.released", !released, this.#rootId) &&
++      __diag("lifecycle.disposed", !this.#disposed && !this.#disposeRequested, this.#rootId) &&
++      __diag("lifecycle.host", !this.#terminalHostFailed && !this.#hostPublicationDomain.failed, this.#rootId) &&
++      __diag("lifecycle.code", !this.#codeInvalidated, this.#rootId) &&
++      __diag("lifecycle.intents", scopedDelta || this.#publicationIntents.size === 0 ||
++        (spec.permitHeldFullCandidate?.() ?? false), this.#rootId) &&
++      __diag("lifecycle.pendingDirect", !scopedDelta || spec.permitPendingDirectIntent?.() ||
++        this.#pendingDirectIntent === null, this.#rootId) &&
++      __diag("lifecycle.base", scopedDelta || (this.#publicationVersion === spec.baseVersion &&
++        this.#vdom.version === spec.baseVDOMVersion), this.#rootId);
+     const preHostPrivateCurrent = () => preHostLifecycleCurrent() &&
+-      spec.validatePreparedPrivate();
++      __diag("preHost.specPrivate", spec.validatePreparedPrivate(), this.#rootId);
+     const commitHostInternal = (admitted: boolean) => {
+       if (phase !== "prepared") throw new Error(`Candidate is ${phase}`);
+       this.#assertNoPublicationBarrier("commit another candidate");
+@@ -7742,9 +7746,9 @@
+         return true;
+       };
+       const validateMixedPreparedPrivate = () => {
+-        return (!options.resourceLease ||
+-            this.#publicationIntents.has(options.resourceLease)) &&
+-          !this.#resourceHoldWait(new Set([
++        return __diag("mixed.resourceLease", !options.resourceLease ||
++            this.#publicationIntents.has(options.resourceLease), this.#rootId) &&
++          __diag("mixed.resourceHold", !this.#resourceHoldWait(new Set([
+             ...acceptedResourceVersions.map(([resource]) => resource),
+             ...resourceStages.flatMap((stage) => [...stage.dependencies]),
+             ...(closedStoreOutputs?.inputResources ?? []),
+@@ -7755,37 +7759,37 @@
+               ...(closedStoreOutputs?.inputStores ?? [])],
+             collections: [...touchedCollections.map((stage) => stage.region.collection),
+               ...acceptedCollectionVersions.map(([collection]) => collection)],
+-          }) &&
+-          (options.scopedStructural ||
+-            this.#storeNotificationGeneration === storeGenerationAtPrepare) &&
+-          preparation.validate() && !preparation.hasStateWrites() &&
+-          stores.validatePreparedCanonical() &&
+-          numericWrites.every((write) =>
++          }), this.#rootId) &&
++          __diag("mixed.storeGeneration", options.scopedStructural ||
++            this.#storeNotificationGeneration === storeGenerationAtPrepare, this.#rootId) &&
++          __diag("mixed.preparation", preparation.validate() && !preparation.hasStateWrites(), this.#rootId) &&
++          __diag("mixed.storesCanonical", stores.validatePreparedCanonical(), this.#rootId) &&
++          __diag("mixed.numericWrites", numericWrites.every((write) =>
+             canonicalWorldIsAlive.call(this.world, write.owner) &&
+             canonicalWorldVersion.call(this.world, write.owner, write.site) === write.version &&
+             canonicalWorldScalarSource.call(this.world, write.owner, write.site) === write.source &&
+             capturedScalarCurrent(write.source, write.current)
+-          ) &&
+-          touchedCollections.every((stage) =>
++          ), this.#rootId) &&
++          __diag("mixed.collections", touchedCollections.every((stage) =>
+             canonicalCollectionCutCurrent(stage.region.collection, stage.read.toVersion)
+-          ) && validateScopedCachePrivate() &&
+-          (resourceReads ? canonicalResourceCutCurrent(resourceReads) : false) &&
+-          (preparedProgram?.validatePreparedPrivate() ?? false) &&
+-          this.#validateRetainedCellsPrivate(scopedCellWrites) &&
+-          resourceStages.every((stage) => stage.privatePreparedCurrent()) &&
+-          (closedStoreOutputs?.privatePreparedCurrent() ?? true) &&
+-          acceptedCollectionVersions.every(([collection, version]) =>
++          ), this.#rootId) && __diag("mixed.scopedCache", validateScopedCachePrivate(), this.#rootId) &&
++          __diag("mixed.resourceCut", resourceReads ? canonicalResourceCutCurrent(resourceReads) : false, this.#rootId) &&
++          __diag("mixed.vdomProgram", preparedProgram?.validatePreparedPrivate() ?? false, this.#rootId) &&
++          __diag("mixed.retainedCells", this.#validateRetainedCellsPrivate(scopedCellWrites), this.#rootId) &&
++          __diag("mixed.resourceStages", resourceStages.every((stage) => stage.privatePreparedCurrent()), this.#rootId) &&
++          __diag("mixed.closedStoreOutputs", closedStoreOutputs?.privatePreparedCurrent() ?? true, this.#rootId) &&
++          __diag("mixed.acceptedCollections", acceptedCollectionVersions.every(([collection, version]) =>
+             canonicalCollectionCutCurrent(collection, version)
+-          ) && acceptedResourceVersions.every(([resource, version]) =>
++          ), this.#rootId) && __diag("mixed.acceptedResources", acceptedResourceVersions.every(([resource, version]) =>
+             canonicalResourceVersionCurrent(resource, version)
+-          ) && cacheCodeCurrentPrivate(leafCaches.values()) &&
++          ), this.#rootId) && __diag("mixed.leafCode", cacheCodeCurrentPrivate(leafCaches.values()), this.#rootId) &&
+           [...stages.values()].every((stage) =>
+             componentCodeCurrentPrivate(stage.parentCache.type) &&
+             [...stage.rows.values(), ...stage.previousRows.values()].every((row) =>
+               !row || componentCodeCurrentPrivate(row.cache.type)
+             )
+-          ) && codeRevisionsCurrent(capturedCodeRevisions) &&
+-          validateAdmittedBindings();
++          ) && __diag("mixed.codeRevisions", codeRevisionsCurrent(capturedCodeRevisions), this.#rootId) &&
++          __diag("mixed.bindings", validateAdmittedBindings(), this.#rootId);
+       };
+       return this.#createCandidateLifecycle({
+         baseVersion,

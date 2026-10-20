@@ -7,13 +7,15 @@ import type {
 import {
   Fragment,
   closedExpressionForBinding,
+  canonicalCapturedBindingSourceArray,
+  canonicalScalarSourceValue,
   getBoundValue,
   getKeyedOwnerRegionId,
   type NumericColumn,
   readBoundValue,
   type RuntimeElement,
   type RuntimeNode,
-  type ScalarSource,
+  ScalarSource,
 } from "./jsx_binding_runtime.ts";
 import { KeyedRegionBuckets } from "./keyed_region_buckets.ts";
 import { createDOMStylePropWriter } from "./dom_style_writer.ts";
@@ -355,6 +357,38 @@ const hostPropWriter = <H, Parent>(host: VDOMHost<H, Parent>) => {
   }
   return null;
 };
+const capturedHostMethods = <H, Parent>(host: VDOMHost<H, Parent>) => {
+  const names = ["createElement", "createText", "setText", "setProp",
+    "capturePropertyValue", "describePropertyWrite", "setStyleProp",
+    "prepareStyleProp", "place", "remove", "dispose", "getPublicInstance"] as const;
+  const descriptor = (name: string): PropertyDescriptor | null => {
+    let target: object | null = host;
+    while (target) {
+      const found = Object.getOwnPropertyDescriptor(target, name);
+      if (found) return found;
+      target = Object.getPrototypeOf(target);
+    }
+    return null;
+  };
+  try {
+    const originals = names.map(descriptor);
+    const callable = names.map((name) => (host as unknown as Record<string, unknown>)[name]);
+    if (callable.slice(0, 4).some((entry) => typeof entry !== "function") ||
+      typeof callable[8] !== "function" || typeof callable[9] !== "function") return null;
+    const calls = Object.fromEntries(names.map((name, index) =>
+      [name, typeof callable[index] === "function"
+        ? (callable[index] as Function).bind(host) : undefined],
+    )) as VDOMHost<H, Parent>;
+    return { calls, current: () => names.every((name, index) =>
+      {
+        const before = originals[index];
+        const now = descriptor(name);
+        return before === null ? now === null : now !== null &&
+          before.value === now.value && before.get === now.get &&
+          before.set === now.set;
+      }) };
+  } catch { return null; }
+};
 const hostCopyCapture = <H, Parent>(host: VDOMHost<H, Parent>) => {
   let target: object | null = host;
   while (target) {
@@ -415,7 +449,9 @@ const sameBoundValueCanSkipWrite = (
 
 export type PreparedVDOMCommit = {
   commit(): void;
-  validate?(): boolean;
+  validate(): boolean;
+  validatePreparedPrivate(): boolean;
+  commitAdmitted(): void;
   discard?(): void;
 };
 export type RuntimeProfileCallback = (
@@ -445,6 +481,7 @@ export type PreparedKeyedVDOMProgram = {
   readonly scoped: boolean;
   readonly structuralVersionDelta: 0 | 1;
   validate(): boolean;
+  validatePreparedPrivate(): boolean;
   validatePostHost(): boolean;
   validatePostHostPrivate(): boolean;
   overlapsRetainedTargets(delta: PreparedRetainedSourceDelta): boolean;
@@ -452,6 +489,7 @@ export type PreparedKeyedVDOMProgram = {
   readonly hostKeys?: readonly string[];
   overlapsHostReplacementTargets?(keys: readonly string[]): boolean;
   commit(): void;
+  commitAdmitted(): void;
   discard(): void;
 };
 
@@ -1462,6 +1500,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
   #incompatibleScalarBindingGroups = 0;
   #profileCounter?: RuntimeCounterCallback;
   #renderHost: VDOMHost<H, Parent>;
+  #admittedHostCalls: VDOMHost<H, Parent> | null = null;
   #pendingRefs = new Map<H, VDOMRef | null>();
   #committedRefs = new Map<H, CommittedVDOMRef>();
   #refPublicationEpoch = 0;
@@ -1482,14 +1521,20 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     const copyCapture = hostCopyCapture(host);
     this.#renderHost = {
       createElement: (tag, parent, props) =>
-        host.createElement(tag, parent, props),
-      createText: (text) => host.createText(text),
-      setText: (node, text) => host.setText(node, text),
+        this.#admittedHostCalls
+          ? this.#admittedHostCalls.createElement(tag, parent, props)
+          : host.createElement(tag, parent, props),
+      createText: (text) => this.#admittedHostCalls
+        ? this.#admittedHostCalls.createText(text) : host.createText(text),
+      setText: (node, text) => this.#admittedHostCalls
+        ? this.#admittedHostCalls.setText(node, text) : host.setText(node, text),
       setProp: (node, name, value, previous) => {
         if (name === "ref") {
           this.#pendingRefs.set(node, value == null ? null : value as VDOMRef);
         } else {
-          host.setProp(node, name, value, previous);
+          if (this.#admittedHostCalls) {
+            this.#admittedHostCalls.setProp(node, name, value, previous);
+          } else host.setProp(node, name, value, previous);
         }
       },
       capturePropertyValue: copyCapture
@@ -1518,18 +1563,35 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         : undefined,
       setStyleProp: host.setStyleProp
         ? (node, name, value, previous) =>
-          host.setStyleProp!(node, name, value, previous)
+          this.#admittedHostCalls
+            ? this.#admittedHostCalls.setStyleProp!(node, name, value, previous)
+            : host.setStyleProp!(node, name, value, previous)
         : undefined,
       prepareStyleProp: host.prepareStyleProp
-        ? (node, name) => host.prepareStyleProp!(node, name)
+        ? (node, name) => this.#admittedHostCalls
+          ? this.#admittedHostCalls.prepareStyleProp!(node, name)
+          : host.prepareStyleProp!(node, name)
         : undefined,
-      place: (parent, node, before) => host.place(parent, node, before),
-      remove: (parent, node) => host.remove(parent, node),
-      dispose: host.dispose ? (node) => host.dispose!(node) : undefined,
+      place: (parent, node, before) => this.#admittedHostCalls
+        ? this.#admittedHostCalls.place(parent, node, before)
+        : host.place(parent, node, before),
+      remove: (parent, node) => this.#admittedHostCalls
+        ? this.#admittedHostCalls.remove(parent, node) : host.remove(parent, node),
+      dispose: host.dispose ? (node) => this.#admittedHostCalls
+        ? this.#admittedHostCalls.dispose!(node) : host.dispose!(node) : undefined,
       getPublicInstance: host.getPublicInstance
-        ? (node) => host.getPublicInstance!(node)
+        ? (node) => this.#admittedHostCalls
+          ? this.#admittedHostCalls.getPublicInstance!(node)
+          : host.getPublicInstance!(node)
         : undefined,
     };
+  }
+
+  #withAdmittedHostCalls<T>(calls: VDOMHost<H, Parent>, apply: () => T): T {
+    const previous = this.#admittedHostCalls;
+    this.#admittedHostCalls = calls;
+    try { return apply(); }
+    finally { this.#admittedHostCalls = previous; }
   }
 
   get version() {
@@ -1875,8 +1937,21 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       validateBindings(next);
     }
 
+    const preparedVersion = this.#version;
+    const hostMethods = capturedHostMethods(this.host);
     let committed = false;
-    return {
+    const prepared: PreparedVDOMCommit = {
+      validate: () => !committed && !this.#publicationFailed &&
+        this.#version === preparedVersion &&
+        (hostMethods === null || hostMethods.current()),
+      validatePreparedPrivate: () => !committed && !this.#publicationFailed &&
+        this.#version === preparedVersion && hostMethods !== null,
+      commitAdmitted: () => {
+        if (!prepared.validatePreparedPrivate()) {
+          throw new Error("Prepared VDOM commit is stale");
+        }
+        this.#withAdmittedHostCalls(hostMethods!.calls, () => prepared.commit());
+      },
       commit: () => {
         if (committed) {
           throw new Error("Prepared VDOM commit can only be applied once");
@@ -1996,6 +2071,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         this.#version++;
       },
     };
+    return prepared;
   }
 
   /**
@@ -2362,6 +2438,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
   ): PreparedKeyedVDOMProgram | null {
     const baseVersion = this.#version;
     const scoped = options.scoped === true;
+    const admittedHost = capturedHostMethods(this.host);
     deferVersion &&= scoped;
     const methodNames = ["createElement", "createText", "setText", "setProp",
       "place", "remove", "dispose", "setStyleProp", "prepareStyleProp"] as const;
@@ -2726,6 +2803,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     const changed =
       preparedDeltas.some(({ operations }) => operations.length > 0) ||
       hasLeafRegions;
+    let admittedCommit = false;
     const program: PreparedKeyedVDOMProgram = {
       scoped,
       structuralVersionDelta: changed ? 1 : 0,
@@ -2751,12 +2829,16 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           replacedNodes.has(target.node)
         );
       },
-      validate: () =>
-        state === "prepared" && !this.#publicationFailed &&
-        hostMethodsCurrent() &&
+      validatePreparedPrivate: () =>
+        state === "prepared" && admittedHost !== null && !this.#publicationFailed &&
         (scoped ? validateScoped() :
           this.#version === baseVersion && validateTargets()) &&
-        (!hasLeafRegions || preparedLeaves!.validate?.() !== false),
+        (!hasLeafRegions || preparedLeaves!.validatePreparedPrivate()),
+      validate: () => hostMethodsCurrent() && admittedHost?.current() !== false &&
+        state === "prepared" && !this.#publicationFailed &&
+        (scoped ? validateScoped() :
+          this.#version === baseVersion && validateTargets()) &&
+        (!hasLeafRegions || preparedLeaves!.validate()),
       validatePostHost: () => hostMethodsCurrent() &&
         (!postHostStore || this.#isStorePropDeltaCurrent(postHostStore, true, false)) &&
         program.validatePostHostPrivate(),
@@ -2783,10 +2865,12 @@ export class VDOMSnapshotRoot<H, Parent = H> {
               this.#nodesByKey.get(key)?.size === 1 &&
               this.#nodesByKey.get(key)?.has(node) === true)))),
       commit: () => {
+        const admitted = admittedCommit;
+        admittedCommit = false;
         if (state !== "prepared") {
           throw new Error("Prepared keyed VDOM program is no longer available");
         }
-        if (!program.validate()) {
+        if (!(admitted ? program.validatePreparedPrivate() : program.validate())) {
           program.discard();
           throw new Error("Prepared keyed VDOM program is stale");
         }
@@ -2810,12 +2894,13 @@ export class VDOMSnapshotRoot<H, Parent = H> {
               );
             }
           }
-          preparedLeaves?.commit();
+          if (admitted) preparedLeaves?.commitAdmitted();
+          else preparedLeaves?.commit();
           this.#pruneSourceColumnCells();
           if (this.#version !== versionAtApply) {
             throw new Error("Prepared keyed VDOM changed during host application");
           }
-          if (!hostMethodsCurrent()) {
+          if (!admitted && !hostMethodsCurrent()) {
             throw new Error("Prepared keyed VDOM host methods changed during application");
           }
           committedTargets = preparedDeltas.map(({ parent, bucket, keyedFootprint }) => ({
@@ -2861,6 +2946,11 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           throw error;
         } finally { releasePrepared(); }
       },
+      commitAdmitted: () => {
+        if (!admittedHost) throw new Error("Prepared VDOM host calls are unsupported");
+        admittedCommit = true;
+        this.#withAdmittedHostCalls(admittedHost.calls, () => program.commit());
+      },
       discard: () => {
         if (state === "committed") committedTargets = null;
         releasePrepared();
@@ -2903,6 +2993,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       this.keyIndexMaintenance !== "delta" ||
       this.bindingIndexMaintenance !== "delta") return null;
     const writer = hostPropWriter(this.host);
+    const admittedHost = capturedHostMethods(this.host);
     if (!writer) return null;
     const hostMethod = (name: string): Function | null => {
       let object: object | null = this.host;
@@ -2997,10 +3088,11 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     } catch {
       return null;
     }
-    const current = () => {
+    const current = (privateOnly = false) => {
       if (this.#publicationFailed || this.#compiledGraph ||
-        this.#numericWriteInProgress || hostPropWriter(this.host) !== writer ||
-        methodNames.some((name, index) => hostMethod(name) !== methods[index])) {
+        this.#numericWriteInProgress || (!privateOnly &&
+        (hostPropWriter(this.host) !== writer ||
+        methodNames.some((name, index) => hostMethod(name) !== methods[index])))) {
         return false;
       }
       for (const { node, vnode, handle, parent, index } of oldNodes) {
@@ -3055,6 +3147,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         parent: node.parent, index: node.parentIndex });
       return true;
     };
+    let admittedCommit = false;
     const program: PreparedKeyedVDOMProgram = {
       scoped: true,
       structuralVersionDelta: 1,
@@ -3069,7 +3162,10 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         const record = this.#storePropDeltas.get(delta);
         return !record || record.targets.some((target) => removedNodes.has(target.node));
       },
-      validate: () => state === "prepared" && !this.#publicationToken && current(),
+      validate: () => state === "prepared" && !this.#publicationToken &&
+        admittedHost?.current() !== false && current(),
+      validatePreparedPrivate: () => state === "prepared" &&
+        admittedHost !== null && !this.#publicationToken && current(true),
       validatePostHost: () => hostPropWriter(this.host) === writer &&
         methodNames.every((name, index) => hostMethod(name) === methods[index]) &&
         program.validatePostHostPrivate(),
@@ -3090,7 +3186,10 @@ export class VDOMSnapshotRoot<H, Parent = H> {
             : this.#mounted[index] === applied;
         }),
       commit: () => {
-        if (state !== "prepared" || !this.#publicationToken || !current()) {
+        const admitted = admittedCommit;
+        admittedCommit = false;
+        if (state !== "prepared" || !this.#publicationToken ||
+          !current(admitted)) {
           throw new Error("Prepared scoped host subtree replacement is stale");
         }
         state = "committed";
@@ -3203,8 +3302,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           if (!targets.every((target) => target.applied &&
             captureNew(target.applied, target.next)) ||
             !newCurrent() || this.#version !== baseVersion ||
-            hostPropWriter(this.host) !== writer ||
-            methodNames.some((name, index) => hostMethod(name) !== methods[index])) {
+            (!admitted && (hostPropWriter(this.host) !== writer ||
+            methodNames.some((name, index) => hostMethod(name) !== methods[index])))) {
             throw new Error("Scoped host subtree changed during application");
           }
           this.#snapshotDirty = true;
@@ -3248,6 +3347,11 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         } finally {
           acceptedJournalByHost.delete(host as object);
         }
+      },
+      commitAdmitted: () => {
+        if (!admittedHost) throw new Error("Prepared VDOM host calls are unsupported");
+        admittedCommit = true;
+        this.#withAdmittedHostCalls(admittedHost.calls, () => program.commit());
       },
       discard: () => {
         state = "discarded";
@@ -3302,7 +3406,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       return null;
     }
     let state: "prepared" | "committed" | "discarded" = "prepared";
-    return {
+    let admittedCommit = false;
+    const program: PreparedScopedKeyedRetainedProgram = {
       scoped: true,
       structuralVersionDelta: structural.length ? 1 : 0,
       readSources: retained?.readSources ?? [],
@@ -3318,6 +3423,16 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           !plan.overlapsStoreTargets(store))) &&
         (!retained || this.#isRetainedSourceDeltaCurrent(retained, undefined, true)) &&
         (!store || this.isStorePropDeltaCurrent(store)),
+      validatePreparedPrivate: () => state === "prepared" &&
+        structural.every((plan) => plan.validatePreparedPrivate()) &&
+        (!retained || structural.every((plan) =>
+          !plan.overlapsRetainedTargets(retained))) &&
+        (!store || structural.every((plan) =>
+          !plan.overlapsStoreTargets(store))) &&
+        (!retained || this.#isRetainedSourceDeltaCurrent(
+          retained, undefined, true, true,
+        )) &&
+        (!store || this.#isStorePropDeltaCurrent(store, false, false, true)),
       validatePostHost: () => state === "committed" &&
         structural.every((plan) => plan.validatePostHost()) &&
         (!retained || this.#isRetainedSourceDeltaCurrent(
@@ -3331,20 +3446,29 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         )) &&
         (!store || this.#isStorePropDeltaCurrent(store, true, false, true)),
       commit: () => {
+        const admitted = admittedCommit;
+        admittedCommit = false;
         if (state !== "prepared" || !this.#publicationToken ||
-          (keyed && !keyed.validate()) ||
+          (keyed && !(admitted
+            ? keyed.validatePreparedPrivate() : keyed.validate())) ||
           (retained && structural.some((plan) =>
             plan.overlapsRetainedTargets(retained))) ||
           (store && structural.some((plan) =>
             plan.overlapsStoreTargets(store))) ||
-          (store && !this.#isStorePropDeltaCurrent(store, false, true))) {
+          (store && !this.#isStorePropDeltaCurrent(store, false, true, admitted))) {
           throw new Error("Prepared scoped VDOM transaction is stale");
         }
         state = "committed";
-        if (retained) this.#applyRetainedSourceDelta(retained, true);
-        keyed?.commit();
-        replacement?.commit();
-        if (store) this.applyStorePropDelta(store);
+        if (retained) this.#applyRetainedSourceDelta(retained, true, admitted);
+        if (admitted) keyed?.commitAdmitted();
+        else keyed?.commit();
+        if (admitted) replacement?.commitAdmitted();
+        else replacement?.commit();
+        if (store) this.#applyStorePropDelta(store, admitted);
+      },
+      commitAdmitted: () => {
+        admittedCommit = true;
+        program.commit();
       },
       discard: () => {
         if (state === "discarded") return;
@@ -3353,6 +3477,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         replacement?.discard();
       },
     };
+    return program;
   }
 
   /**
@@ -3463,6 +3588,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     }
 
     if (this.#version !== preparedVersion) return null;
+    const admittedHost = capturedHostMethods(this.host);
     let committed = false;
     let released = false;
     const release = () => {
@@ -3474,9 +3600,9 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       candidateKeys.clear();
       seenTargets.clear();
     };
-    return {
-      validate: () =>
-        !committed &&
+    const preparedCommit: PreparedVDOMCommit = {
+      validatePreparedPrivate: () =>
+        !committed && admittedHost !== null &&
         this.#version === preparedVersion && prepared.every(({ target }) => {
           const entries = target.vnode.key === null
             ? undefined
@@ -3484,6 +3610,16 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           return !target.hostDisposed && entries?.size === 1 &&
             entries.has(target);
         }),
+      validate: () => !committed && this.#version === preparedVersion &&
+        admittedHost?.current() !== false && prepared.every(({ target }) => {
+          const entries = target.vnode.key === null
+            ? undefined : this.#nodesByKey.get(target.vnode.key);
+          return !target.hostDisposed && entries?.size === 1 && entries.has(target);
+        }),
+      commitAdmitted: () => {
+        if (!admittedHost) throw new Error("Prepared VDOM host calls are unsupported");
+        this.#withAdmittedHostCalls(admittedHost.calls, () => preparedCommit.commit());
+      },
       discard: release,
       commit: () => {
         if (committed) {
@@ -3594,6 +3730,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         }
       },
     };
+    return preparedCommit;
   }
 
   /**
@@ -3969,8 +4106,12 @@ export class VDOMSnapshotRoot<H, Parent = H> {
 
   /** Apply a prepared primitive cut inside the shared active publication. */
   applyStorePropDelta(token: PreparedStorePropDelta): void {
+    this.#applyStorePropDelta(token, false);
+  }
+
+  #applyStorePropDelta(token: PreparedStorePropDelta, privateOnly: boolean): void {
     const record = this.#storePropDeltas.get(token);
-    if (!record || !this.#isStorePropDeltaCurrent(token, false, true)) {
+    if (!record || !this.#isStorePropDeltaCurrent(token, false, true, privateOnly)) {
       throw new Error("Prepared Store prop delta is stale");
     }
     record.applied = true;
@@ -4088,10 +4229,31 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     return this.#isRetainedSourceDeltaCurrent(delta, options, false);
   }
 
+  #retainedGroupSourcesCurrent(group: BoundPropGroup<H>, privateOnly: boolean): boolean {
+    if (!privateOnly) return !group.sources.some((source) =>
+      !this.#groupsBySource.get(source)?.has(group) ||
+      !this.#programSourceSlots.get(source)?.eligible);
+    const sources = canonicalCapturedBindingSourceArray(
+      group.rawValue as import("./jsx_binding_runtime.ts").BoundValue,
+    );
+    if (!sources || sources.length !== group.sources.length) return false;
+    for (let index = 0; index < sources.length; index++) {
+      const source = sources[index];
+      const groupSource = Object.getOwnPropertyDescriptor(group.sources, String(index));
+      if (!groupSource || !("value" in groupSource) || groupSource.value !== source) {
+        return false;
+      }
+      if (!this.#groupsBySource.get(source)?.has(group) ||
+        !this.#programSourceSlots.get(source)?.eligible) return false;
+    }
+    return true;
+  }
+
   #isRetainedSourceDeltaCurrent(
     delta: PreparedRetainedSourceDelta,
     options: { afterHost?: boolean } | undefined,
     scoped: boolean,
+    privateOnly = false,
   ): boolean {
     const record = this.#retainedSourceDeltas.get(delta);
     if (!record || record.root !== this || this.#publicationFailed ||
@@ -4102,10 +4264,14 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       return false;
     }
     for (let index = 0; index < record.readSources.length; index++) {
-      if (!options?.afterHost && !Object.is(
-        record.readSources[index].value,
-        record.readValues[index],
-      )) return false;
+      if (!options?.afterHost) {
+        const source = record.readSources[index];
+        const value = privateOnly
+          ? canonicalScalarSourceValue(source) : source.value;
+        if (value === null || !Object.is(value, record.readValues[index])) {
+          return false;
+        }
+      }
     }
     for (let index = 0; index < record.groups.length; index++) {
       const group = record.groups[index];
@@ -4113,10 +4279,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           record.generations[index] ||
         !this.#programSinkSlotByGroup.has(group) ||
         !closedExpressionForBinding(group.rawValue as import("./jsx_binding_runtime.ts").BoundValue) ||
-        group.sources.some((source) =>
-          !this.#groupsBySource.get(source)?.has(group) ||
-          !this.#programSourceSlots.get(source)?.eligible
-        )) return false;
+        !this.#retainedGroupSourcesCurrent(group, privateOnly)) return false;
     }
     return true;
   }
@@ -4129,22 +4292,21 @@ export class VDOMSnapshotRoot<H, Parent = H> {
   #applyRetainedSourceDelta(
     delta: PreparedRetainedSourceDelta,
     scoped: boolean,
+    privateOnly = false,
   ): boolean {
     const record = this.#retainedSourceDeltas.get(delta);
     if (!record || !this.#publicationToken || record.applied ||
       this.#publicationFailed ||
       (!scoped && this.#version !== record.structuralVersion) ||
       record.readSources.some((source, index) =>
-        !Object.is(source.value, record.readValues[index])
+        !Object.is(privateOnly ? canonicalScalarSourceValue(source) : source.value,
+          record.readValues[index])
       ) || record.groups.some((group, index) =>
         (group.acceptedWriteGeneration ?? 0) !==
           record.generations[index] ||
         !this.#programSinkSlotByGroup.has(group) ||
         !closedExpressionForBinding(group.rawValue as import("./jsx_binding_runtime.ts").BoundValue) ||
-        group.sources.some((source) =>
-          !this.#groupsBySource.get(source)?.has(group) ||
-          !this.#programSourceSlots.get(source)?.eligible
-        )
+        !this.#retainedGroupSourcesCurrent(group, privateOnly)
       )) throw new Error("Retained source delta is stale");
     return this.#withNumericWriteGuard(() => {
       let wrote = false;
