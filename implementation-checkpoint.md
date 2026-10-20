@@ -1,5 +1,13 @@
 # Implementation checkpoint
 
+## Portability admission — 20 October 2026
+
+Pinned Apple Container 1.5.0 source places an ordinary VM's disks and runtime launchd plist in the same container bundle. A HOME-only control-root workaround cannot establish VM storage on Depot, so no such experiment runs. Read-only evidence confirms Depot root:wheel mode 0775, API service unregistered and no matching apiserver/Colima/QEMU processes. Saved defaults remain one CPU, 256 MiB/container and 512 MiB/build; effective caps remain unverified. No configuration, permissions, service or VM changes occur.
+
+The current (a)–(h) audit distinguishes implemented private-alpha source from the original unmet release requirements: frozen realtime/cold/memory acceptance, current other-platform and independent-device proof remain open, with qualified dense FAIL and physical HOLD preserved. No additional named mandatory source gap was found within the documented subset; that does not complete or narrow the full goal. The user has been asked for the manual nonrecursive Depot permission prerequisite and a second physical device. Answers remain pending.
+
+[Source audit, exact host evidence and acceptance matrix](implementation/2026-10-20-portability-admission/results.md).
+
 ## Fresh-process lifecycle costs — 20 October 2026
 
 The complete installed 256-row/sixty-update application now has separate local Chromium process startup and forced-GC lifecycle observations. Runtime/compiler source is unchanged. Darwin-v1 passes 63/63 phases, 1093 runtime and 84 Rust tests; installed untimed proof passes 67 stages per arm. The sole Native-first launch-through-ready pair is 1437.831/865.384 ms, including unequal browser launch spans and driver work. Released-controller used-heap deltas from blank pages are 2871620/1856376 bytes, including modules and browser harness; neither result qualifies release, cold-cache, memory, CPU or presentation budgets.
