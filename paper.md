@@ -1,5 +1,17 @@
 # A VDOM-First, Data-Oriented Runtime for Declarative UI
 
+## Shared host publication domains — 20 October 2026
+
+One WeakMap keyed by exact host identity closes cross-root and cross-queue application reentry. Groups claim domains all or none; contention defers unknown bodies and writes, while distinct hosts outside a failed group remain independent. Existing private receipts carry claims, exact acknowledgements and accepted histories remain, and no parallel identity/version registry or tree copying is introduced. Lazy waiters distinguish explicit flush from automatic scheduling. Safe unwind preserves synchronous same-root cleanup under its claim; foreign teardown waits. Partial writers/removals quarantine the domain. A private lifecycle/base recheck after public validation rejects disposal before application.
+
+The immutable 325-source baseline reproduces nested publication before another root's writer throws. Two failed consolidated gates remain preserved. Pre-final-recheck Darwin-v3 passes 61/61; corrected Darwin-v4 passes 61/61 with 1077 runtime tests, 83 Rust tests, 42 compiled fixtures, twenty actual Three cases, three retention checks and thirteen package checks. All 1351 runner inputs match; 1361 source/context rows are archived per gate. Existing semantic assertions remain intact.
+
+Corrected five-tarball installed proof passes nineteen assertions, four publication-domain controls and six resource controls. Complete async/fork/urgent/cancel/disposal episodes pass with 3168 selected installed files, 1361 staged rows, 9209 matching before/after hash checks and clean browser closure. The sole timing pair ran before the final recheck: Native median/p95 0.6/1.2 ms versus React 0.2/0.5 ms, with about 0.1 ms quantum. Those descriptive timings remain bound to archived pre-correction source; corrected source has no timing run or inherited timings, and no second pair is run.
+
+The full-plan first pass remains active, including release performance/cold/memory, current other-platform and independent-device requirements. Historic wins, qualified dense FAIL, exhausted Recording A and physical HOLD retain scope; human participants remain zero with no maintenance claim. Apple tooling/data/logs remain on Depot with saved one-CPU 256 MiB/container and 512 MiB/build defaults. No VM/server, administrator prompt or memory increase occurs; startup permissions and effective VM caps remain unverified.
+
+[Source, failures, receipts and limits](implementation/2026-10-20-host-publication-domain/results.md).
+
 ## Three resource handle lifetimes — 20 October 2026
 
 One host-local lifetime Map replaces the owned-resource Set. Shared geometry/material handles and primitive aliases retain host-owned resources until their final release; borrowed-only assets stay caller-owned. Cleanup attempts attachment restoration and resource release independently, preserves original/cleanup errors, prevents disposal reentry/readmission and rejects duplicate live Object3D handles. Factory/metadata reentry validates retirement after the last creation getter, with one in-flight count preserving known borrowed assets until cleanup. Cross-host and direct args/property borrows remain caller-managed; no global identity/version registry, compiler purity grant or traversal redesign is added.

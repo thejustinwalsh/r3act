@@ -1,0 +1,35 @@
+(node:64280) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: sibling published into the quarantined Three host
+    at file:///Volumes/Depot/Developer/r3act/compiler/compiled_host_publication_domain_test.mjs:194:10 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: Error: ComponentStateRoot cannot continue after a shared host failure
+      at ComponentStateRoot.#assertActive (/Volumes/Depot/Developer/r3act/src/component_state_runtime.ts:10297:13)
+      at ComponentStateRoot.update (/Volumes/Depot/Developer/r3act/src/component_state_runtime.ts:4631:23)
+      at file:///Volumes/Depot/Developer/r3act/compiler/compiled_host_publication_domain_test.mjs:194:30
+      at getActual (node:assert:611:5)
+      at strict.throws (node:assert:759:24)
+      at file:///Volumes/Depot/Developer/r3act/compiler/compiled_host_publication_domain_test.mjs:194:10 {
+    [cause]: Error: compiled-domain-writer-failed
+        at domainProbe (file:///Volumes/Depot/Developer/r3act/compiler/compiled_host_publication_domain_test.mjs:111:46)
+        at Object.setProp (/Volumes/Depot/Developer/r3act/src/three_host.ts:727:19)
+        at Object.setProp (/Volumes/Depot/Developer/r3act/src/vdom_snapshot_runtime.ts:1492:16)
+        at applyProps (/Volumes/Depot/Developer/r3act/src/vdom_snapshot_runtime.ts:889:12)
+        at updateMounted (/Volumes/Depot/Developer/r3act/src/vdom_snapshot_runtime.ts:1200:46)
+        at <anonymous> (/Volumes/Depot/Developer/r3act/src/vdom_snapshot_runtime.ts:1255:7)
+        at Array.map (<anonymous>)
+        at reconcileChildren (/Volumes/Depot/Developer/r3act/src/vdom_snapshot_runtime.ts:1254:17)
+        at updateMounted (/Volumes/Depot/Developer/r3act/src/vdom_snapshot_runtime.ts:1213:22)
+        at <anonymous> (/Volumes/Depot/Developer/r3act/src/vdom_snapshot_runtime.ts:1255:7)
+  },
+  expected: /terminal|failed|quarantin/i,
+  operator: 'throws',
+  diff: 'simple'
+}
+
+Node.js v24.18.0

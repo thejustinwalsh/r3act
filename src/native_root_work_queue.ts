@@ -3,8 +3,11 @@ import {
   batchStorePublication,
 } from "./async_store_runtime.ts";
 import {
+  claimPreparedNativeGroup,
   ComponentStateRoot,
+  isNativeRootHostPublicationBusy,
   publishPreparedNativeGroup,
+  subscribeNativeRootHostPublication,
   type NativeRootCandidate,
 } from "./component_state_runtime.ts";
 import { type AsyncResource } from "./async_resource_runtime.ts";
@@ -24,6 +27,8 @@ type Candidate = NativeRootCandidate<any, any>;
 type PendingSetup = {
   readonly resources: ReadonlyMap<string, AsyncResource<any> | undefined>;
   readonly stores: ReadonlyMap<AnyAsyncStore, ReadonlySet<string>>;
+  readonly hostSubscribe?: (callback: () => void) => () => void;
+  readonly hostAvailable?: () => boolean;
 };
 
 type PendingWave = { cleanup(): void };
@@ -132,6 +137,7 @@ export class NativeRootWorkQueue {
   #workStores = new Map<string, Map<AnyAsyncStore, Set<string>>>();
   #nextResourceToken = 0;
   #nextBlockedToken = 0;
+  #nextHostToken = 0;
   #callDepth = 0;
   #disposed = false;
 
@@ -313,6 +319,8 @@ export class NativeRootWorkQueue {
       throw error;
     }
     try { return this.#invoke(() => {
+      let groupClaim: Extract<ReturnType<typeof claimPreparedNativeGroup>, { status: "claimed" }> | undefined;
+      let groupWasPartial = false;
       const handle = this.#queue.enqueue({
         id: work.id,
         roots: entries.map(({ root }) => root.rootId),
@@ -325,6 +333,28 @@ export class NativeRootWorkQueue {
           // new frontier, or their candidate holds have taken over.
           this.#cleanupWave(work.id);
           const previousLeases = this.#pendingLeases.get(work.id);
+          const suspendForBusyHosts = (busyRoots: readonly NativeRoot[]): never => {
+            this.#pendingSetups.set(work.id, {
+              resources: new Map(),
+              stores: new Map(),
+              hostSubscribe: (callback) => {
+                const unsubscribes = busyRoots.map((root) =>
+                  subscribeNativeRootHostPublication(root, callback)
+                );
+                return () => { for (const unsubscribe of unsubscribes) unsubscribe(); };
+              },
+              hostAvailable: () => busyRoots.every((root) =>
+                !isNativeRootHostPublicationBusy(root)
+              ),
+            });
+            throw new RootWorkPending([
+              `native-host:${++this.#nextHostToken}`,
+            ]);
+          };
+          const busyRoots = entries.filter(({ root }) =>
+            isNativeRootHostPublicationBusy(root)
+          ).map(({ root }) => root);
+          if (busyRoots.length) suspendForBusyHosts(busyRoots);
           for (const dependency of publicationDependencies) {
             this.#rememberRootWorkStores(
               work.id,
@@ -335,6 +365,9 @@ export class NativeRootWorkQueue {
           const prepared: Candidate[] = [];
           try {
             for (const entry of entries) {
+              if (isNativeRootHostPublicationBusy(entry.root)) {
+                suspendForBusyHosts([entry.root]);
+              }
               const candidate = prepareCandidate(
                 entry, transitions, resourceLeaseByRoot.get(entry.root)
               );
@@ -411,11 +444,44 @@ export class NativeRootWorkQueue {
               validate: () => value.validate(),
             }));
           } catch (error) {
-            for (const candidate of prepared) candidate.discard();
+            const cleanupErrors: unknown[] = [];
+            for (const candidate of prepared) {
+              try { candidate.discard(); } catch (cleanupError) {
+                cleanupErrors.push(cleanupError);
+              }
+            }
+            if (cleanupErrors.length) {
+              throw new AggregateError(
+                [error, ...cleanupErrors],
+                "Native preparation and candidate cleanup failed",
+              );
+            }
             throw error;
           }
         },
         discard: ({ value }) => value.discard(),
+        admit: (candidates) => {
+          const claim = claimPreparedNativeGroup(candidates.map(({ value }) => value));
+          if (claim.status === "busy") {
+            this.#pendingSetups.set(work.id, {
+              resources: new Map(),
+              stores: new Map(),
+              hostSubscribe: claim.subscribe,
+              hostAvailable: () => entries.every(({ root }) =>
+                !isNativeRootHostPublicationBusy(root)
+              ),
+            });
+            throw new RootWorkPending([
+              `native-host:${++this.#nextHostToken}`,
+            ]);
+          }
+          groupClaim = claim;
+          groupWasPartial = false;
+          return () => {
+            if (groupClaim === claim) groupClaim = undefined;
+            claim.release();
+          };
+        },
         commit: (candidates) => {
           try {
             // Queue validation admitted the full prepared group before this
@@ -444,6 +510,10 @@ export class NativeRootWorkQueue {
             publishPreparedNativeGroup(candidates.map(({ value }) => value));
           } catch (error) {
             const errors: unknown[] = [error];
+            try { groupWasPartial = groupClaim?.quarantine(error) ?? false; } catch (quarantineError) {
+              groupWasPartial = true;
+              errors.push(quarantineError);
+            }
             for (const { value } of candidates) {
               try { value.failGroup(error); } catch (cleanupError) {
                 errors.push(cleanupError);
@@ -455,6 +525,7 @@ export class NativeRootWorkQueue {
             throw error;
           }
         },
+        commitFailurePoison: () => groupWasPartial,
         afterCommit: (candidates) => {
           const errors: unknown[] = [];
           // Root pointers and queue versions are already visible before any
@@ -705,6 +776,13 @@ export class NativeRootWorkQueue {
     for (const [store, roots] of setup.stores) {
       for (const rootId of roots) {
         unsubscribes.push(store.subscribe(rootId, refreshFrontier));
+      }
+    }
+    if (setup.hostSubscribe) {
+      unsubscribes.push(setup.hostSubscribe(refreshFrontier));
+      if (setup.hostAvailable?.()) {
+        // The holder may have released between failed admission and subscribe.
+        queueMicrotask(() => { if (active) refreshFrontier(); });
       }
     }
     for (const token of tokens) {

@@ -46,6 +46,18 @@ import {
 } from "./resource_read_set.ts";
 import { captureClosedProjectionValues } from "./owned_store_record.ts";
 import { snapshotScopedHostProp } from "./scoped_host_values.ts";
+import {
+  assertHostPublicationClaim,
+  createHostPublicationClaim,
+  hostPublicationDomain,
+  type HostPublicationClaim,
+  type HostPublicationDomain,
+  isHostPublicationDomainBusy,
+  quarantineHostPublicationDomains,
+  releaseHostPublicationDomains,
+  subscribeHostPublicationAvailability,
+  tryClaimHostPublicationDomains,
+} from "./host_publication_domain.ts";
 import { PendingStateChanges } from "./pending_state_changes.ts";
 import type {
   CompiledOwnerUpdateProgram,
@@ -204,7 +216,80 @@ export type NativeRootCandidate<H, Parent = H> = {
 const groupPublicationReceipts = new WeakMap<object, {
   current(): boolean;
   accept(): void;
+  domain: HostPublicationDomain;
+  bindClaim(
+    claim: HostPublicationClaim,
+    entered: () => void,
+    groupWasPartial: () => boolean,
+  ): void;
 }>();
+
+class HostPublicationBusyError extends Error {
+  constructor() { super("Host publication domain is busy"); }
+}
+
+const rootHostPublicationDomain = Symbol("native.root.host-publication-domain");
+
+export const isNativeRootHostPublicationBusy = (
+  root: ComponentStateRoot<any, any>,
+): boolean => isHostPublicationDomainBusy(root[rootHostPublicationDomain]());
+
+export const subscribeNativeRootHostPublication = (
+  root: ComponentStateRoot<any, any>,
+  callback: () => void,
+): (() => void) => subscribeHostPublicationAvailability(
+  [root[rootHostPublicationDomain]()], callback,
+);
+
+type ClaimedNativeGroup = {
+  status: "claimed";
+  release(): void;
+  quarantine(error: unknown): boolean;
+};
+type BusyNativeGroup = {
+  status: "busy";
+  subscribe(callback: () => void): () => void;
+};
+
+/** Claim every host touched by one prepared native group before its first write. */
+export const claimPreparedNativeGroup = <H, Parent>(
+  candidates: readonly NativeRootCandidate<H, Parent>[],
+): ClaimedNativeGroup | BusyNativeGroup => {
+  const receipts = candidates.map((candidate) => groupPublicationReceipts.get(candidate));
+  if (receipts.some((receipt) => !receipt)) {
+    throw new Error("Native candidate has no live publication receipt");
+  }
+  const domains = [...new Set(receipts.map((receipt) => receipt!.domain))];
+  const claim = createHostPublicationClaim();
+  if (tryClaimHostPublicationDomains(domains, claim) === "busy") {
+    return {
+      status: "busy",
+      subscribe: (callback) => subscribeHostPublicationAvailability(domains, callback),
+    };
+  }
+  const touched = new Set<HostPublicationDomain>();
+  for (const receipt of receipts) {
+    receipt!.bindClaim(
+      claim,
+      () => { touched.add(receipt!.domain); },
+      () => touched.size > 0,
+    );
+  }
+  let released = false;
+  return {
+    status: "claimed",
+    release: () => {
+      if (released) return;
+      released = true;
+      releaseHostPublicationDomains(domains, claim);
+    },
+    quarantine: (error) => {
+      if (!touched.size) return false;
+      quarantineHostPublicationDomains([...touched], claim, error);
+      return true;
+    },
+  };
+};
 
 /** Accept a prepared group using only its private final admission receipts. */
 export const publishPreparedNativeGroup = <H, Parent>(
@@ -1364,6 +1449,9 @@ const hasNestedComponent = (
  * site IDs; explicit helpers remain available to host adapters and extensions.
  */
 export class ComponentStateRoot<H, Parent = H> {
+  readonly #hostPublicationDomain: HostPublicationDomain;
+  #hostAvailabilityWait: { unsubscribe: () => void; flushRequested: boolean } | null = null;
+  #activeRootClaim: HostPublicationClaim | null = null;
   readonly #renderPreparation: "repeatable" | undefined;
   readonly world: OwnerStateWorld;
   readonly #rootOwner: OwnerId;
@@ -1478,11 +1566,16 @@ export class ComponentStateRoot<H, Parent = H> {
   };
   static #nextRootId = 1;
 
+  [rootHostPublicationDomain](): HostPublicationDomain {
+    return this.#hostPublicationDomain;
+  }
+
   constructor(
     host: VDOMHost<H, Parent>,
     container: Parent,
     options: ComponentStateRootOptions = {},
   ) {
+    this.#hostPublicationDomain = hostPublicationDomain(host);
     if (options.renderPreparation !== undefined &&
       options.renderPreparation !== "repeatable") {
       throw new TypeError("Unknown render preparation capability");
@@ -1574,6 +1667,64 @@ export class ComponentStateRoot<H, Parent = H> {
       if (this.#pendingDirectIntent) this.#pendingResourceRetry = true;
       this.#schedule();
     });
+  }
+
+  #waitForHostAvailability(flushRequested = false) {
+    if (this.#hostAvailabilityWait) {
+      this.#hostAvailabilityWait.flushRequested ||= flushRequested;
+      return;
+    }
+    if (this.#disposed) return;
+    const wait = { unsubscribe: () => {}, flushRequested };
+    this.#hostAvailabilityWait = wait;
+    wait.unsubscribe = subscribeHostPublicationAvailability(
+      [this.#hostPublicationDomain],
+      () => {
+        if (this.#hostAvailabilityWait !== wait) return;
+        this.#hostAvailabilityWait = null;
+        wait.unsubscribe();
+        if (this.#disposed) return;
+        if (this.#disposeRequested) this.dispose();
+        else if (this.#hostPublicationDomain.failed) return;
+        else if (this.#pendingDirectIntent || wait.flushRequested) this.flush();
+        else if (this.#hasPendingWork()) this.#schedule();
+      },
+    );
+  }
+
+  #enterDirectHostDomain(flushRequested = false): boolean {
+    const claim = createHostPublicationClaim();
+    if (tryClaimHostPublicationDomains(
+      [this.#hostPublicationDomain], claim,
+    ) === "busy") {
+      this.#waitForHostAvailability(flushRequested);
+      return false;
+    }
+    this.#activeRootClaim = claim;
+    return true;
+  }
+
+  #assertPreparationHostAvailable() {
+    if (isHostPublicationDomainBusy(
+      this.#hostPublicationDomain, this.#activeRootClaim ?? undefined,
+    )) throw new HostPublicationBusyError();
+  }
+
+  #leaveDirectHostDomain() {
+    const claim = this.#activeRootClaim;
+    if (!claim) return;
+    this.#activeRootClaim = null;
+    if (this.#disposeRequested) this.#waitForHostAvailability();
+    releaseHostPublicationDomains([this.#hostPublicationDomain], claim);
+    if (!this.#disposeRequested && !this.#disposed &&
+      !this.#hostPublicationDomain.failed && this.#deferredFlush &&
+      this.#pendingDirectIntent) {
+      queueMicrotask(() => {
+        if (!this.#disposed && !this.#disposeRequested &&
+          !this.#hostPublicationDomain.failed && this.#deferredFlush &&
+          this.#pendingDirectIntent) this.flush();
+      });
+    }
   }
 
   #retireCompiledInterests() {
@@ -1678,6 +1829,8 @@ export class ComponentStateRoot<H, Parent = H> {
     } = {},
   ): NativeRootCandidate<H, Parent> {
     this.#requireRepeatableRender(options.renderPreparation);
+    this.#assertActive();
+    this.#assertPreparationHostAvailable();
     const held = this.#publicationIntents.values().next().value;
     if (held) return this.#prepareBlockedPublication([held.wait]);
     return this.#prepareCandidate(tree, options, true, new Set(), new Set());
@@ -1693,6 +1846,7 @@ export class ComponentStateRoot<H, Parent = H> {
     this.#validateRenderPreparation(options.renderPreparation);
     this.#assertActive();
     this.#assertNoPublicationBarrier("prepare");
+    this.#assertPreparationHostAvailable();
     if (this.#terminalHostFailed) {
       throw new Error("Component root is terminal after a host commit failure");
     }
@@ -1760,6 +1914,7 @@ export class ComponentStateRoot<H, Parent = H> {
       cells, selectedStores, false, () => true, resourceLease);
     this.#assertActive();
     this.#assertNoPublicationBarrier("prepare transaction");
+    this.#assertPreparationHostAvailable();
     if ((this.#pendingDirectIntent && !(resourceLease &&
       this.#publicationIntents.has(resourceLease))) ||
       this.#terminalHostFailed || this.#codeInvalidated ||
@@ -1831,6 +1986,7 @@ export class ComponentStateRoot<H, Parent = H> {
   ): NativeRootCandidate<H, Parent> | null {
     this.#assertActive();
     this.#assertNoPublicationBarrier("prepare resources");
+    this.#assertPreparationHostAvailable();
     if (!this.#leaseCoversSelection(resourceLease, new Set(resources), inputs)) {
       return null;
     }
@@ -2600,6 +2756,7 @@ export class ComponentStateRoot<H, Parent = H> {
   ): NativeRootCandidate<H, Parent> | null {
     this.#assertActive();
     this.#assertNoPublicationBarrier("prepare closed inputs");
+    this.#assertPreparationHostAvailable();
     if (!this.#leaseCoversSelection(resourceLease, new Set(),
       { cells, stores: selected })) return null;
     const holdWait = this.#resourceHoldWait(new Set(), resourceLease,
@@ -2772,6 +2929,17 @@ export class ComponentStateRoot<H, Parent = H> {
     let released = false;
     let subscriptionsInstalled = false;
     let candidateHandle: NativeRootCandidate<H, Parent> | null = null;
+    let groupClaim: HostPublicationClaim | null = null;
+    let groupEntered: (() => void) | null = null;
+    let groupWasPartial: (() => boolean) | null = null;
+    let ownClaim: HostPublicationClaim | null = null;
+    let enteredHostApplication = false;
+    const releaseOwnClaim = () => {
+      if (!ownClaim) return;
+      const claim = ownClaim;
+      ownClaim = null;
+      releaseHostPublicationDomains([this.#hostPublicationDomain], claim);
+    };
     const pendingResources = [...spec.pendingResources];
     const release = (published: boolean) => {
       if (released) return;
@@ -2812,16 +2980,30 @@ export class ComponentStateRoot<H, Parent = H> {
         releaseStores,
         () => { this.#preparedCandidates.delete(candidate); },
         () => release(false),
-        () => this.#releasePublicationBarrier(candidate),
+        () => this.#releasePublicationBarrier(candidate, groupClaim ?? ownClaim ?? undefined),
+        releaseOwnClaim,
       ]);
       if (errors.length === 1) throw errors[0];
       if (errors.length) throw new AggregateError(errors, "Candidate cleanup failed");
     };
     const failUnpublished = (error: unknown): never => {
+      if (!enteredHostApplication) {
+        try { finishUnpublished("discarded"); }
+        catch (cleanupError) {
+          throw new AggregateError([error, cleanupError], "Candidate admission and cleanup failed");
+        }
+        throw error;
+      }
       phase = "failed";
       this.#terminalHostFailure ??= error;
       this.#terminalHostFailed = true;
+      const claim = groupClaim ?? this.#activeRootClaim ?? ownClaim;
       const errors = collectCleanupErrors([
+        () => {
+          if (claim) quarantineHostPublicationDomains(
+            [this.#hostPublicationDomain], claim, error,
+          );
+        },
         () => this.#vdom.failPublication(),
         () => this.#dropPendingDirectIntent(),
         () => this.#cancelTerminalResourceWaits(),
@@ -2829,7 +3011,8 @@ export class ComponentStateRoot<H, Parent = H> {
         releaseStores,
         () => { this.#preparedCandidates.delete(candidate); },
         () => release(false),
-        () => this.#releasePublicationBarrier(candidate),
+        () => this.#releasePublicationBarrier(candidate, groupClaim ?? ownClaim ?? undefined),
+        releaseOwnClaim,
       ]);
       return throwWithCleanup(error, errors);
     };
@@ -2841,6 +3024,7 @@ export class ComponentStateRoot<H, Parent = H> {
         this.#vdom.publishAccepted();
         phase = "published";
         spec.accepted?.();
+        releaseOwnClaim();
       } catch (error) {
         this.#terminalFailureKind = "publication";
         failUnpublished(error);
@@ -2871,7 +3055,9 @@ export class ComponentStateRoot<H, Parent = H> {
       },
       validate: () =>
         phase === "prepared" && !released && !this.#disposed &&
-        !this.#terminalHostFailed && !this.#codeInvalidated &&
+        !this.#disposeRequested &&
+        !this.#terminalHostFailed && !this.#hostPublicationDomain.failed &&
+        !this.#codeInvalidated &&
         (scopedDelta || this.#publicationIntents.size === 0 ||
           (spec.permitHeldFullCandidate?.() ?? false)) &&
         (!scopedDelta || spec.permitPendingDirectIntent?.() ||
@@ -2888,16 +3074,28 @@ export class ComponentStateRoot<H, Parent = H> {
       commitHost: () => {
         if (phase !== "prepared") throw new Error(`Candidate is ${phase}`);
         this.#assertNoPublicationBarrier("commit another candidate");
-        if (!candidate.validate()) {
-          finishUnpublished("discarded");
+        if (!candidate.validate() || phase !== "prepared" || released ||
+          this.#disposed || this.#disposeRequested || this.#codeInvalidated ||
+          this.#terminalHostFailed || this.#hostPublicationDomain.failed ||
+          (!scopedDelta && (this.#publicationVersion !== spec.baseVersion ||
+            this.#vdom.version !== spec.baseVDOMVersion))) {
+          if (phase === "prepared" && !released) finishUnpublished("discarded");
           throw new Error("Native root candidate is stale");
         }
+        const claim = groupClaim ?? this.#activeRootClaim ??
+          createHostPublicationClaim();
+        if (tryClaimHostPublicationDomains(
+          [this.#hostPublicationDomain], claim,
+        ) === "busy") throw new HostPublicationBusyError();
+        if (!groupClaim && !this.#activeRootClaim) ownClaim = claim;
         admittedVersion = this.#publicationVersion;
         admittedVDOMVersion = this.#vdom.version;
         this.#publicationBarrier = candidate;
         try {
           this.#vdom.beginPublication();
           this.#candidateHostCommit = true;
+          enteredHostApplication = true;
+          groupEntered?.();
           spec.commitHost();
           if (
             phase !== "prepared" || this.#disposed || this.#disposeRequested
@@ -2984,7 +3182,7 @@ export class ComponentStateRoot<H, Parent = H> {
             () => { this.#preparedCandidates.delete(candidate); },
             releaseStores,
             () => release(true),
-            () => this.#releasePublicationBarrier(candidate),
+            () => this.#releasePublicationBarrier(candidate, groupClaim ?? ownClaim ?? undefined),
           ]));
         }
         if (errors.length) {
@@ -3003,12 +3201,25 @@ export class ComponentStateRoot<H, Parent = H> {
       },
       failGroup: (error) => {
         if (phase === "failed" || phase === "discarded") return;
+        if (!enteredHostApplication && !this.#hostPublicationDomain.failed &&
+          !(groupWasPartial?.() ?? false)) {
+          finishUnpublished("discarded");
+          return;
+        }
         const wasPublished = phase === "published" || phase === "finished";
         phase = "failed";
         this.#terminalHostFailure ??= error;
         this.#terminalHostFailed = true;
         if (wasPublished) this.#terminalFailureKind = "publication";
         const errors = collectCleanupErrors([
+          () => {
+            const claim = groupClaim ?? this.#activeRootClaim ?? ownClaim;
+            if (claim && enteredHostApplication) {
+              quarantineHostPublicationDomains(
+                [this.#hostPublicationDomain], claim, error,
+              );
+            }
+          },
           () => this.#vdom.failPublication(),
           () => this.#dropPendingDirectIntent(),
           () => this.#cancelTerminalResourceWaits(),
@@ -3016,7 +3227,8 @@ export class ComponentStateRoot<H, Parent = H> {
           releaseStores,
           () => { this.#preparedCandidates.delete(candidate); },
           () => release(wasPublished),
-          () => this.#releasePublicationBarrier(candidate),
+          () => this.#releasePublicationBarrier(candidate, groupClaim ?? ownClaim ?? undefined),
+          releaseOwnClaim,
         ]);
         if (errors.length) throwWithCleanup(error, errors);
       },
@@ -3025,6 +3237,12 @@ export class ComponentStateRoot<H, Parent = H> {
     groupPublicationReceipts.set(candidate, {
       current: finalPrivateCurrent,
       accept: acceptPrepared,
+      domain: this.#hostPublicationDomain,
+      bindClaim: (claim, entered, partial) => {
+        groupClaim = claim;
+        groupEntered = entered;
+        groupWasPartial = partial;
+      },
     });
     this.#preparedCandidates.set(candidate, spec.referencesCompiledSource ?? (() => false));
     if (this.#codeInvalidated) candidate.discard();
@@ -3395,6 +3613,7 @@ export class ComponentStateRoot<H, Parent = H> {
   ): NativeRootCandidate<H, Parent> {
     this.#assertActive();
     this.#assertNoPublicationBarrier("prepare");
+    this.#assertPreparationHostAvailable();
     if (this.#terminalHostFailed) {
       throw new Error("Component root is terminal after a host commit failure");
     }
@@ -3876,7 +4095,17 @@ export class ComponentStateRoot<H, Parent = H> {
     if (this.version !== 0) {
       throw new Error("ComponentStateRoot is already mounted");
     }
-    this.#renderAndCommit(tree, true);
+    if (!this.#enterDirectHostDomain()) {
+      this.#pendingDirectIntent = {
+        tree,
+        releaseStoreLease: null,
+        attemptedStoreGeneration: null,
+      };
+      this.#deferredFlush = true;
+      return;
+    }
+    try { this.#renderAndCommit(tree, true); }
+    finally { this.#leaveDirectHostDomain(); }
   }
 
   /** Commit one batched owner/site update; return false when there is no work. */
@@ -3885,18 +4114,31 @@ export class ComponentStateRoot<H, Parent = H> {
     // Keep capture buffers owned by the outer frame across reentrant flushes; its
     // acknowledgement schedules any newer setter version.
     if (this.#nativeCellCutActive || this.#scopedFlushActive) {
+      if (isHostPublicationDomainBusy(this.#hostPublicationDomain)) {
+        this.#waitForHostAvailability(true);
+      }
       this.#scheduled = false;
       this.#deferredFlush = true;
       return false;
     }
     if (
       this.#publicationBarrier || this.#hostApplicationDepth > 0 ||
-      this.#directPublicationPending
+      this.#directPublicationPending || this.#activeRootClaim
     ) {
+      if (isHostPublicationDomainBusy(this.#hostPublicationDomain)) {
+        this.#waitForHostAvailability(true);
+      }
       this.#deferredFlush = true;
       this.#scheduled = false;
       return false;
     }
+    if (!this.#enterDirectHostDomain(true)) {
+      this.#scheduled = false;
+      this.#deferredFlush = true;
+      return false;
+    }
+    this.#deferredFlush = false;
+    try {
     const flushStarted = this.#profile ? performance.now() : 0;
     const reportFlush = () => {
       if (this.#activeCounters) {
@@ -4395,6 +4637,9 @@ export class ComponentStateRoot<H, Parent = H> {
     }
     reportFlush();
     return true;
+    } finally {
+      this.#leaveDirectHostDomain();
+    }
   }
 
   /** Replace the declarative tree while preserving component owners by site/key. */
@@ -4412,7 +4657,12 @@ export class ComponentStateRoot<H, Parent = H> {
       previous.tree = null;
     }
     this.#pendingDirectIntent = intent;
-    this.#renderAndCommit(tree, true, new Set(), new Set(), 0, [], intent);
+    if (this.#activeRootClaim || !this.#enterDirectHostDomain()) {
+      this.#deferredFlush = true;
+      return;
+    }
+    try { this.#renderAndCommit(tree, true, new Set(), new Set(), 0, [], intent); }
+    finally { this.#leaveDirectHostDomain(); }
   }
 
   render(tree: RuntimeNode) {
@@ -4420,16 +4670,32 @@ export class ComponentStateRoot<H, Parent = H> {
   }
 
   dispose() {
+    this.#disposeWithClaim();
+  }
+
+  #disposeWithClaim(borrowedClaim?: HostPublicationClaim) {
     if (this.#disposed) return;
     if (
       this.#publicationBarrier || this.#nativeCellCutActive ||
       this.#directPublicationPending ||
-      this.#hostApplicationDepth > 0
+      this.#hostApplicationDepth > 0 ||
+      (this.#activeRootClaim && this.#activeRootClaim !== borrowedClaim)
     ) {
       this.#disposeRequested = true;
       this.#vdom.cancelPendingRefAttachments();
+      if (this.#activeRootClaim) this.#waitForHostAvailability();
       return;
     }
+    const teardownClaim = borrowedClaim ?? createHostPublicationClaim();
+    if (tryClaimHostPublicationDomains(
+      [this.#hostPublicationDomain], teardownClaim, "teardown",
+    ) === "busy") {
+      this.#disposeRequested = true;
+      this.#vdom.cancelPendingRefAttachments();
+      this.#waitForHostAvailability();
+      return;
+    }
+    try {
     this.#disposing = true;
     const disposeErrors: unknown[] = [];
     for (const candidate of [...this.#preparedCandidates.keys()]) {
@@ -4444,6 +4710,8 @@ export class ComponentStateRoot<H, Parent = H> {
     this.#disposed = true;
     this.#disposing = false;
     this.#deferredFlush = false;
+    this.#hostAvailabilityWait?.unsubscribe();
+    this.#hostAvailabilityWait = null;
     disposeErrors.push(...collectCleanupErrors([...this.#retireListeners]));
     this.#retireListeners.clear();
     disposeErrors.push(...collectCleanupErrors(
@@ -4486,6 +4754,13 @@ export class ComponentStateRoot<H, Parent = H> {
       this.#vdom.dispose();
     } catch (error) {
       disposeErrors.push(error);
+      try {
+        quarantineHostPublicationDomains(
+          [this.#hostPublicationDomain], teardownClaim, error,
+        );
+      } catch (quarantineError) {
+        disposeErrors.push(quarantineError);
+      }
     }
     const subscribedStores = [...this.#liveStoreSubscriptions.keys()];
     for (const unsubscribe of this.#liveStoreSubscriptions.values()) {
@@ -4530,6 +4805,11 @@ export class ComponentStateRoot<H, Parent = H> {
         effectErrors,
         "Component effect cleanup failed during dispose",
       );
+    }
+    } finally {
+      if (!borrowedClaim) {
+        releaseHostPublicationDomains([this.#hostPublicationDomain], teardownClaim);
+      }
     }
   }
 
@@ -4719,6 +4999,7 @@ export class ComponentStateRoot<H, Parent = H> {
   ): NativeRootCandidate<H, Parent> | null {
     this.#assertActive();
     this.#assertNoPublicationBarrier("prepare resource reveals");
+    this.#assertPreparationHostAvailable();
     if (!boundaryOwners.length || new Set(boundaryOwners).size !== boundaryOwners.length ||
       this.#terminalHostFailed || this.#codeInvalidated) return null;
     const baseVersion = this.#publicationVersion;
@@ -8163,6 +8444,12 @@ export class ComponentStateRoot<H, Parent = H> {
   #commitHostMutation<T>(commit: () => T, deferPublication = false): T {
     const direct = !this.#candidateHostCommit;
     if (this.#codeInvalidated) throw new Error("Compiled module changed; remount the root");
+    if (direct) {
+      if (!this.#activeRootClaim) {
+        throw new Error("Direct host mutation has no publication claim");
+      }
+      assertHostPublicationClaim(this.#hostPublicationDomain, this.#activeRootClaim);
+    }
     if (direct) this.#vdom.beginPublication();
     let failed = false;
     let primaryFailure: unknown;
@@ -8191,6 +8478,13 @@ export class ComponentStateRoot<H, Parent = H> {
       this.#terminalHostFailure ??= error;
       this.#terminalHostFailed = true;
       const cleanup = collectCleanupErrors([
+        () => {
+          if (direct && this.#activeRootClaim) {
+            quarantineHostPublicationDomains(
+              [this.#hostPublicationDomain], this.#activeRootClaim, error,
+            );
+          }
+        },
         () => this.#dropPendingDirectIntent(),
         () => this.#cancelTerminalResourceWaits(),
       ]);
@@ -8210,6 +8504,10 @@ export class ComponentStateRoot<H, Parent = H> {
     if (!this.#directPublicationPending) {
       throw new Error("No direct host publication is pending");
     }
+    if (!this.#activeRootClaim) {
+      throw new Error("Direct host publication has no claim");
+    }
+    assertHostPublicationClaim(this.#hostPublicationDomain, this.#activeRootClaim);
     if (this.#codeInvalidated) {
       this.#failDirectHostMutation(new Error("Compiled module changed before publication"));
     }
@@ -8234,6 +8532,11 @@ export class ComponentStateRoot<H, Parent = H> {
     this.#terminalHostFailed = true;
     this.#terminalFailureKind = "publication";
     const cleanup = collectCleanupErrors([
+      () => {
+        if (this.#activeRootClaim) quarantineHostPublicationDomains(
+          [this.#hostPublicationDomain], this.#activeRootClaim, error,
+        );
+      },
       () => this.#dropPendingDirectIntent(),
       () => this.#cancelTerminalResourceWaits(),
     ]);
@@ -8265,23 +8568,24 @@ export class ComponentStateRoot<H, Parent = H> {
     if (errors.length) throw new AggregateError(errors, "Resource wait cleanup failed");
   }
 
-  #completeDeferredDispose() {
+  #completeDeferredDispose(borrowedClaim?: HostPublicationClaim) {
     if (
       !this.#disposeRequested || this.#disposed || this.#publicationBarrier ||
       this.#directPublicationPending ||
       this.#nativeCellCutActive || this.#hostApplicationDepth > 0
     ) return;
     this.#disposeRequested = false;
-    this.dispose();
+    this.#disposeWithClaim(this.#activeRootClaim ?? borrowedClaim);
   }
 
   #finishDeferredLifetime(
     primary?: { error: unknown },
     priorErrors: readonly unknown[] = [],
+    borrowedClaim?: HostPublicationClaim,
   ): void {
     const errors = [...priorErrors, ...collectCleanupErrors([
       () => this.#retireCompiledInterests(),
-      () => this.#completeDeferredDispose(),
+      () => this.#completeDeferredDispose(borrowedClaim),
     ])];
     if (primary) throwWithCleanup(primary.error, errors);
     if (errors.length === 1) throw errors[0];
@@ -8304,10 +8608,16 @@ export class ComponentStateRoot<H, Parent = H> {
     }
   }
 
-  #releasePublicationBarrier(candidate: NativeRootCandidate<H, Parent>) {
-    if (this.#publicationBarrier !== candidate) return;
+  #releasePublicationBarrier(
+    candidate: NativeRootCandidate<H, Parent>,
+    borrowedClaim?: HostPublicationClaim,
+  ) {
+    if (this.#publicationBarrier !== candidate) {
+      this.#finishDeferredLifetime(undefined, [], borrowedClaim);
+      return;
+    }
     this.#publicationBarrier = null;
-    this.#finishDeferredLifetime();
+    this.#finishDeferredLifetime(undefined, [], borrowedClaim);
     const shouldFlush = this.#deferredFlush || this.#hasPendingWork();
     this.#deferredFlush = false;
     if (
@@ -8352,8 +8662,16 @@ export class ComponentStateRoot<H, Parent = H> {
   }
 
   #schedule() {
-    if (this.#disposed || this.#codeInvalidated ||
-      this.#terminalHostFailed || this.#scheduled) return;
+    if (this.#disposed || this.#disposeRequested || this.#codeInvalidated ||
+      this.#terminalHostFailed || this.#hostPublicationDomain.failed ||
+      this.#scheduled) return;
+    if (isHostPublicationDomainBusy(
+      this.#hostPublicationDomain, this.#activeRootClaim ?? undefined,
+    )) {
+      this.#deferredFlush = true;
+      this.#waitForHostAvailability();
+      return;
+    }
     if (
       this.#publicationBarrier || this.#hostApplicationDepth > 0 ||
       this.#directPublicationPending || this.#scopedFlushActive
@@ -8363,7 +8681,7 @@ export class ComponentStateRoot<H, Parent = H> {
     }
     this.#scheduled = true;
     this.#scheduleCommit(() => {
-      if (this.#disposed || this.#codeInvalidated ||
+      if (this.#disposed || this.#disposeRequested || this.#codeInvalidated ||
         this.#terminalHostFailed || !this.#scheduled) return;
       this.#scheduled = false;
       if (
@@ -8373,7 +8691,7 @@ export class ComponentStateRoot<H, Parent = H> {
         this.#deferredFlush = true;
         return;
       }
-      if (this.#hasPendingWork()) {
+      if (this.#pendingDirectIntent || this.#hasPendingWork()) {
         this.flush();
       }
     });
@@ -10004,6 +10322,11 @@ export class ComponentStateRoot<H, Parent = H> {
           : "ComponentStateRoot cannot continue after partial publication",
         { cause: this.#terminalHostFailure },
       );
+    }
+    if (this.#hostPublicationDomain.failed) {
+      throw new Error("ComponentStateRoot cannot continue after a shared host failure", {
+        cause: this.#hostPublicationDomain.failure,
+      });
     }
   }
 }

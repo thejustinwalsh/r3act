@@ -1,0 +1,28 @@
+:root { color: #f5f3ee; background: #151515; font: 15px/1.5 system-ui, sans-serif; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { max-width: 980px; margin: 0 auto; padding: 40px 24px 64px; }
+h1 { font-size: clamp(2rem, 5vw, 3.2rem); line-height: 1.06; margin: 8px 0 12px; letter-spacing: -0.04em; }
+header p { color: #bcbab5; max-width: 68ch; }
+.eyebrow { color: #f4a340; text-transform: uppercase; letter-spacing: .12em; font-size: .72rem; }
+.game-link { display: inline-flex; align-items: center; gap: 10px; margin-top: 8px; color: #a8e8dc; font-weight: 650; text-decoration-color: #5b9c90; text-underline-offset: 4px; }
+.game-link span { font-size: 1.1em; transition: transform .16s ease; }
+.game-link:hover span { transform: translate(2px, -2px); }
+.controls { display: flex; flex-wrap: wrap; gap: 12px; margin: 28px 0; }
+label { display: grid; gap: 5px; color: #bab8b3; font-size: .82rem; }
+select, input, button { background: #272727; color: #fff; border: 1px solid #555; border-radius: 6px; padding: 9px 12px; font: inherit; }
+button { background: #f4a340; color: #17120b; border: 0; font-weight: 700; cursor: pointer; }
+.result { font-variant-numeric: tabular-nums; color: #f4a340; min-height: 1.5em; }
+.field { position: relative; overflow: hidden; border: 1px solid #383838; background-color: #1d1d1d; background-image: linear-gradient(#292929 1px, transparent 1px); background-size: 100% 12px; }
+.particle { width: 4px; height: 4px; position: absolute; left: 0; top: 4px; background: #7bd0c4; will-change: transform; }
+.scene-node { width: 4px; height: 4px; position: absolute; top: 4px; background: #7bd0c4; will-change: transform; }
+aside { margin-top: 24px; border-left: 2px solid #f4a340; padding: 12px 16px; color: #c7c4be; background: #202020; font-size: .9rem; }
+.prototype-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.prototype-fields h2 { font-size: .95rem; font-weight: 600; color: #bcbab5; }
+.prototype-fields .field { height: 180px; }
+.keyed-field { height: 420px !important; overflow: auto; contain: content; }
+.keyed-list { list-style: none; margin: 0; padding: 0; }
+.keyed-list li { padding: 3px 8px; border-bottom: 1px solid #383838; font: 12px/1.4 ui-monospace, monospace; }
+.particle-layer { position: relative; width: 100%; height: 100%; }
+@media (max-width: 960px) { .prototype-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .prototype-fields { grid-template-columns: 1fr; } }

@@ -99,8 +99,12 @@ export type RootWorkDefinition<T> = {
    * before returning, prepare remains responsible for any partial resources.
    */
   discard?(candidate: RootWorkCandidate<T>): void;
+  /** Final callback-free admission before root commit flags and host writes. */
+  admit?(candidates: readonly RootWorkCandidate<T>[]): void | (() => void);
   /** One synchronous callback owns the whole root group commit boundary. */
   commit(candidates: readonly RootWorkCandidate<T>[]): void;
+  /** Whether a failed commit may have changed a host; defaults to true. */
+  commitFailurePoison?(error: unknown): boolean;
   /**
    * Runs once after every root version is published and status is committed,
    * before onSettled. Group root locks remain held through both callbacks.
@@ -598,6 +602,30 @@ export class RootWorkQueue<T = unknown> {
           continue;
         }
 
+        let releaseAdmission: void | (() => void);
+        try {
+          releaseAdmission = definition.admit?.(candidates);
+        } catch (error) {
+          this.#discardCandidates(definition, candidates);
+          if (error instanceof RootWorkPending && record.status === "pending") {
+            this.#suspendForPending(record, error);
+          } else if (record.status === "pending") {
+            this.#failValidation(record, error);
+          }
+          record.deferSettledNotification = false;
+          this.#notifySettled(record);
+          return;
+        }
+        if (record.status !== "pending") {
+          try { releaseAdmission?.(); } catch (error) {
+            this.#reportCallbackError(error);
+          }
+          this.#discardCandidates(definition, candidates);
+          record.deferSettledNotification = false;
+          this.#notifySettled(record);
+          return;
+        }
+
         for (const rootId of definition.roots) {
           this.#committingRoots.add(rootId);
         }
@@ -609,18 +637,30 @@ export class RootWorkQueue<T = unknown> {
           for (const rootId of definition.roots) {
             this.#committingRoots.delete(rootId);
           }
-          // Host side effects may be partial and cannot generally be rolled back.
-          for (const rootId of definition.roots) {
-            this.#rootFailures.set(rootId, error);
+          let partial = true;
+          try {
+            partial = definition.commitFailurePoison?.(error) ?? true;
+          } catch (classificationError) {
+            this.#reportCallbackError(classificationError);
+          }
+          if (partial) {
+            for (const rootId of definition.roots) {
+              this.#rootFailures.set(rootId, error);
+            }
           }
           this.#settle(record, {
             status: "failed",
             transitionId: definition.id,
             roots: definition.roots,
-            reason: "Grouped host commit failed; roots require remount",
+            reason: partial
+              ? "Grouped host commit failed; roots require remount"
+              : "Grouped commit failed before host application",
             error,
           });
           this.#discardCandidates(definition, candidates);
+          try { releaseAdmission?.(); } catch (releaseError) {
+            this.#reportCallbackError(releaseError);
+          }
           record.deferSettledNotification = false;
           this.#notifySettled(record);
           return;
@@ -637,6 +677,10 @@ export class RootWorkQueue<T = unknown> {
           definition.afterCommit?.(candidates);
         } catch (error) {
           this.#reportCallbackError(error);
+        } finally {
+          try { releaseAdmission?.(); } catch (error) {
+            this.#reportCallbackError(error);
+          }
         }
         record.deferSettledNotification = false;
         this.#notifySettled(record);

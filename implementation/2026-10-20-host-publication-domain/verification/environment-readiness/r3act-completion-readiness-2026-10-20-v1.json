@@ -1,0 +1,1256 @@
+{
+  "schema": "r3act-completion-readiness-v1",
+  "recordedAtUtc": "2026-10-20T03:33:56.714407+00:00",
+  "repo": "/Volumes/Depot/Developer/r3act",
+  "currentHead": "3b6303d3ec52906b1eb67611e94a9fc7eab1f084",
+  "worktreeStatusExitCode": 0,
+  "worktreeStatus": "",
+  "savedAppleConfiguration": [
+    {
+      "path": "/Users/mini/.config/container/config.toml",
+      "resolvedPath": "/Users/mini/.config/container/config.toml",
+      "sha256": "e70aa724745aea6808994e8ed31091894339b623543e51b4e57f453878586e7d",
+      "bytes": 87,
+      "mode": "0o644",
+      "inode": 6984881,
+      "settings": {
+        "container": {
+          "cpus": 1,
+          "memory": "256m"
+        },
+        "build": {
+          "rosetta": false,
+          "cpus": 1,
+          "memory": "512m"
+        }
+      }
+    },
+    {
+      "path": "/Volumes/Depot/Containers/apple/data/config/config.toml",
+      "resolvedPath": "/Volumes/Depot/Containers/apple/data/config/config.toml",
+      "sha256": "e70aa724745aea6808994e8ed31091894339b623543e51b4e57f453878586e7d",
+      "bytes": 87,
+      "mode": "0o444",
+      "inode": 10773945,
+      "settings": {
+        "container": {
+          "cpus": 1,
+          "memory": "256m"
+        },
+        "build": {
+          "rosetta": false,
+          "cpus": 1,
+          "memory": "512m"
+        }
+      }
+    },
+    {
+      "path": "/Users/mini/Library/Application Support/com.apple.container/config/config.toml",
+      "resolvedPath": "/Volumes/Depot/Containers/apple/data/config/config.toml",
+      "sha256": "e70aa724745aea6808994e8ed31091894339b623543e51b4e57f453878586e7d",
+      "bytes": 87,
+      "mode": "0o444",
+      "inode": 10773945,
+      "settings": {
+        "container": {
+          "cpus": 1,
+          "memory": "256m"
+        },
+        "build": {
+          "rosetta": false,
+          "cpus": 1,
+          "memory": "512m"
+        }
+      }
+    }
+  ],
+  "depotPathModes": [
+    {
+      "path": "/Volumes/Depot",
+      "mode": "0o775",
+      "uid": 0,
+      "gid": 0,
+      "inode": 2
+    },
+    {
+      "path": "/Volumes/Depot/Containers/apple/data",
+      "mode": "0o755",
+      "uid": 501,
+      "gid": 20,
+      "inode": 10643769
+    },
+    {
+      "path": "/Volumes/Depot/Developer/r3act",
+      "mode": "0o755",
+      "uid": 501,
+      "gid": 20,
+      "inode": 10294485
+    }
+  ],
+  "checks": [
+    {
+      "name": "saved-config-and-path-readback",
+      "startedUtc": "2026-10-20T03:33:43.914017+00:00",
+      "endedUtc": "2026-10-20T03:33:43.916034+00:00",
+      "wallSeconds": 0.002,
+      "timeoutSeconds": 10,
+      "timedOut": false,
+      "exitCode": 0,
+      "supervisorExitCode": 0
+    },
+    {
+      "name": "apple-container-system-status",
+      "argv": [
+        "/Users/mini/.local/bin/container",
+        "system",
+        "status"
+      ],
+      "startedUtc": "2026-10-20T03:33:43.916041+00:00",
+      "endedUtc": "2026-10-20T03:33:44.010220+00:00",
+      "wallSeconds": 0.094,
+      "timeoutSeconds": 10,
+      "timedOut": false,
+      "exitCode": 1,
+      "supervisorExitCode": 1,
+      "stdout": "apiserver is not running and not registered with launchd\n",
+      "stderr": ""
+    },
+    {
+      "name": "sudo-noninteractive-probe",
+      "argv": [
+        "sudo",
+        "-n",
+        "true"
+      ],
+      "startedUtc": "2026-10-20T03:33:44.010372+00:00",
+      "endedUtc": "2026-10-20T03:33:44.032846+00:00",
+      "wallSeconds": 0.022,
+      "timeoutSeconds": 10,
+      "timedOut": false,
+      "exitCode": 1,
+      "supervisorExitCode": 1,
+      "stdout": "",
+      "stderr": "sudo: a password is required\n"
+    },
+    {
+      "name": "vm-process-inventory",
+      "argv": [
+        "ps",
+        "-axo",
+        "pid,ppid,stat,etime,command"
+      ],
+      "startedUtc": "2026-10-20T03:33:44.032898+00:00",
+      "endedUtc": "2026-10-20T03:33:44.054890+00:00",
+      "wallSeconds": 0.022,
+      "timeoutSeconds": 10,
+      "timedOut": false,
+      "exitCode": 0,
+      "supervisorExitCode": 0,
+      "matchedProcesses": []
+    },
+    {
+      "name": "docker-readonly-status",
+      "argv": [
+        "docker",
+        "info",
+        "--format",
+        "{{.ServerVersion}} {{.OperatingSystem}} {{.Name}}"
+      ],
+      "startedUtc": "2026-10-20T03:33:44.056494+00:00",
+      "endedUtc": "2026-10-20T03:33:44.278663+00:00",
+      "wallSeconds": 0.222,
+      "timeoutSeconds": 10,
+      "timedOut": false,
+      "exitCode": 1,
+      "supervisorExitCode": 1,
+      "stdout": "  \n",
+      "stderr": "Cannot connect to the Docker daemon at unix:///Users/mini/.colima/default/docker.sock. Is the docker daemon running?\n"
+    },
+    {
+      "name": "colima-readonly-status",
+      "argv": [
+        "colima",
+        "status"
+      ],
+      "startedUtc": "2026-10-20T03:33:44.279294+00:00",
+      "endedUtc": "2026-10-20T03:33:44.645147+00:00",
+      "wallSeconds": 0.366,
+      "timeoutSeconds": 10,
+      "timedOut": false,
+      "exitCode": 1,
+      "supervisorExitCode": 1,
+      "stdout": "",
+      "stderr": "time=\"2026-10-19T23:33:44-04:00\" level=fatal msg=\"colima is not running\"\n"
+    },
+    {
+      "name": "origin-head-and-main",
+      "argv": [
+        "git",
+        "ls-remote",
+        "origin",
+        "HEAD",
+        "refs/heads/main"
+      ],
+      "startedUtc": "2026-10-20T03:33:44.645202+00:00",
+      "endedUtc": "2026-10-20T03:33:44.963543+00:00",
+      "wallSeconds": 0.318,
+      "timeoutSeconds": 10,
+      "timedOut": false,
+      "exitCode": 0,
+      "supervisorExitCode": 0,
+      "stdout": "a694d72959970eca750d2fa09c91d0b64ae5494a\tHEAD\na694d72959970eca750d2fa09c91d0b64ae5494a\trefs/heads/main\n",
+      "stderr": ""
+    },
+    {
+      "name": "gh-auth-readonly",
+      "argv": [
+        "gh",
+        "auth",
+        "status",
+        "--hostname",
+        "github.com"
+      ],
+      "startedUtc": "2026-10-20T03:33:44.964009+00:00",
+      "endedUtc": "2026-10-20T03:33:45.415657+00:00",
+      "wallSeconds": 0.452,
+      "timeoutSeconds": 10,
+      "timedOut": false,
+      "exitCode": 0,
+      "supervisorExitCode": 0
+    },
+    {
+      "name": "existing-github-actions-runs",
+      "argv": [
+        "gh",
+        "run",
+        "list",
+        "--repo",
+        "thejustinwalsh/r3act",
+        "--limit",
+        "10",
+        "--json",
+        "databaseId,displayTitle,status,conclusion,headSha,url,workflowName,createdAt"
+      ],
+      "startedUtc": "2026-10-20T03:33:45.415774+00:00",
+      "endedUtc": "2026-10-20T03:33:45.791775+00:00",
+      "wallSeconds": 0.376,
+      "timeoutSeconds": 10,
+      "timedOut": false,
+      "exitCode": 0,
+      "supervisorExitCode": 0
+    },
+    {
+      "name": "current-git-head-and-worktree",
+      "argv": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "startedUtc": "2026-10-20T03:33:45.792054+00:00",
+      "endedUtc": "2026-10-20T03:33:45.808864+00:00",
+      "wallSeconds": 0.017,
+      "timeoutSeconds": 10,
+      "timedOut": false,
+      "exitCode": 0,
+      "supervisorExitCode": 0
+    },
+    {
+      "name": "worktree-status-readonly",
+      "argv": [
+        "git",
+        "status",
+        "--short"
+      ],
+      "startedUtc": "2026-10-20T03:33:45.809045+00:00",
+      "endedUtc": "2026-10-20T03:33:49.269342+00:00",
+      "wallSeconds": 3.46,
+      "timeoutSeconds": 10,
+      "timedOut": false,
+      "exitCode": 0,
+      "supervisorExitCode": 0
+    }
+  ],
+  "containerSystemStatus": {
+    "argv": [
+      "/Users/mini/.local/bin/container",
+      "system",
+      "status"
+    ],
+    "startedUtc": "2026-10-20T03:33:43.916041+00:00",
+    "endedUtc": "2026-10-20T03:33:44.010220+00:00",
+    "wallSeconds": 0.094,
+    "timeoutSeconds": 10,
+    "timedOut": false,
+    "exitCode": 1,
+    "supervisorExitCode": 1,
+    "stdout": "apiserver is not running and not registered with launchd\n",
+    "stderr": "",
+    "spawnError": null
+  },
+  "sudoNoninteractiveProbe": {
+    "argv": [
+      "sudo",
+      "-n",
+      "true"
+    ],
+    "startedUtc": "2026-10-20T03:33:44.010372+00:00",
+    "endedUtc": "2026-10-20T03:33:44.032846+00:00",
+    "wallSeconds": 0.022,
+    "timeoutSeconds": 10,
+    "timedOut": false,
+    "exitCode": 1,
+    "supervisorExitCode": 1,
+    "stdout": "",
+    "stderr": "sudo: a password is required\n",
+    "spawnError": null
+  },
+  "vmProcessInventory": {
+    "exitCode": 0,
+    "timedOut": false,
+    "matchedProcesses": []
+  },
+  "readonlyEngineChecks": {
+    "docker": {
+      "path": "/opt/homebrew/bin/docker",
+      "status": 1,
+      "timedOut": false,
+      "stdout": "  \n",
+      "stderr": "Cannot connect to the Docker daemon at unix:///Users/mini/.colima/default/docker.sock. Is the docker daemon running?\n"
+    },
+    "colima": {
+      "path": "/opt/homebrew/bin/colima",
+      "status": 1,
+      "timedOut": false,
+      "stdout": "",
+      "stderr": "time=\"2026-10-19T23:33:44-04:00\" level=fatal msg=\"colima is not running\"\n"
+    }
+  },
+  "originRefs": {
+    "exitCode": 0,
+    "timedOut": false,
+    "refs": [
+      "a694d72959970eca750d2fa09c91d0b64ae5494a\tHEAD",
+      "a694d72959970eca750d2fa09c91d0b64ae5494a\trefs/heads/main"
+    ],
+    "stderr": ""
+  },
+  "githubActions": {
+    "installed": true,
+    "path": "/opt/homebrew/bin/gh",
+    "authStatusExitCode": 0,
+    "authenticated": true,
+    "authTimedOut": false,
+    "runsCommandExitCode": 0,
+    "runsTimedOut": false,
+    "runs": []
+  },
+  "platformEvidence": {
+    "receiptCount": 100,
+    "receipts": [
+      {
+        "path": "implementation/2026-10-18-authored-lifecycle/verification/darwin-v1/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "b5534eff25ef5f56b15f72badc1c4b187ee8e5f1",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-18-authored-lifecycle/verification/darwin-v2/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "b5534eff25ef5f56b15f72badc1c4b187ee8e5f1",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-18-component-forwarding/verification/darwin-v1/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "3bf24ad320ec1ff39622a634970b67c8736a90a7",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-18-joint-async-inputs/verification/darwin-v1/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "09f4636b78913e99c0b1743054c2eef69d7913fe",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-18-joint-async-inputs/verification/darwin-v2/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "09f4636b78913e99c0b1743054c2eef69d7913fe",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-18-joint-async-inputs/verification/darwin-v3/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "09f4636b78913e99c0b1743054c2eef69d7913fe",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-18-joint-async-inputs/verification/preflight-v1/failed-attempt-empty-cargo-vars/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": null,
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-18-linux-delivery/verification/linux-v1/raw-output/verify/runner/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "cd8ea3385bca141b61ef1608068dd12167b7dcba",
+        "matchesCurrentHead": false,
+        "platform": "linux",
+        "arch": "arm64",
+        "executionKind": "linux-vm"
+      },
+      {
+        "path": "implementation/2026-10-18-linux-delivery/verification/linux-v2/raw-output/verify/runner/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "cd8ea3385bca141b61ef1608068dd12167b7dcba",
+        "matchesCurrentHead": false,
+        "platform": "linux",
+        "arch": "arm64",
+        "executionKind": "linux-vm"
+      },
+      {
+        "path": "implementation/2026-10-18-native-platforms/linux/evidence-docker-v1/runner/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "cd8ea3385bca141b61ef1608068dd12167b7dcba",
+        "matchesCurrentHead": false,
+        "platform": "linux",
+        "arch": "arm64",
+        "executionKind": "linux-vm"
+      },
+      {
+        "path": "implementation/2026-10-18-native-platforms/linux/evidence-docker-v2/runner/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "cd8ea3385bca141b61ef1608068dd12167b7dcba",
+        "matchesCurrentHead": false,
+        "platform": "linux",
+        "arch": "arm64",
+        "executionKind": "linux-vm"
+      },
+      {
+        "path": "implementation/2026-10-18-native-platforms/verification/darwin-v1/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "609333cd6c45febdca055fce1951d7a220f84669",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-18-resource-values/verification/darwin-v1/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "3730db3a7f672fcc7eecfa1f1e4008a01535e083",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-18-resource-values/verification/darwin-v2/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "3730db3a7f672fcc7eecfa1f1e4008a01535e083",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-18-resource-values/verification/darwin-v4/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "3730db3a7f672fcc7eecfa1f1e4008a01535e083",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-18-store-projections/verification/darwin-v1/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "efba5eed895bb783b7e4ba2398ccf70b6ed168c9",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-18-store-projections/verification/darwin-v2/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "efba5eed895bb783b7e4ba2398ccf70b6ed168c9",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-18-store-subtrees/verification/darwin-v1/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "1006fe9d0de08edac565663930478eb7626ed492",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-18-store-subtrees/verification/darwin-v2/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "1006fe9d0de08edac565663930478eb7626ed492",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-18-store-values/verification/darwin-v1/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": null,
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-18-store-values/verification/darwin-v2/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "dab3f49b7b7925964e357491520b3a2c9fed66d4",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-18-store-values/verification/darwin-v3/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "dab3f49b7b7925964e357491520b3a2c9fed66d4",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-18-store-values/verification/darwin-v4/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "dab3f49b7b7925964e357491520b3a2c9fed66d4",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-arrow-components/verification/darwin-v1/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "2a3356c823c2e95073417e8d7867f355756dc502",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-async-recovery/verification/darwin-v1/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "cfd50f1d8c497e6743299165c01ec0cbfe317008",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-async-recovery/verification/darwin-v2/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "cfd50f1d8c497e6743299165c01ec0cbfe317008",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-async-recovery/verification/darwin-v3/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "cfd50f1d8c497e6743299165c01ec0cbfe317008",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-closed-arrow-authoring/verification/darwin-v1/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "4bc07ceff60cb787109faa84a6f208ca64df4e69",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-closed-arrow-authoring/verification/darwin-v2/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "4bc07ceff60cb787109faa84a6f208ca64df4e69",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-collection-owner-effects/verification/darwin-v1/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "b2f13a10e0f06ab1cca07bb028deb011e9cc8bb5",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-collection-owner-effects/verification/darwin-v2/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "b2f13a10e0f06ab1cca07bb028deb011e9cc8bb5",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-collection-owner-effects/verification/darwin-v3/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "b2f13a10e0f06ab1cca07bb028deb011e9cc8bb5",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-collection-owner-effects/verification/darwin-v4/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "b2f13a10e0f06ab1cca07bb028deb011e9cc8bb5",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-collection-owner-effects/verification/darwin-v5/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "b2f13a10e0f06ab1cca07bb028deb011e9cc8bb5",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-collection-owner-effects/verification/darwin-v6/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "b2f13a10e0f06ab1cca07bb028deb011e9cc8bb5",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-collection-owner-effects/verification/darwin-v7/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "b2f13a10e0f06ab1cca07bb028deb011e9cc8bb5",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-custom-host/verification/darwin-v1/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "2bb8c4df711c114eff9da547ffb34cf042feb413",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-custom-host/verification/darwin-v2/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "2bb8c4df711c114eff9da547ffb34cf042feb413",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-forked-transitions/verification/darwin-v1/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "4b05cd4daff59842f2e53f12bb4dd45c31514a0a",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-forked-transitions/verification/darwin-v2/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "4b05cd4daff59842f2e53f12bb4dd45c31514a0a",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-forked-transitions/verification/darwin-v3/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "4b05cd4daff59842f2e53f12bb4dd45c31514a0a",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-forked-transitions/verification/darwin-v4/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "4b05cd4daff59842f2e53f12bb4dd45c31514a0a",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-forked-transitions/verification/fixture-context-v1/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "4b05cd4daff59842f2e53f12bb4dd45c31514a0a",
+        "matchesCurrentHead": false,
+        "platform": null,
+        "arch": null,
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-held-reader-progress/verification/darwin-v1/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "f031b6db0ff43591ca126b273201bf4a66b287db",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-held-reader-progress/verification/darwin-v2/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "f031b6db0ff43591ca126b273201bf4a66b287db",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-held-reader-progress/verification/darwin-v3/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "f031b6db0ff43591ca126b273201bf4a66b287db",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-hmr-completion/verification/darwin-v1/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "4e31cfb71707e445e6d24b143c30402c092742c2",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-hmr-completion/verification/darwin-v2/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "4e31cfb71707e445e6d24b143c30402c092742c2",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-hmr-completion/verification/darwin-v3/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "4e31cfb71707e445e6d24b143c30402c092742c2",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-hmr-completion/verification/darwin-v4/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "4e31cfb71707e445e6d24b143c30402c092742c2",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-hmr-completion/verification/darwin-v5/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "4e31cfb71707e445e6d24b143c30402c092742c2",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-hmr-completion/verification/darwin-v6/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "4e31cfb71707e445e6d24b143c30402c092742c2",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-host-value-diff/verification/darwin-v1/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "a47df85cc28acb04119a6d9c09fe52ea6ac07a33",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-host-value-diff/verification/darwin-v2/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "a47df85cc28acb04119a6d9c09fe52ea6ac07a33",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-host-value-diff/verification/darwin-v3/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "a47df85cc28acb04119a6d9c09fe52ea6ac07a33",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-host-value-diff/verification/darwin-v4/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "a47df85cc28acb04119a6d9c09fe52ea6ac07a33",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-installed-hmr/verification/darwin-v1/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "8dd4503a09727de1ef4e123e368ce9b04af06a54",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-installed-hmr/verification/darwin-v2/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "8dd4503a09727de1ef4e123e368ce9b04af06a54",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-installed-hmr/verification/darwin-v3/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "8dd4503a09727de1ef4e123e368ce9b04af06a54",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-installed-hmr/verification/darwin-v4/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "8dd4503a09727de1ef4e123e368ce9b04af06a54",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-installed-hmr/verification/darwin-v5/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "8dd4503a09727de1ef4e123e368ce9b04af06a54",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-installed-lifecycle/verification/darwin-v2/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "70df51c7582d0892decd7ef1b0bc0175288ded1f",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-installed-scene/verification/darwin-v2/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "0c738cb6b20cd93993c332aa705d991d38980a45",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-installed-scene/verification/darwin-v3/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "0c738cb6b20cd93993c332aa705d991d38980a45",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-installed-scene/verification/darwin-v4/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "0c738cb6b20cd93993c332aa705d991d38980a45",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-installed-scene/verification/darwin-v5/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "0c738cb6b20cd93993c332aa705d991d38980a45",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-numeric-owner-effects/verification/darwin-v1/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "98b15bf94291d6b7f4c699a0d064ff7cfdd2c927",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-numeric-owner-effects/verification/darwin-v2/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "98b15bf94291d6b7f4c699a0d064ff7cfdd2c927",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-numeric-owner-effects/verification/darwin-v3/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "98b15bf94291d6b7f4c699a0d064ff7cfdd2c927",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-numeric-owner-effects/verification/darwin-v4/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "98b15bf94291d6b7f4c699a0d064ff7cfdd2c927",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-numeric-owner-effects/verification/darwin-v5/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "98b15bf94291d6b7f4c699a0d064ff7cfdd2c927",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-portable-source-delivery/verification/darwin-transfer-v1/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "4254255980beb1056705d3d489dd0872f6b4f486",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-portable-source-delivery/verification/darwin-transfer-v2/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "4254255980beb1056705d3d489dd0872f6b4f486",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-publication-callbacks/verification/darwin-v1/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "7d4a66169efabe56581ab91490eba7afb0bcd6e4",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-publication-callbacks/verification/darwin-v2/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "7d4a66169efabe56581ab91490eba7afb0bcd6e4",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-publication-callbacks/verification/darwin-v3/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "7d4a66169efabe56581ab91490eba7afb0bcd6e4",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-publication-callbacks/verification/darwin-v4/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "7d4a66169efabe56581ab91490eba7afb0bcd6e4",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-radix-dialog/verification/darwin-v1/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "590376c1e696df5bef01426c26ecbb457f02b262",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-radix-dialog/verification/darwin-v2/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "590376c1e696df5bef01426c26ecbb457f02b262",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-react-island/verification/darwin-v1/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "fefd4a9c4527268af721e7a61f9be3a07a220fee",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-react-island/verification/darwin-v2/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "fefd4a9c4527268af721e7a61f9be3a07a220fee",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-reentrant-replacement/verification/darwin-v1/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "ae44b7c0dbed277586cd81e79b541480f4b1174a",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-reentrant-replacement/verification/darwin-v2/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "ae44b7c0dbed277586cd81e79b541480f4b1174a",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-reentrant-replacement/verification/darwin-v3/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "ae44b7c0dbed277586cd81e79b541480f4b1174a",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-resource-transactions/verification/darwin-v1/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "62f8304f41883a79314c3f07d3d2a39bfd4a8582",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-resource-transactions/verification/darwin-v2/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "62f8304f41883a79314c3f07d3d2a39bfd4a8582",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-resource-transactions/verification/darwin-v3/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "62f8304f41883a79314c3f07d3d2a39bfd4a8582",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-resource-transactions/verification/darwin-v4/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "62f8304f41883a79314c3f07d3d2a39bfd4a8582",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-resource-transactions/verification/source-v1/files/implementation/2026-10-18-native-platforms/linux/evidence-docker-v1/runner/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "cd8ea3385bca141b61ef1608068dd12167b7dcba",
+        "matchesCurrentHead": false,
+        "platform": "linux",
+        "arch": "arm64",
+        "executionKind": "linux-vm"
+      },
+      {
+        "path": "implementation/2026-10-19-resource-transactions/verification/source-v1/files/implementation/2026-10-18-native-platforms/linux/evidence-docker-v2/runner/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "cd8ea3385bca141b61ef1608068dd12167b7dcba",
+        "matchesCurrentHead": false,
+        "platform": "linux",
+        "arch": "arm64",
+        "executionKind": "linux-vm"
+      },
+      {
+        "path": "implementation/2026-10-19-resource-transactions/verification/source-v2/files/implementation/2026-10-18-native-platforms/linux/evidence-docker-v1/runner/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "cd8ea3385bca141b61ef1608068dd12167b7dcba",
+        "matchesCurrentHead": false,
+        "platform": "linux",
+        "arch": "arm64",
+        "executionKind": "linux-vm"
+      },
+      {
+        "path": "implementation/2026-10-19-resource-transactions/verification/source-v2/files/implementation/2026-10-18-native-platforms/linux/evidence-docker-v2/runner/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "cd8ea3385bca141b61ef1608068dd12167b7dcba",
+        "matchesCurrentHead": false,
+        "platform": "linux",
+        "arch": "arm64",
+        "executionKind": "linux-vm"
+      },
+      {
+        "path": "implementation/2026-10-19-runtime-import-origin/verification/darwin-v1/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "835cfe1ac6be6d5638e67234887dc6ebe606e9e3",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-19-runtime-import-origin/verification/darwin-v2/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "835cfe1ac6be6d5638e67234887dc6ebe606e9e3",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-20-installed-async-ux/verification/darwin-v1/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "78d4254778031da3b59083b6c62ef5b0c919291e",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-20-render-preparation/verification/darwin-v1/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "f2f4eba8b56a5881b38cc8ef7504dcf295a39dd0",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-20-render-preparation/verification/darwin-v2/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "f2f4eba8b56a5881b38cc8ef7504dcf295a39dd0",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-20-three-resource-lifetime/verification/darwin-v1/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "a81bafbf3993fc8cbfee0b053efc4e7cf82fa98b",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-20-three-resource-lifetime/verification/darwin-v2/receipt.json",
+        "status": "FAIL",
+        "sourceCommit": "a81bafbf3993fc8cbfee0b053efc4e7cf82fa98b",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      },
+      {
+        "path": "implementation/2026-10-20-three-resource-lifetime/verification/darwin-v3/receipt.json",
+        "status": "PASS",
+        "sourceCommit": "a81bafbf3993fc8cbfee0b053efc4e7cf82fa98b",
+        "matchesCurrentHead": false,
+        "platform": "darwin",
+        "arch": "arm64",
+        "executionKind": "native-host"
+      }
+    ],
+    "currentHeadReceiptCount": 0,
+    "currentHeadOtherPlatformReceiptCount": 0,
+    "independentDeviceCandidatePaths": [],
+    "independentDeviceReceiptPresent": false
+  }
+}
