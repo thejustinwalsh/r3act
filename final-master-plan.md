@@ -1,5 +1,17 @@
 # Final master plan: classify, measure, then choose
 
+## Installed forked async interaction — 20 October 2026
+
+The complete forked DOM/Three application now executes from five freshly installed packages with separate Native and React graphs. Native app/scene/controller bytes and the React comparator's statements remain unchanged; only its React JSX pragma is added. A real button listener delivers twenty urgent actions while B/C providers remain pending. The source inventory now includes valid dated units from 19 October onward, replacing its hard-coded single-day selection. Runtime/compiler/publication authority and physical layouts remain unchanged.
+
+Darwin-v1 passes 55/55 steps: 1056 runtime tests, 83 Rust tests, 36 compiled fixtures, nine Three cases, three retention checks and thirteen package checks. All 1281 gate inputs match, with 1291 raw/context files archived. Fresh proof-v1 passes seventeen build assertions and binds 24 source rows, four frozen sources, five tarballs, 3163 selected installed files and the actual compiler/report/transforms/assets. Native owner IDs and module revisions agree; React Projection/Result/App emit actual _c(14)/_c(14)/_c(23).
+
+Untimed proof completes main/cancel/immediate-disposal episodes with 27/4/3 stages per arm. Identity, text, retained A, fork convergence, one Native B execution, stale A/B rejection, catalog reuse and per-arm resource/effect cleanup pass. The sole Native-first timing pair is slower for Native: twenty urgent click-to-observer intervals have within-page median/p95 0.9/1.5 ms versus React 0.2/0.4 ms; final C settlement-to-observer is 1.1/0.5 ms. Both phases pass 9050 before/after hash checks, zero fallback additions and clean browser/context closure. About 0.1 ms timer quantum, small samples, fixed order, observer/harness work, unequal graphs and controlled deferred providers prevent CPU, network/frontier, population-tail, physical-input/presentation, cold/memory or independent-device qualification.
+
+Full-plan work remains active. These observations do not replace frozen release budgets or authorize a physical redesign. Current other-platform and independent-device execution, release speed and cold/memory qualification remain open. Human participants remain zero with no maintenance claim; historic wins, qualified dense FAIL, exhausted Recording A and physical HOLD retain scope. Apple user/service defaults stay one CPU, 256 MiB/container and 512 MiB/build; no VM/server starts or memory increases, with effective VM caps still unverified behind Depot startup permissions.
+
+[Source, receipts and limits](implementation/2026-10-20-installed-async-ux/results.md).
+
 ## Installed authored lifecycle — 19 October 2026
 
 The complete 256-row, sixty-update authored episode now runs from five fresh installed packages with separate Native and React production graphs. Native and the shared contract retain their frozen bytes; React changes only two obsolete type-suppression comments and its JSX pragma. Runtime/compiler/publication authority and physical layouts are unchanged. Actual Native lowering and ReactRow `_c(13)` are verified.

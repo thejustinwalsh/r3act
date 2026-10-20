@@ -28,6 +28,14 @@ const contextFiles = ["AGENTS.md", "final-master-plan.md", "implementation-check
   "docs/react-bridge-reference.md", "docs/radix-dialog-reference.md",
   "docs/native-authoring-reference.md", "docs/three-host-reference.md"];
 
+export const isCurrentImplementationUnitName = (name) => {
+  const datedUnit = /^(\d{4})-(\d{2})-(\d{2})-[a-z0-9]+(?:-[a-z0-9]+)*$/.exec(name);
+  if (!datedUnit) return false;
+  const stamp = `${datedUnit[1]}-${datedUnit[2]}-${datedUnit[3]}`;
+  const date = new Date(`${stamp}T00:00:00.000Z`);
+  return !Number.isNaN(date.valueOf()) && date.toISOString().startsWith(stamp) && stamp >= "2026-10-19";
+};
+
 const checkedPath = (root, relative) => {
   assert.ok(typeof relative === "string" && relative !== "" && !path.isAbsolute(relative) &&
     !relative.split("/").some((part) => part === "" || part === "." || part === ".." || part.includes("\\")),
@@ -113,7 +121,7 @@ export const nativeVerificationInputs = async (sourceRoot) => {
   if (!(await lstat(implementation)).isDirectory())
     throw new Error("Unsupported native verification implementation directory");
   for (const entry of await readdir(implementation, { withFileTypes: true })) {
-    if (!/^2026-10-19-/.test(entry.name)) continue;
+    if (!isCurrentImplementationUnitName(entry.name)) continue;
     if (!entry.isDirectory()) throw new Error(`Unsupported implementation input: ${entry.name}`);
     await walk(root, path.join(implementation, entry.name), files);
   }

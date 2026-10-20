@@ -5,11 +5,22 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
-import { nativeVerificationContext, nativeVerificationInputs,
+import { isCurrentImplementationUnitName, nativeVerificationContext, nativeVerificationInputs,
   stageNativeVerificationSource } from "../scripts/native_verification_inputs.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const sha256 = bytes => createHash("sha256").update(bytes).digest("hex");
+
+test("dated implementation source selection advances without including historical units", () => {
+  assert.equal(isCurrentImplementationUnitName("2026-10-20-installed-async-ux"), true);
+  assert.equal(isCurrentImplementationUnitName("2026-10-21-next-unit"), true);
+  assert.equal(isCurrentImplementationUnitName("2026-10-19-installed-lifecycle"), true);
+  assert.equal(isCurrentImplementationUnitName("2026-10-18-authored-lifecycle"), false);
+  assert.equal(isCurrentImplementationUnitName("2026-10-21-proof-v1"), true);
+  assert.equal(isCurrentImplementationUnitName("2026-10-21-bad_name"), false);
+  assert.equal(isCurrentImplementationUnitName("2026-11-31-invalid-date"), false);
+  assert.equal(isCurrentImplementationUnitName("2026-13-01-invalid-month"), false);
+});
 
 test("the real native source selection stages exactly and rejects unsafe inputs", async () => {
   const owned = await mkdtemp(path.join(tmpdir(), "r3act-native-source-test-"));
@@ -18,6 +29,9 @@ test("the real native source selection stages exactly and rejects unsafe inputs"
     assert.ok(paths.includes("scripts/native_verification_inputs.mjs"));
     assert.ok(paths.includes("compiler/native_verification_inputs_test.mjs"));
     assert.ok(paths.includes("src/native_runtime_api.ts"));
+    assert.ok(paths.includes("implementation/2026-10-20-installed-async-ux/design.md"));
+    assert.ok(paths.some(p => p.startsWith("implementation/2026-10-19-installed-lifecycle/consumer/")));
+    assert.ok(!paths.some(p => p.startsWith("implementation/2026-10-18-authored-lifecycle/results")));
     assert.ok(paths.every(p => p === "implementation/2026-10-16-publication/verification/deno-runtime.lock" ||
       !/(?:^|\/)(?:baseline|proof(?:-[^/]*)?|verification|evidence|\.cache|node_modules|target|dist)(?:\/|$)/.test(p)),
       "source selection includes historical evidence or generated output");
