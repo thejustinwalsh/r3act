@@ -159,9 +159,13 @@ candidate over the complete joint closed primitive input-cell set and selected
 keyed collections. `NativeRootWorkQueue.enqueueTransaction` submits the same
 shape across roots. The scoped collection portion supports existing-row
 move/remove edits; a selected cell owner cannot be removed by that cut.
-Whole-tree/cache replacements keep whole-root version guards. Authored
-insert/replace and opaque row/component callbacks use the generic path; static
-intrinsic host-tree handling does not prove arbitrary callback purity. The
+Whole-tree/cache replacements keep whole-root version guards. Compiler-proven authored insert/replace can use the bounded closed-row template
+when numeric input paths traverse `storeRecord`-owned records. The preceding
+Row declaration returns one supported unkeyed intrinsic leaf; unowned inputs
+and opaque row/component callbacks keep generic preparation. See the
+[current authoring contract](docs/native-authoring-reference.md#keyed-collections)
+and [closed-row evidence](implementation/2026-10-20-closed-collection-rows/results.md).
+Static intrinsic host-tree handling does not prove arbitrary callback purity. The
 declared group coordinates managed accepted state, but custom host setters may
 observe intermediate writes and no cross-host visual atomicity is claimed.
 

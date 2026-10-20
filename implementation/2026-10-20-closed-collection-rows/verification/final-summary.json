@@ -1,0 +1,581 @@
+{
+  "schemaVersion": 1,
+  "createdAtUtc": "2026-10-20T05:23:45.636033+00:00",
+  "scope": "Finite evidence aggregation from existing receipts only; no new test, build or benchmark executed while writing this summary.",
+  "sourceBasis": {
+    "commit": "89c845ddbb7432e2ea7f07d09f736db144b49933",
+    "gateInputs": 1413,
+    "gateSourceAudit": "MATCH",
+    "gateChangedInputs": [],
+    "contextInputs": 10,
+    "unavailableContext": []
+  },
+  "preservedInvocationFailure": {
+    "kind": "environment preflight before gate launch",
+    "exitCode": 127,
+    "message": "env: -u: No such file or directory",
+    "gateLaunched": false,
+    "correctedGateRun": "darwin-v2"
+  },
+  "consolidatedGateAttempts": {
+    "v1": {
+      "status": "FAIL",
+      "receiptSha256": "4ea1260d9e1970efccfd4c6b70d679f0077c8e21f7275fa8b5d71777141b30ad",
+      "phaseCounts": {
+        "total": 63,
+        "pass": 61,
+        "fail": 2
+      },
+      "source": {
+        "declaredCommit": "89c845ddbb7432e2ea7f07d09f736db144b49933",
+        "gitHead": "89c845ddbb7432e2ea7f07d09f736db144b49933",
+        "inputCount": 1413,
+        "rawArchive": {
+          "manifest": "source-archive.json",
+          "files": "source-before/files",
+          "runnerInputs": 1413,
+          "contextInputs": 10,
+          "unavailableContext": []
+        }
+      },
+      "sourceAudit": {
+        "status": "MATCH",
+        "changed": []
+      },
+      "failures": [
+        {
+          "phase": "deno-full",
+          "exitCode": 1,
+          "log": "verification/darwin-v1/logs/deno-full.log",
+          "logSha256": "c4ecd54413f6704aa3c3ed7d92166b32d3e551d52f80c81c36e2b10d9dedab15",
+          "summary": "Three closed-row runtime failures: unmarked-root insert declined; newer collection history case; changed collection API/code revision case."
+        },
+        {
+          "phase": "compiled-44",
+          "exitCode": 1,
+          "log": "verification/darwin-v1/logs/compiled-44.log",
+          "logSha256": "4ee2deb7a7a7c33aab3e35881fd56b05d1cf07a1731d9bf70f7be047f5685fe0",
+          "summary": "AST fixture expected unaliased renderCollectionAt( call; generated import is hygienically aliased."
+        }
+      ]
+    },
+    "v2": {
+      "status": "FAIL",
+      "receiptSha256": "27f9d0dc75e77874ffe20eb5efc1551b8e6241425a191446e41d68bf84a8d55d",
+      "phaseCounts": {
+        "total": 63,
+        "pass": 62,
+        "fail": 1
+      },
+      "source": {
+        "declaredCommit": "89c845ddbb7432e2ea7f07d09f736db144b49933",
+        "gitHead": "89c845ddbb7432e2ea7f07d09f736db144b49933",
+        "inputCount": 1413,
+        "rawArchive": {
+          "manifest": "source-archive.json",
+          "files": "source-before/files",
+          "runnerInputs": 1413,
+          "contextInputs": 10,
+          "unavailableContext": []
+        }
+      },
+      "sourceAudit": {
+        "status": "MATCH",
+        "changed": []
+      },
+      "failures": [
+        {
+          "phase": "compiled-44",
+          "exitCode": 1,
+          "log": "verification/darwin-v2/logs/compiled-44.log",
+          "logSha256": "7e57f4da1df7e381da6ea8e617c069bf5cf77386c41b142baf8e66ce2eefd0ab",
+          "summary": "Fork pendingChangeCount expected positive after selected-root acceptance; actual false at compiler/compiled_closed_collection_rows_test.mjs:306."
+        }
+      ]
+    },
+    "v3": {
+      "status": "FAIL",
+      "receiptSha256": "8e46332f3d44a699b8945fa3922e9b78e0bf567c8766c5c93aa9ac1aaebb9f74",
+      "phaseCounts": {
+        "total": 63,
+        "pass": 62,
+        "fail": 1
+      },
+      "source": {
+        "declaredCommit": "89c845ddbb7432e2ea7f07d09f736db144b49933",
+        "gitHead": "89c845ddbb7432e2ea7f07d09f736db144b49933",
+        "inputCount": 1413,
+        "rawArchive": {
+          "manifest": "source-archive.json",
+          "files": "source-before/files",
+          "runnerInputs": 1413,
+          "contextInputs": 10,
+          "unavailableContext": []
+        }
+      },
+      "sourceAudit": {
+        "status": "MATCH",
+        "changed": []
+      },
+      "failures": [
+        {
+          "phase": "compiled-44",
+          "exitCode": 1,
+          "log": "verification/darwin-v3/logs/compiled-44.log",
+          "logSha256": "0f3d356a88ccab84a3c21a661a6c9b01068448b97bbdf5c43efa7f6736d59aa8",
+          "summary": "change() assertion false at compiler/compiled_closed_collection_rows_test.mjs:132, called from line 334."
+        }
+      ]
+    },
+    "v4": {
+      "status": "PASS",
+      "receiptSha256": "4bb882140426356697f004ad91196fef6987efbfe5127dbc444b7b0df0090185",
+      "phaseCounts": {
+        "total": 63,
+        "pass": 63,
+        "fail": 0
+      },
+      "source": {
+        "declaredCommit": "89c845ddbb7432e2ea7f07d09f736db144b49933",
+        "gitHead": "89c845ddbb7432e2ea7f07d09f736db144b49933",
+        "inputCount": 1413,
+        "rawArchive": {
+          "manifest": "source-archive.json",
+          "files": "source-before/files",
+          "runnerInputs": 1413,
+          "contextInputs": 10,
+          "unavailableContext": []
+        }
+      },
+      "sourceAudit": {
+        "status": "MATCH",
+        "changed": []
+      },
+      "failures": [],
+      "phaseSummary": {
+        "denoRuntimePassed": 1093,
+        "rustTestsPassed": 84,
+        "compiledFixturesPassed": 44,
+        "threeHostTestsPassed": 20,
+        "boundedRetentionChecksPassed": 3,
+        "installedConsumerControls": {
+          "groupAdmission": 4,
+          "publicationDomains": 4,
+          "resourceLifetimes": 6,
+          "totalNamedControls": 14
+        }
+      },
+      "packageValidation": {
+        "status": "PASS",
+        "tarballs": [
+          {
+            "name": "core",
+            "path": "tarballs/r3act-core.tgz",
+            "sha256": "0922a4de7241706d715bc947692b9b19dba5a85478a2e02c5595d2c5ca72abde",
+            "bytes": 1122383
+          },
+          {
+            "name": "vite",
+            "path": "tarballs/r3act-vite.tgz",
+            "sha256": "a7de40c9148570bb9cc82d5d6de59ec1b7f54db00970c58bd92171c30445a01d",
+            "bytes": 1306623
+          },
+          {
+            "name": "host-dom",
+            "path": "tarballs/r3act-host-dom.tgz",
+            "sha256": "cd9b9ca857b1ea8ba96a6dedd7c7a8a8f379a5dd5e83db19582d3d07b9ab3e34",
+            "bytes": 1252
+          },
+          {
+            "name": "host-three",
+            "path": "tarballs/r3act-host-three.tgz",
+            "sha256": "a25bf2dadeb96f88d51da7a31a396e1cb78e7d330045d3c644d1946cdcd1b7fd",
+            "bytes": 1437
+          },
+          {
+            "name": "react-bridge",
+            "path": "tarballs/r3act-react-bridge.tgz",
+            "sha256": "4f228cac55b141a2e3b1df6d20c1f38359ca93b769bf2f03f94c85cf577e0c4c",
+            "bytes": 1411
+          }
+        ],
+        "compiler": {
+          "target": "aarch64-apple-darwin",
+          "platform": "darwin",
+          "arch": "arm64",
+          "file": "aarch64-apple-darwin/ui-graph-compiler-spike",
+          "sha256": "6370807ec45ce8525430e8cf485c40e33fd584bd3bdcfcc488b462e96a03ddcd",
+          "bytes": 3785584
+        },
+        "consumerStatus": "PASS"
+      },
+      "fixtureArtifactCount": 241,
+      "debugCompiler": {
+        "path": "compiler/oxc-spike/target/debug/ui-graph-compiler-spike",
+        "sha256AfterBuild": "4e9586ca9fa4ac577934cad01003fb7fb353b964774bcc1e2fe06064b5681dbb",
+        "info": {
+          "arch": "arm64",
+          "platform": "darwin",
+          "protocolVersion": 1,
+          "schemaVersion": 1,
+          "target": "aarch64-apple-darwin",
+          "version": "0.1.0"
+        }
+      }
+    }
+  },
+  "focusedCompiledFixture": {
+    "status": "PASS",
+    "receipt": "verification/compiled-closed-rows-v4-focused.json",
+    "receiptSha256": "f8a8edbb1c753df2deec6e0d3c0c011e57a6c7171902aaefd8662b9ed4ada5ca",
+    "supervisorExitCode": 0,
+    "supervisorStop": null
+  },
+  "freshPackagesAndBuild": {
+    "prepareSupervisor": {
+      "sha256": "27139fb43699f2f539d75515bdaaa357475b188222aa41ae59bc28b209c3deb7",
+      "exitCode": 0,
+      "stop": null,
+      "wallSeconds": 5.409237958,
+      "deadlineSeconds": 600
+    },
+    "buildProofStatus": "PASS_INSTALLED_BUILD_PROOF",
+    "buildProofSha256": "9afcf1d56645643505ab4c87fb401c504a8ff16fe9035df78cb9027e79ea0064",
+    "inputLockStatus": "PASS_INSTALLED_PREPARATION",
+    "inputLockSha256": "621c1bc406ebfba7c0678e8995cbee8d0a016ab8ad0a44383b6879d669556bce",
+    "installedPackageCounts": {
+      "inputRows": 36,
+      "installedFileRows": 3173,
+      "tarballs": 5,
+      "frozenSourceFiles": 4,
+      "stagedSourceFiles": 1423
+    },
+    "buildAssertions": {
+      "installedGroupAdmission": true,
+      "installedPublicationDomains": true,
+      "installedResourceLifetimes": true,
+      "frozenNativeAppSceneController": true,
+      "exactReactPragmaAdaptation": true,
+      "separateNativeGraph": true,
+      "separateReactGraph": true,
+      "bundledArmIsolation": true,
+      "nativeAppDefinitions": true,
+      "nativeSceneDefinitions": true,
+      "nativeAppSemanticPlan": true,
+      "nativeSceneSemanticPlan": true,
+      "nativeAppHooks": true,
+      "nativeSceneHooks": true,
+      "nativeRuntimeEmission": true,
+      "reactCompilerSuccess": true,
+      "reactMemo": true,
+      "reactJsxRuntime": true,
+      "entryAssets": true,
+      "transformAssets": true
+    },
+    "compiler": {
+      "path": "/private/var/folders/6p/79mr8_4n34d9_2m75n54r1qc0000gn/T/r3act-closed-collection-rows-5lSr6a/node_modules/@r3act/vite/dist/compiler/bin/aarch64-apple-darwin/ui-graph-compiler-spike",
+      "archivePath": "/Volumes/Depot/Developer/r3act/implementation/2026-10-20-closed-collection-rows/proof-v1/inputs/compiler/ui-graph-compiler-spike",
+      "sha256": "6370807ec45ce8525430e8cf485c40e33fd584bd3bdcfcc488b462e96a03ddcd",
+      "target": "darwin-arm64",
+      "rustTarget": "aarch64-apple-darwin",
+      "compilerInfo": {
+        "arch": "arm64",
+        "platform": "darwin",
+        "protocolVersion": 1,
+        "schemaVersion": 1,
+        "target": "aarch64-apple-darwin",
+        "version": "0.1.0"
+      }
+    },
+    "installedConformanceChecks": {
+      "groupAdmission": 4,
+      "publicationDomains": 4,
+      "resourceLifetimes": 6,
+      "totalNamedControls": 14
+    }
+  },
+  "asyncUntimedProof": {
+    "status": "PASS_UNTIMED_INSTALLED_ASYNC_UX_PROOF",
+    "sha256": "51da296f775aadd070b2ecfccdd74871d01915a418351ba5f0fd85a24f6a4209",
+    "supervisor": {
+      "sha256": "185fca76d0dcff7be54812078c052323366da3cb31826d800782b3758a7ab29e",
+      "exitCode": 0,
+      "stop": null,
+      "wallSeconds": 7.225114542,
+      "deadlineSeconds": 150
+    },
+    "browserVersion": "153.0.8010.12",
+    "arms": [
+      {
+        "arm": "native",
+        "episodes": 3,
+        "contextClosed": true
+      },
+      {
+        "arm": "react",
+        "episodes": 3,
+        "contextClosed": true
+      }
+    ],
+    "sourceHashRows": 9370,
+    "sourceBeforeMatchesAfter": true,
+    "errors": [],
+    "cleanupErrors": [],
+    "browserClosed": true,
+    "blockedRequests": 0,
+    "requestFailures": 0,
+    "pageErrors": 0,
+    "consoleErrors": 0
+  },
+  "closedRowsUntimedProof": {
+    "status": "PASS_UNTIMED_CLOSED_ROW_EPISODE",
+    "sha256": "07f0e151ab136d69cacb35f0612d193ca657712526774178376a928fc35aee0e",
+    "supervisor": {
+      "sha256": "b377d4877cfcf82160bb4641329ab649a0b7010d0caeba5cad30a67f98445bac",
+      "exitCode": 0,
+      "stop": null,
+      "wallSeconds": 5.923117375,
+      "deadlineSeconds": 150
+    },
+    "browserVersion": "153.0.8010.12",
+    "arms": [
+      {
+        "arm": "native",
+        "checkpoints": 25,
+        "contextClosed": true,
+        "cleanup": {
+          "hostChildren": 0,
+          "sceneChildren": 0,
+          "owners": [
+            0,
+            0
+          ],
+          "pending": [
+            0,
+            0
+          ]
+        },
+        "timerQuantumMs": 0.09999999403953552
+      },
+      {
+        "arm": "react",
+        "checkpoints": 25,
+        "contextClosed": true,
+        "cleanup": {
+          "hostChildren": 0,
+          "sceneChildren": 0,
+          "listeners": 0
+        },
+        "timerQuantumMs": 0.09999999403953552
+      }
+    ],
+    "operationsPerArm": 24,
+    "initialRows": 64,
+    "sourceHashRows": 9382,
+    "sourceBeforeMatchesAfter": true,
+    "errors": [],
+    "cleanupErrors": [],
+    "browserClosed": true,
+    "blockedRequests": 0,
+    "requestFailures": 0,
+    "pageErrors": 0,
+    "consoleErrors": 0,
+    "bundlesBytes": {
+      "native": 2734978,
+      "react": 874035
+    }
+  },
+  "closedRowsTiming": {
+    "status": "PASS_DESCRIPTIVE_CLOSED_ROW_TIMING_PAIR",
+    "sha256": "1bfff87d889fdcd1c48edcf7b5dfbcfb45abeeda5b4ce1e45934e1bac51c6c92",
+    "authorizationSha256": "5304a70c1adc2d7545cd699254fb13ceec37d91f3dbbd61b41018b930956c7e4",
+    "authorizationStatus": "APPROVED_FOR_ONE_CLOSED_ROW_TIMING_PAIR",
+    "supervisor": {
+      "sha256": "2a97ab5bf78dbf5c64304f315d4fc2598a09c0695234802976d69a5508b5b5ca",
+      "exitCode": 0,
+      "stop": null,
+      "wallSeconds": 8.265277625,
+      "deadlineSeconds": 150
+    },
+    "browserVersion": "153.0.8010.12",
+    "fixedOrder": [
+      "native",
+      "react"
+    ],
+    "timingMeaning": "24 synchronous operation through publication intervals, inspection and RAF outside; explicit Native grouped DOM/Three versus React Compiler DOM with Three layout effect; fixed order, no GC or retries, paint excluded",
+    "sourceHashRows": 9382,
+    "sourceBeforeMatchesAfter": true,
+    "native": {
+      "samplesMs": [
+        6,
+        1.0999999940395355,
+        1.5,
+        1.1000000014901161,
+        1.1000000014901161,
+        0.8999999985098839,
+        1.3000000044703484,
+        1.6999999955296516,
+        1.8000000044703484,
+        1.5,
+        1.5,
+        1.2000000029802322,
+        1.5,
+        1.6000000014901161,
+        1.2999999970197678,
+        1.2000000029802322,
+        1.7000000029802322,
+        1.1000000014901161,
+        1,
+        1.6000000014901161,
+        1.6000000014901161,
+        1.3999999985098839,
+        1.6000000014901161,
+        0.8999999985098839
+      ],
+      "medianMs": 1.449999999254942,
+      "p95Ms": 1.8000000044703484,
+      "sumMs": 37.20000001043081,
+      "firstMs": 6
+    },
+    "react": {
+      "samplesMs": [
+        1.5,
+        0.3999999985098839,
+        1,
+        0.5,
+        0.9000000059604645,
+        0.7000000029802322,
+        1,
+        1.1999999955296516,
+        1,
+        0.8999999985098839,
+        0.7999999970197678,
+        0.7000000029802322,
+        0.6000000014901161,
+        0.6000000014901161,
+        0.7000000029802322,
+        0.5,
+        0.6999999955296516,
+        0.6000000014901161,
+        0.3999999985098839,
+        0.5,
+        0.3999999985098839,
+        0.3999999985098839,
+        0.7000000029802322,
+        0.5
+      ],
+      "medianMs": 0.6999999992549419,
+      "p95Ms": 1.1999999955296516,
+      "sumMs": 17.200000002980232,
+      "firstMs": 1.5
+    },
+    "timerQuantumMs": [
+      0.09999999403953552,
+      0.09999999403953552
+    ],
+    "arms": [
+      {
+        "arm": "native",
+        "contextClosed": true,
+        "cleanup": {
+          "hostChildren": 0,
+          "sceneChildren": 0,
+          "owners": [
+            0,
+            0
+          ],
+          "pending": [
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "arm": "react",
+        "contextClosed": true,
+        "cleanup": {
+          "hostChildren": 0,
+          "sceneChildren": 0,
+          "listeners": 0
+        }
+      }
+    ],
+    "errors": [],
+    "cleanupErrors": [],
+    "browserClosed": true,
+    "blockedRequests": 0,
+    "requestFailures": 0,
+    "pageErrors": 0,
+    "consoleErrors": 0,
+    "bundleBytes": {
+      "native": 2734978,
+      "react": 874035
+    }
+  },
+  "timingInterpretation": "One descriptive Native-first pair only; no retry. Synchronous operation-through-publication intervals; output inspection and frame waits outside intervals. No paint, cold/setup, release-speed or independent-tail qualification.",
+  "supervisorReceipts": {
+    "darwin-v1": {
+      "sha256": "e5997da91761ad575a353ae0a67d0c284b252dbf3ce8fad594aafe5c6e60b5f0",
+      "exitCode": 1,
+      "stop": null,
+      "wallSeconds": 85.73820741599775,
+      "deadlineSeconds": 600
+    },
+    "darwin-v2": {
+      "sha256": "0bc003b0cd89a1db781f5f551f65b29ce899ecea0e9bcf4c7c479bacd46a0657",
+      "exitCode": 1,
+      "stop": null,
+      "wallSeconds": 51.056021125,
+      "deadlineSeconds": 600
+    },
+    "darwin-v3": {
+      "sha256": "255fab8f959778b9105a606cb5b14dca6bee0f1e5582cfe0377b5cdbe18266c4",
+      "exitCode": 1,
+      "stop": null,
+      "wallSeconds": 51.095995875,
+      "deadlineSeconds": 600
+    },
+    "darwin-v4": {
+      "sha256": "5e26f45963d4b63b81418f4415d6d697ea3729f15a27d68135737cafadd866e8",
+      "exitCode": 0,
+      "stop": null,
+      "wallSeconds": 50.057223041,
+      "deadlineSeconds": 600
+    },
+    "compiled-closed-rows-v4-focused": {
+      "sha256": "f8a8edbb1c753df2deec6e0d3c0c011e57a6c7171902aaefd8662b9ed4ada5ca",
+      "exitCode": 0,
+      "stop": null,
+      "wallSeconds": 0.553801875,
+      "deadlineSeconds": 150
+    },
+    "prepare-v1": {
+      "sha256": "27139fb43699f2f539d75515bdaaa357475b188222aa41ae59bc28b209c3deb7",
+      "exitCode": 0,
+      "stop": null,
+      "wallSeconds": 5.409237958,
+      "deadlineSeconds": 600
+    },
+    "async-proof-v1": {
+      "sha256": "185fca76d0dcff7be54812078c052323366da3cb31826d800782b3758a7ab29e",
+      "exitCode": 0,
+      "stop": null,
+      "wallSeconds": 7.225114542,
+      "deadlineSeconds": 150
+    },
+    "rows-proof-v1": {
+      "sha256": "b377d4877cfcf82160bb4641329ab649a0b7010d0caeba5cad30a67f98445bac",
+      "exitCode": 0,
+      "stop": null,
+      "wallSeconds": 5.923117375,
+      "deadlineSeconds": 150
+    },
+    "rows-timing-v1": {
+      "sha256": "2a97ab5bf78dbf5c64304f315d4fc2598a09c0695234802976d69a5508b5b5ca",
+      "exitCode": 0,
+      "stop": null,
+      "wallSeconds": 8.265277625,
+      "deadlineSeconds": 150
+    }
+  }
+}

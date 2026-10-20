@@ -1,5 +1,11 @@
 import { normalizeClosedNumericExpression } from "./closed_numeric_expression.ts";
 import {
+  type ClosedCollectionRowProgram,
+  captureClosedCollectionRowInputs,
+  evaluateClosedCollectionRowProgram,
+  normalizeClosedCollectionRowProgram,
+} from "./closed_collection_row_program.ts";
+import {
   type ClosedComponentForwardProgram,
   normalizeClosedComponentForwardProgram,
 } from "./closed_component_forward_program.ts";
@@ -603,6 +609,7 @@ export const defineComponent = <P extends Record<string, unknown>>(
     readonly propOnlySites: readonly string[];
     readonly numericPrimitiveProps?: readonly string[];
     readonly closedCollectionSites?: readonly string[];
+    readonly closedCollectionRowPrograms?: readonly unknown[];
     /** Compiler proof that every render result is a single intrinsic host root. */
     readonly hostLeafOutput?: boolean;
     readonly stateLayout?: CompiledStateLayout;
@@ -651,6 +658,24 @@ export const defineComponent = <P extends Record<string, unknown>>(
     if (closedCollectionSites?.some((site) =>
       typeof site !== "string" || !site
     )) throw new Error("Component collection site metadata is invalid");
+    if (metadata?.closedCollectionRowPrograms !== undefined &&
+      !Array.isArray(metadata.closedCollectionRowPrograms)) {
+      throw new Error("Closed collection row program metadata is invalid");
+    }
+    const closedCollectionRowPrograms = metadata?.closedCollectionRowPrograms?.map((raw) => {
+      const program = normalizeClosedCollectionRowProgram(raw);
+      if (!program) throw new Error("Closed collection row program metadata is invalid");
+      return program;
+    });
+    if (closedCollectionRowPrograms && (
+      closedCollectionRowPrograms.some((program) =>
+        program.componentProgramId !== siteId ||
+        !closedCollectionSites?.includes(program.collectionSiteId)
+      ) || new Set(closedCollectionRowPrograms.map((program) =>
+        program.collectionSiteId)).size !== closedCollectionRowPrograms.length
+    )) {
+      throw new Error("Closed collection row program must match its owner and site");
+    }
     let stateLayout: CompiledStateLayout | undefined;
     if (metadata?.stateLayout !== undefined) {
       const layout = metadata.stateLayout;
@@ -700,7 +725,8 @@ export const defineComponent = <P extends Record<string, unknown>>(
     }
     const revisions = [stateLayout?.moduleRevision,
       closedResourceHostProgram?.moduleRevision, closedStoreHostProgram?.moduleRevision,
-      closedComponentForwardProgram?.moduleRevision]
+      closedComponentForwardProgram?.moduleRevision,
+      ...(closedCollectionRowPrograms?.map((program) => program.moduleRevision) ?? [])]
       .filter((value): value is string => value !== undefined);
     const expectedRevision = revisions[0];
     if (revisions.some((revision) => revision !== expectedRevision)) {
@@ -719,6 +745,9 @@ export const defineComponent = <P extends Record<string, unknown>>(
           : {}),
         ...(closedCollectionSites
           ? { closedCollectionSites: Object.freeze(closedCollectionSites) }
+          : {}),
+        ...(closedCollectionRowPrograms
+          ? { closedCollectionRowPrograms: Object.freeze(closedCollectionRowPrograms) }
           : {}),
         hostLeafOutput: metadata?.hostLeafOutput === true,
         ...(revision ? { revision } : {}),
@@ -740,6 +769,7 @@ type ComponentMetadata = {
   readonly propOnlySites: readonly string[];
   readonly numericPrimitiveProps?: readonly string[];
   readonly closedCollectionSites?: readonly string[];
+  readonly closedCollectionRowPrograms?: readonly ClosedCollectionRowProgram[];
   readonly hostLeafOutput?: boolean;
   readonly stateLayout?: CompiledStateLayout;
   readonly closedResourceHostProgram?: ClosedResourceHostProgram;
@@ -847,6 +877,8 @@ const applyAdmittedBindings = (
   }
 };
 const canonicalWorldIsAlive = OwnerStateWorld.prototype.isAlive;
+const canonicalWorldOwnerLineage = OwnerStateWorld.prototype.ownerLineage;
+const canonicalWorldClearCellChangesThrough = OwnerStateWorld.prototype.clearCellChangesThrough;
 const canonicalWorldIsWithin = OwnerStateWorld.prototype.isWithin;
 const canonicalWorldFindOwner = OwnerStateWorld.prototype.findOwner;
 const canonicalWorldScalarSource = OwnerStateWorld.prototype.scalarSource;
@@ -943,6 +975,32 @@ const closedCollectionSitesFor = (component: unknown): readonly string[] | undef
   typeof component === "function"
     ? definedComponents.get(component)?.metadata?.closedCollectionSites
     : undefined;
+
+const closedCollectionRowProgramFor = (
+  owner: unknown,
+  siteId: string,
+  rowSiteId?: string,
+): ClosedCollectionRowProgram | undefined => {
+  if (typeof owner !== "function") return undefined;
+  const program = definedComponents.get(owner)?.metadata?.closedCollectionRowPrograms
+    ?.find((candidate) => candidate.collectionSiteId === siteId);
+  const ownerSite = definedComponents.get(owner)?.siteId;
+  const rowSite = program && definedComponents.get(program.rowComponent)?.siteId;
+  if (!program || !componentCodeCurrent(owner) ||
+    !componentCodeCurrent(program.rowComponent) ||
+    ownerSite !== program.componentProgramId ||
+    rowSite !== program.rowComponentProgramId ||
+    (rowSiteId !== undefined && rowSiteId !== program.rowComponentProgramId)) {
+    return undefined;
+  }
+  const ownerRevision = componentRevision(owner);
+  const rowRevision = componentRevision(program.rowComponent);
+  if (!ownerRevision || !rowRevision ||
+    ownerRevision.sourceFile !== rowRevision.sourceFile ||
+    ownerRevision.moduleRevision !== program.moduleRevision ||
+    rowRevision.moduleRevision !== program.moduleRevision) return undefined;
+  return program;
+};
 
 const ownCollectionOwnerProps = (
   component: unknown,
@@ -6891,6 +6949,7 @@ export class ComponentStateRoot<H, Parent = H> {
       previousRows: Map<string, CandidateRow>;
       operations:
         import("./vdom_snapshot_runtime.ts").KeyedRegionDeltaOperation[];
+      rowProgram?: ClosedCollectionRowProgram;
     };
 
     const storeGenerationAtPrepare = options.storeGeneration;
@@ -7026,7 +7085,12 @@ export class ComponentStateRoot<H, Parent = H> {
           preparationFailed = true;
           break;
         }
-        if (collectionOwnerNeedsGenericRows(parentCache, read.batches)) {
+        const rowProgram = options.scopedStructural
+          ? closedCollectionRowProgramFor(parentCache.type, region.siteId,
+            region.componentSiteId)
+          : undefined;
+        if (collectionOwnerNeedsGenericRows(parentCache, read.batches) &&
+          !rowProgram) {
           preparationFailed = true;
           break;
         }
@@ -7040,6 +7104,7 @@ export class ComponentStateRoot<H, Parent = H> {
           rows: new Map<string, CandidateRow | null>(),
           previousRows: new Map(),
           operations: [],
+          ...(rowProgram ? { rowProgram } : {}),
         };
         stages.set(regionKey, stage);
       }
@@ -7049,14 +7114,15 @@ export class ComponentStateRoot<H, Parent = H> {
       if (!repeatable &&
         [...stages.values()].some((stage) =>
           stage.read.batches.some((batch) => batch.operations.some((operation) =>
-            operation.type !== "move" && operation.type !== "remove"
+            operation.type !== "move" && operation.type !== "remove" &&
+              !stage.rowProgram
           )))) throw new SparseCandidateIneligible();
       if (options.scopedStructural) {
         for (const stage of stages.values()) {
           for (const batch of stage.read.batches) {
             if (batch.operations.some((operation) =>
               operation.type !== "move" && operation.type !== "remove"
-            )) throw new SparseCandidateIneligible();
+            ) && !stage.rowProgram) throw new SparseCandidateIneligible();
           }
         }
       }
@@ -7093,6 +7159,7 @@ export class ComponentStateRoot<H, Parent = H> {
         owner: OwnerId,
         previous: CandidateRow | null,
         privateOwner: boolean,
+        closedOutput?: RuntimeElement,
       ): CandidateRow | null => {
         if (
           typeof rendered.type !== "function" ||
@@ -7163,19 +7230,23 @@ export class ComponentStateRoot<H, Parent = H> {
             ownEffects.set(effectId, { owner, siteId, setup });
           },
         };
-        activeOwners.push(activeOwner);
         let result: RuntimeNode;
-        try {
-          if (this.#activeCounters) {
-            this.#count("owner.component-visits");
-            this.#count("owner.component-renders");
+        if (closedOutput) {
+          result = closedOutput;
+        } else {
+          activeOwners.push(activeOwner);
+          try {
+            if (this.#activeCounters) {
+              this.#count("owner.component-visits");
+              this.#count("owner.component-renders");
+            }
+            result =
+              (rendered.type as (props: Record<string, unknown>) => RuntimeNode)(
+                props,
+              );
+          } finally {
+            activeOwners.pop();
           }
-          result =
-            (rendered.type as (props: Record<string, unknown>) => RuntimeNode)(
-              props,
-            );
-        } finally {
-          activeOwners.pop();
         }
         if (resourceWasRead) return null;
         result = carryHostKeys(
@@ -7293,10 +7364,28 @@ export class ComponentStateRoot<H, Parent = H> {
               if (inserting && operation.beforeKey !== null && !anchor) {
                 throw new SparseCandidateIneligible();
               }
-              if (!repeatable) {
+              if (!repeatable && !stage.rowProgram) {
                 throw new SparseCandidateIneligible();
               }
-              const rendered = stage.region.renderRow(operation.value);
+              const program = stage.rowProgram;
+              if (program && previous && (
+                previous.cache.type !== program.rowComponent ||
+                previous.cache.subtreeOwners.size !== 1 ||
+                previous.cache.ownEffects.size !== 0 ||
+                previous.cache.propBoundSites.size !== 0 ||
+                this.#ownerHasStoreReaders(previous.owner)
+              )) throw new SparseCandidateIneligible();
+              const inputs = program
+                ? captureClosedCollectionRowInputs(program, operation.value)
+                : null;
+              const closedOutput = program && inputs
+                ? evaluateClosedCollectionRowProgram(program, inputs)
+                : undefined;
+              if (program && !closedOutput) throw new SparseCandidateIneligible();
+              const rendered = program
+                ? copyRuntimeElement(program.rowComponent as ComponentType,
+                  { [program.rowProp]: operation.value })
+                : stage.region.renderRow(operation.value);
               if (
                 !rendered || Array.isArray(rendered) ||
                 typeof rendered !== "object" ||
@@ -7334,6 +7423,7 @@ export class ComponentStateRoot<H, Parent = H> {
                 owner,
                 previous,
                 owner !== existing,
+                closedOutput ?? undefined,
               );
               if (
                 !candidate ||
@@ -7573,10 +7663,15 @@ export class ComponentStateRoot<H, Parent = H> {
         throw new SparseCandidateIneligible();
       }
       if (hasScopedStoreReaderConflict()) throw new SparseCandidateIneligible();
+      const scopedClosedRowOwners = options.scopedStructural &&
+        [...renderedOwners].every((owner) => {
+          const location = rowsByOwner.get(owner);
+          return location?.stage.rowProgram !== undefined &&
+            location.stage.rows.get(location.key)?.owner === owner;
+        }) && [...privateOwners].every((owner) => renderedOwners.has(owner));
       if (options.scopedStructural && (
         leafRegions.length > 0 || leafCaches.size > 0 ||
-        numericWrites.length > 0 || renderedOwners.size > 0 ||
-        privateOwners.size > 0
+        numericWrites.length > 0 || !scopedClosedRowOwners
       )) throw new SparseCandidateIneligible();
       if (options.scopedStructural && scopedCellWrites.some(({ handle }) =>
         retiredOwners.has(handle.owner)
@@ -7676,7 +7771,11 @@ export class ComponentStateRoot<H, Parent = H> {
           stage.region.reader === stage.reader &&
           this.#componentCache.get(stage.region.parentOwner) === stage.parentCache &&
           componentCodeCurrentPrivate(stage.parentCache.type) &&
-          stage.parentCache.keyedRegion === stage.ownerRegion
+          stage.parentCache.keyedRegion === stage.ownerRegion &&
+          [...stage.previousRows.values()].every((row) =>
+            this.#componentCache.get(row.owner) === row.cache &&
+            canonicalWorldIsAlive.call(this.world, row.owner)
+          )
         );
       const validateScopedCache = () => validateScopedCachePrivate() &&
         (options.acceptedCollections?.every((validate) => validate()) ?? true) &&
@@ -7965,7 +8064,7 @@ export class ComponentStateRoot<H, Parent = H> {
               }
               this.#liveOwners.add(candidate.owner);
               for (
-                const ancestor of this.world.ownerLineage(candidate.owner)
+                const ancestor of canonicalWorldOwnerLineage.call(this.world, candidate.owner)
                   .slice(1)
               ) {
                 const ancestorCache = this.#componentCache.get(ancestor);
@@ -8007,8 +8106,8 @@ export class ComponentStateRoot<H, Parent = H> {
               }
             }
             for (
-              const ancestor of this.world.ownerLineage(
-                stage.region.parentOwner,
+              const ancestor of canonicalWorldOwnerLineage.call(
+                this.world, stage.region.parentOwner,
               )
             ) {
               const cache = this.#componentCache.get(ancestor);
@@ -8052,10 +8151,12 @@ export class ComponentStateRoot<H, Parent = H> {
           }
           resourceReads?.discard();
           resourceReads = null;
-          this.world.clearChangesThrough(capturedChanges);
-          this.#pendingChanges.clearThrough(capturedChanges);
+          if (capturedChanges.length > 0) {
+            this.world.clearChangesThrough(capturedChanges);
+            this.#pendingChanges.clearThrough(capturedChanges);
+          }
           if (scopedCellWrites.length > 0) {
-            this.world.clearCellChangesThrough(
+            canonicalWorldClearCellChangesThrough.call(this.world,
               scopedHandles, scopedVersions, scopedHandles.length,
             );
             this.#pendingChanges.clearNativeThrough(

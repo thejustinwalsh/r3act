@@ -1,5 +1,19 @@
 # Final master plan: classify, measure, then choose
 
+## Closed collection rows — 20 October 2026
+
+Explicit scoped collection transactions now admit compiler-proven insert/replace rows beside pending resources, using the existing owner preparation, keyed VDOM delta, cache and publication authority. A direct map forwards its item to a preceding stable Row returning one unkeyed intrinsic leaf from numeric paths/literals. Existing storeRecord ownership provides passive data capture; ordinary/frozen/Proxy/accessor and opaque rows stay generic. Same-key owner/host identity, reincarnation, exact acknowledgements, newer actions, fork history and partial-failure quarantine remain. Whole-tree and compiled-graph guards stay; ordinary flush/preparePending still render insert/replace generically. No parallel registry, eager tree copy or physical redesign is added.
+
+Darwin-v4 passes 63/63 phases: 1093 runtime tests, 84 Rust tests, 44 compiled fixtures, twenty Three cases, three retention checks and package validation. All 1413 runner inputs match, with 1423 source/context rows archived per gate. Three failed gates and a pre-run environment typo remain preserved. Corrections address the scoped staged-owner guard, actual compiler aliases and invalid fixture counter/insert assumptions; canonical lineage/cell acknowledgement and empty-ack omission preserve scoped acceptance without overridable World callbacks.
+
+Five fresh installed packages pass the complete prior async application and a new 64-row DOM/Three episode with 24 replace/insert/remove operations and 25 checkpoints per arm. Output, pending UI, owner/host identity and exposed teardown pass. Async proof matches 9370 hashes before/after; new proof and timing each match 9382, with clean browser closure. Actual row revision is native-v1-fe99c8feb0287179; React Row/Waiting/App emit 2/2/14 memo slots.
+
+The sole fixed Native-first comparison observes Native median/p95 1.45/1.80 ms versus React Compiler 0.70/1.20 ms; Native is slower. First intervals are 6.0/1.5 ms and sums 37.2/17.2 ms. Roughly 0.1 ms quantum, dependent samples, differing APIs and unequal JS graphs (2734978/874035 bytes) establish no population-tail, CPU, paint, cold/memory, independent-device or release qualification. No favourable retry occurs.
+
+The full-plan first pass remains active. Historic wins, qualified dense FAIL, exhausted Recording A and physical HOLD retain scope; human participants stay zero with no maintenance claim. Release performance/cold/memory, current other-platform and independent-device gates remain open. Apple tooling/data/logs stay on Depot with saved one CPU, 256 MiB/container and 512 MiB/build defaults; no VM/server, administrator prompt or memory increase occurs, with startup/effective caps unverified.
+
+[Source, preserved failures, receipts and limits](implementation/2026-10-20-closed-collection-rows/results.md).
+
 ## Group host admission — 20 October 2026
 
 Grouped publication now completes public preflight under all host claims, then checks every private prepared cut before the first writer. Existing receipts retain exact Store/cell/resource/collection/code/ownership guards, whole-tree bases and accepted histories. Admitted host calls pin callable targets; original application-phase copy/writer checks remain. Branded scalar data, owned binding provenance and actual canonical resource-read capture avoid caller getters in the final sweep. Bound resource proxies and repeatable generic manual bindings remain supported; opaque inputs without canonical freshness decline before writes. Arbitrary hidden wrapper reads and adapter effects gain no purity, rollback or visual-atomicity guarantee. No parallel version registry or physical redesign is added.

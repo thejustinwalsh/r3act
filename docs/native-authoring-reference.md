@@ -61,29 +61,32 @@ The runtime identifies a store source by a callable `read` method, after checkin
 
 `createKeyedCollection(initial, keyOf)` requires a nonempty string key for each item and rejects duplicates. Its payloads are retained by reference, so callers must treat them as immutable. The collection supports versioned `insert`, `remove`, `move`, and `replace` operations; stale or unavailable history can fall back to a generic snapshot.
 
-Native `.map` lowering uses the collection's snapshot contract. Replacing collection methods is not an extension API; changed canonical methods disable scoped admission. Automatic authored insert/replace uses generic preparation because a pure mapper does not establish that its row component is pure. Supported move/remove deltas retain keyed state and host identity.
+Native `.map` lowering uses the collection's snapshot contract. Replacing collection methods is not an extension API; changed canonical methods disable scoped admission. Supported move/remove deltas retain keyed state and host identity. An authored insert/replace may use scoped preparation when the compiler emits the closed row program described below and runtime admission validates its live inputs; other rows use generic preparation.
 
 Removing and reinserting a key creates a new row lifetime, even in one batch or after reader history expires. Moves and value replacement preserve surviving row state; an authored host-key change still replaces that host.
 
 The specialized TSX form is a direct `.map` on a collection binding with one inline, synchronous, one-parameter arrow returning JSX:
 
 ```tsx
-import { createKeyedCollection } from "@r3act/core";
+import { createKeyedCollection, storeRecord } from "@r3act/core";
 
-const rows = createKeyedCollection([{ id: "a", label: "Alpha" }], (row) => row.id);
+const rows = createKeyedCollection([storeRecord({ id: "a", value: 1 })],
+  (row) => row.id);
+
+function Row(props) {
+  return <li data-value={props.row.value}>{props.row.value}</li>;
+}
 
 export function Rows() {
   return <ul>{rows.map((row) => <Row row={row} />)}</ul>;
-}
-
-function Row({ row }) {
-  return <li data-row={row.id}>{row.label}</li>;
 }
 ```
 
 The runtime supplies each mapped element's collection key for compiler-lowered maps. Forwarding the row into a stable component avoids reading a caller-owned key property in the mapper. An explicit `key={row.id}` remains legal, but `row.id` can invoke an arbitrary getter, so that mapper keeps generic owner rendering. Freezing a caller object or adding a TypeScript type does not prove those reads pure. Maps outside collection recognition retain ordinary JavaScript/JSX key rules.
 
-An index parameter, `thisArg`, mapper alias, or non-JSX mapper is diagnosed for a native collection map. Ordinary array maps remain generic JavaScript. Skipping a collection owner requires a finite proof of its whole body and mapper, plus runtime admission of its original owned inputs. Opaque sibling output, helpers, getters and unsupported captures keep the owner generic. Recognition of a map alone does not prove the row component pure. Existing-row move/remove work has a bounded scoped preparation path; authored insert/replace with opaque component callbacks retain generic preparation. Low-level `renderCollectionAt` is a caller-declared capability; supplying its metadata is not a compiler purity proof.
+An index parameter, `thisArg`, mapper alias, or non-JSX mapper is diagnosed for a native collection map. Ordinary array maps remain generic JavaScript. Skipping a collection owner requires a finite proof of its whole body and mapper, plus runtime admission of its original owned inputs. Opaque sibling output, helpers, getters and unsupported captures keep the owner generic. Recognition of a map alone does not prove the row component pure. Low-level `renderCollectionAt` is a caller-declared capability; supplying its metadata is not a compiler purity proof.
+
+For scoped authored insert/replace, the direct mapper must forward its row unchanged: `rows.map(row => <Row row={row} />)`. `Row` is a preceding module-local synchronous function or const arrow. It returns one unkeyed `div`, `span`, or `output` DOM leaf, or `group`/`mesh` Three leaf, with no nested host children. Its supported prop values and text children are direct numeric paths through `storeRecord`-owned row fields or primitive literals, with at most 32 distinct input paths. Arithmetic, derived locals and other expressions retain generic rendering. Construct every nested record traversed by a selected path with `storeRecord` as well. The row has no hooks, effects, refs, events, helper calls, spread, branches or opaque captures. An explicit mapper key read such as `key={row.id}` can invoke a getter and does not qualify. Plain or merely frozen rows, Proxy wrappers and accessor rows decline closed admission before their getters or row bodies run; normal generic rendering remains available. Constructing `storeRecord` can inspect its input, so supply ordinary application data to it outside preparation. A nonfinite numeric result or changed source/code/writer identity also declines closed admission. Same-key replacement retains its live owner and host identity when the host tag remains the same; remove/reinsert starts a new lifetime. Exact selected collection histories and accepted fork views remain independent, so a newer action or unrelated pending resource is never acknowledged by an older cut. See the [actual compiled fixture](../compiler/compiled_closed_collection_rows_test.mjs) for the bounded DOM/Three contract.
 
 ## Tasks, resources, and transitions
 
@@ -254,7 +257,7 @@ Supported Three copy props retain accepted component values, so a reused mutable
 | Outcome | Examples |
 | --- | --- |
 | Compiler diagnostic | Unsupported hook declaration/position, malformed native collection map, dynamic inferred task read, qualified native `Suspense`. Correct the authored form. |
-| Generic native path | Ordinary arrays, expressions not proven as retained numeric bindings, opaque row/component callbacks, authored collection insert/replace, closed-resource forms or values outside the finite subset, and a scoped candidate whose guard cannot hold. Correctness does not depend on selecting the fast path. |
+| Generic native path | Ordinary arrays, expressions not proven as retained numeric bindings, opaque row/component callbacks, authored collection insert/replace outside the closed row subset, closed-resource forms or values outside the finite subset, and a scoped candidate whose guard cannot hold. Correctness does not depend on selecting the fast path. |
 | React bridge | `createReactNativeRootAdapter` embeds native content in React; `createNativeReactRootAdapter` embeds an independent React DOM root in a native owner. Accepted props and keyed moves preserve the inner lifetime; removal retires it. Context and hook semantics stay with their runtime. Compatible React and React DOM peers are required. See the [bridge reference](react-bridge-reference.md). |
 
 An edit to a tracked native module passes OXC parsing and Rust semantic preflight before invalidating its accepted revision and triggering a full-page reload. Rejected or superseded edits preserve the accepted app. Preflight does not cover arbitrary imported dependency syntax, runtime execution or later third-party transforms. State-preserving native HMR is not provided. The `@r3act/vite` tarball bundles a compiler executable for its build machine's OS and CPU. On another platform supply a compatible binary through `nativeModulePlugin({ compilerBinary: "/path/to/compiler" })`; the JavaScript package itself has no platform install restriction. See the [integration guide](../native-package-integration.md) for the exact local tarball setup.

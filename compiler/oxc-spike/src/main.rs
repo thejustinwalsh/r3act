@@ -241,6 +241,8 @@ struct NativeComponentMetadata {
     collection_sites: Vec<NativeCollectionSiteMetadata>,
     #[serde(rename = "closedCollectionSites", default, skip_serializing_if = "Vec::is_empty")]
     closed_collection_sites: Vec<String>,
+    #[serde(rename = "closedCollectionRowPrograms", default, skip_serializing_if = "Vec::is_empty")]
+    closed_collection_row_programs: Vec<serde_json::Value>,
     numeric_sinks: Vec<NativeNumericSinkMetadata>,
     opaque_sinks: Vec<String>,
 }
@@ -3857,6 +3859,8 @@ fn compile_native_component_module(
     let closed_forward_programs = closed_component_forward_programs(
         &parsed.program, &state_plan.components, &semantic, source, revision,
         &closed_resource_programs, &closed_store_programs);
+    let closed_row_programs = closed_collection_row_programs(
+        &parsed.program, &state_plan.components, &semantic, revision);
     let import_span = state_plan
         .hook_import
         .clone()
@@ -4339,6 +4343,7 @@ fn compile_native_component_module(
         &closed_resource_programs,
         &closed_store_programs,
         &closed_forward_programs,
+        &closed_row_programs,
         &closed_store_tuple_spans,
     )?;
     let components = state_plan
@@ -4422,6 +4427,10 @@ fn compile_native_component_module(
             closed_collection_sites: component.collection_sites.iter()
                 .filter(|site| !site.requires_owner_render)
                 .map(|site| site.site_id.clone()).collect(),
+            closed_collection_row_programs: closed_row_programs
+                .get(&component.component_site_id)
+                .map(|programs| programs.iter().map(|program| program.program.clone()).collect())
+                .unwrap_or_default(),
             numeric_sinks: numeric_programs.iter()
                 .filter(|sink| sink.owner_program_id == component.component_site_id)
                 .map(|sink| NativeNumericSinkMetadata {
@@ -5243,7 +5252,7 @@ fn closed_host_aggregate_expression<'a>(
 fn closed_subtree_host<'a>(
     element: &JSXElement<'a>, read: &mut dyn FnMut(&Expression<'a>) -> Option<serde_json::Value>,
     keys: &mut BTreeSet<String>, count: &mut usize, depth: usize,
-    has_aggregate: &mut bool, tuple_spans: &mut Vec<SourceSpan>,
+    has_aggregate: &mut bool, tuple_spans: &mut Vec<SourceSpan>, allow_unkeyed_root: bool,
 ) -> Option<serde_json::Value> {
     *count += 1;
     if *count > 256 || depth > 32 || element.opening_element.attributes.len() > 33 { return None; }
@@ -5290,8 +5299,10 @@ fn closed_subtree_host<'a>(
             props.push(serde_json::json!([name, expression]));
         }
     }
-    let key = key?;
-    if !keys.insert(key.clone()) { return None; }
+    if allow_unkeyed_root && key.is_some() { return None; }
+    let key = if allow_unkeyed_root { serde_json::Value::Null }
+        else { let key = key?; if !keys.insert(key.clone()) { return None; }
+            serde_json::Value::String(key) };
     let mut children = Vec::<serde_json::Value>::new();
     if element.children.len() > 256 { return None; }
     for child in &element.children {
@@ -5299,7 +5310,7 @@ fn closed_subtree_host<'a>(
         match child {
             JSXChild::Element(nested) => {
                 let host = closed_subtree_host(nested, read, keys, count, depth + 1,
-                    has_aggregate, tuple_spans)?;
+                    has_aggregate, tuple_spans, false)?;
                 children.push(serde_json::json!({"kind":"host","host":host}));
             }
             JSXChild::ExpressionContainer(container) => {
@@ -5312,6 +5323,194 @@ fn closed_subtree_host<'a>(
         }
     }
     Some(serde_json::json!({"tag":tag,"key":key,"props":props,"children":children}))
+}
+
+struct ClosedCollectionRowProof {
+    component_site_id: String,
+    name: String,
+    declaration_start: u32,
+    inputs: Vec<Vec<String>>,
+    host: serde_json::Value,
+}
+
+struct ClosedCollectionRowEdge {
+    program: serde_json::Value,
+    row_name: String,
+}
+
+fn closed_collection_row_host<'a>(
+    callable: &ClosedCallable<'a, '_>, component: &ComponentStateSiteIr,
+    semantic: &Semantic<'a>,
+) -> Option<ClosedCollectionRowProof> {
+    if !component.state_sites.is_empty() || !component.effect_sites.is_empty() ||
+        !component.store_sites.is_empty() || !component.collection_sites.is_empty() ||
+        callable.params.items.len() != 1 || callable.params.rest.is_some() { return None; }
+    let parameter = &callable.params.items[0];
+    if parameter.optional || parameter.initializer.is_some() { return None; }
+    let (props_symbol, row_symbol) = match &parameter.pattern {
+        BindingPattern::BindingIdentifier(props) => (Some(props.symbol_id.get()?), None),
+        BindingPattern::ObjectPattern(pattern) if pattern.rest.is_none() &&
+            pattern.properties.len() == 1 => {
+            let property = &pattern.properties[0];
+            if property.computed || type_property_name(&property.key) != Some("row") { return None; }
+            let BindingPattern::BindingIdentifier(row) = &property.value else { return None; };
+            (None, Some(row.symbol_id.get()?))
+        }
+        _ => return None,
+    };
+    let mut output = callable.return_expression(0)?;
+    while let Expression::ParenthesizedExpression(parenthesized) = output {
+        output = &parenthesized.expression;
+    }
+    let Expression::JSXElement(element) = output else { return None; };
+    if element.children.iter().any(|child| !closed_jsx_child_elided(child) &&
+        !matches!(child, JSXChild::ExpressionContainer(_))) { return None; }
+    let mut inputs = Vec::<Vec<String>>::new();
+    let mut read = |expression: &Expression<'a>| {
+        let mut expression = expression;
+        while let Expression::ParenthesizedExpression(parenthesized) = expression {
+            expression = &parenthesized.expression;
+        }
+        if let Some(literal) = closed_forward_literal(expression) {
+            return Some(serde_json::json!({"kind":"literal","value":literal}));
+        }
+        let mut path = Vec::<String>::new();
+        while let Expression::StaticMemberExpression(member) = expression {
+            let field = member.property.name.as_str();
+            if !closed_forward_prop_name(field) || path.len() == 8 { return None; }
+            path.push(field.to_owned());
+            expression = &member.object;
+        }
+        let Expression::Identifier(identifier) = expression else { return None; };
+        let base = reference_symbol(identifier, semantic)?;
+        path.reverse();
+        if Some(base) == props_symbol {
+            if path.len() < 2 || path[0] != "row" { return None; }
+            path.remove(0);
+        } else if Some(base) != row_symbol || path.is_empty() { return None; }
+        let index = if let Some(index) = inputs.iter().position(|prior| prior == &path) {
+            index
+        } else {
+            if inputs.len() == 32 { return None; }
+            inputs.push(path);
+            inputs.len() - 1
+        };
+        Some(serde_json::json!({"kind":"input","index":index}))
+    };
+    let mut keys = BTreeSet::new();
+    let mut count = 0;
+    let mut aggregate = false;
+    let host = closed_subtree_host(element, &mut read, &mut keys, &mut count, 0,
+        &mut aggregate, &mut Vec::new(), true)?;
+    if aggregate || inputs.is_empty() { return None; }
+    Some(ClosedCollectionRowProof {
+        component_site_id: component.component_site_id.clone(),
+        name: component.name.clone(), declaration_start: component.declaration.start,
+        inputs, host,
+    })
+}
+
+fn closed_collection_row_programs<'a>(
+    program: &oxc_ast::ast::Program<'a>, components: &[ComponentStateSiteIr],
+    semantic: &Semantic<'a>, revision: &str,
+) -> BTreeMap<String, Vec<ClosedCollectionRowEdge>> {
+    struct Rows<'s, 'a> {
+        components: &'s [ComponentStateSiteIr], semantic: &'s Semantic<'a>,
+        proofs: BTreeMap<SymbolId, ClosedCollectionRowProof>, direct_eval: bool,
+    }
+    impl<'a> Visit<'a> for Rows<'_, 'a> {
+        fn visit_function(&mut self, node: &Function<'a>, flags: ScopeFlags) {
+            if let Some(component) = self.components.iter().find(|component|
+                component.arrow_initializer.is_none() && component.declaration.start == node.span.start &&
+                component.declaration.end == node.span.end)
+                && let Some(callable) = ClosedCallable::function(node)
+                && let Some(proof) = closed_collection_row_host(&callable, component, self.semantic)
+                && let Some(symbol) = callable.own_symbol {
+                self.proofs.insert(symbol, proof);
+            }
+            walk::walk_function(self, node, flags);
+        }
+        fn visit_variable_declarator(&mut self, node: &VariableDeclarator<'a>) {
+            if let Some(Expression::ArrowFunctionExpression(arrow)) = node.init.as_ref()
+                && let Some(symbol) = node.id.get_binding_identifier().and_then(|id| id.symbol_id.get())
+                && let Some(component) = self.components.iter().find(|component|
+                    component.arrow_initializer.as_ref().is_some_and(|at|
+                        at.start == arrow.span.start && at.end == arrow.span.end))
+                && let Some(callable) = ClosedCallable::arrow(arrow, symbol)
+                && let Some(proof) = closed_collection_row_host(&callable, component, self.semantic) {
+                self.proofs.insert(symbol, proof);
+            }
+            walk::walk_variable_declarator(self, node);
+        }
+        fn visit_call_expression(&mut self, node: &CallExpression<'a>) {
+            if matches!(&node.callee, Expression::Identifier(identifier) if identifier.name == "eval") {
+                self.direct_eval = true;
+            }
+            walk::walk_call_expression(self, node);
+        }
+    }
+    let mut rows = Rows { components, semantic, proofs: BTreeMap::new(), direct_eval: false };
+    rows.visit_program(program);
+    if rows.direct_eval { return BTreeMap::new(); }
+    rows.proofs.retain(|symbol, _| semantic.scoping().symbol_scope_id(*symbol) ==
+        semantic.scoping().root_scope_id() &&
+        semantic.scoping().symbol_declarations(*symbol).count() == 1 &&
+        semantic.scoping().get_resolved_references(*symbol).all(|reference| !reference.is_write()));
+    struct Maps<'s, 'a> {
+        components: &'s [ComponentStateSiteIr], semantic: &'s Semantic<'a>,
+        revision: &'s str, rows: &'s BTreeMap<SymbolId, ClosedCollectionRowProof>,
+        programs: BTreeMap<String, Vec<ClosedCollectionRowEdge>>,
+    }
+    impl<'a> Visit<'a> for Maps<'_, 'a> {
+        fn visit_call_expression(&mut self, call: &CallExpression<'a>) {
+            for component in self.components {
+                let Some(site) = component.collection_sites.iter().find(|site|
+                    site.call.start == call.span.start && site.call.end == call.span.end &&
+                    !site.requires_owner_render) else { continue; };
+                let Some(Argument::ArrowFunctionExpression(callback)) = call.arguments.first() else { break; };
+                let Some(row_symbol) = callback.params.items.first().and_then(|parameter|
+                    match &parameter.pattern { BindingPattern::BindingIdentifier(row) => row.symbol_id.get(),
+                        _ => None }) else { break; };
+                let Some(mut expression) = callback.body.as_expression() else { break; };
+                while let Expression::ParenthesizedExpression(parenthesized) = expression {
+                    expression = &parenthesized.expression;
+                }
+                let Expression::JSXElement(element) = expression else { break; };
+                let JSXElementName::IdentifierReference(tag) = &element.opening_element.name else { break; };
+                let Some(proof) = reference_symbol(tag, self.semantic).and_then(|symbol| self.rows.get(&symbol))
+                    else { break; };
+                if proof.declaration_start >= component.declaration.start ||
+                    !closed_jsx_children_empty(&element.children) || element.opening_element.attributes.len() != 1 {
+                    break;
+                }
+                let JSXAttributeItem::Attribute(attribute) = &element.opening_element.attributes[0]
+                    else { break; };
+                if !matches!(&attribute.name, JSXAttributeName::Identifier(name) if name.name == "row") {
+                    break;
+                }
+                let Some(JSXAttributeValue::ExpressionContainer(container)) = attribute.value.as_ref()
+                    else { break; };
+                if !matches!(container.expression.as_expression(), Some(Expression::Identifier(identifier))
+                    if reference_symbol(identifier, self.semantic) == Some(row_symbol)) { break; }
+                let program = serde_json::json!({
+                    "schemaVersion": 1, "collectionSiteId": site.site_id,
+                    "componentProgramId": component.component_site_id,
+                    "rowComponentProgramId": proof.component_site_id,
+                    "moduleRevision": self.revision, "rowProp": "row",
+                    "inputs": proof.inputs.iter().map(|path| serde_json::json!({"path":path})).collect::<Vec<_>>(),
+                    "host": proof.host,
+                });
+                self.programs.entry(component.component_site_id.clone()).or_default().push(
+                    ClosedCollectionRowEdge { program, row_name: proof.name.clone() });
+                break;
+            }
+            walk::walk_call_expression(self, call);
+        }
+    }
+    let mut maps = Maps { components, semantic, revision, rows: &rows.proofs,
+        programs: BTreeMap::new() };
+    maps.visit_program(program);
+    maps.programs
 }
 
 fn closed_resource_subtree_program<'a>(
@@ -5373,7 +5572,7 @@ fn closed_resource_subtree_program<'a>(
         &source_sites, semantic, source);
     let host = closed_subtree_host(element, &mut read,
         &mut keys, &mut count, 0, &mut has_aggregate,
-        &mut Vec::new())?;
+        &mut Vec::new(), false)?;
     Some(serde_json::json!({
         "schemaVersion": if has_aggregate { 3 } else { 2 },
         "componentProgramId": component.component_site_id,
@@ -5656,7 +5855,7 @@ fn closed_store_host_program_inner<'a>(
         let mut tuple_spans = Vec::new();
         let mut read = |expression: &Expression<'a>| proof.expression(expression);
         let mut host = closed_subtree_host(element, &mut read, &mut keys, &mut count,
-            0, &mut aggregate, &mut tuple_spans)?;
+            0, &mut aggregate, &mut tuple_spans, false)?;
         proof.finish(&mut host, &mut inputs)?;
         return Some((serde_json::json!({
             "schemaVersion": 5,
@@ -5680,7 +5879,7 @@ fn closed_store_host_program_inner<'a>(
             &source_sites, semantic, source);
         let host = closed_subtree_host(element, &mut read,
             &mut keys, &mut count, 0, &mut has_aggregate,
-            &mut tuple_spans)?;
+            &mut tuple_spans, false)?;
         Some((serde_json::json!({
             "schemaVersion": 4,
             "componentProgramId": component.component_site_id,
@@ -6108,6 +6307,7 @@ fn transform_native_component_source(
     closed_resource_programs: &BTreeMap<String, serde_json::Value>,
     closed_store_programs: &BTreeMap<String, serde_json::Value>,
     closed_forward_programs: &BTreeMap<String, ClosedForwardEdge>,
+    closed_row_programs: &BTreeMap<String, Vec<ClosedCollectionRowEdge>>,
     closed_store_tuple_spans: &BTreeMap<String, Vec<SourceSpan>>,
 ) -> Result<(String, Vec<NativeModuleEdit>), String> {
     let import_span = plan
@@ -6263,8 +6463,21 @@ fn transform_native_component_source(
             .collect::<Vec<_>>();
         let closed_collection_option = if component.collection_sites.is_empty() { String::new() }
             else { format!(", closedCollectionSites: [{}]", closed_collection_option.join(", ")) };
+        let closed_row_option = closed_row_programs.get(&component.component_site_id)
+            .filter(|programs| !programs.is_empty())
+            .map(|programs| {
+                let programs = programs.iter().map(|edge| {
+                    let mut program = edge.program.to_string();
+                    program.pop();
+                    program.push_str(",\"rowComponent\":");
+                    program.push_str(&edge.row_name);
+                    program.push('}');
+                    program
+                }).collect::<Vec<_>>().join(", ");
+                format!(", closedCollectionRowPrograms: [{programs}]")
+            }).unwrap_or_default();
         let options = format!(
-            "{{ propOnlySites: [{}]{}{}{}{}{}{}{}{} }}",
+            "{{ propOnlySites: [{}]{}{}{}{}{}{}{}{}{} }}",
             sites,
             primitive_props_option,
             if component.host_leaf_output {
@@ -6278,6 +6491,7 @@ fn transform_native_component_source(
             closed_store_option,
             closed_forward_option,
             closed_collection_option,
+            closed_row_option,
         );
         if let Some(arrow) = &component.arrow_initializer {
             edits.push(TextEdit {
@@ -10632,6 +10846,58 @@ export function Board({ items, records }: { items: NativeRows<Row>; records: Nat
             if let Err(error) = result { failures.push(format!("{name}: {error}")); }
         }
         assert!(failures.is_empty(), "{}", failures.join("\n"));
+    }
+
+    #[test]
+    fn closed_collection_row_templates_require_data_only_row_and_mapper() {
+        let header = "import { useState } from 'native_runtime_api.ts'; import type { KeyedCollection } from '@compiled-ui/runtime/core'; type Data = { value: number }; ";
+        let owner = "export function Board({ rows }: { rows: KeyedCollection<Data> }) { return <div>{rows.map(row => <Row row={row} />)}</div>; }";
+        for (row, expected) in [
+            ("function Row(props: { row: Data }) { return <output data-value={props.row.value}>{props.row.value}</output>; }", true),
+            ("function Row({ row }: { row: Data }) { return <output data-value={row.value}>{row.value}</output>; }", true),
+            ("function Row(props: { row: Data }) { return <output key=\"fixed\" data-value={props.row.value}/>; }", false),
+            ("function Row(props: { row: Data }) { return <output onClick={() => 1}>{props.row.value}</output>; }", false),
+            ("function Row(props: { row: Data }) { return <output>{helper(props.row.value)}</output>; }", false),
+            ("function Row(props: { row: Data }) { const value = props.row.value; return <output>{value}</output>; }", false),
+            ("function Row(props: { row: Data }) { return <output><span>{props.row.value}</span></output>; }", false),
+        ] {
+            let source = format!("{header}{row}{owner}");
+            let response = compile_state("closed-row.tsx", &source);
+            assert!(response.error.is_none(), "{row}: {:?}", response.error);
+            let plan = response.plan.unwrap();
+            let board = plan.components.as_ref().unwrap().iter()
+                .find(|component| component.name == "Board").unwrap();
+            assert_eq!(board.closed_collection_row_programs.len() == 1, expected, "{row}");
+            if expected {
+                let program = &board.closed_collection_row_programs[0];
+                assert_eq!(program["schemaVersion"], 1);
+                assert_eq!(program["collectionSiteId"], board.collection_sites[0].site_id);
+                assert_eq!(program["componentProgramId"], board.component_site_id);
+                assert_eq!(program["rowComponentProgramId"], "closed-row.tsx#component:Row");
+                assert_eq!(program["moduleRevision"], plan.module_revision);
+                assert_eq!(program["inputs"], serde_json::json!([{"path":["value"]}]));
+                assert!(program["host"]["key"].is_null());
+                assert!(plan.component_module.unwrap().contains("closedCollectionRowPrograms: ["));
+            }
+        }
+        let source = format!("{header}{owner}function Row(props: {{ row: Data }}) {{ return <output>{{props.row.value}}</output>; }}");
+        let response = compile_state("closed-row-late.tsx", &source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let board = response.plan.unwrap().components.unwrap().into_iter()
+            .find(|component| component.name == "Board").unwrap();
+        assert!(board.closed_collection_row_programs.is_empty());
+        for mapper in [
+            "<Row key={row.value} row={row} />",
+            "<Row row={helper(row)} />",
+            "<Row row={row} extra={1} />",
+        ] {
+            let source = format!("{header}function Row(props: {{ row: Data }}) {{ return <output>{{props.row.value}}</output>; }} export function Board({{ rows }}: {{ rows: KeyedCollection<Data> }}) {{ return <div>{{rows.map(row => {mapper})}}</div>; }}");
+            let response = compile_state("closed-row-mapper.tsx", &source);
+            assert!(response.error.is_none(), "{mapper}: {:?}", response.error);
+            let board = response.plan.unwrap().components.unwrap().into_iter()
+                .find(|component| component.name == "Board").unwrap();
+            assert!(board.closed_collection_row_programs.is_empty(), "{mapper}");
+        }
     }
 
     #[test]
