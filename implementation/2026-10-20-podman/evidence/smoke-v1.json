@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "createdAtLocal": "2026-10-20T15:59:12.394945-04:00",
+  "status": "PASS",
+  "connection": "r3act-dev",
+  "imageProofPath": "/Volumes/Depot/Developer/r3act/implementation/2026-10-18-native-platforms/linux/image-podman-v2/image-proof.json",
+  "imageProofSha256": "c05e61c6b190e53d354707dfbd7e958847b7e91ae6464cea10e7eb0e5002eaf1",
+  "image": "docker.io/library/node@sha256:4ff2a3b4ac84d69e1f1a7f49d683e9675babea1828bdeeec1af0c6b7690ed0a4",
+  "containerName": "r3act-smoke-78b59d971d9d49d4b24603eb50345194",
+  "ownershipLabel": "r3act.native-platform=ae3937a5330a4da0ba5141f889715a9b",
+  "resources": {
+    "cpus": 1,
+    "memory": "128m",
+    "network": "none",
+    "platform": "linux/arm64",
+    "autoRemove": true
+  },
+  "smoke": {
+    "argv": [
+      "/Users/mini/.local/bin/podman",
+      "--connection",
+      "r3act-dev",
+      "run",
+      "--rm",
+      "--name",
+      "r3act-smoke-78b59d971d9d49d4b24603eb50345194",
+      "--label",
+      "r3act.native-platform=ae3937a5330a4da0ba5141f889715a9b",
+      "--pull=never",
+      "--platform=linux/arm64",
+      "--cpus=1",
+      "--memory=128m",
+      "--network=none",
+      "docker.io/library/node@sha256:4ff2a3b4ac84d69e1f1a7f49d683e9675babea1828bdeeec1af0c6b7690ed0a4",
+      "node",
+      "-e",
+      "const os=require('node:os'); const v=process.versions.node; const out={platform:os.platform(),arch:os.arch(),node:v}; console.log(JSON.stringify(out)); if(out.platform!=='linux'||!['arm64','aarch64'].includes(out.arch)||v!=='24.18.0') process.exit(42);"
+    ],
+    "exitCode": 0,
+    "stdout": "{\"platform\":\"linux\",\"arch\":\"arm64\",\"node\":\"24.18.0\"}\n",
+    "stderr": "",
+    "timeoutSeconds": 60
+  },
+  "cleanupVerification": {
+    "argv": [
+      "/Users/mini/.local/bin/podman",
+      "--connection",
+      "r3act-dev",
+      "container",
+      "exists",
+      "r3act-smoke-78b59d971d9d49d4b24603eb50345194"
+    ],
+    "exitCode": 1,
+    "stdout": "",
+    "stderr": "",
+    "containerAbsent": true
+  }
+}

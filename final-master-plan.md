@@ -1,5 +1,13 @@
 # Final master plan: classify, measure, then choose
 
+## Podman disposable Linux setup — 20 October 2026
+
+The user selected Podman. Podman 6.1.4 is installed on the system drive with dedicated local configuration and Depot-backed VM disk, image/volume storage, downloads, caches and temporary files. The dedicated rootless AppleHV VM uses one CPU and 1024 MiB; the 512-MiB boot failure and subsequent startup/transport failures remain preserved. No administrator helper, login startup or Depot permission change occurred.
+
+Luna verifies the actual running Linux ARM64 engine and Depot disk; the single one-CPU/128-MiB disposable Node smoke passes and auto-removal is confirmed. A new reviewed Podman launcher reuses the unchanged source-locked Linux payload. This proves setup only: current-source r3act Linux verification is next, and this same-Mac guest is not an independent device. Full-plan performance/cold/memory acceptance, qualified dense FAIL and physical HOLD retain their scope.
+
+[Setup, failures, exact proofs and scope](implementation/2026-10-20-podman/results.md). Podman supersedes the Apple runner choice; do not restore the withdrawn chmod request.
+
 ## Disposable test container layout correction — 20 October 2026
 
 The user requires binaries and launchd service files on the system drive, with images, VM disks, volumes, caches and logs on Depot. The previous Depot-root chmod request is withdrawn; no volume permission change is authorized by that earlier request. These are disposable Linux test instances, not durable services. Apple uses launchd to supervise even ephemeral VM runtimes.
