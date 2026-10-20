@@ -1,5 +1,13 @@
 # Implementation checkpoint
 
+## Fresh-process lifecycle costs — 20 October 2026
+
+The complete installed 256-row/sixty-update application now has separate local Chromium process startup and forced-GC lifecycle observations. Runtime/compiler source is unchanged. Darwin-v1 passes 63/63 phases, 1093 runtime and 84 Rust tests; installed untimed proof passes 67 stages per arm. The sole Native-first launch-through-ready pair is 1437.831/865.384 ms, including unequal browser launch spans and driver work. Released-controller used-heap deltas from blank pages are 2871620/1856376 bytes, including modules and browser harness; neither result qualifies release, cold-cache, memory, CPU or presentation budgets.
+
+The separate allocation attempt remains INCOMPLETE: one React sample references a node absent from its raw profile tree. Both profiles and the failure survive; no rerun or paired allocation claim occurs. Full-plan, current other-platform and independent-device requirements remain open. Historic wins, qualified dense FAIL, exhausted Recording A and physical HOLD retain scope; no maintenance advantage is claimed. No VM/server, administrator prompt or memory increase occurs; saved Apple limits remain one CPU, 256 MiB/container and 512 MiB/build on Depot, runtime-unverified.
+
+[Source, receipts, preserved allocation failure and limits](implementation/2026-10-20-process-lifecycle/results.md).
+
 ## Closed collection rows — 20 October 2026
 
 Explicit scoped collection transactions now admit compiler-proven insert/replace rows beside pending resources, using the existing owner preparation, keyed VDOM delta, cache and publication authority. A direct map forwards its item to a preceding stable Row returning one unkeyed intrinsic leaf from numeric paths/literals. Existing storeRecord ownership provides passive data capture; ordinary/frozen/Proxy/accessor and opaque rows stay generic. Same-key owner/host identity, reincarnation, exact acknowledgements, newer actions, fork history and partial-failure quarantine remain. Whole-tree and compiled-graph guards stay; ordinary flush/preparePending still render insert/replace generically. No parallel registry, eager tree copy or physical redesign is added.

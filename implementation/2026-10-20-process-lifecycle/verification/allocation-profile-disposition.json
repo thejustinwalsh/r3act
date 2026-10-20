@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "allocation-profile-posthoc-disposition-v1",
+  "classification": "POSTHOC_DIAGNOSTIC_ONLY_NOT_QUALIFICATION",
+  "sourceReceipt": "/Volumes/Depot/Developer/r3act/implementation/2026-10-20-process-lifecycle/proof-v1/allocation-pair-one-shot.json",
+  "sourceReceiptSha256": "e025652c3b5e6e651f91c32d5c57b51f08febf16a78b95d3731c33f7e03e7e1f",
+  "supervisorReceipt": "/Volumes/Depot/Developer/r3act/implementation/2026-10-20-process-lifecycle/verification/allocation-v1-supervisor.json",
+  "supervisorReceiptSha256": "73ee52cb2d13c450431735a6a72c2e75140ec63ff451987351394a53582bcbf8",
+  "reason": "The one authorized allocation pair is INCOMPLETE. React profile validation failed because a sampled nodeId was absent from the captured head tree after 60 updates. This offline traversal classifies raw retained samples without filtering them into a passing result.",
+  "arms": [
+    {
+      "arm": "native",
+      "rawSampleCount": 8485,
+      "headNodeCount": 468,
+      "resolvedCount": 8485,
+      "resolvedSampledBytes": 280926460,
+      "invalidSizeCount": 0,
+      "invalidSizeFirst10": [],
+      "missingNodeIdCount": 0,
+      "missingNodeIdFirst10": [],
+      "missingNodeIdSampledBytes": 0,
+      "rawAllFiniteSampleBytes": 280926460,
+      "profileCanonicalJsonSha256": "793a0aeebd60f152143d4fea3233e1278582ae99e66eb8da18530c7398cd0a6f"
+    },
+    {
+      "arm": "react",
+      "rawSampleCount": 2129,
+      "headNodeCount": 158,
+      "resolvedCount": 2128,
+      "resolvedSampledBytes": 69939920,
+      "invalidSizeCount": 0,
+      "invalidSizeFirst10": [],
+      "missingNodeIdCount": 1,
+      "missingNodeIdFirst10": [
+        {
+          "index": 0,
+          "size": 47908,
+          "nodeId": 159
+        }
+      ],
+      "missingNodeIdSampledBytes": 47908,
+      "rawAllFiniteSampleBytes": 69987828,
+      "profileCanonicalJsonSha256": "b4b3e378f27485d5e76519d9ffd8fbf42d12bd9a8ec7ea82211c800160ec30aa"
+    }
+  ],
+  "constraints": [
+    "No rerun or favorable retry.",
+    "Do not claim a valid native/React allocation comparison or paired advantage.",
+    "Native validated profile is descriptive only because the paired receipt is incomplete.",
+    "React has 62 stages; failed after 60 updates. sourceAfter is absent."
+  ]
+}
