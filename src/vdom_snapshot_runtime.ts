@@ -11,6 +11,8 @@ import {
   canonicalScalarSourceValue,
   getBoundValue,
   getKeyedOwnerRegionId,
+  getComponentOutputOwner,
+  getSuspenseRevealAdoption,
   type NumericColumn,
   readBoundValue,
   type RuntimeElement,
@@ -32,11 +34,20 @@ import {
   normalizeCompiledStateLayout,
 } from "./compiled_state_layout.ts";
 
-type VText = { kind: "text"; text: string; key: string | null };
+const suspenseRevealAdoption = Symbol("suspense-reveal-adoption");
+
+type VText = {
+  kind: "text";
+  text: string;
+  key: string | null;
+  componentOwner?: number;
+};
 type VElement = {
   kind: "element";
   tag: string;
   key: string | null;
+  componentOwner?: number;
+  [suspenseRevealAdoption]?: number;
   props: Readonly<Record<string, unknown>>;
   /** Authored reads for an unbound style whose accepted data was copied into props. */
   scopedSourceProps?: Readonly<Record<string, unknown>>;
@@ -526,7 +537,16 @@ const normalizeMany = (input: RuntimeNode): VNode[] => {
     // resources are represented by the TransitionCoordinator's readiness IDs.
     return normalizeMany(input.type(input.props));
   }
-  if (input.type === Fragment) return normalizeMany(input.props.children);
+  const stampedOwner = getComponentOutputOwner(input);
+  if (input.type === Fragment) {
+    if (stampedOwner !== undefined &&
+      (typeof input.props.children === "string" ||
+        typeof input.props.children === "number")) {
+      return [{ kind: "text", text: String(input.props.children),
+        key: elementKey(input), componentOwner: stampedOwner }];
+    }
+    return normalizeMany(input.props.children);
+  }
   const keyedRegionId = getKeyedOwnerRegionId(input.props.children);
   // Keyed regions release removed row descriptions after mount; normalization must
   // rebuild children from the RuntimeElement's current input tree.
@@ -542,6 +562,13 @@ const normalizeMany = (input: RuntimeNode): VNode[] => {
     children: normalizeMany(input.props.children),
     keyedRegionId,
   };
+  if (stampedOwner !== undefined) normalized.componentOwner = stampedOwner;
+  const adoptionOwner = getSuspenseRevealAdoption(input);
+  if (adoptionOwner !== undefined) {
+    Object.defineProperty(normalized, suspenseRevealAdoption, {
+      value: adoptionOwner,
+    });
+  }
   if (keyedRegionId === null) normalizedElementCache.set(input, normalized);
   return [normalized];
 };
@@ -557,6 +584,9 @@ const snapshotScopedHostTree = <H>(
 ): VNode | null => {
   if (node.kind === "text") {
     const copy: VText = { kind: "text", text: node.text, key: node.key };
+    if (node.componentOwner !== undefined) {
+      copy.componentOwner = node.componentOwner;
+    }
     return Object.freeze(copy);
   }
   const props: Record<string, unknown> = {};
@@ -597,6 +627,7 @@ const snapshotScopedHostTree = <H>(
     children: Object.freeze(children),
     keyedRegionId: node.keyedRegionId,
   };
+  if (node.componentOwner !== undefined) copy.componentOwner = node.componentOwner;
   return Object.freeze(copy);
 };
 
@@ -616,6 +647,7 @@ const cloneMountedElementVNode = (
 const sameMountedElementHeader = (left: VNode, right: VNode): boolean =>
   left.kind === "element" && right.kind === "element" &&
   left.tag === right.tag && left.key === right.key &&
+  left.componentOwner === right.componentOwner &&
   left.props === right.props &&
   left.keyedRegionId === right.keyedRegionId &&
   left.scopedSourceProps === right.scopedSourceProps &&
@@ -627,6 +659,7 @@ const matchesAcceptedCopyCandidate = (mounted: VNode, candidate: VNode) =>
     mounted.acceptedCopyProps !== undefined &&
     candidate.acceptedCopyProps === undefined &&
     mounted.tag === candidate.tag && mounted.key === candidate.key &&
+    mounted.componentOwner === candidate.componentOwner &&
     mounted.props === candidate.props &&
     mounted.children === candidate.children &&
     mounted.keyedRegionId === candidate.keyedRegionId &&
@@ -815,8 +848,19 @@ const acceptedJournalForHost = <H, P>(host: VDOMHost<H, P>) =>
 
 const compatible = (left: VNode, right: VNode) =>
   left.kind === right.kind && left.key === right.key &&
+  left.componentOwner === right.componentOwner &&
   (left.kind === "text" ||
     (right.kind === "element" && left.tag === right.tag));
+
+const canAdoptSuspenseReveal = (
+  left: VNode,
+  right: VNode,
+  preparedOwner?: number,
+): boolean =>
+  left.kind === "element" && right.kind === "element" &&
+  left.componentOwner === undefined && right.componentOwner !== undefined &&
+  (preparedOwner ?? right[suspenseRevealAdoption]) === right.componentOwner &&
+  left.tag === right.tag && left.key === right.key;
 
 const validateUniqueKeys = (siblings: readonly VNode[]) => {
   const keys = new Set<string>();
@@ -939,9 +983,11 @@ const acceptedStructuredVNode = (
   writtenStyle: unknown,
   acceptedCopies: Readonly<Record<string, AcceptedCopyValue>>,
 ): VElement => {
+  const plainVNode = vnode[suspenseRevealAdoption] === undefined
+    ? vnode : { ...vnode };
   const copyVNode = Object.keys(acceptedCopies).length
-    ? { ...vnode, acceptedCopyProps: acceptedCopies }
-    : vnode;
+    ? { ...plainVNode, acceptedCopyProps: acceptedCopies }
+    : plainVNode;
   if (writtenStyle === noStructuredWrite || Object.isFrozen(vnode.props)) {
     return copyVNode;
   }
@@ -1194,10 +1240,12 @@ const updateMounted = <H, P>(
   old: MountedNode<H> | null,
   next: VNode,
   keyIndex?: MountedKeyIndex<H>,
+  preparedAdoptionOwner?: number,
 ): MountedNode<H> => {
   if (old && old.vnode === next) return old;
   if (old) acceptedJournalForHost(host)?.capture(old);
-  if (!old || !compatible(old.vnode, next)) {
+  if (!old || (!compatible(old.vnode, next) &&
+    !canAdoptSuspenseReveal(old.vnode, next, preparedAdoptionOwner))) {
     if (old) {
       visitMountedSubtree(old, keyIndex?.detach);
       removeMountedSubtree(host, parent, old);
@@ -1286,7 +1334,8 @@ const reconcileChildren = <H, P>(
     next.length === previous.length &&
     next.every((vnode, index) =>
       previous[index].vnode.key === vnode.key &&
-      compatible(previous[index].vnode, vnode)
+      (compatible(previous[index].vnode, vnode) ||
+        canAdoptSuspenseReveal(previous[index].vnode, vnode))
     )
   ) {
     return next.map((vnode, index) =>
@@ -1325,7 +1374,8 @@ const reconcileChildren = <H, P>(
     let candidate: MountedNode<H> | undefined;
     if (vnode.key != null) candidate = keyed.get(vnode.key);
     else candidate = unkeyed[unkeyedIndex++];
-    if (!candidate || !compatible(candidate.vnode, vnode)) {
+    if (!candidate || (!compatible(candidate.vnode, vnode) &&
+      !canAdoptSuspenseReveal(candidate.vnode, vnode))) {
       needsPlacement[index] = 1;
       return null;
     }
@@ -2097,7 +2147,9 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     started = this.profile ? performance.now() : 0;
     const target = matches.values().next().value as MountedNode<H> | undefined;
     if (
-      !target || !next || next.key !== key || !compatible(target.vnode, next)
+      !target || !next || next.key !== key ||
+      (!compatible(target.vnode, next) &&
+        !canAdoptSuspenseReveal(target.vnode, next))
     ) return false;
 
     let oldIndexVisits = 0;
@@ -3025,6 +3077,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       bucket: KeyedRegionBuckets<MountedNode<H>> | undefined;
       afterKey: string | null;
       next: VNode;
+      adoptionOwner?: number;
       applied: MountedNode<H> | null;
     };
     type NewNode = {
@@ -3076,13 +3129,15 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           !collectOld(old, acceptedOld)) return null;
         const normalized = normalizeMany(region.tree);
         if (normalized.length !== 1 || normalized[0].key !== region.key) return null;
+        const adoptionOwner = canAdoptSuspenseReveal(old.vnode, normalized[0])
+          ? normalized[0].componentOwner : undefined;
         const next = snapshotScopedHostTree(normalized[0]);
         if (!next || next.kind !== "element" || !collectNext(next)) return null;
         const parent = old.parent;
         const bucket = parent?.keyedChildren;
         targets.push({ key: region.key, old, parent,
           index: old.parentIndex, bucket,
-          afterKey: bucket?.afterKey(region.key) ?? null,
+          afterKey: bucket?.afterKey(region.key) ?? null, adoptionOwner,
           next, applied: null });
       }
     } catch {
@@ -3256,12 +3311,15 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         }
         try {
           for (const target of targets) {
-            const { old, parent, index, bucket, key, next } = target;
+            const { old, parent, index, bucket, key, next,
+              adoptionOwner } = target;
             const hostParent = parent
               ? parent.handle as unknown as Parent : this.container;
             let applied: MountedNode<H>;
-            if (compatible(old.vnode, next)) {
-              applied = updateMounted(host, hostParent, old, next, keyIndex);
+            if (compatible(old.vnode, next) ||
+              canAdoptSuspenseReveal(old.vnode, next, adoptionOwner)) {
+              applied = updateMounted(host, hostParent, old, next, keyIndex,
+                adoptionOwner);
             } else {
               this.#acceptedJournal?.capture(old);
               if (parent) this.#acceptedJournal?.capture(parent);
@@ -3546,7 +3604,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       }
       if (
         !target || target.hostDisposed || next.key !== region.key ||
-        !compatible(target.vnode, next)
+        (!compatible(target.vnode, next) &&
+          !canAdoptSuspenseReveal(target.vnode, next))
       ) return null;
       try {
         if (!validateCandidate(next)) return null;
@@ -3777,7 +3836,9 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         return false;
       }
       if (
-        !target || next.key !== region.key || !compatible(target.vnode, next)
+        !target || next.key !== region.key ||
+        (!compatible(target.vnode, next) &&
+          !canAdoptSuspenseReveal(target.vnode, next))
       ) {
         return false;
       }

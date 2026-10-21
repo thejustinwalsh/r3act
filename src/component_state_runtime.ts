@@ -99,10 +99,12 @@ import {
   copyRuntimeElement,
   createKeyedOwnerVersion,
   Fragment,
+  getComponentOutputOwner,
   getKeyedOwnerRegionId,
   getKeyedOwnerVersion,
   isRuntimeOwnedElement,
   keyedOwnerChildren,
+  markSuspenseRevealAdoption,
   type NumericBindingProgramDescriptor,
   type NumericBindingProgramDescriptorV1,
   type NumericBindingProgramDescriptorV2,
@@ -110,6 +112,7 @@ import {
   type RuntimeNode,
   type ScalarSource,
   rebindCapturedBindingSources,
+  stampComponentOutput,
 } from "./jsx_binding_runtime.ts";
 import {
   type PreparedNumericCellProgram,
@@ -354,7 +357,14 @@ type BoundaryRenderState = {
   visited: Set<string>;
   held?: HeldGenericState;
   retained?: Set<OwnerId>;
+  /** Candidate-local clean cache views for marked reveal output paths. */
+  cleanRevealOutputs?: WeakMap<object, RuntimeNode>;
 };
+
+const cleanRevealOutput = (
+  state: BoundaryRenderState | undefined, output: RuntimeNode,
+): RuntimeNode => output !== null && typeof output === "object"
+  ? state?.cleanRevealOutputs?.get(output) ?? output : output;
 
 const sameClosedBoundaryNode = (left: unknown, right: unknown, depth = 0): boolean => {
   if (Object.is(left, right)) return true;
@@ -426,6 +436,33 @@ type ComponentCache = {
   /** A sparse keyed host commit changed a descendant output in this snapshot. */
   invalidatedBySparseStore?: boolean;
   keyedRegion?: KeyedRegionCache;
+};
+
+const canAdoptBareSuspenseFallback = (
+  boundaryOwner: OwnerId,
+  accepted: ComponentCache | undefined,
+  next: RuntimeNode,
+  childOwner: OwnerId,
+): next is RuntimeElement => {
+  if (!accepted?.nativeBoundary || !accepted.pendingResource ||
+    accepted.subtreeOwners.size !== 1 ||
+    !accepted.subtreeOwners.has(boundaryOwner) ||
+    !isRuntimeOwnedElement(accepted.expandedResult) ||
+    !isRuntimeOwnedElement(next)) return false;
+  const previous = accepted.expandedResult;
+  if (typeof previous.type !== "string" || previous.type !== next.type ||
+    getComponentOutputOwner(previous) !== undefined ||
+    getComponentOutputOwner(next) !== childOwner) return false;
+  const oldKey = Object.getOwnPropertyDescriptor(previous.props, "key");
+  const newKey = Object.getOwnPropertyDescriptor(next.props, "key");
+  if (!oldKey || !newKey || !("value" in oldKey) || !("value" in newKey)) {
+    return false;
+  }
+  const canonicalKey = (value: unknown): string | null =>
+    typeof value === "string" || typeof value === "number"
+      ? String(value) : null;
+  const expectedKey = canonicalKey(oldKey.value);
+  return expectedKey !== null && expectedKey === canonicalKey(newKey.value);
 };
 type CandidateNumericWrite = {
   readonly owner: OwnerId;
@@ -1549,17 +1586,20 @@ const carryHostKeys = (
   path = "0",
   onVisit?: () => void,
   scopeExplicitHostKeys = false,
+  owner?: OwnerId,
 ): RuntimeNode => {
   onVisit?.();
-  if (
-    node == null || node === false || typeof node === "string" ||
-    typeof node === "number"
-  ) return node;
+  if (node == null || node === false) return node;
+  if (typeof node === "string" || typeof node === "number") {
+    return owner === undefined ? node : stampComponentOutput(node, owner,
+      `${String(componentKey)}:${path}`);
+  }
   if (Array.isArray(node)) {
     return copyKeyedOwnerMetadata(
       node,
       node.map((child, index) =>
-        carryHostKeys(child, componentKey, `${path}.${index}`, onVisit, scopeExplicitHostKeys)
+        carryHostKeys(child, componentKey, `${path}.${index}`, onVisit,
+          scopeExplicitHostKeys, owner)
       ),
     );
   }
@@ -1572,6 +1612,7 @@ const carryHostKeys = (
         path,
         onVisit,
         scopeExplicitHostKeys,
+        owner,
       ),
     });
   }
@@ -1581,7 +1622,9 @@ const carryHostKeys = (
     : scopeExplicitHostKeys
     ? `${String(componentKey)}\u0000${String(existingKey)}`
     : String(existingKey);
-  return copyRuntimeElement(node.type, { ...node.props, key });
+  const type = node.type;
+  return copyRuntimeElement(type, { ...node.props, key },
+    typeof type === "string" ? owner : undefined);
 };
 
 const singleHostRootKey = (
@@ -2869,8 +2912,9 @@ export class ComponentStateRoot<H, Parent = H> {
         const output = program.schemaVersion === 4 || program.schemaVersion === 5
           ? null : evaluateClosedStoreHostProgram(program, values);
         if (program.schemaVersion === 4 || program.schemaVersion === 5) {
-          const next = evaluateClosedStoreHostTree(program, values);
-          if (!next) throw new SparseCandidateIneligible();
+          const tree = evaluateClosedStoreHostTree(program, values);
+          if (!tree) throw new SparseCandidateIneligible();
+          const next = copyRuntimeElement(tree.type, tree.props, owner);
           const previous = cache.expandedResult;
           const staged = treeRegions(program.host, previous, next);
           if (!staged) throw new SparseCandidateIneligible();
@@ -2887,8 +2931,8 @@ export class ComponentStateRoot<H, Parent = H> {
         }
         outputChanged ||= output.some(([name, value]) =>
           !sameClosedHostOutput(program.host.tag, name, previous.props[name], value));
-        const next = Object.freeze({ type: program.host.tag,
-          props: Object.freeze(Object.fromEntries([["key", program.host.key], ...output])) });
+        const next = copyRuntimeElement(program.host.tag,
+          Object.fromEntries([["key", program.host.key], ...output]), owner);
         owners.set(owner, { cache, inputs, next });
         regions.push({ key: program.host.key, tag: program.host.tag, props: output });
       }
@@ -4009,6 +4053,7 @@ export class ComponentStateRoot<H, Parent = H> {
       this.#discardUncommittedStoreRoots(stores);
       throw error;
     } finally {
+      boundaryState.cleanRevealOutputs = undefined;
       this.#collectedKeyedRegions = priorKeyed;
       this.#collectedCollectionRegions = priorCollections;
     }
@@ -5723,6 +5768,7 @@ export class ComponentStateRoot<H, Parent = H> {
         generated = status && evaluateClosedResourceHostProgram(resourceProgram, status.value);
       }
       if (!generated) throw new SparseCandidateIneligible();
+      generated = copyRuntimeElement(generated.type, generated.props, childOwner);
       const preparedCaches = new Map<OwnerId, ComponentCache>();
       for (let index = 0; index < steps.length; index++) {
         const step = steps[index];
@@ -5796,8 +5842,11 @@ export class ComponentStateRoot<H, Parent = H> {
         (!resourceProgram && storeProgram ? closedStoreHostInputs(storeProgram).every((input) =>
           Object.getOwnPropertyDescriptor(childProps, input.storeProp)?.value ===
             descriptors[input.storeProp]?.value) : true);
+      const regionTree = canAdoptBareSuspenseFallback(
+        boundaryOwner, boundaryCache, generated, childOwner,
+      ) ? markSuspenseRevealAdoption(generated, childOwner) : generated;
       return {
-        region: { key: hostKey, tree: generated },
+        region: { key: hostKey, tree: regionTree },
         resource,
         dependencies: new Set([resource, ...dependencies]),
         storeInputs,
@@ -6085,6 +6134,7 @@ export class ComponentStateRoot<H, Parent = H> {
       "0",
       options.onOutputNode,
       cached.scopeExplicitHostKeys === true,
+      owner,
     );
     if (this.#profile) {
       this.#profile("owner.render-and-key", performance.now() - renderStarted);
@@ -7283,7 +7333,7 @@ export class ComponentStateRoot<H, Parent = H> {
         }
         if (resourceWasRead) return null;
         result = carryHostKeys(
-          result, hostKeyScope, "0", undefined, scopeExplicitHostKeys,
+          result, hostKeyScope, "0", undefined, scopeExplicitHostKeys, owner,
         );
         const hostKey = singleHostRootKey(result);
         if (hostKey === null || hasNestedComponent(result)) return null;
@@ -8482,7 +8532,7 @@ export class ComponentStateRoot<H, Parent = H> {
       if (storeTransaction.stores.size > 0) return null;
       storeTransaction.discard();
       result = carryHostKeys(
-        result, hostKeyScope, "0", undefined, scopeExplicitHostKeys,
+        result, hostKeyScope, "0", undefined, scopeExplicitHostKeys, owner,
       );
       const hostKey = singleHostRootKey(result);
       if (hostKey === null || hasNestedComponent(result)) return null;
@@ -9945,6 +9995,9 @@ export class ComponentStateRoot<H, Parent = H> {
         ? [...collectionDescriptor.rows.keys()]
         : [];
       const siblingPending: unknown[] = [];
+      const cleanChildReplacements: {
+        rows: Array<readonly [number, RuntimeNode]> | null;
+      } = { rows: null };
       const children = node.map((child, index) => {
         const childPath = `${path}/${index}`;
         const siteId = child && !Array.isArray(child) &&
@@ -10025,6 +10078,10 @@ export class ComponentStateRoot<H, Parent = H> {
           if (ownerMark) ownerPreparation?.releaseCheckpoint(ownerMark);
         }
         if (expanded !== child) changed = true;
+        const cleanExpanded = cleanRevealOutput(boundaryState, expanded);
+        if (cleanExpanded !== expanded) {
+          (cleanChildReplacements.rows ??= []).push([index, cleanExpanded]);
+        }
         if (outputsByKey && regionId !== null) {
           if (
             !child || Array.isArray(child) || typeof child !== "object" ||
@@ -10071,7 +10128,7 @@ export class ComponentStateRoot<H, Parent = H> {
               if (outputsByKey.has(key) || owner === undefined) {
                 validRegion = false;
               } else {
-                outputsByKey.set(key, expanded);
+                outputsByKey.set(key, cleanExpanded);
                 keysByOwner?.set(owner, key);
               }
             }
@@ -10149,7 +10206,18 @@ export class ComponentStateRoot<H, Parent = H> {
           } else this.#collectedKeyedRegions.set(parentOwner, collected);
         }
       }
-      return changed ? copyKeyedOwnerMetadata(node, children) : node;
+      const expandedChildren = changed ? copyKeyedOwnerMetadata(node, children) : node;
+      if (cleanChildReplacements.rows) {
+        const cleanChildren = children.slice();
+        for (const [index, clean] of cleanChildReplacements.rows) {
+          cleanChildren[index] = clean;
+        }
+        boundaryState!.cleanRevealOutputs!.set(
+          expandedChildren,
+          copyKeyedOwnerMetadata(node, cleanChildren),
+        );
+      }
+      return expandedChildren;
     }
     if (node.type === Suspense) {
       this.#everHadNativeBoundary = true;
@@ -10210,13 +10278,27 @@ export class ComponentStateRoot<H, Parent = H> {
       const recordBoundaryOutput = (
         output: RuntimeNode,
         pendingResource?: AsyncResource<any>,
+        primaryReveal = false,
       ): RuntimeNode => {
+        const accepted = primaryReveal && boundaryState
+          ? this.#componentCache.get(boundaryOwner) : undefined;
+        const outputOwner = isRuntimeOwnedElement(output)
+          ? getComponentOutputOwner(output) : undefined;
+        let candidateOutput = output;
+        if (outputOwner !== undefined &&
+          canAdoptBareSuspenseFallback(boundaryOwner, accepted, output, outputOwner)) {
+          const markedOutput = markSuspenseRevealAdoption(output, outputOwner);
+          (boundaryState!.cleanRevealOutputs ??= new WeakMap()).set(
+            markedOutput, cleanRevealOutput(boundaryState, output),
+          );
+          candidateOutput = markedOutput;
+        }
         const cache: ComponentCache = {
           type: Suspense,
           hostKeyScope: identityKey,
           props: { ...props },
           result: props.children ?? null,
-          expandedResult: output,
+          expandedResult: cleanRevealOutput(boundaryState, output),
           subtreeOwners: new Set(
             subtreeOwnersByOwner.get(boundaryOwner) ?? [boundaryOwner],
           ),
@@ -10228,7 +10310,7 @@ export class ComponentStateRoot<H, Parent = H> {
         if (expansionJournal) {
           expansionJournal.set(nextComponentCache, boundaryOwner, cache);
         } else nextComponentCache.set(boundaryOwner, cache);
-        return output;
+        return candidateOutput;
       };
       const heldBoundary = boundaryState?.held?.boundaries.get(boundaryOwner);
       if (heldBoundary) {
@@ -10305,7 +10387,7 @@ export class ComponentStateRoot<H, Parent = H> {
         }
         storeTransaction.releaseCheckpoint(storeMark);
         if (ownerMark) ownerPreparation?.releaseCheckpoint(ownerMark);
-        return recordBoundaryOutput(primary);
+        return recordBoundaryOutput(primary, undefined, true);
       } catch (error) {
         if (
           !isPendingResource(error) && !(error instanceof ResourceRejection)
@@ -10670,6 +10752,7 @@ export class ComponentStateRoot<H, Parent = H> {
               "0",
               undefined,
               scopeExplicitHostKeys,
+              owner,
             );
           }
         } else if (ownEffects) {
@@ -10746,7 +10829,7 @@ export class ComponentStateRoot<H, Parent = H> {
           collectionEntry,
           collectionPropsOwned,
           result: result ?? null,
-          expandedResult,
+          expandedResult: cleanRevealOutput(boundaryState, expandedResult),
           subtreeOwners: subtreeOwnersByOwner.get(owner) ?? new Set([owner]),
           ownEffects: ownEffects ?? new Map(),
           propBoundSites,
@@ -10785,9 +10868,22 @@ export class ComponentStateRoot<H, Parent = H> {
       boundaryPrimaries,
       boundaryState,
     );
-    return children === node.props.children
+    const expanded = children === node.props.children
       ? node
       : copyRuntimeElement(node.type, { ...node.props, children });
+    const cleanChildren = cleanRevealOutput(boundaryState, children);
+    if (cleanChildren !== children) {
+      if (!isRuntimeOwnedElement(expanded)) {
+        throw new Error("Suspense reveal cache output must be runtime-owned");
+      }
+      boundaryState!.cleanRevealOutputs!.set(
+        expanded,
+        copyRuntimeElement(expanded.type, {
+          ...expanded.props, children: cleanChildren,
+        }),
+      );
+    }
+    return expanded;
   }
 
   #assertActive() {

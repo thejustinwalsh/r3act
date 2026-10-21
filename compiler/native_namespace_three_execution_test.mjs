@@ -7,7 +7,8 @@ import { parse } from "@babel/parser";
 import { nativeModulePlugin } from "./vite_native_plugin.ts";
 import { nativeModuleCompilerPlugin } from "./vite_native_module.ts";
 import { createThreeNativeRoot } from "../src/three_host.ts";
-import { jsx } from "../src/native_runtime_api.ts";
+import { createNativeRoot, createWorld, defineComponent, jsx } from "../src/native_runtime_api.ts";
+import { MemoryVDOMHost } from "../src/vdom_snapshot_runtime.ts";
 
 const directory = path.resolve(import.meta.dirname, "..");
 const input = path.join(directory, ".cache/namespace-three-authored.tsx");
@@ -17,6 +18,32 @@ const workbenchCompiler = nativeModuleCompilerPlugin({ root: directory });
 const workbenchPath = path.join(directory, "src/browser/native_three_host.tsx");
 const authored = `import { useEffect, useState } from "../src/native_runtime_api.ts";
 export const frameTrace = { sceneRenders: 0, setEpoch: null, setPhase: null, setNested: null };
+export const identityTrace = { starts: 0, cleanups: 0, refs: [] };
+export function captureIdentityRef(node) { identityTrace.refs.push(node); }
+export function IdentityPanel(props) {
+  useEffect(() => { identityTrace.starts++; return () => { identityTrace.cleanups++; }; });
+  return <output key="constant" ref={captureIdentityRef} data-value={props.value}>same</output>;
+}
+export function AlternatePanel(props) {
+  useEffect(() => { identityTrace.starts++; return () => { identityTrace.cleanups++; }; });
+  return <output key="constant" ref={captureIdentityRef} data-value={props.value}>same</output>;
+}
+export function PrimitiveRoot(props) { return props.value; }
+export function PrimitiveList(props) {
+  const first = <PrimitiveRoot key="A" value="A" />;
+  const second = <PrimitiveRoot key="B" value="B" />;
+  return <section key="text-list">{props.reverse ? [second, first] : [first, second]}</section>;
+}
+export function FragmentPair(props) {
+  return <><i key="left">left</i><i key="right">right</i></>;
+}
+export const threeIdentityTrace = { starts: 0, cleanups: 0 };
+export function ThreeIdentity(props) {
+  useEffect(() => { threeIdentityTrace.starts++; return () => { threeIdentityTrace.cleanups++; }; });
+  return <group key="constant" name={props.name}><mesh key="mesh">
+    <boxGeometry args={[1,1,1]} /><meshStandardMaterial color="orange" />
+  </mesh></group>;
+}
 export function FrameMarker() {
   const [epoch, setEpoch] = useState(0);
   useEffect(() => { frameTrace.setEpoch = setEpoch; });
@@ -32,7 +59,7 @@ export function Motion(props) {
 export function NestedForm(props) {
   const [scale, setScale] = useState(1);
   useEffect(() => { frameTrace.setNested = setScale; });
-  return <mesh key={props.name} name={props.name} scale-x={scale}>
+  return <mesh key="nested" name={props.name} scale-x={scale}>
     <boxGeometry args={[1, 1, 1]} />
     <meshStandardMaterial color="orange" />
   </mesh>;
@@ -61,7 +88,8 @@ class ProbeGroup extends THREE.Group {
   probeMode = 3;
   constructor(size) { super(); this.probeSize = size; }
 }
-let native, frameNative, proxyNative;
+let native, frameNative, proxyNative, identityRoot, identityFork, primitiveRoot,
+  textListRoot, fragmentRoot, genericRoot, threeIdentityRoot, failingIdentityRoot;
 try {
   const workbenchSource = await readFile(workbenchPath, "utf8");
   const workbenchTransform = await workbenchCompiler.transform.call({
@@ -254,6 +282,192 @@ try {
   proxyNative.dispose();
   assert.equal(proxyScene.children.length, 0);
   proxyNative = null;
+  const identityWorld = createWorld();
+  const identityHost = new MemoryVDOMHost();
+  const identityContainer = identityHost.createContainer();
+  const forkHost = new MemoryVDOMHost();
+  const forkContainer = forkHost.createContainer();
+  identityRoot = createNativeRoot(identityHost, identityContainer,
+    { world: identityWorld, rootId: "compiled-identity-primary", scheduleCommit() {} });
+  identityFork = createNativeRoot(forkHost, forkContainer,
+    { world: identityWorld, rootId: "compiled-identity-fork", scheduleCommit() {} });
+  const panel = (type, key, value) => jsx(type, { key, value });
+  identityRoot.mount(panel(app.IdentityPanel, "A", "same"));
+  identityFork.mount(panel(app.IdentityPanel, "A", "same"));
+  const firstPanel = identityContainer.children[0];
+  const forkPanel = forkContainer.children[0];
+  assert.equal(app.identityTrace.starts, 2);
+  assert.equal(app.identityTrace.cleanups, 0);
+  assert.equal(app.identityTrace.refs.at(-1), forkPanel);
+  identityRoot.update(panel(app.IdentityPanel, "A", "updated"));
+  assert.equal(identityContainer.children[0], firstPanel,
+    "same owner must retain the constant-key host on a prop update");
+  assert.equal(firstPanel.props["data-value"], "updated");
+  assert.deepEqual([app.identityTrace.starts, app.identityTrace.cleanups], [2, 0]);
+  const discarded = identityRoot.prepare(panel(app.IdentityPanel, "discarded", "discarded"),
+    { renderPreparation: "repeatable" });
+  assert.equal(discarded.validate(), true);
+  discarded.discard();
+  assert.equal(identityContainer.children[0], firstPanel);
+  assert.deepEqual([app.identityTrace.starts, app.identityTrace.cleanups], [2, 0]);
+  const stale = identityRoot.prepare(panel(app.IdentityPanel, "stale", "stale"),
+    { renderPreparation: "repeatable" });
+  assert.equal(stale.validate(), true);
+  identityRoot.update(panel(app.IdentityPanel, "B", "updated"));
+  const secondPanel = identityContainer.children[0];
+  assert.notEqual(secondPanel, firstPanel,
+    "different owner key must remount a constant-key intrinsic output");
+  assert.equal(secondPanel.props["data-value"], "updated");
+  assert.equal(stale.validate(), false,
+    "newer accepted owner replacement must invalidate a prepared candidate");
+  stale.discard();
+  assert.equal(forkContainer.children[0], forkPanel,
+    "unselected root must retain its accepted owner and host");
+  assert.deepEqual([app.identityTrace.starts, app.identityTrace.cleanups], [3, 1]);
+  assert.equal(app.identityTrace.refs.at(-2), null,
+    "retired owner must release its old host ref");
+  assert.equal(app.identityTrace.refs.at(-1), secondPanel,
+    "replacement owner must attach its new host ref");
+  identityRoot.update(panel(app.AlternatePanel, "B", "updated"));
+  const thirdPanel = identityContainer.children[0];
+  assert.notEqual(thirdPanel, secondPanel,
+    "different component type must remount a constant-key intrinsic output");
+  identityRoot.update(panel(app.AlternatePanel, "C", "updated"));
+  assert.notEqual(identityContainer.children[0], thirdPanel);
+  assert.deepEqual([app.identityTrace.starts, app.identityTrace.cleanups], [5, 3]);
+  const primitiveHost = new MemoryVDOMHost();
+  const primitiveContainer = primitiveHost.createContainer();
+  primitiveRoot = createNativeRoot(primitiveHost, primitiveContainer);
+  const primitive = (key, value) => jsx(app.PrimitiveRoot, { key, value });
+  primitiveRoot.mount(primitive("text-A", "same"));
+  const firstText = primitiveContainer.children[0];
+  assert.equal(firstText.kind, "text");
+  primitiveRoot.update(primitive("text-B", "same"));
+  assert.notEqual(primitiveContainer.children[0], firstText,
+    "equal text from different owners must have distinct host lifetimes");
+  primitiveRoot.update(primitive("number-A", 42));
+  const firstNumber = primitiveContainer.children[0];
+  assert.equal(firstNumber.text, "42");
+  primitiveRoot.update(primitive("number-B", 42));
+  assert.notEqual(primitiveContainer.children[0], firstNumber,
+    "equal number output from different owners must remount the text host");
+  const textListHost = new MemoryVDOMHost();
+  const textListContainer = textListHost.createContainer();
+  textListRoot = createNativeRoot(textListHost, textListContainer);
+  textListRoot.mount(jsx(app.PrimitiveList, { reverse: false }));
+  const textListSection = textListContainer.children[0];
+  const textHandles = new Map(textListSection.children.map(node => [node.text, node]));
+  assert.deepEqual([...textHandles.keys()], ["A", "B"]);
+  textListRoot.update(jsx(app.PrimitiveList, { reverse: true }));
+  assert.equal(textListContainer.children[0], textListSection);
+  assert.deepEqual(textListSection.children.map(node => node.text), ["B", "A"]);
+  assert.equal(textListSection.children[0], textHandles.get("B"),
+    "keyed text owner B must move without remounting its host");
+  assert.equal(textListSection.children[1], textHandles.get("A"),
+    "keyed text owner A must move without remounting its host");
+  const fragmentHost = new MemoryVDOMHost();
+  const fragmentContainer = fragmentHost.createContainer();
+  fragmentRoot = createNativeRoot(fragmentHost, fragmentContainer);
+  fragmentRoot.mount(jsx(app.FragmentPair, { key: "fragment-A" }));
+  const firstFragmentHosts = [...fragmentContainer.children];
+  assert.equal(firstFragmentHosts.length, 2);
+  fragmentRoot.update(jsx(app.FragmentPair, { key: "fragment-B" }));
+  assert.equal(fragmentContainer.children.length, 2);
+  for (let index = 0; index < 2; index++)
+    assert.notEqual(fragmentContainer.children[index], firstFragmentHosts[index],
+      "each explicit fragment root must follow the component owner lifetime");
+  const genericHost = new MemoryVDOMHost();
+  const genericContainer = genericHost.createContainer();
+  const GenericPanel = defineComponent("manual-generic-identity", props =>
+    jsx("output", { key: "constant", "data-value": props.value }));
+  genericRoot = createNativeRoot(genericHost, genericContainer);
+  genericRoot.mount(panel(GenericPanel, "generic-A", "same"));
+  const firstGeneric = genericContainer.children[0];
+  genericRoot.update(panel(GenericPanel, "generic-B", "same"));
+  assert.notEqual(genericContainer.children[0], firstGeneric,
+    "generic registered components must obey the same owner identity rule");
+  const identityScene = new THREE.Scene();
+  threeIdentityRoot = createThreeNativeRoot(identityScene, { namespace: THREE });
+  const threePanel = (key, name) => jsx(app.ThreeIdentity, { key, name });
+  threeIdentityRoot.root.mount(threePanel("A", "shared"));
+  const firstGroup = identityScene.children[0];
+  const firstMesh = firstGroup.children[0];
+  const firstOwnedGeometry = firstMesh.geometry, firstOwnedMaterial = firstMesh.material;
+  const beforeThreeReplacement = { ...threeIdentityRoot.host.diagnostics };
+  assert.equal(beforeThreeReplacement.liveResources, 2);
+  threeIdentityRoot.root.update(threePanel("A", "changed"));
+  assert.equal(identityScene.children[0], firstGroup);
+  assert.equal(firstGroup.children[0], firstMesh);
+  assert.deepEqual([app.threeIdentityTrace.starts, app.threeIdentityTrace.cleanups], [1, 0]);
+  threeIdentityRoot.root.update(threePanel("B", "changed"));
+  assert.notEqual(identityScene.children[0], firstGroup,
+    "different Three owner must remount a constant-key host group");
+  assert.notEqual(identityScene.children[0].children[0].geometry, firstOwnedGeometry);
+  assert.notEqual(identityScene.children[0].children[0].material, firstOwnedMaterial);
+  assert.equal(threeIdentityRoot.host.diagnostics.disposedResources,
+    beforeThreeReplacement.disposedResources + 2,
+    "retired Three owner must dispose its two owned resources once");
+  assert.equal(threeIdentityRoot.host.diagnostics.liveResources, 2);
+  assert.deepEqual([app.threeIdentityTrace.starts, app.threeIdentityTrace.cleanups], [2, 1]);
+  for (const root of [identityRoot, identityFork, primitiveRoot, textListRoot,
+    fragmentRoot, genericRoot])
+    root.dispose();
+  assert.deepEqual([app.identityTrace.starts, app.identityTrace.cleanups], [5, 5]);
+  assert.equal(identityContainer.children.length, 0);
+  assert.equal(forkContainer.children.length, 0);
+  threeIdentityRoot.dispose();
+  assert.equal(identityScene.children.length, 0);
+  assert.equal(threeIdentityRoot.host.diagnostics.liveResources, 0);
+  assert.equal(threeIdentityRoot.host.diagnostics.createdResources,
+    threeIdentityRoot.host.diagnostics.disposedResources);
+  identityRoot = identityFork = primitiveRoot = textListRoot = fragmentRoot = genericRoot =
+    threeIdentityRoot = null;
+  class FailingIdentityHost extends MemoryVDOMHost {
+    failCreate = false;
+    createElement(tag, parent, props) {
+      if (this.failCreate && tag === "output")
+        throw new Error("constant-key owner replacement create failed");
+      return super.createElement(tag, parent, props);
+    }
+  }
+  const failingIdentityHost = new FailingIdentityHost();
+  const failingIdentityContainer = failingIdentityHost.createContainer();
+  failingIdentityRoot = createNativeRoot(failingIdentityHost, failingIdentityContainer);
+  failingIdentityRoot.mount(panel(app.IdentityPanel, "accepted", "same"));
+  const acceptedFailureHost = failingIdentityContainer.children[0];
+  const acceptedFailureVersion = failingIdentityRoot.version;
+  const acceptedFailurePublication = failingIdentityRoot.publicationVersion;
+  const snapshotBytes = () => JSON.stringify(failingIdentityRoot.snapshot,
+    (_name, value) => typeof value === "function" ? `[function:${value.name}]` : value);
+  const acceptedFailureSnapshot = snapshotBytes();
+  failingIdentityHost.failCreate = true;
+  let createFailure;
+  try { failingIdentityRoot.update(panel(app.IdentityPanel, "replacement", "same")); }
+  catch (error) { createFailure = error; }
+  assert.ok(createFailure instanceof Error);
+  assert.match(createFailure.message, /constant-key owner replacement create failed/);
+  assert.equal(failingIdentityRoot.version, acceptedFailureVersion,
+    "failed owner replacement must not advance the accepted host version");
+  assert.equal(failingIdentityRoot.publicationVersion, acceptedFailurePublication,
+    "failed owner replacement must not advance accepted publication");
+  assert.equal(snapshotBytes(), acceptedFailureSnapshot,
+    "failed owner replacement must preserve the last accepted snapshot");
+  assert.equal(failingIdentityContainer.children[0], acceptedFailureHost);
+  assert.throws(() => failingIdentityRoot.update(panel(app.IdentityPanel, "later", "same")),
+    error => {
+      assert.equal(error?.message,
+        "ComponentStateRoot cannot continue after a host commit failure");
+      assert.equal(error.cause, createFailure,
+        "terminal owner replacement quarantine must retain the original create error");
+      return true;
+    });
+  failingIdentityHost.failCreate = false;
+  failingIdentityRoot.dispose();
+  assert.equal(failingIdentityContainer.children.length, 0);
+  assert.equal(failingIdentityRoot.diagnostics().ownerCount, 0);
+  assert.equal(app.identityTrace.starts, app.identityTrace.cleanups,
+    "failed owner replacement teardown must balance accepted effect cleanup");
+  failingIdentityRoot = null;
   const scene = new THREE.Scene();
   native = createThreeNativeRoot(scene, { namespace: { ...THREE, ProbeGroup } });
   const view = (value, reset=false) => jsx(app.SceneView, { value, reset });
@@ -336,6 +550,11 @@ try {
   native?.dispose();
   frameNative?.dispose();
   proxyNative?.dispose();
+  for (const root of [identityRoot, identityFork, primitiveRoot, textListRoot,
+    fragmentRoot, genericRoot])
+    root?.dispose();
+  threeIdentityRoot?.dispose();
+  failingIdentityRoot?.dispose();
   await plugin.closeBundle?.call({});
   await workbenchCompiler.closeBundle?.call({});
 }

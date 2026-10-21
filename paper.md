@@ -1,5 +1,16 @@
 # A VDOM-First, Data-Oriented Runtime for Declarative UI
 
+## Component output identity — 21 October 2026
+
+Managed intrinsic and primitive outputs now carry the existing World owner incarnation through retained VDOM compatibility. Changing a component key/type remounts a constant-explicit-key host; same-owner updates and keyed text moves retain it. Initial content may explicitly adopt a matching bare Suspense fallback, then accepts the real content owner; component-authored fallbacks remount. Candidate permission is absent from accepted snapshots and retained output caches. No alternate identity/version registry or eager whole-tree copy is added.
+
+Corrected Darwin-v3 passes 64/64 phases, 1102 runtime tests, 85 Rust tests and all 45 compiled fixtures, with 1483 input hashes matched. The restored original namespace failure, three new boundary cases, four VDOM identity cases and ten previously failing reveal tests pass. Both failed gates remain preserved.
+
+The sole current-source installed 256-object canvas comparison is slower: Native update/publication median/p95 1.60/2.40 ms versus React Compiler 0.60/0.80 ms, with imperative floor 0.10/0.20 ms. All arms preserve outputs, identity and teardown; untimed and timing phases each match 11449 hashes and close cleanly. Twelve-file authoring is unchanged. This is stable-frame evidence, not replacement-latency or causal old/new Native evidence. Setup intervals have different construction exclusions and do not qualify matched cold mount. No favorable repeat occurs.
+
+The semantic identity slice is complete; the full-plan goal remains active. General DAG-wide fusion, a realtime performance win, HMR delivery, cold/memory and independent-device requirements remain open. Historic narrow wins, qualified dense loss and physical HOLD retain their scope. No maintenance advantage is claimed; no VM or owned server is running. [Results, failures and exact receipts](implementation/2026-10-21-component-output-identity/results.md); [primary source review](implementation/2026-10-21-component-output-identity/source-review.md).
+
+
 ## OS compatibility smoke and compiler environment
 
 The user explicitly scoped OS compatibility to a quick smoke, rather than an architecture matrix. The Linux ARM64 run at one CPU/2048-MiB VM RAM and an actual 1536-MiB container cap executed the native compiler and five installed packages successfully. Its 1093 runtime tests, 84 Rust tests, 44 compiled fixtures' assertions, Three/retention checks and thirteen package-consumer checks passed. The overall consolidated receipt remains **FAIL: 62/63**, because fixture 37 changed the debug compiler hash; that failure is preserved, not relabeled as a green gate. All 1448 runner inputs match; 1458 raw/context files and 244 fixture artifacts are archived.

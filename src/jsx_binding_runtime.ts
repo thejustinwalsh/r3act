@@ -20,6 +20,8 @@ export type RuntimeElement = {
 };
 
 const runtimeOwnedElements = new WeakSet<object>();
+const componentOutputOwnerTag = Symbol("component-output-owner");
+const suspenseRevealAdoptionTag = Symbol("suspense-reveal-adoption");
 
 /** True only for an element and props allocated by the runtime. */
 export const isRuntimeOwnedElement = (value: unknown): value is RuntimeElement =>
@@ -34,9 +36,11 @@ const ownRuntimeElement = (element: RuntimeElement): RuntimeElement => {
 export const copyRuntimeElement = (
   type: ElementType,
   props: Record<string, any>,
+  componentOwner?: number,
 ): RuntimeElement => ownRuntimeElement(Object.freeze({
   type,
-  props: Object.freeze({ ...props }),
+  props: Object.freeze(componentOwner === undefined
+    ? { ...props } : { ...props, [componentOutputOwnerTag]: componentOwner }),
 }));
 
 const keyedOwnerRegionTag = Symbol("keyed-owner-region");
@@ -108,6 +112,60 @@ export const copyKeyedOwnerMetadata = <T extends RuntimeNode[]>(
 };
 
 export const Fragment = Symbol("jsx-runtime-fragment");
+
+/** @internal Attach the current owner incarnation to one component output root. */
+export const stampComponentOutput = (
+  node: RuntimeNode, owner: number, key?: string,
+): RuntimeNode => {
+  if (typeof node === "string" || typeof node === "number") {
+    return copyRuntimeElement(Fragment, { children: node, key }, owner);
+  }
+  if (isRuntimeOwnedElement(node) && typeof node.type === "string") {
+    return copyRuntimeElement(node.type, node.props, owner);
+  }
+  return node;
+};
+
+/** @internal Read only an owner stamp on a runtime-owned output root. */
+export const getComponentOutputOwner = (node: RuntimeElement): number | undefined => {
+  if (!isRuntimeOwnedElement(node)) return undefined;
+  if (typeof node.type !== "string" &&
+    !(node.type === Fragment &&
+      (typeof node.props.children === "string" ||
+        typeof node.props.children === "number"))) return undefined;
+  const descriptor = Object.getOwnPropertyDescriptor(node.props, componentOutputOwnerTag);
+  return descriptor && "value" in descriptor && Number.isSafeInteger(descriptor.value)
+    ? descriptor.value as number : undefined;
+};
+
+/** @internal Mark one candidate output for directional bare-fallback adoption. */
+export const markSuspenseRevealAdoption = (
+  output: RuntimeElement, owner: number,
+): RuntimeElement => {
+  if (!isRuntimeOwnedElement(output) || typeof output.type !== "string" ||
+    getComponentOutputOwner(output) !== owner) {
+    throw new TypeError("Suspense reveal adoption requires a stamped runtime host output");
+  }
+  const props = { ...output.props };
+  Object.defineProperty(props, suspenseRevealAdoptionTag, { value: owner });
+  return ownRuntimeElement(Object.freeze({
+    type: output.type,
+    props: Object.freeze(props),
+  }));
+};
+
+/** @internal Read only an adoption mark issued on a runtime-owned output. */
+export const getSuspenseRevealAdoption = (
+  output: RuntimeElement,
+): number | undefined => {
+  if (!isRuntimeOwnedElement(output) || typeof output.type !== "string") return undefined;
+  const descriptor = Object.getOwnPropertyDescriptor(
+    output.props, suspenseRevealAdoptionTag,
+  );
+  const owner = getComponentOutputOwner(output);
+  return descriptor && "value" in descriptor && descriptor.value === owner
+    ? owner : undefined;
+};
 
 /** Classic JSX factory used by the TSX prototype page. */
 export function jsx(

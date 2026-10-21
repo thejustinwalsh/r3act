@@ -1,0 +1,35 @@
+# Async recovery source review
+
+Source basis: main `cfd50f1d8c497e6743299165c01ec0cbfe317008`. The preceding turn completed the installed multi-host slice; this unit continues master-plan Units 5/8/9. Full-plan completion remains active. Recording A is exhausted/unresolved, physical selection stays HOLD, and previous timing results do not qualify changed source.
+
+The primary reread the project instructions, checkpoint, complete master guide, handoff, research guide and relevant paper/notebook async conclusions. Existing generic resource rejection, one-shot resources, transition/task replacement and closed resource publication remain the starting mechanisms. This is a semantic recovery slice, with no supported removable-cost budget or physical layout change.
+
+## Invariant and replacement
+
+`ComponentStateRoot` owns accepted boundary history. Successful expansion records a raw primary for keep-previous behavior. Previously, accepting a rejection left that success record reachable; a later pending retry could resurrect older success behind the accepted error. The replacement records the rendered error's raw output through the existing expansion journal after that output expands. The accepted map advances only on publication. Discard, enclosing-boundary rollback and failed preparation must leave accepted retention unchanged. No eager tree copy or alternate identity/version registry is introduced.
+
+An accepted rejection replaces the obsolete successful-primary intent. Pending retry re-expands that accepted error output until a new primary succeeds. Its candidate can still publish while observing the new pending resource, preserving the existing public prepare/commit and compiled resource contracts.
+
+Scoped closed programs cannot execute arbitrary error renderers. Rejected selected work may fail preparation, release its exact hold and permit generic error rendering. Regression coverage must distinguish queue resolution from visible error, preserve reasons, exercise newer urgent work and fork history, and reject late results after replacement/cancellation/disposal. Providers remain caller-owned.
+
+The installed example's cancellation handlers now return on expected cancellation instead of throwing while queue disposal retires pending reveal work. Failed/stale results still surface. This small example change needs its own installed execution qualification before claiming that browser path was rerun; the unit's authored fixture supplies separate cancellation conformance.
+
+## Boundary gate
+
+Sol medium agents own runtime/regressions and authored compiler/browser sources separately; primary owns integration, documentation and the checkpoint. Implementation agents run no tests or benchmarks. After source review, Luna runs the consolidated Darwin gate, actual compiler-authored DOM/Three/fork recovery fixture, and an untimed production build proof. The sole bounded Native-first comparison is authorized only against reviewed exact output and source hashes. Both arms must preload equal providers and expose their actual retention policy. React Compiler output alone does not prove equivalent Suspense behavior.
+
+Headless GPU-off offline HTTPS asset replay starts no server or VM. Saved one-CPU Apple defaults remain 256 MiB/container and 512 MiB/builder, with startup/effective caps still unverified. No extra memory is allocated. Comparison endpoints precede paint and cannot establish CPU, tails, cold/retained-memory, presentation, independent-device or maintenance advantage.
+
+Primary reviewed the runtime, nested rollback/discard regressions, actual compiler fixture, Native/React authoring and proof harness. The compiler fixture requires actual registrations and a strict primitive closed leaf for selected rejection; it keeps broader recovery generic. DOM/Three and the second DOM consumer share one World. The second consumer does not establish intentionally divergent fork frontiers. Both comparator arms retain accepted error during queued retry. Expected React rejection is captured through onCaughtError and checked exactly, while unexpected console/page/request errors fail verification.
+
+Darwin-v1 remains FAIL: two new-test rejected resources inferred invariant AsyncResource<never>; the existing compiled resource fixture rejected the proposed fallback policy; and the new fixture incorrectly assumed queue cancellation removed dispatched Store actions. No build/browser/timing followed. Explicit generic annotations repair the test typing. Recording the rejected attempt preserves the established accepted-error contract. The authored cancellation workload now uses new resource props in explicit queued render intent, while urgent Store state remains independent. Rendering cancellation never undoes domain actions. These are corrections to the primary's initial interpretation, not weakened existing assertions.
+
+Darwin-v2 preserves 1006 passing runtime tests and one failure, with all 24 actual compiled fixtures passing. Recording rejected primary children instead of raw error output made a previously supported manual pending candidate blocked/stale. The revised snapshot stores raw error output, preserving that candidate publication as well as accepted error retention. The production-build parser also now resolves the semantic-plan registrar from its named import alias, rather than assuming its emitted local name. No build/browser/timing has run yet.
+
+Revised source needs consolidated verification. A bounded timer sample may have no positive delta; that is recorded as unavailable rather than interpreted as zero clock quantum. The installed example cancellation change is source-reviewed here, with separate authored lifecycle coverage; no installed-browser rerun is implied.
+
+## Final disposition
+
+Darwin-v3 passes 38/38 steps, 1007 runtime tests, Rust 64 and all 24 actual compiled fixtures; 905 inputs match and 913 raw source/context copies are archived before commands. Error history now retains raw accepted error output. No prior assertion is weakened. The first production proof preserves Vite success but rejects absent React App memo output. The sole executable source difference after v3 is the React comparator's controller handoff from render into a layout effect. Proof-v2 binds the final comparator, with actual Ready _c(4), App _c(12), exact Native revision/owners and intentionally generic recovery components.
+
+Primary inspected those transforms and the passing untimed browser receipt, then wrote an exclusive authorization binding both hashes. The sole Native-first pair passes identical output, urgency, retained error, cancellation and cleanup at 0.9/0.9 ms before paint, about 0.1 ms clock quantum, with 492 matching before/after integrity rows and no browser errors. No performance retry occurs. The bounded audit rehashes the raw v3 archive and checks exact proof artifacts; global/unit documentation and one notebook cell follow verification. Full qualification and the active goal remain open. See [results and remaining limits](results.md).
