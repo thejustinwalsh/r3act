@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "status": "PRE_BROWSER_READINESS_FAILED",
+  "server": {
+    "command": "node implementation/2026-10-21-workbench-hmr/serve-workbench.mjs",
+    "environment": {
+      "PATH": "/Users/mini/.local/share/mise/installs/node/24.18.0/bin:/Users/mini/.cargo/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+      "PORTLESS_SYNC_HOSTS": "0",
+      "PORTLESS_TLD": "localhost",
+      "PORTLESS_STATE_DIR": "/Volumes/Depot/Developer/r3act/.pnpm-store/portless-workbench-hmr-v1",
+      "PORTLESS_PORT": "19575",
+      "PORTLESS_HTTPS": "1",
+      "CI": "1",
+      "PORT": "19576",
+      "HOST": "127.0.0.1",
+      "CHOKIDAR_USEPOLLING": "1",
+      "CHOKIDAR_INTERVAL": "100",
+      "R3ACT_HMR_EVIDENCE": "/Volumes/Depot/Developer/r3act/implementation/2026-10-21-workbench-hmr/evidence/browser-v1/server-evidence.json"
+    },
+    "execSession": null,
+    "numericExitCode": 1,
+    "origin": "functions.exec_command synchronous result",
+    "stdio": "combined tool output preserved below; stdout/stderr were not separately spooled",
+    "toolOutput": "AssertionError [ERR_ASSERTION]: target source is absent from the ready watcher\n    at file:///Volumes/Depot/Developer/r3act/implementation/2026-10-21-workbench-hmr/serve-workbench.mjs:134:10\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n"
+  },
+  "serverEvidence": {
+    "path": "server-evidence.json",
+    "sha256": "dafc6b531c752151a953e029934beb924d00860a60704925e2a4f1216cddf25d",
+    "status": "FAILED",
+    "pid": 25489,
+    "watcherReady": true,
+    "targetListed": false,
+    "usePolling": true,
+    "useFsEvents": false,
+    "interval": 100,
+    "ignoredRootDirectoryCounts": {
+      "/Volumes/Depot/Developer/r3act/implementation": 0,
+      "/Volumes/Depot/Developer/r3act/results": 0,
+      "/Volumes/Depot/Developer/r3act/.cache": 0,
+      "/Volumes/Depot/Developer/r3act/.pnpm-store": 0,
+      "/Volumes/Depot/Developer/r3act/compiler/oxc-spike/target": 0
+    },
+    "events": [],
+    "error": "AssertionError [ERR_ASSERTION]: target source is absent from the ready watcher\n    at file:///Volumes/Depot/Developer/r3act/implementation/2026-10-21-workbench-hmr/serve-workbench.mjs:134:10\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)"
+  },
+  "portless": {
+    "binary": ".pnpm-store/portless-cli/bin/portless",
+    "version": "0.15.8",
+    "proxyCommand": "portless proxy start --foreground --skip-trust --https --port 19575 --tld localhost --cert <private-temp>/alias.crt --key <private-temp>/alias.key",
+    "stateDir": "/Volumes/Depot/Developer/r3act/.pnpm-store/portless-workbench-hmr-v1",
+    "customCertKeyContentsRecorded": false,
+    "proxySessionId": 54045,
+    "startupOutput": "Proxy is running. Press Ctrl+C to stop.\nRoutes file: /Volumes/Depot/Developer/r3act/.pnpm-store/portless-workbench-hmr-v1/routes.json\nHTTPS/2 proxy listening on [::1]:19575\nHTTPS/2 proxy listening on 127.0.0.1:19575\n",
+    "stop": "Ctrl+C sent to owned exec session 54045",
+    "stopNumericExitCode": 0,
+    "doctor": {
+      "command": "portless doctor",
+      "toolOutput": "Version 0.15.8; Node.js 24.18.0; darwin arm64; isolated state dir; HTTPS target 127.0.0.1:19575; proxy responding; PID file points to process 25336; custom TLS cert; generated local CA not required; no routes; 0 failures, 0 warnings.",
+      "numericExitCode": "not captured separately by tool wrapper"
+    },
+    "route": {
+      "registrationCommand": "portless alias r3act-workbench-hmr-v1 19576",
+      "registrationOutput": "Alias registered: r3act-workbench-hmr-v1.localhost -> 127.0.0.1:19576",
+      "listAfterRegistration": "https://r3act-workbench-hmr-v1.localhost:19575 -> localhost:19576 (alias)",
+      "removalCommand": "portless alias --remove r3act-workbench-hmr-v1",
+      "removalOutput": "Removed alias: r3act-workbench-hmr-v1.localhost; No active routes.",
+      "finalRoutesFile": "isolated Portless state was removed after observing routes=[]"
+    }
+  },
+  "browser": {
+    "status": "NOT_RUN",
+    "reason": "Server exited 1 because ready watcher did not list the target source; readiness prerequisite failed. No browser supervisor or browser command was started.",
+    "noBrowserOutputOrSupervisorLog": "No browser process, output directory, stdout/stderr log, or supervisor receipt exists for this attempt."
+  },
+  "preAndPostPortChecks": {
+    "before": {
+      "19575": "free",
+      "19576": "free"
+    },
+    "after": {
+      "19575": "free",
+      "19576": "free"
+    }
+  },
+  "cleanup": {
+    "routeRemoved": true,
+    "proxyExitCode": 0,
+    "serverExited": true,
+    "portsAfterCleanup": {
+      "19575": "free",
+      "19576": "free"
+    },
+    "ownedProcessSnapshot": "empty for pid 25336, pid 25489, r3act-workbench-hmr-v1, serve-workbench.mjs, verify_native_three_host.mjs and task port markers",
+    "isolatedPortlessStateRemoved": true,
+    "temporaryCertKeyDirectoryRemoved": true,
+    "hostsSync": "disabled",
+    "trustStoreOrServiceChanges": false
+  },
+  "source": "src/browser/native_three_host.tsx remains byte-identical to the Darwin-v1 source hash 2dda7f5aa74d326901b94039f63a962e900ebc635ddf0791b0fc83183526050a"
+}

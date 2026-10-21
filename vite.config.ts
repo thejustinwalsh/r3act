@@ -1704,12 +1704,23 @@ const [nativeCompilerPlugin, ...reactPlugins] = nativeReactPlugins(react, {
   },
 });
 
+const pollingValue = process.env.CHOKIDAR_USEPOLLING?.toLowerCase();
+
 export default defineConfig({
   server: {
     ...(process.env.PORT
       ? { port: Number(process.env.PORT), strictPort: true }
       : {}),
     ...(process.env.HOST ? { host: process.env.HOST } : {}),
+    ...(pollingValue && pollingValue !== "false" && pollingValue !== "0"
+      ? { watch: {
+          usePolling: true,
+          useFsEvents: false,
+          // Polling excludes archives and build data; live app modules must not import from these roots.
+          ignored: ["implementation", "results", ".cache", ".pnpm-store", "compiler/oxc-spike/target"].map((name) =>
+            path.join(fileURLToPath(new URL(".", import.meta.url)), name, "**")),
+        } }
+      : {}),
   },
   preview: {
     ...(process.env.PORT

@@ -1,3 +1,11 @@
+## Workbench watcher configuration — 21 October 2026
+
+Opt-in polling now reaches Vite before Chokidar backend selection, with precise exclusions for the checkout's frozen evidence/build roots. Default and explicit-false watcher behavior remains unchanged. Runtime, compiler, publication and installed package surfaces are unchanged. Two Sol reviews confirmed that the old environment-only polling attempt did not prove polling active; it does not prove the cause of the original missed update.
+
+Darwin-v1 passes 66/66 phases, 1102 runtime tests, 90 Rust tests, 46 compiled fixtures and package checks, with 1507 input hashes matched. The sole actual Portless HTTPS attempt then fails its pre-browser source-membership guard: polling=true/FSEvents=false/100 ms, artifact roots absent, but only three watched directories and targetListed=false. No browser or source edit occurs. The missing-path cause remains unproven; no speculative watch-root addition or further diagnostic run follows. All owned routes/processes/TLS material are cleaned up. Current workbench HMR delivery remains unresolved. [Results and exact failure](implementation/2026-10-21-workbench-hmr/results.md).
+
+The authoring reference now reflects the already verified component-output identity and numeric-expression contracts. The latest exact runtime/compiler three-prop canvas loss remains 1.60/3.00 ms Native versus 0.90/1.30 ms React Compiler; no unchanged-source application timing is repeated. Realtime performance, broader main-thread batching/fusion, cold/memory and independent-device requirements remain open under the active full-plan goal.
+
 ## Shared numeric expression DAG — 21 October 2026
 
 The compiler now preserves shared numeric subexpressions across affected props within each existing source-slot case. Deterministic structural interning and topologically ordered local constants retain floating-point grouping and consuming-sink guards. Runtime storage, dependency edges, sink order, validation, publication, accepted histories and exact acknowledgement are unchanged. This implements part of the human’s main-thread batching/shared-computation steer; broader DAG fusion remains open.

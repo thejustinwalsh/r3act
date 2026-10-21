@@ -317,6 +317,9 @@ try {
   { deadlineMs: 900_000 });
   await runStep("native-tooling", "pnpm", ["check:native-tooling"],
     { depends: ["install"], deadlineMs: 300_000 });
+  await runStep("workbench-watch-config", process.execPath,
+    ["scripts/verify_workbench_watch_config.mjs"],
+    { depends: ["install"], deadlineMs: 90_000 });
   await runStep("artifact-conformance", process.execPath,
     ["--experimental-transform-types", "compiler/native_compiler_artifact_test.mjs"],
     { depends: ["install", "cargo-debug", "compiler-info"], deadlineMs: 300_000 });
