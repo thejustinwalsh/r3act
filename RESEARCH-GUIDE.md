@@ -1,5 +1,15 @@
 # Declarative UI Through a Data-Oriented Runtime
 
+## OS compatibility smoke and compiler environment
+
+The user explicitly scoped OS compatibility to a quick smoke, rather than an architecture matrix. The Linux ARM64 run at one CPU/2048-MiB VM RAM and an actual 1536-MiB container cap executed the native compiler and five installed packages successfully. Its 1093 runtime tests, 84 Rust tests, 44 compiled fixtures' assertions, Three/retention checks and thirteen package-consumer checks passed. The overall consolidated receipt remains **FAIL: 62/63**, because fixture 37 changed the debug compiler hash; that failure is preserved, not relabeled as a green gate. All 1448 runner inputs match; 1458 raw/context files and 244 fixture artifacts are archived.
+
+The development Vite plugin unconditionally replaced the caller's Cargo cache directory. It now honors explicit `CARGO_HOME`, with the existing checkout-local fallback when unset. A bounded actual-spawn contract test passes 26 checks; the isolated old-source negative control fails on the explicit-cache assertion. The unchanged compiler-identity guard remains. No full OS rerun or portability benchmark follows the user's revised scope. The plugin fix has contract verification, not a new consolidated Linux pass.
+
+All owned test containers and volumes were removed after evidence export, and the VM stopped successfully. Podman retains its 2-GiB configuration and Depot-backed image cache; no Depot permission change or administrator helper occurred. OS smoke evidence is sufficient for the requested first-pass compatibility scope. Product performance/cold/memory and independent-device evidence remain unproven; historic wins, qualified dense FAIL, exhausted Recording A and physical HOLD retain their scope.
+
+[Source, exact receipts and preserved failures](implementation/2026-10-20-podman/results.md).
+
 ## Fresh-process lifecycle costs — 20 October 2026
 
 The complete installed 256-row/sixty-update application now has separate local Chromium process startup and forced-GC lifecycle observations. Runtime/compiler source is unchanged. Darwin-v1 passes 63/63 phases, 1093 runtime and 84 Rust tests; installed untimed proof passes 67 stages per arm. The sole Native-first launch-through-ready pair is 1437.831/865.384 ms, including unequal browser launch spans and driver work. Released-controller used-heap deltas from blank pages are 2871620/1856376 bytes, including modules and browser harness; neither result qualifies release, cold-cache, memory, CPU or presentation budgets.

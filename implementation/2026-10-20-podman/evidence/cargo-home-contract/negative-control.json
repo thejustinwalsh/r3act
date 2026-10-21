@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "capturedAtLocal": "2026-10-21T15:04:46-0400",
+  "purpose": "isolated negative control: current regression test with old plugin from source commit",
+  "negativeControlExpected": "old plugin overrides explicitly supplied CARGO_HOME; the test must fail on that contract assertion after the fake cargo invocation exits 47",
+  "sourceControl": {
+    "commit": "6d7bef6d452128598630ed8e1393225b61655812",
+    "path": "compiler/vite_native_module.ts",
+    "sha256": "54c084fed8b1c9f3c3c9e032d1176692f5283b9a3b94689da5a546b15c43c96e",
+    "bytes": 35447
+  },
+  "copiedCurrentSources": {
+    "native_compiler_artifact_test.mjs": "967d0c01dc4bdd50e429d9e301f255ffb6e918e6254426cec2786aaa99064546",
+    "native_runtime_origin.ts": "9fbee397e56cf688b080b61fa46532e8f4a2644ed5b5f2d93df18af366377dcb",
+    "native_compiler_artifact.ts": "d3b8402261a357df6ee6529a335737cac3a3f274b3e42d90d9ae5ce6689cbbbc"
+  },
+  "symlinks": {
+    "src": "/Volumes/Depot/Developer/r3act/src",
+    "node_modules": "/Volumes/Depot/Developer/r3act/node_modules"
+  },
+  "command": [
+    "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+    "--experimental-transform-types",
+    "/Volumes/Depot/Developer/r3act/implementation/2026-10-20-podman/evidence/cargo-home-contract/negative-root/compiler/native_compiler_artifact_test.mjs"
+  ],
+  "cwd": "/Volumes/Depot/Developer/r3act/implementation/2026-10-20-podman/evidence/cargo-home-contract/negative-root",
+  "environment": {
+    "PATH": "/private/tmp/radix-dialog-darwin-v1-bin:/Users/mini/.local/share/mise/installs/node/24.18.0/bin:/Users/mini/.cargo/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "CI": "true",
+    "CARGO_HOME": "/Volumes/Depot/Developer/r3act/.cache/cargo",
+    "CARGO_BUILD_JOBS": "1",
+    "CARGO_TARGET_DIR": "unset",
+    "CARGO_BUILD_TARGET": "unset",
+    "npm_config_store_dir": "unset"
+  },
+  "timeoutSeconds": 90,
+  "timedOut": false,
+  "durationSeconds": 0.20479150000028312,
+  "exitCode": 1,
+  "stdout": "negative-root.stdout.log",
+  "stderr": "negative-root.stderr.log",
+  "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderrSha256": "e08ab761d404fe9e66f421aaa0704939a7e0a101bf1f5aa1074be81f4d18d1d6",
+  "fixtureDirectory": "/Volumes/Depot/Developer/r3act/implementation/2026-10-20-podman/evidence/cargo-home-contract/negative-root/.cache/compiler-artifact-conformance-30048f97-7d7b-4471-90d2-e950801d9e9a",
+  "fakeCargoExplicitRecordPath": "/Volumes/Depot/Developer/r3act/implementation/2026-10-20-podman/evidence/cargo-home-contract/negative-root/.cache/compiler-artifact-conformance-30048f97-7d7b-4471-90d2-e950801d9e9a/cargo-explicit.json",
+  "fakeCargoExplicitRecord": {
+    "args": [
+      "build",
+      "--quiet",
+      "--manifest-path",
+      "/Volumes/Depot/Developer/r3act/implementation/2026-10-20-podman/evidence/cargo-home-contract/negative-root/.cache/compiler-artifact-conformance-30048f97-7d7b-4471-90d2-e950801d9e9a/dev-cargo-root/compiler/oxc-spike/Cargo.toml",
+      "--bin",
+      "ui-graph-compiler-spike"
+    ],
+    "cwd": "/Volumes/Depot/Developer/r3act/implementation/2026-10-20-podman/evidence/cargo-home-contract/negative-root/.cache/compiler-artifact-conformance-30048f97-7d7b-4471-90d2-e950801d9e9a/dev-cargo-root",
+    "cargoHome": "/Volumes/Depot/Developer/r3act/implementation/2026-10-20-podman/evidence/cargo-home-contract/negative-root/.cache/compiler-artifact-conformance-30048f97-7d7b-4471-90d2-e950801d9e9a/dev-cargo-root/.cache/cargo"
+  },
+  "fakeCargoExpectedExitCode": 47,
+  "failurePath": "/Volumes/Depot/Developer/r3act/implementation/2026-10-20-podman/evidence/cargo-home-contract/negative-root/.cache/compiler-artifact-conformance-30048f97-7d7b-4471-90d2-e950801d9e9a/failure.json",
+  "failure": {
+    "status": "FAIL",
+    "checks": [
+      "only absent bin directory permits checkout selection",
+      "installed bin without manifest rejects",
+      "matching manifest hash, bytes and executable info admit",
+      "schemaVersion mismatch rejects",
+      "protocolVersion mismatch rejects",
+      "modified executable rejects",
+      "incorrect executable size rejects",
+      "duplicate target rejects",
+      "ambiguous compatible targets reject",
+      "relative path escape rejects",
+      "symlink escape with a valid manifest path rejects",
+      "unsupported runtime target rejects",
+      "gnu binary rejects opposite libc",
+      "gnu binary rejects unknown libc",
+      "musl binary rejects opposite libc",
+      "musl binary rejects unknown libc",
+      "Linux ABI selection is explicit and conservative"
+    ],
+    "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n+ actual - expected\n\n+ '/Volumes/Depot/Developer/r3act/implementation/2026-10-20-podman/evidence/cargo-home-contract/negative-root/.cache/compiler-artifact-conformance-30048f97-7d7b-4471-90d2-e950801d9e9a/dev-cargo-root/.cache/cargo'\n- '/Volumes/Depot/Developer/r3act/implementation/2026-10-20-podman/evidence/cargo-home-contract/negative-root/.cache/compiler-artifact-conformance-30048f97-7d7b-4471-90d2-e950801d9e9a/owned-cargo-home'\n\n    at file:///Volumes/Depot/Developer/r3act/implementation/2026-10-20-podman/evidence/cargo-home-contract/negative-root/compiler/native_compiler_artifact_test.mjs:148:14"
+  },
+  "explicitCargoHomeAssertionFailedAsExpected": true,
+  "noFallbackInvocation": true,
+  "noRustBuild": true
+}

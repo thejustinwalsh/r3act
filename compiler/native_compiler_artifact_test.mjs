@@ -101,6 +101,61 @@ try {
       { platform: "linux", arch: "x64", linuxLibc: "unknown" }), `${libc} binary rejects unknown libc`);
   }
   checks.push("Linux ABI selection is explicit and conservative");
+  const devModuleDir = path.join(directory, "dev-module");
+  await mkdir(devModuleDir);
+  for (const name of ["vite_native_module.ts", "native_runtime_origin.ts", "native_compiler_artifact.ts"])
+    await copyFile(path.join(root, "compiler", name), path.join(devModuleDir, name));
+  const { nativeModuleCompilerPlugin: devPlugin } = await import(
+    pathToFileURL(path.join(devModuleDir, "vite_native_module.ts")).href);
+  const devRoot = path.join(directory, "dev-cargo-root");
+  const devManifest = path.join(devRoot, "compiler", "oxc-spike", "Cargo.toml");
+  await mkdir(path.dirname(devManifest), { recursive: true });
+  await writeFile(devManifest, "[package]\nname = 'fake'\nversion = '0.1.0'\n");
+  const fakeBin = path.join(directory, "fake-bin");
+  await mkdir(fakeBin);
+  const fakeCargo = path.join(fakeBin, "cargo");
+  await writeFile(fakeCargo, `#!${process.execPath}\n` +
+    `import { writeFileSync } from 'node:fs'; writeFileSync(process.env.R3ACT_FAKE_CARGO_LOG, ` +
+    `JSON.stringify({args: process.argv.slice(2), cwd: process.cwd(), cargoHome: process.env.CARGO_HOME}));\n` +
+    `process.exit(47);\n`);
+  await chmod(fakeCargo, 0o755);
+  const previousPath = process.env.PATH;
+  const previousCargoHome = process.env.CARGO_HOME;
+  const previousCargoLog = process.env.R3ACT_FAKE_CARGO_LOG;
+  try {
+    process.env.PATH = `${fakeBin}${path.delimiter}${previousPath ?? ""}`;
+    for (const [label, cargoHome] of [
+      ["explicit", path.join(directory, "owned-cargo-home")],
+      ["fallback", undefined],
+    ]) {
+      const cargoLog = path.join(directory, `cargo-${label}.json`);
+      process.env.R3ACT_FAKE_CARGO_LOG = cargoLog;
+      if (cargoHome === undefined) delete process.env.CARGO_HOME;
+      else process.env.CARGO_HOME = cargoHome;
+      const plugin = devPlugin({ root, compilerRoot: devRoot });
+      try {
+        await assert.rejects(() => plugin.transform.call({
+          addWatchFile() {},
+          async resolve(id) { return { id, external: true }; },
+          error(message) { throw new Error(String(message)); },
+        }, '// @native-ui\nimport { useState } from "@r3act/core"; export function App(){const [v]=useState(1);return <div>{v}</div>}',
+        path.join(root, "artifact-cargo-home-probe.tsx")), /Rust native compiler build failed \(47\)/);
+      } finally { await plugin.closeBundle(); }
+      const invocation = JSON.parse(await readFile(cargoLog, "utf8"));
+      assert.deepEqual(invocation.args, ["build", "--quiet", "--manifest-path", devManifest,
+        "--bin", "ui-graph-compiler-spike"]);
+      assert.equal(invocation.cwd, devRoot);
+      assert.equal(invocation.cargoHome, cargoHome ?? path.join(devRoot, ".cache/cargo"));
+      checks.push(`development Cargo ${label} home and command contract`);
+    }
+  } finally {
+    if (previousPath === undefined) delete process.env.PATH;
+    else process.env.PATH = previousPath;
+    if (previousCargoHome === undefined) delete process.env.CARGO_HOME;
+    else process.env.CARGO_HOME = previousCargoHome;
+    if (previousCargoLog === undefined) delete process.env.R3ACT_FAKE_CARGO_LOG;
+    else process.env.R3ACT_FAKE_CARGO_LOG = previousCargoLog;
+  }
   for (const [label, change] of [
     ["protocol", { protocolVersion: 2 }], ["target", { target: "x86_64-apple-darwin" }],
     ["platform", { platform: "linux" }], ["arch", { arch: "x64" }],

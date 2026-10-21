@@ -411,7 +411,7 @@ export const nativeModuleCompilerPlugin = (
         "ui-graph-compiler-spike",
       ], {
         cwd: compilerRoot,
-        env: { ...process.env, CARGO_HOME: path.join(compilerRoot, ".cache/cargo") },
+        env: { ...process.env, CARGO_HOME: process.env.CARGO_HOME ?? path.join(compilerRoot, ".cache/cargo") },
         stdio: ["ignore", "ignore", "pipe"],
       });
       buildProcess = builder;

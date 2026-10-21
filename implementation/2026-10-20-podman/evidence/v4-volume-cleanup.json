@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "capturedAtLocal": "2026-10-21T15:00:32-0400",
+  "purpose": "post-finalize verification of failed v4 attempt owned resources only",
+  "receiptId": "02e46487-f0da-4351-bfbe-8fde3f26111a",
+  "hostFinalizePath": "/Volumes/Depot/Developer/r3act/implementation/2026-10-18-native-platforms/linux/evidence-podman-v4/host-finalize.json",
+  "hostFinalizeSha256": "57b036c44099ae9b7ba5a8342428b08b890de92772fe330056fb708839817b26",
+  "hostFinalizeStatus": "PASS",
+  "hostFinalizeCleanupErrors": [],
+  "ownedNames": [
+    "r3act-native-platform-02e46487-f0da-4351-bfbe-8fde3f26111a",
+    "r3act-native-source-02e46487-f0da-4351-bfbe-8fde3f26111a",
+    "r3act-native-evidence-02e46487-f0da-4351-bfbe-8fde3f26111a"
+  ],
+  "volumesAbsent": [
+    "r3act-native-platform-02e46487-f0da-4351-bfbe-8fde3f26111a",
+    "r3act-native-source-02e46487-f0da-4351-bfbe-8fde3f26111a",
+    "r3act-native-evidence-02e46487-f0da-4351-bfbe-8fde3f26111a"
+  ],
+  "volumeListQuery": {
+    "args": [
+      "volume",
+      "ls",
+      "--format",
+      "{{.Name}}"
+    ],
+    "exitCode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "ownedContainerListQuery": {
+    "args": [
+      "ps",
+      "-a",
+      "--filter",
+      "label=r3act.native-platform=02e46487-f0da-4351-bfbe-8fde3f26111a",
+      "--format",
+      "{{.ID}} {{.Names}} {{.Labels}}"
+    ],
+    "exitCode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "allThreeOwnedVolumesAbsent": true,
+  "noOwnedContainersRemain": true
+}
