@@ -1,5 +1,11 @@
 # A VDOM-First, Data-Oriented Runtime for Declarative UI
 
+## Ranged owner kernels — 21 October 2026
+
+New compiler schemas 4/5 execute heterogeneous owner ranges over existing whole-cut buffers, retiring per-run arrays, subarray views and output remapping. Schemas 2/3 keep their legacy adapter. Original order, live validation, exact acknowledgement, accepted histories, resource lifetime and generic fallback remain; no identity/version registry or traversal layout changes.
+
+Corrected Darwin-v2 passes 67/67 phases: 1108 runtime tests, 90 Rust tests, all 47 compiled fixtures and fresh package consumers; all 1525 runner input hashes match. The initial command-shape failure remains preserved. Fresh installed proof verifies emitted ranged ABI, shared arithmetic, values, retained identities and cleanup. The sole 256-object, three-prop canvas comparison remains slower than React Compiler: Native publication median/p95 1.50/3.00 ms versus 0.80/1.10 ms, with imperative floor 0.10/0.10 ms. Both phases match 11449 hashes and close cleanly. No favorable repeat or causal old/new saving is claimed. Broader main-thread fusion, realtime performance, HMR delivery, cold/memory and independent-device requirements remain open under the full-plan goal. Historic wins, qualified dense FAIL, exhausted Recording A and physical HOLD retain scope. [Results and failures](implementation/2026-10-21-ranged-owner-kernels/results.md); [primary review](implementation/2026-10-21-ranged-owner-kernels/source-review.md).
+
 ## Shared numeric expression DAG — 21 October 2026
 
 The compiler now preserves shared numeric subexpressions across affected props within each existing source-slot case. Deterministic structural interning and topologically ordered local constants retain floating-point grouping and consuming-sink guards. Runtime storage, dependency edges, sink order, validation, publication, accepted histories and exact acknowledgement are unchanged. This implements part of the human’s main-thread batching/shared-computation steer; broader DAG fusion remains open.

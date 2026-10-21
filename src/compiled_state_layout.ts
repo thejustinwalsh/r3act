@@ -30,11 +30,16 @@ export type CompiledOwnerUpdateRowState = {
 
 /** Static primitive-only update kernel attached to one normalized layout. */
 export type CompiledOwnerUpdateProgram = Readonly<{
-  /** V3 requires the retained-child admission guard; V2 keeps the prior numeric ABI. */
-  schemaVersion: 2 | 3;
+  /** V3/V5 require retained-child admission; V4/V5 support ranged execution. */
+  schemaVersion: 2 | 3 | 4 | 5;
   programId: string;
   slotCount: number;
   sinkIds: readonly string[];
+  /**
+   * Execute `changeCount` inputs. V4/V5 read whole-cut `changedSlots` and
+   * `rowStates` from `inputStart`, append at `outputStart`, and return the
+   * number appended rather than the absolute output end.
+   */
   executeCut: (
     changedSlots: Uint32Array,
     changeCount: number,
@@ -42,6 +47,10 @@ export type CompiledOwnerUpdateProgram = Readonly<{
     stagedInputIndices: Uint32Array,
     stagedSinkIds: Uint16Array,
     stagedValues: CompiledOwnerUpdatePrimitive[],
+    /** Absolute first input in whole-cut buffers; omitted for V2/V3. */
+    inputStart?: number,
+    /** Absolute first output in whole-cut buffers; omitted for V2/V3. */
+    outputStart?: number,
   ) => number;
 }>;
 
@@ -162,7 +171,8 @@ export function associateCompiledOwnerUpdateProgram(
   const inputSinkIds = input.sinkIds;
   const executeCut = input.executeCut;
   if (
-    (schemaVersion !== 2 && schemaVersion !== 3) ||
+    (schemaVersion !== 2 && schemaVersion !== 3 &&
+      schemaVersion !== 4 && schemaVersion !== 5) ||
     typeof programId !== "string" || !programId ||
     record.layout.programId !== programId ||
     !Number.isSafeInteger(slotCount) || slotCount !== record.layout.slots.length ||

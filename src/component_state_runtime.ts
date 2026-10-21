@@ -751,11 +751,11 @@ export const defineComponent = <P extends Record<string, unknown>>(
           "Compiled owner update program must match its component and state layout IDs",
         );
       }
-      if ((program.schemaVersion === 3) !==
+      if ((program.schemaVersion === 3 || program.schemaVersion === 5) !==
         (numericRetainedProps?.length === 1 &&
           numericRetainedProps[0] === "children")) {
         throw new Error(
-          "Retained-child admission requires matching owner program schema 3 metadata",
+          "Retained-child admission requires matching owner program schema 3 or 5 metadata",
         );
       }
       associateCompiledOwnerUpdateProgram(stateLayout, program);

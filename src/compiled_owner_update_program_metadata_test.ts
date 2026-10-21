@@ -52,7 +52,7 @@ const makeManySlotLayout = (count: number) => ({
 const makeProgram = (
   programId = "Row",
   sinkIds: readonly string[] = ["style:left"],
-  schemaVersion: 2 | 3 = 2,
+  schemaVersion: 2 | 3 | 4 | 5 = 4,
 ): CompiledOwnerUpdateProgram => ({
   schemaVersion,
   programId,
@@ -104,9 +104,32 @@ Deno.test("compiled owner association rejects conflicting replacement", () => {
   );
 });
 
+Deno.test("legacy and ranged owner program schemas preserve capability parity", () => {
+  for (const version of [2, 4] as const) {
+    const layout = makeLayout(`Ordinary${version}`);
+    const associated = associateCompiledOwnerUpdateProgram(layout,
+      makeProgram(`Ordinary${version}`, ["style:left"], version));
+    assert(associated.schemaVersion === version,
+      `ordinary schema ${version} is accepted`);
+  }
+  for (const version of [3, 5] as const) {
+    const programId = `Retained${version}`;
+    const layout = { schemaVersion: 1 as const, programId,
+      slots: [{ siteId: `${programId}#state:0`, slot: 0 }] };
+    const component = defineComponent(programId, () => null, {
+      propOnlySites: [`${programId}#state:0`],
+      numericRetainedProps: ["children"],
+      stateLayout: layout,
+      ownerUpdateProgram: makeProgram(programId, ["style:left"], version),
+    });
+    assert(component !== null && compiledOwnerUpdateProgramFor(layout)?.schemaVersion === version,
+      `retained schema ${version} is accepted`);
+  }
+});
+
 Deno.test("retained-child owner program requires its matching capability", () => {
   const layout = makeLayout();
-  const program = makeProgram("Row", ["style:left"], 3);
+  const program = makeProgram("Row", ["style:left"], 5);
   const component = defineComponent("Row", () => null, {
     propOnlySites: ["Row#state:0"],
     numericRetainedProps: ["children"],
@@ -114,12 +137,12 @@ Deno.test("retained-child owner program requires its matching capability", () =>
     ownerUpdateProgram: program,
   });
   const associated = compiledOwnerUpdateProgramFor(layout);
-  assert(component !== null && associated?.schemaVersion === 3,
-    "retained-child program keeps its v3 capability");
+  assert(component !== null && associated?.schemaVersion === 5,
+    "retained-child program keeps its v5 capability");
   assertThrows(
     () => associateCompiledOwnerUpdateProgram(layout, {
       ...program,
-      schemaVersion: 2,
+      schemaVersion: 4,
     }),
     "program capability cannot change for one layout",
   );
@@ -135,24 +158,29 @@ Deno.test("retained-child owner program requires its matching capability", () =>
   assertThrowsMessage(() => register({
     propOnlySites: ["Row#state:0"],
     numericRetainedProps: ["children"],
-    ownerUpdateProgram: makeProgram("Row", ["style:left"], 3),
+    ownerUpdateProgram: makeProgram("Row", ["style:left"], 5),
   }), "Compiled owner update program must match its component and state layout IDs");
   assertThrowsMessage(() => register({
     propOnlySites: ["Row#state:0"],
     numericRetainedProps: ["children"],
     stateLayout: makeLayout(),
     ownerUpdateProgram: makeProgram(),
-  }), "Retained-child admission requires matching owner program schema 3 metadata");
+  }), "Retained-child admission requires matching owner program schema 3 or 5 metadata");
+  assertThrowsMessage(() => register({
+    propOnlySites: ["Row#state:0"],
+    stateLayout: makeLayout(),
+    ownerUpdateProgram: makeProgram("Row", ["style:left"], 5),
+  }), "Retained-child admission requires matching owner program schema 3 or 5 metadata");
   assertThrowsMessage(() => register({
     propOnlySites: ["Row#state:0"],
     stateLayout: makeLayout(),
     ownerUpdateProgram: makeProgram("Row", ["style:left"], 3),
-  }), "Retained-child admission requires matching owner program schema 3 metadata");
+  }), "Retained-child admission requires matching owner program schema 3 or 5 metadata");
   assertThrowsMessage(() => register({
     propOnlySites: ["Row#state:0"],
     numericRetainedProps: ["children", "children"],
     stateLayout: makeLayout(),
-    ownerUpdateProgram: makeProgram("Row", ["style:left"], 3),
+    ownerUpdateProgram: makeProgram("Row", ["style:left"], 5),
   }), "Component numeric retained prop metadata is invalid");
 });
 
@@ -176,7 +204,7 @@ Deno.test("compiled owner association rejects malformed identity and shape", () 
   assertThrows(
     () => associateCompiledOwnerUpdateProgram(makeLayout(), {
       ...makeProgram(),
-      schemaVersion: 4,
+      schemaVersion: 6,
     } as unknown as CompiledOwnerUpdateProgram),
     "unsupported program versions are rejected",
   );

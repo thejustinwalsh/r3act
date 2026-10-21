@@ -134,8 +134,8 @@ try {
   };
   const frameMetadata = registrations.get("FrameMarker");
   assert.ok(frameMetadata, "FrameMarker missing from actual workbench semantic registration");
-  assert.equal(programVersion(frameMetadata), 2,
-    "ordinary FrameMarker must retain the v2 compiled owner program");
+  assert.equal(programVersion(frameMetadata), 4,
+    "ordinary FrameMarker must use the v4 ranged owner program");
   const frameSites = property(frameMetadata, "propOnlySites");
   assert.ok(frameSites?.type === "ArrayExpression" && frameSites.elements.length > 0,
     "actual FrameMarker must retain a finite compiled prop-only site");
@@ -144,8 +144,8 @@ try {
   for (const name of ["SharedMotion", "OwnedMotion"]) {
     const metadata = registrations.get(name);
     assert.ok(metadata, `${name} missing from actual workbench semantic registration`);
-    assert.equal(programVersion(metadata), 3,
-      `${name} must bind retained children to a v3 owner program`);
+    assert.equal(programVersion(metadata), 5,
+      `${name} must bind retained children to a v5 ranged owner program`);
     const sites = property(metadata, "propOnlySites");
     assert.ok(sites?.type === "ArrayExpression" && sites.elements.length > 0,
       `${name} must retain a finite compiled prop-only site`);
@@ -162,10 +162,10 @@ try {
   }, authored, input);
   assert.ok(authoredProof?.code, "isolated retained-child control did not compile");
   visit(parse(authoredProof.code, { sourceType: "module", plugins: ["typescript", "jsx"] }));
-  assert.equal(programVersion(registrations.get("Motion")), 3,
-    "isolated Motion must bind direct JSX children to a v3 owner program");
-  assert.equal(programVersion(registrations.get("FrameMarker")), 2,
-    "isolated FrameMarker must retain its ordinary v2 owner program");
+  assert.equal(programVersion(registrations.get("Motion")), 5,
+    "isolated Motion must bind direct JSX children to a v5 ranged owner program");
+  assert.equal(programVersion(registrations.get("FrameMarker")), 4,
+    "isolated FrameMarker must use its ordinary v4 ranged owner program");
   const transformed = await plugin.transform.call({ addWatchFile() {}, error(message) { throw new Error(String(message)); } }, authored, input);
   assert.ok(transformed?.code);
   await mkdir(path.dirname(output), { recursive: true });

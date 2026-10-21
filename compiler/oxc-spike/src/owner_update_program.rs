@@ -249,7 +249,7 @@ pub(super) fn emit_owner_update_program(
     sinks: &[&Sink],
     schema_version: u8,
 ) -> Option<String> {
-    if !matches!(schema_version, 2 | 3)
+    if !matches!(schema_version, 4 | 5)
         || sinks.is_empty()
         || sinks.len() > 30
         || ordered_layout_site_ids.is_empty()
@@ -307,7 +307,7 @@ pub(super) fn emit_owner_update_program(
         switch_cases.push_str(&format!("case {slot_index}: {{{case_body} break;}}"));
     }
     Some(format!(
-        "{{ schemaVersion: {schema_version}, programId: {owner_id}, slotCount: {}, sinkIds: [{sink_ids}], executeCut: function(changedSlots, changeCount, rowStates, stagedInputIndices, stagedSinkIds, stagedValues) {{ let stagedCount = 0; for (let changeIndex = 0; changeIndex < changeCount; changeIndex++) {{ const rowState = rowStates[changeIndex]!; switch (changedSlots[changeIndex]) {{ {switch_cases} }} }} return stagedCount; }} }}",
+        "{{ schemaVersion: {schema_version}, programId: {owner_id}, slotCount: {}, sinkIds: [{sink_ids}], executeCut: function(changedSlots, changeCount, rowStates, stagedInputIndices, stagedSinkIds, stagedValues, inputStart = 0, outputStart = 0) {{ let stagedCount = outputStart; for (let localIndex = 0; localIndex < changeCount; localIndex++) {{ const changeIndex = inputStart + localIndex; const rowState = rowStates[changeIndex]!; switch (changedSlots[changeIndex]) {{ {switch_cases} }} }} return stagedCount - outputStart; }} }}",
         ordered_layout_site_ids.len(),
     ))
 }

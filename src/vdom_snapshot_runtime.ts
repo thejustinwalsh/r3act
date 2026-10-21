@@ -4608,7 +4608,9 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     const candidateProgram = compiledOwnerUpdateProgramFor(layout);
     if (
       (candidateProgram?.schemaVersion === 2 ||
-        candidateProgram?.schemaVersion === 3) &&
+        candidateProgram?.schemaVersion === 3 ||
+        candidateProgram?.schemaVersion === 4 ||
+        candidateProgram?.schemaVersion === 5) &&
       candidateProgram.programId === layout.programId &&
       candidateProgram.slotCount === slotCount &&
       candidateProgram.sinkIds.length > 0 &&
@@ -5442,6 +5444,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     let inputRecordCount = 0;
     let stagedCount = 0;
     let stagedCleanupBound = 0;
+    let rangedValuesUsed = false;
     let ownerUpdateProgram: CompiledOwnerUpdateProgram | undefined;
     let heterogeneousPrograms = false;
     try {
@@ -5564,8 +5567,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           if (this.#ownerRowStagedInputIndices.length < outputCapacity) {
             this.#ownerRowStagedInputIndices = new Uint32Array(outputCapacity);
             this.#ownerRowStagedSinkIds = new Uint16Array(outputCapacity);
-            this.#ownerRowStagedValues.length = outputCapacity;
-          } else if (this.#ownerRowStagedValues.length < outputCapacity) {
+          }
+          if (this.#ownerRowStagedValues.length < outputCapacity) {
             this.#ownerRowStagedValues.length = outputCapacity;
           }
           for (
@@ -5638,6 +5641,14 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       if (ownerUpdateProgram || heterogeneousPrograms) {
         if (this.#ownerRowExecutionCancelled) return false;
         if (ownerUpdateProgram) {
+          if (ownerUpdateProgram.schemaVersion >= 4) {
+            rangedValuesUsed = true;
+            this.#ownerRowStagedValues.length = 0;
+            this.#ownerRowStagedInputIndices.fill(0xffff_ffff, 0,
+              stagedCleanupBound);
+            this.#ownerRowStagedSinkIds.fill(0xffff, 0,
+              stagedCleanupBound);
+          }
           stagedCount = ownerUpdateProgram.executeCut(
             changedSlots,
             count,
@@ -5663,8 +5674,58 @@ export class VDOMSnapshotRoot<H, Parent = H> {
             while (end < count &&
               this.#ownerRowInputRecordScratch[end]!.ownerUpdateProgram === program
             ) end++;
-            const runCapacity = Math.min(stagedCleanupBound,
-              (end - start) * program.sinkIds.length);
+            const rangeAware = program.schemaVersion >= 4;
+            const runCapacity = Math.min(
+              rangeAware ? stagedCleanupBound - stagedCount : stagedCleanupBound,
+              (end - start) * program.sinkIds.length,
+            );
+            if (rangeAware) {
+              rangedValuesUsed = true;
+              for (let index = start; index < end; index++) {
+                if (!certifiedRunRecord(this.#ownerRowInputRecordScratch[index],
+                  program)) {
+                  throw new Error("Prepared owner update row lost its program");
+                }
+              }
+              this.#ownerRowStagedInputIndices.fill(0xffff_ffff,
+                stagedCount, stagedCount + runCapacity);
+              this.#ownerRowStagedSinkIds.fill(0xffff,
+                stagedCount, stagedCount + runCapacity);
+              this.#ownerRowStagedValues.length = stagedCount;
+              if (countVisits) this.#ownerUpdateKernelBatches++;
+              const runCount = program.executeCut(
+                changedSlots, end - start,
+                this.#ownerRowInputRecordScratch as unknown as readonly (
+                  CompiledOwnerUpdateRowState | undefined
+                )[],
+                this.#ownerRowStagedInputIndices,
+                this.#ownerRowStagedSinkIds,
+                this.#ownerRowStagedValues,
+                start, stagedCount,
+              );
+              if (this.#ownerRowExecutionCancelled) return false;
+              if (!Number.isSafeInteger(runCount) || runCount < 0 ||
+                runCount > runCapacity ||
+                runCount > stagedCleanupBound - stagedCount) {
+                throw new Error(
+                  "Compiled owner update kernel returned an invalid output count",
+                );
+              }
+              for (let index = stagedCount; index < stagedCount + runCount;
+                index++) {
+                const inputIndex = this.#ownerRowStagedInputIndices[index];
+                if (inputIndex < start || inputIndex >= end ||
+                  this.#ownerRowStagedSinkIds[index] >= program.sinkIds.length ||
+                  !Object.hasOwn(this.#ownerRowStagedValues, index)) {
+                  throw new Error(
+                    "Compiled owner update kernel returned an invalid sink output",
+                  );
+                }
+              }
+              stagedCount += runCount;
+              start = end;
+              continue;
+            }
             const runInputIndices = new Uint32Array(runCapacity);
             const runSinkIds = new Uint16Array(runCapacity);
             const runValues: CompiledOwnerUpdatePrimitive[] =
@@ -5744,6 +5805,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
             !Number.isSafeInteger(inputIndex) || inputIndex >= count ||
             !record || !record.sinks || sinkIndex >= record.sinks.length ||
             (record.seenMask & (1 << sinkIndex)) === 0 ||
+            ((ownerUpdateProgram?.schemaVersion ?? 0) >= 4 &&
+              !Object.hasOwn(this.#ownerRowStagedValues, index)) ||
             !isCompiledOwnerUpdatePrimitive(next)
           ) {
             throw new Error(
@@ -5868,15 +5931,14 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         this.#ownerRowGroupRecordScratch[index] = undefined;
         this.#ownerRowValueScratch[index] = undefined;
       }
-      const stagedCleanupCount = Math.min(
-        stagedCleanupBound,
-        this.#ownerRowStagedValues.length,
-      );
+      const stagedCleanupCount = Math.min(stagedCleanupBound,
+        this.#ownerRowStagedInputIndices.length);
       for (let index = 0; index < stagedCleanupCount; index++) {
         this.#ownerRowStagedInputIndices[index] = 0;
         this.#ownerRowStagedSinkIds[index] = 0;
-        this.#ownerRowStagedValues[index] = 0;
+        if (!rangedValuesUsed) this.#ownerRowStagedValues[index] = 0;
       }
+      if (rangedValuesUsed) this.#ownerRowStagedValues.length = 0;
       this.#ownerRowRecordCount = 0;
       this.#ownerRowGroupCount = 0;
       this.#ownerRowExecutionActive = false;

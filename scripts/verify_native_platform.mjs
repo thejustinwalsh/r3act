@@ -358,7 +358,8 @@ try {
     "native_promise_store_race_execution_test", "numeric_state_layout_execution_test",
     "compiled_three_resource_lifetime_test", "compiled_host_publication_domain_test",
     "compiled_group_host_admission_test", "compiled_closed_collection_rows_test",
-    "native_namespace_three_execution_test", "compiled_numeric_expression_dag_test"];
+    "native_namespace_three_execution_test", "compiled_numeric_expression_dag_test",
+    "compiled_ranged_owner_kernel_test"];
   for (const [index, fixture] of fixtures.entries()) {
     const name = `compiled-${String(index + 1).padStart(2, "0")}`;
     const before = await compilerHash();

@@ -4331,7 +4331,7 @@ fn compile_native_component_module(
             .map(|state| state.site_id.as_str()).collect::<Vec<_>>();
         let sinks = numeric_programs.iter()
             .filter(|sink| &sink.owner_program_id == owner).collect::<Vec<_>>();
-        if emit_owner_update_program(owner, &ordered, &sinks, 3).is_none() {
+        if emit_owner_update_program(owner, &ordered, &sinks, 5).is_none() {
             component_prop_sites.get_mut(owner).unwrap().clear();
         }
     }
@@ -4524,7 +4524,7 @@ fn emit_primitive_owner_cut_kernels(
             .collect();
         let ordered_layout_site_ids: Vec<_> =
             layout.iter().map(|entry| entry.site_id.as_str()).collect();
-        let schema_version = if retained_props.contains_key(&owner) { 3 } else { 2 };
+        let schema_version = if retained_props.contains_key(&owner) { 5 } else { 4 };
         let Some(code) = emit_owner_update_program(&owner, &ordered_layout_site_ids,
             &sinks, schema_version) else {
             continue;
@@ -11274,7 +11274,7 @@ export function Row() {
         assert_eq!(motion.numeric_primitive_props, vec!["id", "motionName"]);
         let code = plan.component_module.unwrap();
         assert!(code.contains("numericRetainedProps: [\"children\"]"), "{code}");
-        assert!(code.contains("schemaVersion: 3, programId:"), "{code}");
+        assert!(code.contains("schemaVersion: 5, programId:"), "{code}");
         assert!(code.contains("ownerUpdateProgram:"), "{code}");
 
         let negative = [
@@ -11555,12 +11555,15 @@ export function Row() {
             "{code}"
         );
         assert_eq!(
-            code.matches("schemaVersion: 2, programId:").count(),
+            code.matches("schemaVersion: 4, programId:").count(),
             2,
             "{code}"
         );
-        assert!(code.contains("executeCut: function(changedSlots, changeCount, rowStates, stagedInputIndices, stagedSinkIds, stagedValues)"), "{code}");
+        assert!(code.contains("executeCut: function(changedSlots, changeCount, rowStates, stagedInputIndices, stagedSinkIds, stagedValues, inputStart = 0, outputStart = 0)"), "{code}");
+        assert!(code.contains("let stagedCount = outputStart; for (let localIndex = 0; localIndex < changeCount; localIndex++)"), "{code}");
+        assert!(code.contains("const changeIndex = inputStart + localIndex"), "{code}");
         assert!(code.contains("rowStates[changeIndex]!"), "{code}");
+        assert!(code.contains("return stagedCount - outputStart"), "{code}");
         assert!(
             code.contains("stagedInputIndices[stagedCount] = changeIndex"),
             "{code}"

@@ -113,6 +113,352 @@ const makeSingleSinkKernel = (
   },
 });
 
+const makeRangedSingleSinkKernel = (
+  programId: string,
+  evaluate: (value: number) => CompiledOwnerUpdatePrimitive = value => value,
+): CompiledOwnerUpdateProgram => ({
+  schemaVersion: 4,
+  programId,
+  slotCount: 1,
+  sinkIds: Object.freeze(["value"]),
+  executeCut(changedSlots, changeCount, rowStates, inputIndices, sinkIds,
+    stagedValues, inputStart = 0, outputStart = 0) {
+    let appended = 0;
+    for (let local = 0; local < changeCount; local++) {
+      const input = inputStart + local;
+      if (changedSlots[input] !== 0) continue;
+      const row = rowStates[input]!;
+      if ((row.seenMask & 1) !== 0) continue;
+      row.seenMask |= 1;
+      const next = evaluate(row.inputValues[0]);
+      if (Object.is(row.sinks[0].lastValue, next)) continue;
+      const output = outputStart + appended++;
+      inputIndices[output] = input;
+      sinkIds[output] = 0;
+      stagedValues[output] = next;
+    }
+    return appended;
+  },
+});
+
+Deno.test("legacy uniform kernels still receive pre-sized staging capacity", () => {
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  const layout = makeSingleSlotLayout("LegacyCapacityRows");
+  const base = makeSingleSinkKernel("LegacyCapacityRows", value => value);
+  let calls = 0;
+  associateCompiledOwnerUpdateProgram(layout, {
+    ...base,
+    executeCut(...args) {
+      same(args[5].length, 1, "legacy ABI receives output capacity before execution");
+      calls++;
+      return base.executeCut(...args);
+    },
+  });
+  const source = new ScalarSource(1701, 1);
+  const column = new NumericColumn(1711, 0, new Float64Array([1]));
+  root.commit(jsx("output", {
+    value: owned(bind(source, value => value), layout, [0], "value"),
+  }), undefined, true);
+  const token = root.prepareNumericRowProgram({ owner: 73, layout,
+    rowIdentity: {}, row: 0, generation: 1, sources: [source], columns: [column] });
+  assert(token, "legacy uniform row prepares");
+  for (const value of [2, 3]) {
+    column.values[0] = value;
+    same(root.executePreparedNumericRows([token], new Uint32Array([0]),
+      new Uint32Array([0]), [value], 1), true,
+      "legacy uniform cut publishes through its original ABI");
+    same(container.children[0].props.value, value, "legacy value reaches host");
+  }
+  same(calls, 2, "legacy uniform kernel ran for both cuts");
+  root.dispose();
+});
+
+Deno.test("ranged mixed kernels share whole-cut staging and retain sparse first-touch order", () => {
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container, undefined, () => {});
+  const layoutA = makeLayout();
+  const layoutB = makeSingleSlotLayout("RangedOtherRows");
+  const calls: Array<{ program: string; inputStart: number; outputStart: number;
+    slots: Uint32Array; rows: unknown; inputs: Uint32Array; sinks: Uint16Array;
+    values: CompiledOwnerUpdatePrimitive[] }> = [];
+  const kernelA: CompiledOwnerUpdateProgram = {
+    schemaVersion: 4, programId: "KernelRows", slotCount: 2,
+    sinkIds: Object.freeze(["sum", "x"]),
+    executeCut(slots, count, rows, inputs, sinks, values,
+      inputStart = 0, outputStart = 0) {
+      calls.push({ program: "A", inputStart, outputStart, slots, rows,
+        inputs, sinks, values });
+      let appended = 0;
+      for (let local = 0; local < count; local++) {
+        const input = inputStart + local;
+        const row = rows[input]!;
+        const add = (sink: number, next: number) => {
+          const bit = 1 << sink;
+          if ((row.seenMask & bit) !== 0) return;
+          row.seenMask |= bit;
+          if (Object.is(row.sinks[sink].lastValue, next)) return;
+          const output = outputStart + appended++;
+          inputs[output] = input;
+          sinks[output] = sink;
+          values[output] = next;
+        };
+        if (slots[input] === 0) {
+          add(0, row.inputValues[0] + row.inputValues[1]);
+          add(1, row.inputValues[0]);
+        } else if (slots[input] === 1) {
+          add(0, row.inputValues[0] + row.inputValues[1]);
+        }
+      }
+      return appended;
+    },
+  };
+  const baseB = makeRangedSingleSinkKernel("RangedOtherRows", value => value * 3);
+  const kernelB: CompiledOwnerUpdateProgram = {
+    ...baseB,
+    executeCut(...args) {
+      calls.push({ program: "B", inputStart: args[6] ?? 0,
+        outputStart: args[7] ?? 0, slots: args[0], rows: args[2],
+        inputs: args[3], sinks: args[4], values: args[5] });
+      return baseB.executeCut(...args);
+    },
+  };
+  associateCompiledOwnerUpdateProgram(layoutA, kernelA);
+  associateCompiledOwnerUpdateProgram(layoutB, kernelB);
+  const aX = new ScalarSource(1801, 1);
+  const aY = new ScalarSource(1802, 2);
+  const b = new ScalarSource(1803, 3);
+  const aColumns = [new NumericColumn(1811, 0, new Float64Array([1])),
+    new NumericColumn(1812, 1, new Float64Array([2]))];
+  const bColumn = new NumericColumn(1813, 0, new Float64Array([3]));
+  root.commit(jsx("output", {
+    sum: owned(bindSources([aX, aY], values => values[0] + values[1]),
+      layoutA, [0, 1], "sum", 73, values => values[0] + values[1]),
+    x: owned(bind(aX, value => value), layoutA, [0], "x"),
+    b: owned(bind(b, value => value * 3), layoutB, [0], "value", 74),
+  }), undefined, true);
+  const tokenA = root.prepareNumericRowProgram({ owner: 73, layout: layoutA,
+    rowIdentity: {}, row: 0, generation: 1, sources: [aX, aY], columns: aColumns });
+  const tokenB = root.prepareNumericRowProgram({ owner: 74, layout: layoutB,
+    rowIdentity: {}, row: 0, generation: 1, sources: [b], columns: [bColumn] });
+  assert(tokenA && tokenB, "both ranged programs prepare");
+  const writes: string[] = [];
+  const setProp = host.setProp.bind(host);
+  host.setProp = (node, name, value, previous) => {
+    writes.push(name);
+    setProp(node, name, value, previous);
+  };
+  aColumns[0].values[0] = 5;
+  aColumns[1].values[0] = 6;
+  bColumn.values[0] = 9;
+  same(root.executePreparedNumericRows([tokenA, tokenB],
+    new Uint32Array([0, 1, 0]), new Uint32Array([0, 0, 1]),
+    [5, 9, 6], 3), true, "interleaved ranged programs publish");
+  same(container.children[0].props.sum, 11, "first A slot uses captured peer");
+  same(container.children[0].props.x, 5, "A unary sink stays mapped");
+  same(container.children[0].props.b, 27, "B sink stays mapped");
+  same(writes.join(","), "sum,x,b", "host order follows first touch");
+  same(calls.map(call => `${call.program}:${call.inputStart}:${call.outputStart}`).join(","),
+    "A:0:0,B:1:2,A:2:3", "ranges retain original interleaving and prefix");
+  for (const call of calls) {
+    same(call.slots, calls[0].slots, "runs share the whole changed-slot buffer");
+    same(call.rows, calls[0].rows, "runs share the whole row-state buffer");
+    same(call.inputs, calls[0].inputs, "runs share one staged input buffer");
+    same(call.sinks, calls[0].sinks, "runs share one staged sink buffer");
+    same(call.values, calls[0].values, "runs share one staged value buffer");
+  }
+  same(calls[0].values.length, 0, "shared payload is released after publication");
+  root.dispose();
+});
+
+Deno.test("legacy and ranged spans preserve output or reject late malformed output", () => {
+  for (const mode of ["valid", "count", "index", "hole", "throw"] as const) {
+    const host = new MemoryVDOMHost();
+    const container = host.createContainer();
+    const root = new VDOMSnapshotRoot(host, container, undefined, () => {});
+    const oldLayout = makeSingleSlotLayout(`LegacyBefore${mode}`);
+    const newLayout = makeSingleSlotLayout(`RangedAfter${mode}`);
+    const legacyBase = makeSingleSinkKernel(`LegacyBefore${mode}`, value => value);
+    const legacyCapacities: number[] = [];
+    associateCompiledOwnerUpdateProgram(oldLayout, {
+      ...legacyBase,
+      executeCut(...args) {
+        legacyCapacities.push(args[3].length);
+        return legacyBase.executeCut(...args);
+      },
+    });
+    const base = makeRangedSingleSinkKernel(`RangedAfter${mode}`);
+    let capturedValues: CompiledOwnerUpdatePrimitive[] | undefined;
+    associateCompiledOwnerUpdateProgram(newLayout, {
+      ...base,
+      executeCut(slots, count, rows, inputs, sinks, values,
+        inputStart = 0, outputStart = 0) {
+        capturedValues = values;
+        const appended = base.executeCut(slots, count, rows, inputs, sinks,
+          values, inputStart, outputStart);
+        if (mode === "count") return appended + 1;
+        if (mode === "index") inputs[outputStart] = inputStart - 1;
+        if (mode === "hole") delete values[outputStart];
+        if (mode === "throw") {
+          values[outputStart + 4] = { retained: true } as never;
+          throw new Error("late ranged kernel failure");
+        }
+        return appended;
+      },
+    });
+    const a = new ScalarSource(1901, 1);
+    const b = new ScalarSource(1902, 2);
+    const aColumn = new NumericColumn(1911, 0, new Float64Array([1]));
+    const bColumn = new NumericColumn(1912, 0, new Float64Array([2]));
+    root.commit(jsx("output", {
+      a: owned(bind(a, value => value), oldLayout, [0], "value", 73),
+      b: owned(bind(b, value => value), newLayout, [0], "value", 74),
+    }), undefined, true);
+    const aToken = root.prepareNumericRowProgram({ owner: 73, layout: oldLayout,
+      rowIdentity: {}, row: 0, generation: 1, sources: [a], columns: [aColumn] });
+    const bToken = root.prepareNumericRowProgram({ owner: 74, layout: newLayout,
+      rowIdentity: {}, row: 0, generation: 1, sources: [b], columns: [bColumn] });
+    assert(aToken && bToken, `${mode}: both program generations prepare`);
+    const writes: string[] = [];
+    const setProp = host.setProp.bind(host);
+    host.setProp = (node, name, value, previous) => {
+      writes.push(name);
+      setProp(node, name, value, previous);
+    };
+    aColumn.values[0] = 3;
+    bColumn.values[0] = 4;
+    let failure: unknown;
+    try {
+      root.executePreparedNumericRows([aToken, bToken],
+        new Uint32Array(mode === "valid" ? [0, 1, 0] : [0, 1]),
+        new Uint32Array(mode === "valid" ? [0, 0, 0] : [0, 0]),
+        mode === "valid" ? [3, 4, 3] : [3, 4],
+        mode === "valid" ? 3 : 2);
+    } catch (error) { failure = error; }
+    if (mode === "valid") {
+      same(failure, undefined, "legacy and ranged spans publish together");
+      same(writes.join(","), "a,b", "mixed host order follows input order");
+      same(container.children[0].props.a, 3, "legacy output is applied");
+      same(container.children[0].props.b, 4, "ranged output is applied");
+      same(legacyCapacities.join(","), "1,1",
+        "masked legacy tail retains its run-local scratch capacity");
+      same(capturedValues?.length, 0, "mixed shared payload is released");
+      root.dispose();
+      continue;
+    }
+    assert(failure instanceof Error, `${mode}: malformed late span rejects`);
+    if (mode === "throw") same(failure.message, "late ranged kernel failure",
+      "cleanup preserves the original kernel exception");
+    same(writes.length, 0, `${mode}: no earlier valid output reached the host`);
+    same(container.children[0].props.a, 1, `${mode}: old accepted output remains`);
+    same(container.children[0].props.b, 2, `${mode}: new accepted output remains`);
+    same(capturedValues?.length, 0, `${mode}: all shared values are released`);
+    root.dispose();
+  }
+});
+
+Deno.test("uniform ranged kernels accept explicit undefined and preserve signed zero and NaN", () => {
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container, undefined, () => {});
+  const layout = makeSingleSlotLayout("UniformRangedRows");
+  let omitValue = false;
+  let returnUndefined = false;
+  const base = makeRangedSingleSinkKernel("UniformRangedRows", value =>
+    returnUndefined ? undefined : value);
+  let stagedValues: CompiledOwnerUpdatePrimitive[] | undefined;
+  associateCompiledOwnerUpdateProgram(layout, {
+    ...base,
+    executeCut(...args) {
+      stagedValues = args[5];
+      const count = base.executeCut(...args);
+      if (omitValue && count) delete args[5][0];
+      return count;
+    },
+  });
+  const source = new ScalarSource(2001, 1);
+  const column = new NumericColumn(2011, 0, new Float64Array([1]));
+  root.commit(jsx("output", {
+    value: owned(bind(source, value => value), layout, [0], "value"),
+  }), undefined, true);
+  const token = root.prepareNumericRowProgram({ owner: 73, layout,
+    rowIdentity: {}, row: 0, generation: 1, sources: [source], columns: [column] });
+  assert(token, "uniform ranged program prepares");
+  const execute = (value: number) => root.executePreparedNumericRows([token],
+    new Uint32Array([0]), new Uint32Array([0]), [value], 1);
+  column.values[0] = -0;
+  same(execute(-0), true, "signed zero changes the compiled output");
+  same(container.children[0].props.value, -0, "negative zero reaches the host");
+  column.values[0] = NaN;
+  same(execute(NaN), true, "NaN first reaches the host");
+  same(container.children[0].props.value, NaN, "NaN remains a numeric value");
+  same(execute(NaN), false, "Object.is deduplicates repeated NaN");
+  returnUndefined = true;
+  column.values[0] = 5;
+  same(execute(5), true, "an explicit undefined staged value is valid");
+  same(Object.hasOwn(container.children[0].props, "value"), false,
+    "the host applies explicit undefined as property removal");
+  returnUndefined = false;
+  omitValue = true;
+  column.values[0] = 6;
+  let threw = false;
+  try { execute(6); } catch { threw = true; }
+  assert(threw, "an unwritten uniform output is rejected before its host write");
+  same(stagedValues?.length, 0, "failed uniform range releases value payload");
+  omitValue = false;
+  const setProp = host.setProp.bind(host);
+  let reenter = true;
+  host.setProp = (node, name, value, previous) => {
+    if (reenter && name === "value") {
+      reenter = false;
+      execute(7);
+    }
+    setProp(node, name, value, previous);
+  };
+  column.values[0] = 7;
+  threw = false;
+  try { execute(7); } catch { threw = true; }
+  assert(threw, "ranged host reentry still rejects nested publication");
+  same(stagedValues?.length, 0, "reentrant host failure releases staged payload");
+  same(execute(7), true, "ranged cut remains retryable after host failure");
+  same(container.children[0].props.value, 7, "retry publishes the pending value");
+  root.dispose();
+});
+
+Deno.test("ranged kernel disposal cancels and releases the shared payload", () => {
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  const layout = makeSingleSlotLayout("RangedDisposeRows");
+  const base = makeRangedSingleSinkKernel("RangedDisposeRows");
+  let capturedValues: CompiledOwnerUpdatePrimitive[] | undefined;
+  associateCompiledOwnerUpdateProgram(layout, {
+    ...base,
+    executeCut(...args) {
+      capturedValues = args[5];
+      const count = base.executeCut(...args);
+      root.dispose();
+      return count;
+    },
+  });
+  const source = new ScalarSource(2101, 1);
+  const column = new NumericColumn(2111, 0, new Float64Array([1]));
+  root.commit(jsx("output", {
+    value: owned(bind(source, value => value), layout, [0], "value"),
+  }), undefined, true);
+  const token = root.prepareNumericRowProgram({ owner: 73, layout,
+    rowIdentity: {}, row: 0, generation: 1, sources: [source], columns: [column] });
+  assert(token, "ranged row prepares before disposal");
+  column.values[0] = 2;
+  same(root.executePreparedNumericRows([token], new Uint32Array([0]),
+    new Uint32Array([0]), [2], 1), false,
+    "disposal in a ranged kernel cancels the pending cut");
+  same(container.children.length, 0, "disposed host tree remains removed");
+  same(capturedValues?.length, 0, "cancelled range releases staged values");
+});
+
 Deno.test("compiled owner update kernel stages sparse and dense row cuts", () => {
   const host = new MemoryVDOMHost();
   const container = host.createContainer();
