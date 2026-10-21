@@ -1,5 +1,13 @@
 # Implementation checkpoint
 
+## Practical Podman build resources
+
+The user explicitly permits 2–4 GiB RAM. The 16-GiB Mac reported normal memory pressure; the dedicated Podman VM is now verified at one CPU/2048 MiB, with 1536 MiB selected for builds and 512 MiB reserved for its OS/engine. Depot storage and permissions remain unchanged. New machine and image proofs pass readiness; no application correctness pass is inferred.
+
+Previous 256/512/768-MiB container attempts remain preserved: bootstrap or verification failed under confirmed memcg/global OOM on the earlier 1-GiB VM. All three attempts' owned volumes were removed after evidence export. The new transport keeps exact live resource, source, image, launcher and toolchain checks. Fresh consolidated verification is next; current Linux qualification and original performance/cold/memory/independent-device acceptance remain incomplete.
+
+[Resource decision, preserved failures and exact proofs](implementation/2026-10-20-podman/results.md). This supersedes the earlier 1-GiB build configuration, not its evidence.
+
 ## Podman disposable Linux setup — 20 October 2026
 
 The user selected Podman. Podman 6.1.4 is installed on the system drive with dedicated local configuration and Depot-backed VM disk, image/volume storage, downloads, caches and temporary files. The dedicated rootless AppleHV VM uses one CPU and 1024 MiB; the 512-MiB boot failure and subsequent startup/transport failures remain preserved. No administrator helper, login startup or Depot permission change occurred.

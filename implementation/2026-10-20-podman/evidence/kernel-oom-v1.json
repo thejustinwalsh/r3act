@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "capturedAtLocal": "2026-10-20T16:03:10.800875-04:00",
+  "query": {
+    "argv": [
+      "/Users/mini/.local/bin/podman",
+      "machine",
+      "ssh",
+      "r3act-dev",
+      "sudo",
+      "-n",
+      "journalctl",
+      "-k",
+      "--no-pager",
+      "-n100"
+    ],
+    "exitCode": 0,
+    "stdout": "Oct 20 16:02:17 localhost.localdomain kernel:  __do_fault+0x44/0x1e0\nOct 20 16:02:17 localhost.localdomain kernel:  do_read_fault+0x1b0/0x2f0\nOct 20 16:02:17 localhost.localdomain kernel:  do_fault+0x160/0x3a8\nOct 20 16:02:17 localhost.localdomain kernel:  handle_pte_fault+0x174/0x250\nOct 20 16:02:17 localhost.localdomain kernel:  __handle_mm_fault+0x1f8/0x4c8\nOct 20 16:02:17 localhost.localdomain kernel:  handle_mm_fault+0xc4/0x320\nOct 20 16:02:17 localhost.localdomain kernel:  do_page_fault+0x44c/0x840\nOct 20 16:02:17 localhost.localdomain kernel:  do_translation_fault+0x4c/0xa0\nOct 20 16:02:17 localhost.localdomain kernel:  do_mem_abort+0x48/0x98\nOct 20 16:02:17 localhost.localdomain kernel:  el0_ia+0x6c/0x1f0\nOct 20 16:02:17 localhost.localdomain kernel:  el0t_64_sync_handler+0xe0/0xf0\nOct 20 16:02:17 localhost.localdomain kernel:  el0t_64_sync+0x1b0/0x1b8\nOct 20 16:02:17 localhost.localdomain kernel: memory: usage 262144kB, limit 262144kB, failcnt 2081851\nOct 20 16:02:17 localhost.localdomain kernel: swap: usage 0kB, limit 524288kB, failcnt 0\nOct 20 16:02:17 localhost.localdomain kernel: Memory cgroup stats for /user.slice/user-501.slice/user@501.service/user.slice/libpod-64715da33d57a4992aefbff8970cf7dc27a1b011583b6494388e7b3820c72ef0.scope:\nOct 20 16:02:17 localhost.localdomain kernel: anon 263880704\nOct 20 16:02:17 localhost.localdomain kernel: file 1810432\nOct 20 16:02:17 localhost.localdomain kernel: kernel 2744320\nOct 20 16:02:17 localhost.localdomain kernel: kernel_stack 409600\nOct 20 16:02:17 localhost.localdomain kernel: pagetables 1798144\nOct 20 16:02:17 localhost.localdomain kernel: sec_pagetables 0\nOct 20 16:02:17 localhost.localdomain kernel: percpu 6420\nOct 20 16:02:17 localhost.localdomain kernel: sock 0\nOct 20 16:02:17 localhost.localdomain kernel: vmalloc 8192\nOct 20 16:02:17 localhost.localdomain kernel: shmem 0\nOct 20 16:02:17 localhost.localdomain kernel: zswap 0\nOct 20 16:02:17 localhost.localdomain kernel: zswapped 0\nOct 20 16:02:17 localhost.localdomain kernel: zswap_incomp 0\nOct 20 16:02:17 localhost.localdomain kernel: file_mapped 0\nOct 20 16:02:17 localhost.localdomain kernel: file_dirty 0\nOct 20 16:02:17 localhost.localdomain kernel: file_writeback 0\nOct 20 16:02:17 localhost.localdomain kernel: swapcached 0\nOct 20 16:02:17 localhost.localdomain kernel: anon_thp 0\nOct 20 16:02:17 localhost.localdomain kernel: file_thp 0\nOct 20 16:02:17 localhost.localdomain kernel: shmem_thp 0\nOct 20 16:02:17 localhost.localdomain kernel: inactive_anon 42385408\nOct 20 16:02:17 localhost.localdomain kernel: active_anon 221495296\nOct 20 16:02:17 localhost.localdomain kernel: inactive_file 1024000\nOct 20 16:02:17 localhost.localdomain kernel: active_file 786432\nOct 20 16:02:17 localhost.localdomain kernel: unevictable 0\nOct 20 16:02:17 localhost.localdomain kernel: slab_reclaimable 81024\nOct 20 16:02:17 localhost.localdomain kernel: slab_unreclaimable 426288\nOct 20 16:02:17 localhost.localdomain kernel: slab 507312\nOct 20 16:02:17 localhost.localdomain kernel: hugetlb 0\nOct 20 16:02:17 localhost.localdomain kernel: workingset_refault_anon 0\nOct 20 16:02:17 localhost.localdomain kernel: workingset_refault_file 62045456\nOct 20 16:02:17 localhost.localdomain kernel: workingset_activate_anon 0\nOct 20 16:02:17 localhost.localdomain kernel: workingset_activate_file 101\nOct 20 16:02:17 localhost.localdomain kernel: workingset_restore_anon 0\nOct 20 16:02:17 localhost.localdomain kernel: workingset_restore_file 101\nOct 20 16:02:17 localhost.localdomain kernel: workingset_nodereclaim 343172\nOct 20 16:02:17 localhost.localdomain kernel: pgdemote_kswapd 0\nOct 20 16:02:17 localhost.localdomain kernel: pgdemote_direct 0\nOct 20 16:02:17 localhost.localdomain kernel: pgdemote_khugepaged 0\nOct 20 16:02:17 localhost.localdomain kernel: pgdemote_proactive 0\nOct 20 16:02:17 localhost.localdomain kernel: pgsteal_kswapd 17\nOct 20 16:02:17 localhost.localdomain kernel: pgsteal_direct 81995641\nOct 20 16:02:17 localhost.localdomain kernel: pgsteal_khugepaged 0\nOct 20 16:02:17 localhost.localdomain kernel: pgsteal_proactive 0\nOct 20 16:02:17 localhost.localdomain kernel: pgscan_kswapd 19\nOct 20 16:02:17 localhost.localdomain kernel: pgscan_direct 1558240862\nOct 20 16:02:17 localhost.localdomain kernel: pgscan_khugepaged 0\nOct 20 16:02:17 localhost.localdomain kernel: pgscan_proactive 0\nOct 20 16:02:17 localhost.localdomain kernel: pgrefill 9\nOct 20 16:02:17 localhost.localdomain kernel: pgpromote_success 0\nOct 20 16:02:17 localhost.localdomain kernel: pgscan 1558240881\nOct 20 16:02:17 localhost.localdomain kernel: pgsteal 81995658\nOct 20 16:02:17 localhost.localdomain kernel: pswpin 0\nOct 20 16:02:17 localhost.localdomain kernel: pswpout 0\nOct 20 16:02:17 localhost.localdomain kernel: pgfault 240777\nOct 20 16:02:17 localhost.localdomain kernel: pgmajfault 142634\nOct 20 16:02:17 localhost.localdomain kernel: pgactivate 84612\nOct 20 16:02:17 localhost.localdomain kernel: pgdeactivate 0\nOct 20 16:02:17 localhost.localdomain kernel: pglazyfree 0\nOct 20 16:02:17 localhost.localdomain kernel: pglazyfreed 0\nOct 20 16:02:17 localhost.localdomain kernel: swpin_zero 0\nOct 20 16:02:17 localhost.localdomain kernel: swpout_zero 0\nOct 20 16:02:17 localhost.localdomain kernel: zswpin 0\nOct 20 16:02:17 localhost.localdomain kernel: zswpout 0\nOct 20 16:02:17 localhost.localdomain kernel: zswpwb 0\nOct 20 16:02:17 localhost.localdomain kernel: thp_fault_alloc 0\nOct 20 16:02:17 localhost.localdomain kernel: thp_collapse_alloc 0\nOct 20 16:02:17 localhost.localdomain kernel: thp_swpout 0\nOct 20 16:02:17 localhost.localdomain kernel: thp_swpout_fallback 0\nOct 20 16:02:17 localhost.localdomain kernel: numa_pages_migrated 0\nOct 20 16:02:17 localhost.localdomain kernel: numa_pte_updates 0\nOct 20 16:02:17 localhost.localdomain kernel: numa_hint_faults 0\nOct 20 16:02:17 localhost.localdomain kernel: Memory cgroup min protection 0kB -- low protection 0kB\nOct 20 16:02:17 localhost.localdomain kernel: Tasks state (memory values in pages):\nOct 20 16:02:17 localhost.localdomain kernel: [  pid  ]   uid  tgid total_vm      rss rss_anon rss_file rss_shmem pgtables_bytes swapents oom_score_adj name\nOct 20 16:02:17 localhost.localdomain kernel: [   2646]   501  2646   343734    15162     4712    10450         0   581632        0           200 MainThread\nOct 20 16:02:17 localhost.localdomain kernel: [   2660]   501  2660  2416012    25388    14018    11370         0   720896        0           200 MainThread\nOct 20 16:02:17 localhost.localdomain kernel: [   2674]   501  2674   124094    46071    45694      377         0   483328        0           200 rustup-init\nOct 20 16:02:17 localhost.localdomain kernel: oom-kill:constraint=CONSTRAINT_MEMCG,nodemask=(null),cpuset=user.slice,mems_allowed=0,oom_memcg=/user.slice/user-501.slice/user@501.service/user.slice/libpod-64715da33d57a4992aefbff8970cf7dc27a1b011583b6494388e7b3820c72ef0.scope,task_memcg=/user.slice/user-501.slice/user@501.service/user.slice/libpod-64715da33d57a4992aefbff8970cf7dc27a1b011583b6494388e7b3820c72ef0.scope/container,task=rustup-init,pid=2674,uid=501\nOct 20 16:02:17 localhost.localdomain kernel: Memory cgroup out of memory: Killed process 2674 (rustup-init) total-vm:496376kB, anon-rss:182776kB, file-rss:1508kB, shmem-rss:0kB, UID:501 pgtables:472kB oom_score_adj:200\nOct 20 16:02:17 localhost.localdomain kernel: podman0: port 1(veth0) entered disabled state\nOct 20 16:02:17 localhost.localdomain kernel: veth0 (unregistering): left allmulticast mode\nOct 20 16:02:17 localhost.localdomain kernel: veth0 (unregistering): left promiscuous mode\nOct 20 16:02:17 localhost.localdomain kernel: podman0: port 1(veth0) entered disabled state\nOct 20 16:02:17 localhost.localdomain kernel: SELinux: mount invalid.  Same superblock, different security settings for (dev cgroup2, type cgroup2)\n",
+    "stderr": ""
+  },
+  "matchingKernelLines": [
+    "Oct 20 16:02:17 localhost.localdomain kernel: Memory cgroup stats for /user.slice/user-501.slice/user@501.service/user.slice/libpod-64715da33d57a4992aefbff8970cf7dc27a1b011583b6494388e7b3820c72ef0.scope:",
+    "Oct 20 16:02:17 localhost.localdomain kernel: Memory cgroup min protection 0kB -- low protection 0kB",
+    "Oct 20 16:02:17 localhost.localdomain kernel: [  pid  ]   uid  tgid total_vm      rss rss_anon rss_file rss_shmem pgtables_bytes swapents oom_score_adj name",
+    "Oct 20 16:02:17 localhost.localdomain kernel: [   2674]   501  2674   124094    46071    45694      377         0   483328        0           200 rustup-init",
+    "Oct 20 16:02:17 localhost.localdomain kernel: oom-kill:constraint=CONSTRAINT_MEMCG,nodemask=(null),cpuset=user.slice,mems_allowed=0,oom_memcg=/user.slice/user-501.slice/user@501.service/user.slice/libpod-64715da33d57a4992aefbff8970cf7dc27a1b011583b6494388e7b3820c72ef0.scope,task_memcg=/user.slice/user-501.slice/user@501.service/user.slice/libpod-64715da33d57a4992aefbff8970cf7dc27a1b011583b6494388e7b3820c72ef0.scope/container,task=rustup-init,pid=2674,uid=501",
+    "Oct 20 16:02:17 localhost.localdomain kernel: Memory cgroup out of memory: Killed process 2674 (rustup-init) total-vm:496376kB, anon-rss:182776kB, file-rss:1508kB, shmem-rss:0kB, UID:501 pgtables:472kB oom_score_adj:200"
+  ],
+  "interpretation": {
+    "oomEvidenceFound": true,
+    "rustupMentionFound": true,
+    "qualification": "Kernel log is read-only diagnostic evidence; absence of matches is inconclusive if logs are incomplete or inaccessible."
+  },
+  "bootstrapEvidence": {
+    "phaseStatus": "FAIL",
+    "phaseExit": {
+      "code": 1,
+      "signal": null
+    },
+    "sourceCount": 1456,
+    "sourceLockSha256": "dbe45d3cc15821bf4d5774acf4e581e2d630f0ce01930591f8d650df96c95ab1",
+    "toolchainProofStatus": "FAIL",
+    "toolchainError": "AssertionError [ERR_ASSERTION]: /workspace/toolchain/rustup-init failed: SIGKILL\n\nnull !== 0\n\n    at run (file:///workspace/r3act/implementation/2026-10-18-native-platforms/linux/bootstrap-tools.mjs:26:10)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async file:///workspace/r3act/implementation/2026-10-18-native-platforms/linux/bootstrap-tools.mjs:53:3",
+    "requestedResources": {
+      "cpus": "1",
+      "memory": "256m",
+      "cargoBuildJobs": "1"
+    },
+    "sourceLockFileCount": 1456,
+    "preservedFiles": {
+      "host-bootstrap.json": {
+        "path": "/Volumes/Depot/Developer/r3act/implementation/2026-10-18-native-platforms/linux/evidence-podman-v1/host-bootstrap.json",
+        "bytes": 1749,
+        "sha256": "4043e350bf1b1d58ce0e6df6e48c3d0bbfa294a1c8bc8df8c265d78c14b8f4ac"
+      },
+      "host-bootstrap.stderr.log": {
+        "path": "/Volumes/Depot/Developer/r3act/implementation/2026-10-18-native-platforms/linux/evidence-podman-v1/host-bootstrap.stderr.log",
+        "bytes": 1476,
+        "sha256": "85f3fb8c837a500493ab25e585998d9c7a06cde1ead8b8c8834a9679a0ea9931"
+      },
+      "host-bootstrap.stdout.log": {
+        "path": "/Volumes/Depot/Developer/r3act/implementation/2026-10-18-native-platforms/linux/evidence-podman-v1/host-bootstrap.stdout.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "toolchain-proof.json": {
+        "path": "/Volumes/Depot/Developer/r3act/implementation/2026-10-18-native-platforms/linux/evidence-podman-v1/toolchain-proof.json",
+        "bytes": 705,
+        "sha256": "5d34f03a67bc033c3c4906759f3584ad30132263c00b0c5a1957ec85b6635b37"
+      },
+      "phases/bootstrap.json": {
+        "path": "/Volumes/Depot/Developer/r3act/implementation/2026-10-18-native-platforms/linux/evidence-podman-v1/phases/bootstrap.json",
+        "bytes": 699,
+        "sha256": "6536815f0b75004579b62eb5142e0055d179b41431adc3866b19c451aa78031e"
+      },
+      "container-source-lock.json": {
+        "path": "/Volumes/Depot/Developer/r3act/implementation/2026-10-18-native-platforms/linux/evidence-podman-v1/container-source-lock.json",
+        "bytes": 270506,
+        "sha256": "dbe45d3cc15821bf4d5774acf4e581e2d630f0ce01930591f8d650df96c95ab1"
+      },
+      "host-source-snapshot-lock.json": {
+        "path": "/Volumes/Depot/Developer/r3act/implementation/2026-10-18-native-platforms/linux/evidence-podman-v1/host-source-snapshot-lock.json",
+        "bytes": 270444,
+        "sha256": "48aaeb57c9733d7cf797d3cbd04b6a8deeaeb8d1732a62c46f8598ebfaa729ab"
+      }
+    }
+  }
+}

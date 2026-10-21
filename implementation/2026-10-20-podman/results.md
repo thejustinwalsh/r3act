@@ -1,5 +1,23 @@
 # Podman disposable Linux verification setup
 
+## Practical build resources and preserved OOM attempts
+
+The user subsequently authorized 2–4 GiB RAM. The host has 16 GiB and reported normal memory pressure at the [recorded snapshot](evidence/host-memory-choice.json). The earlier effort to keep the build VM at 1 GiB was too restrictive. Current configuration is one CPU, **2048 MiB VM RAM**, with **1536 MiB per build container** and 512 MiB reserved for guest/engine overhead. Disk, images, volumes, caches and transfers remain on Depot. The launcher accepts only the authorized 2048–4096 MiB range and still requires exact live configuration/proof agreement. [Resource policy](resource-policy-2048.json) records the selected limits; no disk-swap change was made.
+
+The new [2048-MiB live proof](machine-proof-2048.json) is READY, SHA `6ad60ac60f3058285b93b13d95642373b72967bd1bd7857a8682b23d8af427d8`. Syntax verification passes and [image preparation v3](../2026-10-18-native-platforms/linux/image-podman-v3/image-proof.json) exits zero, SHA `788823bf49a0dde39975c699b45feb7f5dc4cc464ca9f520262ae921f8a1c830`. It binds the revised launcher and current machine proof to the same Node image digest. This is readiness, not a passing r3act Linux gate.
+
+Earlier source-locked attempts at commit `8ce4908e8a7664e2f56799784f010de2fa603b8b` remain unchanged:
+
+| Attempt | Actual outcome | Evidence and disposition |
+| --- | --- | --- |
+| [v1](../2026-10-18-native-platforms/linux/evidence-podman-v1/host-bootstrap.json), 256-MiB container | Bootstrap FAIL: rustup-init SIGKILL; kernel confirms memcg OOM. No application test ran. | Failure/source/toolchain receipts exported; owned container and all three volumes removed and absence verified. |
+| [v2](../2026-10-18-native-platforms/linux/evidence-podman-v2/host-verify.json), 512-MiB container | Bootstrap PASS with pinned toolchain and 1456 matching source files. Verification dependency install SIGKILL, confirmed memcg OOM; gate deliberately interrupted after the setup failure, with partial outcomes preserved. | Actual cgroup memory.max 536870912 and cpu.max 100000/100000; all owned containers/volumes removed after export. |
+| [v3](../2026-10-18-native-platforms/linux/evidence-podman-v3/host-verify.json), 768-MiB container | Bootstrap and dependency install PASS. Consolidated gate exits one: cargo test/build, Deno, native tooling and package build fail or are killed; downstream phases skip. Kernel shows global OOM on the 1-GiB guest. | Actual cgroup cap 805306368 bytes/one CPU; failure receipts, source archive and kernel logs retained. Three labeled unmounted volumes removed after export; absence confirmed. |
+
+All three bootstraps use the same 1456-file lock SHA `dbe45d3cc15821bf4d5774acf4e581e2d630f0ce01930591f8d650df96c95ab1`. v2/v3 toolchain READY SHA is `eea0913079c245ff683370c153b91f57a27d9bb604b71b9898c039f8d89ba480`. The v3 gate receipt SHA is `22005df8f7a95275dde39448f6e16d52d2e381a8fd151a0305c2cf0b578ad4b5`; its [kernel OOM evidence](evidence/verify-v3-kernel-oom.json) SHA is `a23a42cac9cee163065cbc857c7527d24c866faca7f36033ff128364c987770e`. These are failed qualification attempts; they are not erased, converted into passes or used for speed claims. New verification at the authorized practical resources will have separate proofs and receipts. The original finish line remains open.
+
+The historical installation account below retains its original 1-GiB scope; this section supersedes that setting for builds.
+
 Basis: r3act main `d6c83e26`; user selected Podman instead of continuing Apple Container's coupled service/storage setup. This unit replaces the unavailable Apple-specific verification transport with a dedicated Podman host launcher. It does not change the product compiler, runtime or host semantics.
 
 ## Installation and resources

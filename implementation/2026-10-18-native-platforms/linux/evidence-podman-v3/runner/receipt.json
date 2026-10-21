@@ -1,0 +1,830 @@
+{
+  "schemaVersion": 1,
+  "status": "FAIL",
+  "executionKind": "linux-vm",
+  "expected": {
+    "platform": "linux",
+    "arch": "arm64"
+  },
+  "actual": {
+    "platform": "linux",
+    "arch": "arm64"
+  },
+  "steps": [
+    {
+      "name": "native-inputs-contract",
+      "status": "PASS",
+      "command": [
+        "/usr/local/bin/node",
+        "--test",
+        "compiler/native_verification_inputs_test.mjs"
+      ],
+      "dependencies": [],
+      "deadlineMs": 300000,
+      "startedAt": "2026-10-20T20:10:12.690Z",
+      "durationMs": 1464,
+      "log": "logs/native-inputs-contract.log",
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "groupCleanupError": null
+    },
+    {
+      "name": "install",
+      "status": "PASS",
+      "command": [
+        "pnpm",
+        "install",
+        "--frozen-lockfile",
+        "--ignore-scripts"
+      ],
+      "dependencies": [],
+      "deadlineMs": 900000,
+      "startedAt": "2026-10-20T20:10:14.155Z",
+      "durationMs": 5879,
+      "log": "logs/install.log",
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "groupCleanupError": null
+    },
+    {
+      "name": "cargo-test",
+      "status": "FAIL",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--manifest-path",
+        "compiler/oxc-spike/Cargo.toml"
+      ],
+      "dependencies": [],
+      "deadlineMs": 900000,
+      "startedAt": "2026-10-20T20:10:20.035Z",
+      "durationMs": 36698,
+      "log": "logs/cargo-test.log",
+      "exitCode": 101,
+      "signal": null,
+      "spawnError": null,
+      "groupCleanupError": null
+    },
+    {
+      "name": "cargo-debug",
+      "status": "FAIL",
+      "command": [
+        "cargo",
+        "build",
+        "--locked",
+        "--manifest-path",
+        "compiler/oxc-spike/Cargo.toml"
+      ],
+      "dependencies": [],
+      "deadlineMs": 900000,
+      "startedAt": "2026-10-20T20:10:56.738Z",
+      "durationMs": 8455,
+      "log": "logs/cargo-debug.log",
+      "exitCode": 101,
+      "signal": null,
+      "spawnError": null,
+      "groupCleanupError": null
+    },
+    {
+      "name": "compiler-info",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug"
+      ]
+    },
+    {
+      "name": "deno-full",
+      "status": "FAIL",
+      "command": [
+        "deno",
+        "test",
+        "--config",
+        "deno.browser.json",
+        "--frozen",
+        "--lock=implementation/2026-10-16-publication/verification/deno-runtime.lock",
+        "src"
+      ],
+      "dependencies": [],
+      "deadlineMs": 900000,
+      "startedAt": "2026-10-20T20:11:05.205Z",
+      "durationMs": 8125,
+      "log": "logs/deno-full.log",
+      "exitCode": null,
+      "signal": "SIGKILL",
+      "spawnError": null,
+      "groupCleanupError": null
+    },
+    {
+      "name": "native-tooling",
+      "status": "FAIL",
+      "command": [
+        "pnpm",
+        "check:native-tooling"
+      ],
+      "dependencies": [
+        "install"
+      ],
+      "deadlineMs": 300000,
+      "startedAt": "2026-10-20T20:11:13.332Z",
+      "durationMs": 1409,
+      "log": "logs/native-tooling.log",
+      "exitCode": 137,
+      "signal": null,
+      "spawnError": null,
+      "groupCleanupError": null
+    },
+    {
+      "name": "artifact-conformance",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ]
+    },
+    {
+      "name": "hmr-revision-plugin",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "react-composition-plugin",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "runtime-origin-plugin",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-01",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-02",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-03",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-04",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-05",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-06",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-07",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-08",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-09",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-10",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-11",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-12",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-13",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-14",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-15",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-16",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-17",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-18",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-19",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-20",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-21",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-22",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-23",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-24",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-25",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-26",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-27",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-28",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-29",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-30",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-31",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-32",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-33",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-34",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-35",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-36",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-37",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-38",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-39",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-40",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-41",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-42",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-43",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "compiled-44",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "react-island-compiled-source",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "radix-dialog-compiled-source",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "three-host-7",
+      "status": "PASS",
+      "command": [
+        "/usr/local/bin/node",
+        "--experimental-transform-types",
+        "--test",
+        "compiler/three_host_capability_test.mjs",
+        "compiler/three_property_copy_test.mjs"
+      ],
+      "dependencies": [
+        "install"
+      ],
+      "deadlineMs": 300000,
+      "startedAt": "2026-10-20T20:11:14.794Z",
+      "durationMs": 740,
+      "log": "logs/three-host-7.log",
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "groupCleanupError": null
+    },
+    {
+      "name": "direct-intent-gc",
+      "status": "PASS",
+      "command": [
+        "/usr/local/bin/node",
+        "--experimental-transform-types",
+        "--expose-gc",
+        "scripts/verify_direct_intent_retention.mjs"
+      ],
+      "dependencies": [
+        "install"
+      ],
+      "deadlineMs": 300000,
+      "startedAt": "2026-10-20T20:11:15.535Z",
+      "durationMs": 497,
+      "log": "logs/direct-intent-gc.log",
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "groupCleanupError": null
+    },
+    {
+      "name": "native-candidate-gc",
+      "status": "PASS",
+      "command": [
+        "/usr/local/bin/node",
+        "--experimental-transform-types",
+        "--expose-gc",
+        "scripts/verify_native_candidate_retention.mjs"
+      ],
+      "dependencies": [
+        "install"
+      ],
+      "deadlineMs": 300000,
+      "startedAt": "2026-10-20T20:11:16.033Z",
+      "durationMs": 473,
+      "log": "logs/native-candidate-gc.log",
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "groupCleanupError": null
+    },
+    {
+      "name": "compiled-collection-gc",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug",
+        "compiler-info"
+      ],
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": null
+    },
+    {
+      "name": "package-build",
+      "status": "FAIL",
+      "command": [
+        "pnpm",
+        "package:r3act"
+      ],
+      "dependencies": [
+        "install"
+      ],
+      "deadlineMs": 900000,
+      "startedAt": "2026-10-20T20:11:16.509Z",
+      "durationMs": 1336,
+      "log": "logs/package-build.log",
+      "exitCode": 1,
+      "signal": null,
+      "spawnError": null,
+      "groupCleanupError": null
+    },
+    {
+      "name": "package-consumer",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "package-build"
+      ]
+    }
+  ],
+  "errors": [],
+  "source": {
+    "declaredCommit": "8ce4908e8a7664e2f56799784f010de2fa603b8b",
+    "gitHead": null,
+    "inputCount": 1446,
+    "rawArchive": {
+      "manifest": "source-archive.json",
+      "files": "source-before/files",
+      "runnerInputs": 1446,
+      "contextInputs": 10,
+      "unavailableContext": []
+    }
+  },
+  "machine": {
+    "osType": "Linux",
+    "osRelease": "7.2.5-200.fc44.aarch64",
+    "osMachine": "aarch64",
+    "cpuModel": "unknown",
+    "logicalCpus": 1,
+    "totalMemoryBytes": 983375872
+  },
+  "toolchains": {
+    "node": {
+      "executable": "/usr/local/bin/node",
+      "version": "v24.18.0",
+      "sha256": "6bf69d0eda41a12030d5f28d958cd09ce323bc0c13f1ab4d8bb426933aa08812"
+    },
+    "rustc": {
+      "command": [
+        "rustc",
+        "-vV"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "stdout": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: aarch64-unknown-linux-gnu\nrelease: 1.97.1\nLLVM version: 22.1.6",
+      "stderr": ""
+    },
+    "cargo": {
+      "command": [
+        "cargo",
+        "--version"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "stdout": "cargo 1.97.1 (c980f4866 2026-06-30)",
+      "stderr": ""
+    },
+    "pnpm": {
+      "command": [
+        "pnpm",
+        "--version"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "stdout": "11.25.0",
+      "stderr": ""
+    },
+    "deno": {
+      "command": [
+        "deno",
+        "--version"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "stdout": "deno 2.9.7 (stable, release, aarch64-unknown-linux-gnu)\nv8 15.0.245.2-rusty\ntypescript 6.0.3",
+      "stderr": ""
+    }
+  },
+  "packageCacheBefore": {
+    "status": "ABSENT",
+    "files": []
+  },
+  "debugCompiler": {
+    "path": "compiler/oxc-spike/target/debug/ui-graph-compiler-spike",
+    "sha256AfterBuild": null
+  },
+  "packageCacheAfter": {
+    "status": "ARCHIVED",
+    "files": []
+  },
+  "fixtureArtifacts": {
+    "status": "ARCHIVED",
+    "files": []
+  },
+  "sourceAudit": {
+    "status": "MATCH",
+    "changed": []
+  }
+}

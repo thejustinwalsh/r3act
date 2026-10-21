@@ -35,7 +35,8 @@ assert.equal(machineProof.podmanCommand, podman);
 assert.equal(machineProof.machineName, "r3act-dev");
 assert.equal(machineProof.provider, "applehv");
 assert.equal(machineProof.cpus, 1);
-assert.equal(machineProof.memoryMiB, 1024);
+assert.ok(Number.isSafeInteger(machineProof.memoryMiB) &&
+  machineProof.memoryMiB >= 2048 && machineProof.memoryMiB <= 4096);
 assert.ok(path.isAbsolute(machineProof.diskImagePath));
 assert.equal(await realpath(machineProof.diskImagePath), machineProof.diskImagePath);
 assert.ok(machineProof.diskImagePath.startsWith("/Volumes/Depot/Containers/podman/"));
@@ -66,9 +67,9 @@ assert.equal(machineConfig.Resources.Memory, machine.Resources.Memory);
 assert.equal(machineConfig.Resources.DiskSize, machine.Resources.DiskSize);
 assert.ok(path.isAbsolute(machineConfig.ImagePath.Path));
 assert.equal(await realpath(machineConfig.ImagePath.Path), machineProof.diskImagePath);
-const memoryMiB = Number(process.env.R3ACT_WORKLOAD_MEMORY_MIB ?? 256);
+const memoryMiB = Number(process.env.R3ACT_WORKLOAD_MEMORY_MIB ?? 1536);
 assert.ok(Number.isSafeInteger(memoryMiB) && memoryMiB >= 200 &&
-  memoryMiB <= machineProof.memoryMiB - 256);
+  memoryMiB <= machineProof.memoryMiB - 512);
 const workloadResources = { cpus: "1", memory: `${memoryMiB}m`, cargoBuildJobs: "1" };
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const json = (value) => JSON.stringify(value, null, 2) + "\n";

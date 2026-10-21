@@ -1,0 +1,179 @@
+{
+  "schemaVersion": 1,
+  "status": "RUNNING",
+  "executionKind": "linux-vm",
+  "expected": {
+    "platform": "linux",
+    "arch": "arm64"
+  },
+  "actual": {
+    "platform": "linux",
+    "arch": "arm64"
+  },
+  "steps": [
+    {
+      "name": "native-inputs-contract",
+      "status": "PASS",
+      "command": [
+        "/usr/local/bin/node",
+        "--test",
+        "compiler/native_verification_inputs_test.mjs"
+      ],
+      "dependencies": [],
+      "deadlineMs": 300000,
+      "startedAt": "2026-10-20T20:05:07.422Z",
+      "durationMs": 1634,
+      "log": "logs/native-inputs-contract.log",
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "groupCleanupError": null
+    },
+    {
+      "name": "install",
+      "status": "FAIL",
+      "command": [
+        "pnpm",
+        "install",
+        "--frozen-lockfile",
+        "--ignore-scripts"
+      ],
+      "dependencies": [],
+      "deadlineMs": 900000,
+      "startedAt": "2026-10-20T20:05:09.057Z",
+      "durationMs": 7604,
+      "log": "logs/install.log",
+      "exitCode": null,
+      "signal": "SIGKILL",
+      "spawnError": null,
+      "groupCleanupError": null
+    },
+    {
+      "name": "cargo-test",
+      "status": "FAIL",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--manifest-path",
+        "compiler/oxc-spike/Cargo.toml"
+      ],
+      "dependencies": [],
+      "deadlineMs": 900000,
+      "startedAt": "2026-10-20T20:05:16.661Z",
+      "durationMs": 105126,
+      "log": "logs/cargo-test.log",
+      "exitCode": 101,
+      "signal": null,
+      "spawnError": null,
+      "groupCleanupError": null
+    },
+    {
+      "name": "cargo-debug",
+      "status": "FAIL",
+      "command": [
+        "cargo",
+        "build",
+        "--locked",
+        "--manifest-path",
+        "compiler/oxc-spike/Cargo.toml"
+      ],
+      "dependencies": [],
+      "deadlineMs": 900000,
+      "startedAt": "2026-10-20T20:07:01.789Z",
+      "durationMs": 15994,
+      "log": "logs/cargo-debug.log",
+      "exitCode": 101,
+      "signal": null,
+      "spawnError": null,
+      "groupCleanupError": null
+    },
+    {
+      "name": "compiler-info",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependencies": [
+        "cargo-debug"
+      ]
+    }
+  ],
+  "errors": [],
+  "source": {
+    "declaredCommit": "8ce4908e8a7664e2f56799784f010de2fa603b8b",
+    "gitHead": null,
+    "inputCount": 1446,
+    "rawArchive": {
+      "manifest": "source-archive.json",
+      "files": "source-before/files",
+      "runnerInputs": 1446,
+      "contextInputs": 10,
+      "unavailableContext": []
+    }
+  },
+  "machine": {
+    "osType": "Linux",
+    "osRelease": "7.2.5-200.fc44.aarch64",
+    "osMachine": "aarch64",
+    "cpuModel": "unknown",
+    "logicalCpus": 1,
+    "totalMemoryBytes": 983375872
+  },
+  "toolchains": {
+    "node": {
+      "executable": "/usr/local/bin/node",
+      "version": "v24.18.0",
+      "sha256": "6bf69d0eda41a12030d5f28d958cd09ce323bc0c13f1ab4d8bb426933aa08812"
+    },
+    "rustc": {
+      "command": [
+        "rustc",
+        "-vV"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "stdout": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: aarch64-unknown-linux-gnu\nrelease: 1.97.1\nLLVM version: 22.1.6",
+      "stderr": ""
+    },
+    "cargo": {
+      "command": [
+        "cargo",
+        "--version"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "stdout": "cargo 1.97.1 (c980f4866 2026-06-30)",
+      "stderr": ""
+    },
+    "pnpm": {
+      "command": [
+        "pnpm",
+        "--version"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "stdout": "11.25.0",
+      "stderr": ""
+    },
+    "deno": {
+      "command": [
+        "deno",
+        "--version"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "stdout": "deno 2.9.7 (stable, release, aarch64-unknown-linux-gnu)\nv8 15.0.245.2-rusty\ntypescript 6.0.3",
+      "stderr": ""
+    }
+  },
+  "packageCacheBefore": {
+    "status": "ABSENT",
+    "files": []
+  },
+  "debugCompiler": {
+    "path": "compiler/oxc-spike/target/debug/ui-graph-compiler-spike",
+    "sha256AfterBuild": null
+  }
+}

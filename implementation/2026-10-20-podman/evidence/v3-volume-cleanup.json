@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "capturedAtLocal": "2026-10-21T14:49:10-0400",
+  "purpose": "remove only failed verify v3 receipt volumes after ownership label and unmounted-state validation",
+  "connection": "r3act-dev",
+  "ownedVolumeReceiptPath": "/Volumes/Depot/Developer/r3act/implementation/2026-10-18-native-platforms/linux/evidence-podman-v3/owned-volume.json",
+  "ownedVolumeReceiptSha256": "1201faf224a93ffff92c735413f43c99c05c3a83da3fbc461516ac0fc4fbadd3",
+  "receiptId": "9da6d8b8-7efa-4be6-b5df-7df2024cc436",
+  "expectedNames": [
+    "r3act-native-platform-9da6d8b8-7efa-4be6-b5df-7df2024cc436",
+    "r3act-native-source-9da6d8b8-7efa-4be6-b5df-7df2024cc436",
+    "r3act-native-evidence-9da6d8b8-7efa-4be6-b5df-7df2024cc436"
+  ],
+  "preRemovalInspect": [
+    {
+      "Name": "r3act-native-platform-9da6d8b8-7efa-4be6-b5df-7df2024cc436",
+      "Driver": "local",
+      "Mountpoint": "/var/home/core/.local/share/containers/storage/volumes/r3act-native-platform-9da6d8b8-7efa-4be6-b5df-7df2024cc436/_data",
+      "CreatedAt": "2026-10-20T16:09:13.685680684-04:00",
+      "Labels": {
+        "r3act.native-platform": "9da6d8b8-7efa-4be6-b5df-7df2024cc436"
+      },
+      "Scope": "local",
+      "Options": {},
+      "MountCount": 0,
+      "NeedsCopyUp": true,
+      "LockNumber": 0
+    },
+    {
+      "Name": "r3act-native-source-9da6d8b8-7efa-4be6-b5df-7df2024cc436",
+      "Driver": "local",
+      "Mountpoint": "/var/home/core/.local/share/containers/storage/volumes/r3act-native-source-9da6d8b8-7efa-4be6-b5df-7df2024cc436/_data",
+      "CreatedAt": "2026-10-20T16:09:13.761128089-04:00",
+      "Labels": {
+        "r3act.native-platform": "9da6d8b8-7efa-4be6-b5df-7df2024cc436"
+      },
+      "Scope": "local",
+      "Options": {},
+      "MountCount": 0,
+      "NeedsCopyUp": true,
+      "LockNumber": 1
+    },
+    {
+      "Name": "r3act-native-evidence-9da6d8b8-7efa-4be6-b5df-7df2024cc436",
+      "Driver": "local",
+      "Mountpoint": "/var/home/core/.local/share/containers/storage/volumes/r3act-native-evidence-9da6d8b8-7efa-4be6-b5df-7df2024cc436/_data",
+      "CreatedAt": "2026-10-20T16:09:13.83447845-04:00",
+      "Labels": {
+        "r3act.native-platform": "9da6d8b8-7efa-4be6-b5df-7df2024cc436"
+      },
+      "Scope": "local",
+      "Options": {},
+      "MountCount": 0,
+      "NeedsCopyUp": true,
+      "LockNumber": 2
+    }
+  ],
+  "preRemovalOwnedContainers": {
+    "args": [
+      "ps",
+      "-a",
+      "--filter",
+      "label=r3act.native-platform=9da6d8b8-7efa-4be6-b5df-7df2024cc436",
+      "--format",
+      "{{.ID}} {{.Names}} {{.Labels}}"
+    ],
+    "exitCode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "removeResults": [
+    {
+      "args": [
+        "volume",
+        "rm",
+        "r3act-native-platform-9da6d8b8-7efa-4be6-b5df-7df2024cc436"
+      ],
+      "exitCode": 0,
+      "stdout": "r3act-native-platform-9da6d8b8-7efa-4be6-b5df-7df2024cc436\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "volume",
+        "rm",
+        "r3act-native-source-9da6d8b8-7efa-4be6-b5df-7df2024cc436"
+      ],
+      "exitCode": 0,
+      "stdout": "r3act-native-source-9da6d8b8-7efa-4be6-b5df-7df2024cc436\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "volume",
+        "rm",
+        "r3act-native-evidence-9da6d8b8-7efa-4be6-b5df-7df2024cc436"
+      ],
+      "exitCode": 0,
+      "stdout": "r3act-native-evidence-9da6d8b8-7efa-4be6-b5df-7df2024cc436\n",
+      "stderr": ""
+    }
+  ],
+  "postRemovalFilteredList": {
+    "args": [
+      "volume",
+      "ls",
+      "--filter",
+      "label=r3act.native-platform=9da6d8b8-7efa-4be6-b5df-7df2024cc436",
+      "--format",
+      "{{.Name}} {{.Labels}}"
+    ],
+    "exitCode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "postRemovalVolumesAbsent": true
+}
