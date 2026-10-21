@@ -4546,7 +4546,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     let ownerUpdateSinks: BoundPropGroup<H>[] | undefined;
     const candidateProgram = compiledOwnerUpdateProgramFor(layout);
     if (
-      candidateProgram?.schemaVersion === 2 &&
+      (candidateProgram?.schemaVersion === 2 ||
+        candidateProgram?.schemaVersion === 3) &&
       candidateProgram.programId === layout.programId &&
       candidateProgram.slotCount === slotCount &&
       candidateProgram.sinkIds.length > 0 &&
@@ -5381,6 +5382,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     let stagedCount = 0;
     let stagedCleanupBound = 0;
     let ownerUpdateProgram: CompiledOwnerUpdateProgram | undefined;
+    let heterogeneousPrograms = false;
     try {
       if (this.#ownerRowCutEpoch >= Number.MAX_SAFE_INTEGER) {
         this.#ownerRowCutEpoch = 1;
@@ -5444,9 +5446,14 @@ export class VDOMSnapshotRoot<H, Parent = H> {
 
       // Validate reached dependencies in scratch first: shared leases may be cleared
       // by promotion or row retirement, including untouched dependencies.
+      let allRowsCertified = true;
       for (let rowIndex = 0; rowIndex < this.#ownerRowRecordCount; rowIndex++) {
         const record = this.#ownerRowRecordScratch[rowIndex];
         if (!record) continue;
+        if (!record.ownerUpdateProgram || !record.sinks ||
+          record.sinks.length !== record.ownerUpdateProgram.sinkIds.length) {
+          allRowsCertified = false;
+        }
         if (
           ownerUpdateProgram && (
             record.ownerUpdateProgram !== ownerUpdateProgram || !record.sinks ||
@@ -5475,14 +5482,22 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           }
         }
       }
+      heterogeneousPrograms = !ownerUpdateProgram && allRowsCertified;
 
-      if (ownerUpdateProgram) {
-        const outputCapacity = this.#ownerRowRecordCount *
-          ownerUpdateProgram.sinkIds.length;
+      if (ownerUpdateProgram || heterogeneousPrograms) {
+        let outputCapacity = ownerUpdateProgram
+          ? this.#ownerRowRecordCount * ownerUpdateProgram.sinkIds.length
+          : 0;
+        if (heterogeneousPrograms) {
+          for (let index = 0; index < this.#ownerRowRecordCount; index++) {
+            outputCapacity += this.#ownerRowRecordScratch[index]!.sinks!.length;
+          }
+        }
         if (
           !Number.isSafeInteger(outputCapacity) || outputCapacity > 0xffff_ffff
         ) {
           ownerUpdateProgram = undefined;
+          heterogeneousPrograms = false;
         } else {
           stagedCleanupBound = outputCapacity;
           if (this.#ownerRowStagedInputIndices.length < outputCapacity) {
@@ -5501,13 +5516,13 @@ export class VDOMSnapshotRoot<H, Parent = H> {
             if (record) record.seenMask = 0;
           }
           if (countVisits) {
-            this.#ownerUpdateKernelBatches++;
+            if (ownerUpdateProgram) this.#ownerUpdateKernelBatches++;
             this.#ownerUpdateKernelRows += this.#ownerRowRecordCount;
             this.#ownerUpdateKernelInputs += count;
           }
         }
       }
-      if (!ownerUpdateProgram) {
+      if (!ownerUpdateProgram && !heterogeneousPrograms) {
         for (
           let rowIndex = 0;
           rowIndex < this.#ownerRowRecordCount;
@@ -5559,18 +5574,87 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       }
 
       let wrote = false;
-      if (ownerUpdateProgram) {
+      if (ownerUpdateProgram || heterogeneousPrograms) {
         if (this.#ownerRowExecutionCancelled) return false;
-        stagedCount = ownerUpdateProgram.executeCut(
-          changedSlots,
-          count,
-          this.#ownerRowInputRecordScratch as unknown as readonly (
-            CompiledOwnerUpdateRowState | undefined
-          )[],
-          this.#ownerRowStagedInputIndices,
-          this.#ownerRowStagedSinkIds,
-          this.#ownerRowStagedValues,
-        );
+        if (ownerUpdateProgram) {
+          stagedCount = ownerUpdateProgram.executeCut(
+            changedSlots,
+            count,
+            this.#ownerRowInputRecordScratch as unknown as readonly (
+              CompiledOwnerUpdateRowState | undefined
+            )[],
+            this.#ownerRowStagedInputIndices,
+            this.#ownerRowStagedSinkIds,
+            this.#ownerRowStagedValues,
+          );
+        } else {
+          const certifiedRunRecord = (
+            record: PreparedNumericRowProgramRecord<H> | undefined,
+            program: CompiledOwnerUpdateProgram,
+          ): record is PreparedNumericRowProgramRecord<H> &
+            CompiledOwnerUpdateRowState =>
+            record?.sinks !== undefined &&
+            record.ownerUpdateProgram === program &&
+            record.sinks.length === program.sinkIds.length;
+          for (let start = 0; start < count;) {
+            const program = this.#ownerRowInputRecordScratch[start]!.ownerUpdateProgram!;
+            let end = start + 1;
+            while (end < count &&
+              this.#ownerRowInputRecordScratch[end]!.ownerUpdateProgram === program
+            ) end++;
+            const runCapacity = Math.min(stagedCleanupBound,
+              (end - start) * program.sinkIds.length);
+            const runInputIndices = new Uint32Array(runCapacity);
+            const runSinkIds = new Uint16Array(runCapacity);
+            const runValues: CompiledOwnerUpdatePrimitive[] =
+              new Array(runCapacity);
+            runInputIndices.fill(0xffff_ffff);
+            runSinkIds.fill(0xffff);
+            const runRows: Array<CompiledOwnerUpdateRowState | undefined> = [];
+            for (let index = start; index < end; index++) {
+              const record = this.#ownerRowInputRecordScratch[index];
+              if (!certifiedRunRecord(record, program)) {
+                throw new Error("Prepared owner update row lost its program");
+              }
+              runRows.push(record);
+            }
+            try {
+              if (countVisits) this.#ownerUpdateKernelBatches++;
+              const runCount = program.executeCut(
+                changedSlots.subarray(start, end), end - start, runRows,
+                runInputIndices, runSinkIds, runValues,
+              );
+              if (this.#ownerRowExecutionCancelled) return false;
+              if (!Number.isSafeInteger(runCount) || runCount < 0 ||
+                runCount > runCapacity ||
+                runCount > stagedCleanupBound - stagedCount) {
+                throw new Error(
+                  "Compiled owner update kernel returned an invalid output count",
+                );
+              }
+              for (let index = 0; index < runCount; index++) {
+                const inputIndex = runInputIndices[index];
+                if (inputIndex >= end - start ||
+                  runSinkIds[index] >= program.sinkIds.length ||
+                  !Object.hasOwn(runValues, index)) {
+                  throw new Error(
+                    "Compiled owner update kernel returned an invalid sink output",
+                  );
+                }
+                this.#ownerRowStagedInputIndices[stagedCount] = start + inputIndex;
+                this.#ownerRowStagedSinkIds[stagedCount] = runSinkIds[index];
+                this.#ownerRowStagedValues[stagedCount] = runValues[index];
+                stagedCount++;
+              }
+            } finally {
+              runInputIndices.fill(0);
+              runSinkIds.fill(0);
+              runValues.fill(0);
+              runRows.fill(undefined);
+            }
+            start = end;
+          }
+        }
         if (this.#ownerRowExecutionCancelled) return false;
         if (
           !Number.isSafeInteger(stagedCount) || stagedCount < 0 ||

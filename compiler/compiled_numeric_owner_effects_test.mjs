@@ -62,7 +62,8 @@ const receipt = { mode, status: "STARTED", artifact, compilerSha256: sha(await r
     "src/vdom_snapshot_runtime.ts", "src/compiled_semantic_plan.ts",
   ].map(async relative => [relative, sha(await readFile(path.join(root, relative)))]))),
   sourceSha256: sha(source), metadata: {}, observations: {}, errors: [] };
-let dom, fork, initializerRoot, negativeRoot, throwRoot, three, app, sourcePath, sourceFile, primaryError;
+let dom, fork, initializerRoot, negativeRoot, throwRoot, three, app, sourcePath, sourceFile,
+  heterogeneousSourceFile, primaryError;
 const propRoots = [];
 try {
   await mkdir(artifact, { recursive: true });
@@ -403,6 +404,221 @@ try {
     assert.match(receipt.observations.primitiveMutation.error ?? "", /read only|Cannot assign|readonly/i);
     assert.equal(receipt.observations.primitiveMutation.sourceId, "stable");
     assert.equal(receipt.observations.primitiveMutation.acceptedId, "stable");
+
+    const heterogeneousSource = `/** @jsxRuntime classic */
+/** @jsx jsx */
+// @native-ui
+import { jsx, useEffect, useState } from ${JSON.stringify(pathToFileURL(path.join(root, "src/native_runtime_api.ts")).href)};
+export const trace = { ax: null, ay: null, bx: null, by: null, genericAx: null,
+  genericAy: null, genericBx: null, genericBy: null };
+function opaque(value) { return value; }
+export function NumericA() {
+  const [x, setX] = useState(0);
+  const [y, setY] = useState(0);
+  useEffect(() => { trace.ax = setX; trace.ay = setY; });
+  return <output key="numeric-a" data-a-sum={x + y} data-a-x={x} />;
+}
+export function NumericB() {
+  const [x, setX] = useState(0);
+  const [y, setY] = useState(0);
+  useEffect(() => { trace.bx = setX; trace.by = setY; });
+  return <output key="numeric-b" data-b-difference={x - y} data-b-x={x} />;
+}
+export function GenericA() {
+  const [x, setX] = useState(0);
+  const [y, setY] = useState(0);
+  useEffect(() => { trace.genericAx = setX; trace.genericAy = setY; });
+  return <output key="generic-a" data-a-sum={opaque(x + y)} data-a-x={opaque(x)} />;
+}
+export function GenericB() {
+  const [x, setX] = useState(0);
+  const [y, setY] = useState(0);
+  useEffect(() => { trace.genericBx = setX; trace.genericBy = setY; });
+  return <output key="generic-b" data-b-difference={opaque(x - y)} data-b-x={opaque(x)} />;
+}
+export function NumericApp() { return <main key="numeric-root"><NumericA key="a" /><NumericB key="b" /></main>; }
+export function GenericApp() { return <main key="generic-root"><GenericA key="a" /><GenericB key="b" /></main>; }
+`;
+    const heterogeneousPath = path.join(artifact, "heterogeneous-numeric.tsx");
+    await writeFile(heterogeneousPath, heterogeneousSource, { flag: "wx" });
+    const heterogeneousTransform = await plugin.transform.call(context,
+      heterogeneousSource, heterogeneousPath);
+    assert.ok(heterogeneousTransform?.code, "Rust/OXC did not compile heterogeneous owners");
+    await writeFile(path.join(artifact, "heterogeneous.transformed.tsx"),
+      heterogeneousTransform.code, { flag: "wx" });
+    const heterogeneousAst = parse(heterogeneousTransform.code,
+      { sourceType: "module", plugins: ["typescript", "jsx"] });
+    const heterogeneousRegistrations = new Map();
+    let heterogeneousPlan;
+    visit(heterogeneousAst, node => {
+      if (node.type === "CallExpression" && node.callee?.name === "__registerNativeSemanticPlan")
+        heterogeneousPlan = node.arguments[0];
+      if (node.type !== "CallExpression" ||
+        !/^(?:__nativeDefineComponent_*)$/.test(node.callee?.name ?? "")) return;
+      const id = literal(node.arguments[0]);
+      if (id?.includes("#component:")) heterogeneousRegistrations.set(id.split("#component:")[1], node);
+    });
+    heterogeneousSourceFile = literal(property(heterogeneousPlan, "source_file"));
+    assert.equal(typeof heterogeneousSourceFile, "string");
+    assert.equal(path.isAbsolute(heterogeneousSourceFile), false);
+    const compiledProgram = name => property(heterogeneousRegistrations.get(name)?.arguments[2],
+      "ownerUpdateProgram");
+    const programA = compiledProgram("NumericA"), programB = compiledProgram("NumericB");
+    assert.ok(programA && programB, "both authored numeric owners need actual generated kernels");
+    assert.notEqual(heterogeneousTransform.code.slice(programA.start, programA.end),
+      heterogeneousTransform.code.slice(programB.start, programB.end),
+      "heterogeneous owners must register distinct compiled programs");
+    for (const name of ["GenericA", "GenericB"])
+      assert.equal(compiledProgram(name), null, `${name} must remain the opaque differential`);
+    const heterogeneousEmission = await transformWithOxc(heterogeneousTransform.code,
+      heterogeneousPath, { lang: "tsx", jsx: { runtime: "classic", pragma: "jsx", pragmaFrag: "Fragment" } });
+    const heterogeneousModulePath = path.join(artifact, "heterogeneous.executable.mjs");
+    await writeFile(heterogeneousModulePath, heterogeneousEmission.code, { flag: "wx" });
+    const heterogeneousApp = await import(pathToFileURL(heterogeneousModulePath).href);
+    const frameTotal = (frames, key) => frames.reduce((sum, frame) => sum + (frame[key] ?? 0), 0);
+    const valuesAt = container => {
+      const a = find(container, node => Object.hasOwn(node.props ?? {}, "data-a-sum"));
+      const b = find(container, node => Object.hasOwn(node.props ?? {}, "data-b-difference"));
+      assert.ok(a && b, "both owner outputs must remain mounted");
+      return { a, b, values: [a.props["data-a-sum"], a.props["data-a-x"],
+        b.props["data-b-difference"], b.props["data-b-x"]] };
+    };
+    class OrderedHost extends MemoryVDOMHost {
+      writes = [];
+      onWrite = null;
+      setProp(node, name, value, previous) {
+        super.setProp(node, name, value, previous);
+        if (name.startsWith("data-a-") || name.startsWith("data-b-")) {
+          this.writes.push({ name, value });
+          this.onWrite?.(name, value);
+        }
+      }
+    }
+    const numericHost = new OrderedHost(), numericContainer = numericHost.createContainer();
+    const numericFrames = [];
+    const numericRoot = createNativeRoot(numericHost, numericContainer, {
+      rootId: `heterogeneous-numeric-${randomUUID()}`, scheduleCommit() {},
+      profileCounter(frame) { numericFrames.push(frame); },
+    });
+    propRoots.push(numericRoot);
+    numericRoot.mount(jsx(heterogeneousApp.NumericApp, {}));
+    const firstNumeric = valuesAt(numericContainer);
+    assert.deepEqual(firstNumeric.values, [0, 0, 0, 0]);
+    const numericSetters = { ax: heterogeneousApp.trace.ax, ay: heterogeneousApp.trace.ay,
+      bx: heterogeneousApp.trace.bx, by: heterogeneousApp.trace.by };
+    for (const setter of Object.values(numericSetters)) assert.equal(typeof setter, "function");
+    const genericHost = new OrderedHost(), genericContainer = genericHost.createContainer();
+    const genericFrames = [];
+    const genericRoot = createNativeRoot(genericHost, genericContainer, {
+      rootId: `heterogeneous-generic-${randomUUID()}`, scheduleCommit() {},
+      profileCounter(frame) { genericFrames.push(frame); },
+    });
+    propRoots.push(genericRoot);
+    genericRoot.mount(jsx(heterogeneousApp.GenericApp, {}));
+    const genericSetters = { ax: heterogeneousApp.trace.genericAx,
+      ay: heterogeneousApp.trace.genericAy, bx: heterogeneousApp.trace.genericBx,
+      by: heterogeneousApp.trace.genericBy };
+    for (const setter of Object.values(genericSetters)) assert.equal(typeof setter, "function");
+    const batchesBefore = frameTotal(numericFrames, "numeric.row-batches");
+    const cellsBefore = frameTotal(numericFrames, "numeric.row-cells");
+    const ownerRendersBefore = frameTotal(numericFrames, "owner.component-renders");
+    const genericRendersBefore = frameTotal(genericFrames, "owner.component-renders");
+    numericHost.writes.length = 0;
+    numericSetters.ax(3); numericSetters.bx(5); numericSetters.ay(2);
+    genericSetters.ax(3); genericSetters.bx(5); genericSetters.ay(2);
+    numericRoot.flush(); genericRoot.flush();
+    const firstCut = valuesAt(numericContainer), differential = valuesAt(genericContainer);
+    assert.deepEqual(firstCut.values, [5, 3, 5, 5]);
+    assert.deepEqual(differential.values, firstCut.values);
+    assert.equal(firstCut.a, firstNumeric.a); assert.equal(firstCut.b, firstNumeric.b);
+    assert.equal(frameTotal(numericFrames, "numeric.row-batches") - batchesBefore, 1,
+      "A.x, B.x, A.y must form one owner-row cut");
+    assert.equal(frameTotal(numericFrames, "numeric.row-cells") - cellsBefore, 3,
+      "heterogeneous cut must retain original three-cell input order");
+    assert.equal(frameTotal(numericFrames, "owner.component-renders") - ownerRendersBefore, 0,
+      "certified heterogeneous cut must not reexecute either authored row body");
+    assert.ok(frameTotal(genericFrames, "owner.component-renders") - genericRendersBefore >= 2);
+    assert.equal(numericHost.writes.filter(write => write.name === "data-a-sum").length, 1,
+      "two A inputs must select the shared sum sink once");
+    assert.ok(numericHost.writes.findIndex(write => write.name.startsWith("data-a-")) <
+      numericHost.writes.findIndex(write => write.name.startsWith("data-b-")),
+      "host writes must follow first-touch input order");
+    receipt.observations.heterogeneous = { values: firstCut.values,
+      rowBatches: frameTotal(numericFrames, "numeric.row-batches") - batchesBefore,
+      rowCells: frameTotal(numericFrames, "numeric.row-cells") - cellsBefore,
+      writes: numericHost.writes.slice(), sameHosts: true };
+
+    const forkHostForCut = new OrderedHost(), forkContainerForCut = forkHostForCut.createContainer();
+    const forkForCut = createNativeRoot(forkHostForCut, forkContainerForCut, {
+      rootId: `heterogeneous-fork-${randomUUID()}`, scheduleCommit() {},
+    });
+    propRoots.push(forkForCut);
+    forkForCut.mount(jsx(heterogeneousApp.NumericApp, {}));
+    assert.deepEqual(valuesAt(forkContainerForCut).values, [0, 0, 0, 0]);
+    let injected = false;
+    numericHost.onWrite = (name, value) => {
+      if (!injected && name === "data-a-sum" && value === 7) {
+        injected = true;
+        numericSetters.by(9);
+      }
+    };
+    numericSetters.ay(4); numericSetters.bx(6);
+    numericRoot.flush();
+    assert.equal(injected, true, "host writer did not enqueue the newer B action");
+    assert.deepEqual(valuesAt(numericContainer).values, [7, 3, 6, 6]);
+    assert.deepEqual(valuesAt(forkContainerForCut).values, [0, 0, 0, 0],
+      "unselected fork advanced with primary host reentry");
+    assert.ok(numericRoot.diagnostics().pendingChangeCount > 0,
+      "old acknowledgement consumed the newer host-time action");
+    numericHost.onWrite = null;
+    numericRoot.flush();
+    assert.deepEqual(valuesAt(numericContainer).values, [7, 3, -3, 6]);
+    numericSetters.ax(-0); numericSetters.ay(-0); numericSetters.bx(NaN);
+    genericSetters.ax(-0); genericSetters.ay(-0); genericSetters.bx(NaN);
+    numericRoot.flush(); genericRoot.flush();
+    const special = valuesAt(numericContainer).values;
+    assert.ok(Object.is(special[0], -0) && Object.is(special[1], -0));
+    assert.ok(Object.is(special[2], NaN) && Object.is(special[3], NaN));
+    assert.deepEqual(valuesAt(genericContainer).values.slice(0, 2), special.slice(0, 2));
+    assert.ok(Object.is(valuesAt(genericContainer).values[2], NaN));
+    assert.equal(valuesAt(numericContainer).a, firstNumeric.a);
+    assert.equal(valuesAt(numericContainer).b, firstNumeric.b);
+    const partialHost = new OrderedHost(), partialContainer = partialHost.createContainer();
+    const partialRoot = createNativeRoot(partialHost, partialContainer, {
+      rootId: `heterogeneous-partial-${randomUUID()}`, scheduleCommit() {},
+    });
+    propRoots.push(partialRoot);
+    partialRoot.mount(jsx(heterogeneousApp.NumericApp, {}));
+    const partialAccepted = valuesAt(partialContainer);
+    const partialVersion = partialRoot.version;
+    const partialSetters = { ax: heterogeneousApp.trace.ax, ay: heterogeneousApp.trace.ay,
+      bx: heterogeneousApp.trace.bx };
+    let partialWrites = 0;
+    partialHost.onWrite = () => {
+      if (++partialWrites === 2) throw new Error("heterogeneous second host writer failed");
+    };
+    partialSetters.ax(3); partialSetters.bx(5); partialSetters.ay(2);
+    let partialError = null;
+    try { partialRoot.flush(); } catch (error) { partialError = error; }
+    assert.ok(partialError instanceof Error);
+    assert.match(partialError.message, /heterogeneous second host writer failed/);
+    assert.equal(partialRoot.version, partialVersion,
+      "partial host application must not advance the accepted frontier");
+    assert.equal(valuesAt(partialContainer).a, partialAccepted.a);
+    assert.equal(valuesAt(partialContainer).b, partialAccepted.b);
+    assert.throws(() => partialRoot.flush(), error => {
+      assert.equal(error?.message,
+        "ComponentStateRoot cannot continue after a host commit failure");
+      assert.equal(error.cause, partialError,
+        "terminal quarantine must preserve the original partial writer error");
+      return true;
+    }, "failed heterogeneous host remains quarantined");
+    partialHost.onWrite = null;
+    receipt.observations.heterogeneous.partialHost = {
+      error: String(partialError), acceptedVersionRetained: partialRoot.version === partialVersion,
+      hostIdentityRetained: valuesAt(partialContainer).a === partialAccepted.a &&
+        valuesAt(partialContainer).b === partialAccepted.b,
+    };
   }
   const wait = deferred();
   const resource = new AsyncResource(wait.promise);
@@ -473,6 +689,8 @@ try {
     catch (error) { cleanupErrors.push(error); }
   }
   if (sourceFile) try { invalidateCompiledSemanticPlan(sourceFile); }
+  catch (error) { cleanupErrors.push(error); }
+  if (heterogeneousSourceFile) try { invalidateCompiledSemanticPlan(heterogeneousSourceFile); }
   catch (error) { cleanupErrors.push(error); }
   if (app && dom && fork && initializerRoot && negativeRoot && throwRoot && three) {
     try {

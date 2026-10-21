@@ -7,6 +7,7 @@ import {
   use,
   useEffect,
   useState,
+  type RuntimeNode,
 } from "../native_runtime_api.ts";
 import {
   createThreeHost,
@@ -109,6 +110,13 @@ let allHostPropWrites = 0;
 let pointerEvents = 0;
 let nearestPointerDistance = Number.POSITIVE_INFINITY;
 let frameId = 0;
+let lastFrameTime: number | null = null;
+let requestedFrameEpoch = 0;
+let drawnFrameEpoch = 0;
+let deferredFrameCount = 0;
+let setFrameEpoch: ((epoch: number) => void) | null = null;
+const phaseSetters = new Map<string, (delta: number) => void>();
+const frameMarkerName = "accepted-frame";
 let resizeObserver: ResizeObserver | null = null;
 let pointerListener: ((event: PointerEvent) => void) | null = null;
 let pagehideListener: (() => void) | null = null;
@@ -238,65 +246,100 @@ function KineticForm({
   onSelect: (event: NativeThreePointerEvent) => void;
 }) {
   actorRenderCount++;
-  const [phase, setPhase] = useState(0);
-  useEffect(() => {
-    let request = 0;
-    const reduceMotion =
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const tick = () => {
-      const now = studio.getState();
-      if (now.playing && !reduceMotion) {
-        setPhase((current) =>
-          current >= Math.PI * 200
-            ? current - Math.PI * 200 + 0.012
-            : current + 0.012
-        );
-      }
-      request = requestAnimationFrame(tick);
-    };
-    request = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(request);
-  });
-
   const spacing = 1.62;
   const x = (index - (count - 1) / 2) * spacing;
   if (shape.kind === "shared") {
     return (
-      <mesh
-        name={shape.id}
-        args={[sharedGeometry, sharedMaterial]}
-        position={[x, shape.height, 0]}
-        rotation-y={phase * 0.42}
-        rotation-x={phase * 0.17}
-        rotation-z={shape.phaseOffset * 0.25}
-        scale={index === 0 ? [1, 1, 1] : [0.78, 0.78, 0.78]}
-        material-color={tint}
-        material-roughness={roughness}
-        castShadow
-        receiveShadow
-        onPointerDown={onSelect}
-      />
+      <SharedMotion id={shape.id} motionName={`motion:${shape.id}`} x={x} y={shape.height}>
+        <mesh
+          name={shape.id}
+          args={[sharedGeometry, sharedMaterial]}
+          rotation-z={shape.phaseOffset * 0.25}
+          scale={index === 0 ? [1, 1, 1] : [0.78, 0.78, 0.78]}
+          material-color={tint}
+          material-roughness={roughness}
+          castShadow
+          receiveShadow
+          onPointerDown={onSelect}
+        />
+      </SharedMotion>
     );
   }
 
   return (
-    <mesh
-      name={shape.id}
-      position={[x, shape.height, 0]}
-      rotation-y={phase * -0.42}
-      rotation-z={phase * 0.15}
-      castShadow
-      receiveShadow
-      onPointerDown={onSelect}
-    >
-      <icosahedronGeometry args={[0.72, 2]} />
-      <meshStandardMaterial
-        color={tint}
-        roughness={roughness}
-        metalness={0.42}
-      />
-    </mesh>
+    <OwnedMotion id={shape.id} motionName={`motion:${shape.id}`} x={x} y={shape.height}>
+      <mesh
+        name={shape.id}
+        castShadow
+        receiveShadow
+        onPointerDown={onSelect}
+      >
+        <icosahedronGeometry args={[0.72, 2]} />
+        <meshStandardMaterial
+          color={tint}
+          roughness={roughness}
+          metalness={0.42}
+        />
+      </mesh>
+    </OwnedMotion>
   );
+}
+
+type MotionProps = {
+  id: string;
+  motionName: string;
+  x: number;
+  y: number;
+  children?: RuntimeNode;
+};
+
+function SharedMotion(props: MotionProps) {
+  const [phase, setPhase] = useState(0);
+  useEffect(() => {
+    const advance = (delta: number) => {
+      setPhase((current) => (current + delta) % (Math.PI * 200));
+    };
+    phaseSetters.set(props.id, advance);
+    return () => {
+      if (phaseSetters.get(props.id) === advance) phaseSetters.delete(props.id);
+    };
+  });
+  return (
+    <group name={props.motionName} position={[props.x, props.y, 0]}
+      rotation-y={phase * 0.42} rotation-x={phase * 0.17}>
+      {props.children}
+    </group>
+  );
+}
+
+function OwnedMotion(props: MotionProps) {
+  const [phase, setPhase] = useState(0);
+  useEffect(() => {
+    const advance = (delta: number) => {
+      setPhase((current) => (current + delta) % (Math.PI * 200));
+    };
+    phaseSetters.set(props.id, advance);
+    return () => {
+      if (phaseSetters.get(props.id) === advance) phaseSetters.delete(props.id);
+    };
+  });
+  return (
+    <group name={props.motionName} position={[props.x, props.y, 0]}
+      rotation-y={phase * -0.42} rotation-z={phase * 0.15}>
+      {props.children}
+    </group>
+  );
+}
+
+function FrameMarker() {
+  const [frameEpoch, updateFrameEpoch] = useState(0);
+  useEffect(() => {
+    setFrameEpoch = updateFrameEpoch;
+    return () => {
+      if (setFrameEpoch === updateFrameEpoch) setFrameEpoch = null;
+    };
+  });
+  return <group name="accepted-frame" position-x={frameEpoch} />;
 }
 
 function SceneRoot({ store }: { store: StoreSource<StudioState> }) {
@@ -313,6 +356,7 @@ function SceneRoot({ store }: { store: StoreSource<StudioState> }) {
 
   return (
     <group name="kinetic-study">
+      <FrameMarker />
       <ambientLight args={["#d9e6d8", 1.05]} />
       <directionalLight
         args={["#ffddb1", 3.4]}
@@ -506,6 +550,9 @@ const dispose = () => {
   if (appDisposed) return;
   appDisposed = true;
   cancelAnimationFrame(frameId);
+  frameId = 0;
+  phaseSetters.clear();
+  setFrameEpoch = null;
   resizeObserver?.disconnect();
   resizeObserver = null;
   if (pointerListener) {
@@ -616,6 +663,7 @@ const start = () => {
   sceneRoot = createNativeRoot<ThreeHandle, ThreeParent>(host, scene, {
     world: sharedWorld,
     rootId: rootNames[0],
+    scheduleCommit() {},
   });
   sceneRoot.mount(<SceneRoot store={studio} />);
   hudRoot = createDOMRoot(hudMount, {
@@ -679,22 +727,53 @@ const start = () => {
   pagehideListener = dispose;
   window.addEventListener("pagehide", pagehideListener, { once: true });
 
-  const draw = () => {
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const draw = (time: number) => {
+    frameId = 0;
     if (appDisposed || !renderer || !scene || !camera) return;
-    frameId = requestAnimationFrame(draw);
-    renderer.render(scene, camera);
-    rendererFrames++;
+    try {
+      const elapsed = lastFrameTime === null ? 0 :
+        Math.min(50, Math.max(0, time - lastFrameTime));
+      lastFrameTime = time;
+      if (studio.getState().playing && !reducedMotion.matches &&
+        elapsed > 0 && phaseSetters.size > 0 && setFrameEpoch) {
+        const delta = elapsed * 0.00072;
+        for (const advance of phaseSetters.values()) advance(delta);
+        setFrameEpoch(++requestedFrameEpoch);
+      }
+      sceneRoot?.flush();
+      const accepted = scene.getObjectByName(frameMarkerName)?.position.x;
+      if (accepted === requestedFrameEpoch) {
+        renderer.render(scene, camera);
+        rendererFrames++;
+        drawnFrameEpoch = requestedFrameEpoch;
+      } else {
+        deferredFrameCount++;
+      }
+    } catch (error) {
+      console.error("Native Three frame failed", error);
+      dispose();
+      return;
+    }
+    if (!appDisposed) frameId = requestAnimationFrame(draw);
   };
   frameId = requestAnimationFrame(draw);
+  const mountedMotionGroups = () => scene?.getObjectByName("kinetic-study")
+    ?.children.filter((object) => object.name.startsWith("motion:")) ?? [];
   window.__nativeThreeDiagnostics = {
     snapshot: () => ({
       roots: [sceneRoot, hudRoot, treeRoot, inspectorRoot].map(root => root?.diagnostics() ?? null),
       store: studio.diagnostics(),
-      sceneObjects: studio.getState().shapes.map(shape => {
-        const object = scene?.getObjectByName(shape.id);
+      sceneObjects: mountedMotionGroups().map(group => {
+        const id = group.name.slice("motion:".length);
+        const object = group.getObjectByName(id);
         const mesh = object instanceof THREE.Mesh ? object : null;
-        return { id: shape.id, uuid: object?.uuid ?? null, parent: object?.parent?.name ?? null,
-          position: object?.position.toArray() ?? null, rotation: object ? [object.rotation.x,object.rotation.y,object.rotation.z] : null,
+        const rotation = object
+          ? new THREE.Euler().setFromQuaternion(object.getWorldQuaternion(new THREE.Quaternion()))
+          : null;
+        return { id, uuid: object?.uuid ?? null, parent: object?.parent?.name ?? null,
+          position: object?.getWorldPosition(new THREE.Vector3()).toArray() ?? null,
+          rotation: rotation ? [rotation.x,rotation.y,rotation.z] : null,
           geometry: mesh?.geometry.uuid ?? null, material: mesh && !Array.isArray(mesh.material) ? mesh.material.uuid : null,
           color: mesh && !Array.isArray(mesh.material) && 'color' in mesh.material ? (mesh.material as THREE.MeshStandardMaterial).color.getHexString() : null,
           roughness: mesh && !Array.isArray(mesh.material) && 'roughness' in mesh.material ? (mesh.material as THREE.MeshStandardMaterial).roughness : null };
@@ -707,7 +786,7 @@ const start = () => {
         const bounds=canvas.getBoundingClientRect();
         return {id:shape.id,x:bounds.left+(point.x+1)*bounds.width/2,y:bounds.top+(1-point.y)*bounds.height/2};
       }),
-      actualSceneOrder: scene?.getObjectByName('kinetic-study')?.children.filter(object => studio.getState().shapes.some(shape => shape.id===object.name)).map(object=>object.name) ?? [],
+      actualSceneOrder: mountedMotionGroups().map(group => group.name.slice("motion:".length)),
       selectedId: studio.getState().selectedId,
       sceneOrder: studio.getState().shapes.map((shape) => shape.id),
       shapeKinds: studio.getState().shapes.map((shape) => ({
@@ -719,6 +798,11 @@ const start = () => {
       actorRenderCount,
       domRenderCount,
       rendererFrames,
+      requestedFrameEpoch,
+      drawnFrameEpoch,
+      hostFrameEpoch: scene?.getObjectByName(frameMarkerName)?.position.x ?? null,
+      deferredFrameCount,
+      activePhaseSetters: phaseSetters.size,
       phasePropWrites,
       allHostPropWrites,
       pointerEvents,

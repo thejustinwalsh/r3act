@@ -608,6 +608,7 @@ export const defineComponent = <P extends Record<string, unknown>>(
   metadata?: {
     readonly propOnlySites: readonly string[];
     readonly numericPrimitiveProps?: readonly string[];
+    readonly numericRetainedProps?: readonly string[];
     readonly closedCollectionSites?: readonly string[];
     readonly closedCollectionRowPrograms?: readonly unknown[];
     /** Compiler proof that every render result is a single intrinsic host root. */
@@ -648,6 +649,17 @@ export const defineComponent = <P extends Record<string, unknown>>(
       typeof name !== "string" || !name || name === "key" || name === "ref"
     )) {
       throw new Error("Component numeric primitive prop metadata is invalid");
+    }
+    if (metadata?.numericRetainedProps !== undefined &&
+      !Array.isArray(metadata.numericRetainedProps)) {
+      throw new Error("Component numeric retained prop metadata is invalid");
+    }
+    const numericRetainedProps = metadata?.numericRetainedProps === undefined
+      ? undefined : [...metadata.numericRetainedProps];
+    if (numericRetainedProps &&
+      (numericRetainedProps.some((name) => name !== "children") ||
+        new Set(numericRetainedProps).size !== numericRetainedProps.length)) {
+      throw new Error("Component numeric retained prop metadata is invalid");
     }
     if (metadata?.closedCollectionSites !== undefined &&
       !Array.isArray(metadata.closedCollectionSites)) {
@@ -702,7 +714,16 @@ export const defineComponent = <P extends Record<string, unknown>>(
           "Compiled owner update program must match its component and state layout IDs",
         );
       }
+      if ((program.schemaVersion === 3) !==
+        (numericRetainedProps?.length === 1 &&
+          numericRetainedProps[0] === "children")) {
+        throw new Error(
+          "Retained-child admission requires matching owner program schema 3 metadata",
+        );
+      }
       associateCompiledOwnerUpdateProgram(stateLayout, program);
+    } else if (numericRetainedProps?.length) {
+      throw new Error("Numeric retained props require a compiled owner update program");
     }
     const closedResourceHostProgram = metadata?.closedResourceHostProgram === undefined
       ? undefined
@@ -743,6 +764,9 @@ export const defineComponent = <P extends Record<string, unknown>>(
         ...(numericPrimitiveProps
           ? { numericPrimitiveProps: Object.freeze(numericPrimitiveProps) }
           : {}),
+        ...(numericRetainedProps
+          ? { numericRetainedProps: Object.freeze(numericRetainedProps) }
+          : {}),
         ...(closedCollectionSites
           ? { closedCollectionSites: Object.freeze(closedCollectionSites) }
           : {}),
@@ -768,6 +792,7 @@ type ComponentMetadata = {
   readonly revision?: CompiledSemanticRevisionToken;
   readonly propOnlySites: readonly string[];
   readonly numericPrimitiveProps?: readonly string[];
+  readonly numericRetainedProps?: readonly string[];
   readonly closedCollectionSites?: readonly string[];
   readonly closedCollectionRowPrograms?: readonly ClosedCollectionRowProgram[];
   readonly hostLeafOutput?: boolean;
@@ -942,18 +967,25 @@ const numericOwnerPropsAdmitted = (
   props: Record<string, unknown>,
   owned: boolean,
 ): boolean => {
-  const names = typeof component === "function"
-    ? definedComponents.get(component)?.metadata?.numericPrimitiveProps
-    : undefined;
-  if (!names?.length) return true;
+  const metadata = typeof component === "function"
+    ? definedComponents.get(component)?.metadata : undefined;
+  const names = metadata?.numericPrimitiveProps;
+  const retainedNames = metadata?.numericRetainedProps;
+  if (!names?.length && !retainedNames?.length) return true;
   if (!owned || !Object.isFrozen(props)) return false;
-  for (const name of names) {
+  for (const name of names ?? []) {
     const descriptor = Object.getOwnPropertyDescriptor(props, name);
     if (!descriptor || !("value" in descriptor) ||
       (descriptor.value !== null && descriptor.value !== undefined &&
         typeof descriptor.value !== "string" &&
         typeof descriptor.value !== "number" &&
         typeof descriptor.value !== "boolean")) return false;
+  }
+  for (const name of retainedNames ?? []) {
+    const descriptor = Object.getOwnPropertyDescriptor(props, name);
+    if (!descriptor || !("value" in descriptor) ||
+      !isRuntimeOwnedElement(descriptor.value) ||
+      !Object.isFrozen(descriptor.value)) return false;
   }
   return true;
 };
@@ -963,10 +995,10 @@ const ownNumericOwnerProps = (
   source: RuntimeElement,
   props: Record<string, unknown>,
 ): Record<string, unknown> => {
-  const names = typeof component === "function"
-    ? definedComponents.get(component)?.metadata?.numericPrimitiveProps
-    : undefined;
-  if (names?.length && isRuntimeOwnedElement(source) &&
+  const metadata = typeof component === "function"
+    ? definedComponents.get(component)?.metadata : undefined;
+  if ((metadata?.numericPrimitiveProps?.length ||
+    metadata?.numericRetainedProps?.length) && isRuntimeOwnedElement(source) &&
     Object.isFrozen(source.props)) Object.freeze(props);
   return props;
 };
@@ -4658,10 +4690,20 @@ export class ComponentStateRoot<H, Parent = H> {
       reportFlush();
       return true;
     }
-    if (
+    const collectionOnly = capturedChanges.length === 0 &&
+      !storeChangePending && this.#pendingCollectionRegionKeys.size > 0;
+    let tryMixed = !collectionOnly &&
       this.#pendingCollectionRegionKeys.size > 0 &&
-      (capturedChanges.length > 0 || storeChangePending)
-    ) {
+      (capturedChanges.length > 0 || storeChangePending);
+    if (collectionOnly) {
+      const delta = this.#flushCollectionDelta();
+      if (delta === true) {
+        reportFlush();
+        return true;
+      }
+      tryMixed = delta === "closed-row";
+    }
+    if (tryMixed) {
       const mixed = this.#prepareMixedCollectionCandidate(capturedChanges, {
         storeGeneration,
         transitions: [],
@@ -4678,15 +4720,7 @@ export class ComponentStateRoot<H, Parent = H> {
         this.#count("collection.mixed.stale-fallbacks");
       }
     }
-    if (
-      capturedChanges.length === 0 && !storeChangePending &&
-      this.#pendingCollectionRegionKeys.size > 0
-    ) {
-      const delta = this.#flushCollectionDelta();
-      if (delta) {
-        reportFlush();
-        return true;
-      }
+    if (collectionOnly) {
       this.#profile?.("collection.delta.fallback-candidate", 0);
     }
     if (
@@ -7085,10 +7119,9 @@ export class ComponentStateRoot<H, Parent = H> {
           preparationFailed = true;
           break;
         }
-        const rowProgram = options.scopedStructural
-          ? closedCollectionRowProgramFor(parentCache.type, region.siteId,
-            region.componentSiteId)
-          : undefined;
+        const rowProgram = closedCollectionRowProgramFor(
+          parentCache.type, region.siteId, region.componentSiteId,
+        );
         if (collectionOwnerNeedsGenericRows(parentCache, read.batches) &&
           !rowProgram) {
           preparationFailed = true;
@@ -8260,7 +8293,7 @@ export class ComponentStateRoot<H, Parent = H> {
     }
   }
 
-  #flushCollectionDelta(): boolean {
+  #flushCollectionDelta(): boolean | "closed-row" {
     if (this.#pendingCollectionRegionKeys.size !== 1) return false;
     const regionKey = this.#pendingCollectionRegionKeys.values().next().value as
       | string
@@ -8286,7 +8319,11 @@ export class ComponentStateRoot<H, Parent = H> {
       this.#count("collection.delta.reader-expired");
       return false;
     }
-    if (collectionOwnerNeedsGenericRows(parentCache, read.batches)) return false;
+    if (collectionOwnerNeedsGenericRows(parentCache, read.batches)) {
+      return closedCollectionRowProgramFor(
+        parentCache.type, region.siteId, region.componentSiteId,
+      ) ? "closed-row" : false;
+    }
     if (this.#renderPreparation !== "repeatable" &&
       read.batches.some((batch) => batch.operations.some((operation) =>
         operation.type !== "move" && operation.type !== "remove"

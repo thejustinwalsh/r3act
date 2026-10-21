@@ -70,4 +70,12 @@ When several roots use the exact same `ThreeHost` object, their host writes and 
 
 For grouped DOM/Three work, all members finish public validation before the group checks its private live receipts and starts the first host writer. A late callback can therefore revoke a Three or DOM member without leaving a partially applied group. A writer that actually begins and fails still requires quarantine and fresh-host recovery.
 
+## Frame ownership
+
+The application owns RAF and draw ordering. The root batches through a microtask by default; `rootOptions.scheduleCommit` can defer scene publication to the application's frame callback. A synchronous `root.flush()` can still defer under a publication barrier, reentry or a busy host domain. Its boolean reports whether work published, not whether every requested frame input was consumed.
+
+The [Three workbench](../src/browser/native_three_host.tsx) registers motion setters with owner lifetimes and uses one callback to advance elapsed-time motion, flush the scene and draw. A declarative empty Group carries the requested frame epoch through a scalar prop; the application checks the host epoch before drawing that update. Deferred work skips the draw and retries on the next callback. DOM roots keep their own cadence. This finite example has no pending resource transaction or arbitrary reentrant writer; an epoch alone does not certify completion of unrelated pending work.
+
+DOM and canvas may consume shared state on different schedules. Use a declared publication group when the application requires outputs to advance together; sharing a Store does not automatically impose a draw barrier. Cancellation and disposal must release frame callbacks and registered setters as well as host resources.
+
 The current example and finite host tests establish object-scene behavior and resource lifetime. Physical GPU presentation, broad R3F compatibility, equivalent-feature bundle size and general performance remain separate qualification work. The older [checkout Three guide](../three-host-api.md) preserves dated private-source examples and milestones.

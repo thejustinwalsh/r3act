@@ -1,0 +1,5 @@
+#!/bin/sh
+if [ "${1-}" = "install" ]; then
+  exec /Users/mini/.local/share/mise/installs/node/26/bin/pnpm --store-dir /Volumes/Depot/.pnpm-store "$@"
+fi
+exec /Users/mini/.local/share/mise/installs/node/26/bin/pnpm "$@"

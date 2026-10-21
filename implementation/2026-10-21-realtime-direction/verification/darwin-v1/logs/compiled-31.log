@@ -1,0 +1,35 @@
+(node:51621) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: failed heterogeneous host remains quarantined
+    at file:///Volumes/Depot/Developer/r3act/compiler/compiled_numeric_owner_effects_test.mjs:608:12 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: Error: ComponentStateRoot cannot continue after a host commit failure
+      at ComponentStateRoot.#assertActive (/Volumes/Depot/Developer/r3act/src/component_state_runtime.ts:10768:13)
+      at ComponentStateRoot.flush (/Volumes/Depot/Developer/r3act/src/component_state_runtime.ts:4398:23)
+      at file:///Volumes/Depot/Developer/r3act/compiler/compiled_numeric_owner_effects_test.mjs:608:37
+      at getActual (node:assert:611:5)
+      at strict.throws (node:assert:759:24)
+      at file:///Volumes/Depot/Developer/r3act/compiler/compiled_numeric_owner_effects_test.mjs:608:12 {
+    [cause]: Error: heterogeneous second host writer failed
+        at partialHost.onWrite (file:///Volumes/Depot/Developer/r3act/compiler/compiled_numeric_owner_effects_test.mjs:598:40)
+        at OrderedHost.setProp (file:///Volumes/Depot/Developer/r3act/compiler/compiled_numeric_owner_effects_test.mjs:493:25)
+        at Object.setProp (/Volumes/Depot/Developer/r3act/src/vdom_snapshot_runtime.ts:1537:23)
+        at VDOMSnapshotRoot.#writeBoundGroup (/Volumes/Depot/Developer/r3act/src/vdom_snapshot_runtime.ts:6208:24)
+        at VDOMSnapshotRoot.#executePreparedNumericRows (/Volumes/Depot/Developer/r3act/src/vdom_snapshot_runtime.ts:5715:32)
+        at VDOMSnapshotRoot.executePreparedNumericRows (/Volumes/Depot/Developer/r3act/src/vdom_snapshot_runtime.ts:4705:46)
+        at <anonymous> (/Volumes/Depot/Developer/r3act/src/component_state_runtime.ts:9527:35)
+        at ComponentStateRoot.#commitHostMutation (/Volumes/Depot/Developer/r3act/src/component_state_runtime.ts:8907:22)
+        at ComponentStateRoot.#tryCommitNativeRows (/Volumes/Depot/Developer/r3act/src/component_state_runtime.ts:9526:43)
+        at ComponentStateRoot.#tryFlushNativeCellCut (/Volumes/Depot/Developer/r3act/src/component_state_runtime.ts:9738:50)
+  },
+  expected: /terminal|failed|quarantin|shared host failure/i,
+  operator: 'throws',
+  diff: 'simple'
+}
+
+Node.js v24.18.0

@@ -30,7 +30,8 @@ export type CompiledOwnerUpdateRowState = {
 
 /** Static primitive-only update kernel attached to one normalized layout. */
 export type CompiledOwnerUpdateProgram = Readonly<{
-  schemaVersion: 2;
+  /** V3 requires the retained-child admission guard; V2 keeps the prior numeric ABI. */
+  schemaVersion: 2 | 3;
   programId: string;
   slotCount: number;
   sinkIds: readonly string[];
@@ -161,7 +162,8 @@ export function associateCompiledOwnerUpdateProgram(
   const inputSinkIds = input.sinkIds;
   const executeCut = input.executeCut;
   if (
-    schemaVersion !== 2 || typeof programId !== "string" || !programId ||
+    (schemaVersion !== 2 && schemaVersion !== 3) ||
+    typeof programId !== "string" || !programId ||
     record.layout.programId !== programId ||
     !Number.isSafeInteger(slotCount) || slotCount !== record.layout.slots.length ||
     slotCount < 1 || slotCount > 30 || !Array.isArray(inputSinkIds) ||
@@ -194,7 +196,7 @@ export function associateCompiledOwnerUpdateProgram(
     return current;
   }
   const snapshot: CompiledOwnerUpdateProgram = Object.freeze({
-    schemaVersion: 2,
+    schemaVersion,
     programId,
     slotCount,
     sinkIds: Object.freeze(sinkIds),

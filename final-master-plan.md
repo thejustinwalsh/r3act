@@ -1,5 +1,23 @@
 # Final master plan: classify, measure, then choose
 
+## Current product priority — 21 October 2026
+
+The human clarified that RAF-driven realtime/canvas applications are primary; general DOM rendering superiority is not the objective. DOM/canvas timing differences are acceptable outside explicitly declared coherent transactions. Evaluate normal compiled state reaching retained scene properties before the intended draw, CPU left for simulation/rendering, and frame state age/deadlines. React component scheduling and R3F's independent frame scheduler are distinct; idiomatic R3F direct frame mutations are a required separate baseline before claiming an advantage. Historical DOM failures and wins retain their original scope, and no timing is inherited by changed source. See [the source-grounded direction and active ordinary closed-row integration](implementation/2026-10-21-realtime-direction/design.md). This clarification supersedes using general DOM superiority as the primary product finish line; compiler, identity, exact acknowledgement, lifetime, async and explicit coherence requirements remain.
+
+## Realtime composition and main-thread batching — 21 October 2026
+
+The human prioritizes RAF/canvas applications, accepts independent DOM cadence outside declared transactions, and means computation-DAG batching/fusion/specialization on the main thread rather than async wait overlap or workers. Ordinary updates now reuse compiler-proven closed collection rows. Heterogeneous certified numeric programs execute original-order runs with all staged outputs checked before writes. Narrow direct retained-child forwarding lets numeric motion compose with structural meshes/resources/events, guarded by frozen runtime-owned data and fail-closed owner program schema 3. Existing identity/version/publication authority, exact acknowledgement, accepted histories, whole-root guards and generic fallback remain.
+
+Darwin-v6 passes 64/64 phases: 1095 runtime tests, 85 Rust tests, 45 actual compiled fixtures, Three/retention and fresh package consumers. All 1463 input hashes match. The namespace fixture was missing from earlier 44-fixture runners and is now executed as fixture 45. Earlier gate, browser, environment and fixture failures remain preserved.
+
+The sole installed 256-object RAF/canvas comparison observes Native publication median/p95 1.20/2.30 ms versus React Compiler 0.90/1.00 ms, with an imperative floor of 0.00/0.10 ms. All arms pass values, identity and teardown. Timing predates retained-child changes and is not inherited by them. It establishes no CPU/presentation, cold/memory, population-tail, independent-device or release advantage. No favorable timing repeat occurs.
+
+Actual WebGL checks pass animation without owner rerenders, controls, keyed edits and owned-resource disposal, but HMR delivery remains unresolved. Both a reversible content edit and the final documented polling-watcher adaptation time out, with a connected WebSocket and no invalidation/reload messages. Exact app restoration and owned-service cleanup pass. No further browser diagnostics occur. A separate preserved failure shows ordinary component replacement can reuse a host with a constant explicit host key; that generic identity gap remains open. The corrected changing-host-key fixture does not fix it.
+
+The full-plan first pass remains active. Next source work is the generic component-output identity gap using the existing owner incarnation, with all candidate/snapshot clone paths and text-root semantics accounted for; no new registry or key renaming is assumed. HMR, release performance/cold/memory and independent-device requirements remain open. Historical narrow wins, qualified dense loss, exhausted Recording A and physical HOLD retain scope. No maintenance advantage is claimed. No VM or owned project server remains running.
+
+[Results, preserved failures and exact receipts](implementation/2026-10-21-realtime-direction/results.md); [primary source review](implementation/2026-10-21-realtime-direction/source-review.md).
+
 ## OS compatibility smoke and compiler environment
 
 The user explicitly scoped OS compatibility to a quick smoke, rather than an architecture matrix. The Linux ARM64 run at one CPU/2048-MiB VM RAM and an actual 1536-MiB container cap executed the native compiler and five installed packages successfully. Its 1093 runtime tests, 84 Rust tests, 44 compiled fixtures' assertions, Three/retention checks and thirteen package-consumer checks passed. The overall consolidated receipt remains **FAIL: 62/63**, because fixture 37 changed the debug compiler hash; that failure is preserved, not relabeled as a green gate. All 1448 runner inputs match; 1458 raw/context files and 244 fixture artifacts are archived.

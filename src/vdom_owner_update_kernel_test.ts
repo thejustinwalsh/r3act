@@ -364,6 +364,94 @@ Deno.test("heterogeneous owner rows use ordered generic fanout with retained vec
   root.dispose();
 });
 
+Deno.test("certified heterogeneous rows run ordered kernels and validate every staged output before writing", () => {
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container, undefined, () => {});
+  const layoutA = makeLayout();
+  const layoutB = makeSingleSlotLayout("OtherCertifiedRows");
+  associateCompiledOwnerUpdateProgram(layoutA, makeKernel("KernelRows"));
+  const baseB = makeSingleSinkKernel("OtherCertifiedRows", (value) => value * 3);
+  let malformedLater = false;
+  associateCompiledOwnerUpdateProgram(layoutB, {
+    ...baseB,
+    executeCut(...args) {
+      const count = baseB.executeCut(...args);
+      if (malformedLater && count) args[5][0] = { invalid: true } as never;
+      return count;
+    },
+  });
+  const aX = new ScalarSource(901, 1);
+  const aY = new ScalarSource(902, 2);
+  const bX = new ScalarSource(903, 3);
+  const aColumns = [
+    new NumericColumn(911, 0, new Float64Array([1])),
+    new NumericColumn(912, 1, new Float64Array([2])),
+  ];
+  const bColumn = new NumericColumn(913, 0, new Float64Array([3]));
+  let genericCalls = 0;
+  const sum = owned(bindSources([aX, aY], values => {
+    genericCalls++;
+    return values[0] + values[1];
+  }), layoutA, [0, 1], "sum", 73, values => {
+    genericCalls++;
+    return values[0] + values[1];
+  });
+  const xValue = owned(bind(aX, value => {
+    genericCalls++;
+    return value;
+  }), layoutA, [0], "x", 73);
+  const bValue = owned(bind(bX, value => {
+    genericCalls++;
+    return value * 3;
+  }), layoutB, [0], "value", 74);
+  root.commit(jsx("output", { sum, x: xValue, b: bValue }), undefined, true);
+  genericCalls = 0;
+  const tokenA = root.prepareNumericRowProgram({
+    owner: 73, layout: layoutA, rowIdentity: {}, row: 0, generation: 1,
+    sources: [aX, aY], columns: aColumns,
+  });
+  const tokenB = root.prepareNumericRowProgram({
+    owner: 74, layout: layoutB, rowIdentity: {}, row: 0, generation: 1,
+    sources: [bX], columns: [bColumn],
+  });
+  assert(tokenA && tokenB, "both distinct compiled row programs prepare");
+  const writes: string[] = [];
+  const setProp = host.setProp.bind(host);
+  host.setProp = (node, name, value, previous) => {
+    writes.push(name);
+    setProp(node, name, value, previous);
+  };
+  const execute = (x: number, b: number, y: number) => root.executePreparedNumericRows(
+    [tokenA, tokenB], new Uint32Array([0, 1, 0]), new Uint32Array([0, 0, 1]),
+    [x, b, y], 3,
+  );
+  aColumns[0].values[0] = 5;
+  aColumns[1].values[0] = 6;
+  bColumn.values[0] = 9;
+  same(execute(5, 9, 6), true, "A.x, B.x, A.y publish as one heterogeneous cut");
+  same(container.children[0].props.sum, 11, "A sum uses the final captured peer slot");
+  same(container.children[0].props.x, 5, "A unary sink keeps its own slot");
+  same(container.children[0].props.b, 27, "B uses its distinct compiled program");
+  same(writes.join(","), "sum,x,b", "cross-program writes preserve first-touch sink order");
+  same(genericCalls, 0, "certified mixed rows bypass generic projectors");
+  same(root.diagnostics().preparedOwnerUpdateKernelBatches, 3,
+    "three original-order program spans execute compiled kernels");
+  same(root.diagnostics().preparedOwnerUpdateGenericFallbackCuts, 0,
+    "complete mixed proof does not run generic fallback");
+  writes.length = 0;
+  malformedLater = true;
+  aColumns[0].values[0] = 7;
+  bColumn.values[0] = 10;
+  let thrown = false;
+  try { execute(7, 10, 6); } catch { thrown = true; }
+  assert(thrown, "malformed output from the later program must reject the whole staged cut");
+  same(writes.length, 0, "earlier program's valid output was not written before late validation");
+  same(container.children[0].props.sum, 11, "accepted A output survives late kernel failure");
+  same(container.children[0].props.b, 27, "accepted B output survives late kernel failure");
+  root.dispose();
+});
+
 Deno.test("kernel failure and invalid staged tails scrub before host writes", () => {
   const host = new MemoryVDOMHost();
   const container = host.createContainer();

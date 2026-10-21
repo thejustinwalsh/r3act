@@ -16,7 +16,7 @@ const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "
 const directory = path.join(projectRoot, ".cache", `compiled-closed-rows-${randomUUID()}`);
 const runtimePath = path.join(projectRoot, "src/native_runtime_api.ts");
 const runtimeUrl = pathToFileURL(runtimePath).href;
-const authored = `import { Suspense, use, createKeyedCollection, storeRecord } from ${JSON.stringify(runtimeUrl)};
+const authored = `import { Suspense, use, useState, useEffect, createStore, createKeyedCollection, storeRecord } from ${JSON.stringify(runtimeUrl)};
 export const domRows = createKeyedCollection([
   storeRecord({ id: "a", value: 1 }), storeRecord({ id: "b", value: 2 }),
 ], row => row.id);
@@ -28,6 +28,14 @@ export const threeAux = createKeyedCollection([storeRecord({ id: "q", value: 5 }
 export const opaqueRows = createKeyedCollection([storeRecord({ id: "o", value: 1 })], row => row.id);
 export const unownedRows = createKeyedCollection([{ id: "u", value: 1 }], row => row.id);
 export const failingRows = createKeyedCollection([storeRecord({ id: "f", value: 1 })], row => row.id);
+export const automaticDomRows = createKeyedCollection([
+  storeRecord({ id: "a", value: 1 }), storeRecord({ id: "b", value: 2 }),
+], row => row.id);
+export const automaticThreeRows = createKeyedCollection([
+  storeRecord({ id: "a", value: 1 }), storeRecord({ id: "b", value: 2 }),
+], row => row.id);
+export const automaticStore = createStore(0, (_old, next) => next);
+export const automaticControls = { dom: null, three: null };
 export const trace = { opaqueCalls: 0 };
 export const pending = new Promise(() => {});
 export function DomRow(props) {
@@ -63,6 +71,42 @@ export function UnownedList() {
 }
 export function FailingList() {
   return <div key="failing">{failingRows.map(row => <DomRow row={row} />)}</div>;
+}
+export function AutomaticDomList() {
+  return <ul key="automatic-rows">{automaticDomRows.map(row => <DomRow row={row} />)}</ul>;
+}
+export function AutomaticThreeList() {
+  return <group key="automatic-rows">{automaticThreeRows.map(row => <ThreeRow row={row} />)}</group>;
+}
+export function AutomaticDomLocal() {
+  const [value, setValue] = useState(0);
+  useEffect(() => { automaticControls.dom = setValue;
+    return () => { if (automaticControls.dom === setValue) automaticControls.dom = null; };
+  });
+  return <output key="local" data-local={value} />;
+}
+export function AutomaticThreeLocal() {
+  const [value, setValue] = useState(0);
+  useEffect(() => { automaticControls.three = setValue;
+    return () => { if (automaticControls.three === setValue) automaticControls.three = null; };
+  });
+  return <mesh key="local" position-x={value} />;
+}
+export function AutomaticDomStore() {
+  const value = use(automaticStore);
+  return <output key="store" data-store={value} />;
+}
+export function AutomaticThreeStore() {
+  const value = use(automaticStore);
+  return <mesh key="store" position-y={value} />;
+}
+export function AutomaticDomApp() {
+  return <section key="automatic-app"><AutomaticDomList key="list" />
+    <AutomaticDomLocal key="local" /><AutomaticDomStore key="store" /></section>;
+}
+export function AutomaticThreeApp() {
+  return <group key="automatic-app"><AutomaticThreeList key="list" />
+    <AutomaticThreeLocal key="local" /><AutomaticThreeStore key="store" /></group>;
 }
 export function PendingDom() {
   const value = use(pending);
@@ -146,7 +190,8 @@ const context = {
   async resolve(specifier) { return specifier === runtimeUrl ? { id: runtimePath } : null; },
   error(message) { throw new Error(String(message)); },
 };
-let domRoot, forkRoot, opaqueRoot, unownedRoot, failingRoot, three, queue, app;
+let domRoot, forkRoot, opaqueRoot, unownedRoot, failingRoot;
+let automaticDomRoot, automaticThree, three, queue, app;
 let primaryError;
 const cleanupErrors = [];
 try {
@@ -166,14 +211,15 @@ try {
       loweredCollectionSites.push(node.arguments?.[0]?.value);
     }
   });
-  assert.equal(loweredCollectionSites.length, 7,
+  assert.equal(loweredCollectionSites.length, 9,
     "ordinary keyed .map calls were not lowered by Rust/OXC");
   assert.ok(loweredCollectionSites.every((site) =>
     typeof site === "string" && /#collection:\d+$/.test(site)));
   const compilerProof = [];
   for (const [owner, row] of [["DomList", "DomRow"], ["ThreeList", "ThreeRow"],
     ["DomAux", "DomRow"], ["ThreeAux", "ThreeRow"],
-    ["FailingList", "DomRow"], ["UnownedList", "DomRow"]]) {
+    ["FailingList", "DomRow"], ["UnownedList", "DomRow"],
+    ["AutomaticDomList", "DomRow"], ["AutomaticThreeList", "ThreeRow"]]) {
     const compiled = registration(ast, `#component:${owner}`);
     const programs = property(compiled.arguments[2], "closedCollectionRowPrograms");
     assert.equal(programs?.type, "ArrayExpression", `${owner} lacks closed row metadata`);
@@ -197,6 +243,7 @@ try {
     0, "opaque helper row unexpectedly gained closed admission");
   const componentSites = Object.fromEntries([
     "DomApp", "ThreeApp", "DomList", "ThreeList", "DomRow", "ThreeRow",
+    "AutomaticDomApp", "AutomaticThreeApp", "AutomaticDomList", "AutomaticThreeList",
   ].map((name) => [name, registration(ast, `#component:${name}`).arguments[0].value]));
   const collectionSites = Object.fromEntries(compilerProof.map(({ owner, site }) => [owner, site]));
   const emitted = await transformWithOxc(transformed.code, sourcePath, {
@@ -234,10 +281,14 @@ try {
   assert.equal(sceneGroup.children[2].name, "waiting");
   const oldDomB = domList.children[1], oldThreeB = threeList.children[1];
   const oldForkB = forkList.children[1];
-  const ownerFor = (root, kind, key) => {
+  const ownerFor = (root, kind, key, automatic = false) => {
     const world = root.world;
-    const appName = kind === "dom" ? "DomApp" : "ThreeApp";
-    const listName = kind === "dom" ? "DomList" : "ThreeList";
+    const appName = automatic
+      ? kind === "dom" ? "AutomaticDomApp" : "AutomaticThreeApp"
+      : kind === "dom" ? "DomApp" : "ThreeApp";
+    const listName = automatic
+      ? kind === "dom" ? "AutomaticDomList" : "AutomaticThreeList"
+      : kind === "dom" ? "DomList" : "ThreeList";
     const rowName = kind === "dom" ? "DomRow" : "ThreeRow";
     const rootOwner = world.findOwner(null, `@component-root:${root.rootId}`);
     assert.ok(rootOwner, "missing root owner");
@@ -372,6 +423,119 @@ try {
     "later source actions changed unselected fork's accepted view");
   assert.equal(ownerFor(forkRoot, "dom", "b"), oldForkBOwner);
 
+  const automaticCounters = [];
+  const automaticDomHost = new MemoryVDOMHost();
+  const automaticDomContainer = automaticDomHost.createContainer();
+  automaticDomRoot = createNativeRoot(automaticDomHost, automaticDomContainer, {
+    rootId: `closed-rows-automatic-dom-${randomUUID()}`, scheduleCommit() {},
+    profileCounter(counters) { automaticCounters.push(counters); },
+  });
+  automaticDomRoot.mount(jsx(app.AutomaticDomApp, {}));
+  const automaticScene = new THREE.Scene();
+  automaticThree = createThreeNativeRoot(automaticScene, { namespace: THREE,
+    rootOptions: {
+      rootId: `closed-rows-automatic-three-${randomUUID()}`, scheduleCommit() {},
+    },
+  });
+  automaticThree.root.mount(jsx(app.AutomaticThreeApp, {}));
+  const automaticDomApp = automaticDomContainer.children[0];
+  const automaticThreeApp = automaticScene.children[0];
+  const automaticDomList = automaticDomApp.children[0];
+  const automaticThreeList = automaticThreeApp.children[0];
+  const automaticDomB = automaticDomList.children[1];
+  const automaticThreeB = automaticThreeList.children[1];
+  const automaticDomBOwner = ownerFor(automaticDomRoot, "dom", "b", true);
+  const automaticThreeBOwner = ownerFor(automaticThree.root, "three", "b", true);
+  assert.ok(automaticDomBOwner && automaticThreeBOwner);
+  assert.deepEqual(order(automaticDomList, "dom"), [1, 2]);
+  assert.deepEqual(order(automaticThreeList, "three"), [1, 2]);
+
+  for (const rows of [app.automaticDomRows, app.automaticThreeRows]) change(rows, [
+    { type: "insert", key: "c", value: storeRecord({ id: "c", value: 3 }), beforeKey: "b" },
+    { type: "replace", key: "b", value: storeRecord({ id: "b", value: 20 }) },
+  ]);
+  assert.equal(automaticDomRoot.flush(), true,
+    "ordinary collection-only flush missed compiler-proven insert/replace");
+  const collectionCounters = automaticCounters.at(-1);
+  assert.equal(collectionCounters?.["collection.mixed-region-visits"], 1,
+    "ordinary collection-only flush used the generic owner route");
+  assert.equal(collectionCounters?.["owner.component-renders"] ?? 0, 0,
+    "ordinary closed rows invoked authored component bodies");
+  const automaticPending = automaticThree.root.preparePending();
+  assert.ok(automaticPending,
+    "ordinary preparePending did not stage compiler-proven Three rows");
+  accept(automaticPending);
+  assert.deepEqual(order(automaticDomList, "dom"), [1, 3, 20]);
+  assert.deepEqual(order(automaticThreeList, "three"), [1, 3, 20]);
+  assert.equal(automaticDomList.children[2], automaticDomB);
+  assert.equal(automaticThreeList.children[2], automaticThreeB);
+  assert.equal(ownerFor(automaticDomRoot, "dom", "b", true), automaticDomBOwner);
+  assert.equal(ownerFor(automaticThree.root, "three", "b", true), automaticThreeBOwner);
+
+  assert.equal(typeof app.automaticControls.dom, "function");
+  assert.equal(typeof app.automaticControls.three, "function");
+  app.automaticControls.dom(4);
+  app.automaticControls.three(4);
+  for (const rows of [app.automaticDomRows, app.automaticThreeRows]) change(rows, [
+    { type: "replace", key: "a", value: storeRecord({ id: "a", value: 10 }) },
+  ]);
+  assert.equal(automaticDomRoot.flush(), true,
+    "ordinary numeric plus closed-row flush did not publish");
+  const numericCounters = automaticCounters.at(-1);
+  assert.equal(numericCounters?.["collection.mixed-region-visits"], 1,
+    "ordinary numeric plus rows used the generic owner route");
+  assert.equal(numericCounters?.["owner.component-renders"] ?? 0, 0,
+    "ordinary numeric plus rows rendered authored components");
+  const numericPending = automaticThree.root.preparePending();
+  assert.ok(numericPending, "ordinary numeric plus Three rows did not prepare");
+  accept(numericPending);
+  assert.deepEqual(order(automaticDomList, "dom"), [10, 3, 20]);
+  assert.deepEqual(order(automaticThreeList, "three"), [10, 3, 20]);
+  assert.equal(automaticDomApp.children[1].props["data-local"], 4);
+  assert.equal(automaticThreeApp.children[1].position.x, 4);
+  assert.equal(automaticDomList.children[2], automaticDomB);
+  assert.equal(automaticThreeList.children[2], automaticThreeB);
+
+  app.automaticStore.dispatch(7);
+  for (const rows of [app.automaticDomRows, app.automaticThreeRows]) change(rows, [
+    { type: "replace", key: "a", value: storeRecord({ id: "a", value: 12 }) },
+  ]);
+  const storeDomPending = automaticDomRoot.preparePending({
+    renderPreparation: "repeatable",
+  });
+  const storeThreePending = automaticThree.root.preparePending({
+    renderPreparation: "repeatable",
+  });
+  assert.ok(storeDomPending && storeThreePending,
+    "ordinary Store plus closed rows did not prepare");
+  accept(storeDomPending);
+  accept(storeThreePending);
+  assert.deepEqual(order(automaticDomList, "dom"), [12, 3, 20]);
+  assert.deepEqual(order(automaticThreeList, "three"), [12, 3, 20]);
+  assert.equal(automaticDomApp.children[2].props["data-store"], 7);
+  assert.equal(automaticThreeApp.children[2].position.y, 7);
+  assert.equal(automaticDomList.children[2], automaticDomB);
+  assert.equal(automaticThreeList.children[2], automaticThreeB);
+
+  change(app.automaticDomRows, [{ type: "replace", key: "a",
+    value: storeRecord({ id: "a", value: 13 }) }]);
+  const automaticStale = automaticDomRoot.preparePending();
+  assert.ok(automaticStale, "ordinary closed-row stale candidate did not prepare");
+  change(app.automaticDomRows, [{ type: "replace", key: "a",
+    value: storeRecord({ id: "a", value: 14 }) }]);
+  assert.equal(automaticStale.validate(), false,
+    "newer ordinary source action did not revoke the captured candidate");
+  automaticStale.discard();
+  assert.equal(automaticDomRoot.flush(), true,
+    "ordinary flush did not drain newer source history after discard");
+  assert.deepEqual(order(automaticDomList, "dom"), [14, 3, 20]);
+  assert.deepEqual(order(automaticThreeList, "three"), [12, 3, 20],
+    "unselected Three root advanced with DOM's newer source action");
+  assert.equal(automaticDomRoot.flush(), false,
+    "ordinary DOM collection history was not acknowledged exactly");
+  assert.equal(automaticThree.root.flush(), false,
+    "ordinary Three collection history was not acknowledged exactly");
+
   const opaqueHost = new MemoryVDOMHost();
   const opaqueContainer = opaqueHost.createContainer();
   opaqueRoot = createNativeRoot(opaqueHost, opaqueContainer, {
@@ -485,6 +649,10 @@ try {
     forkVersion: forkRoot.publicationVersion,
     acceptedDom: order(domList, "dom"), acceptedThree: order(threeList, "three"),
     acceptedFork: order(forkList, "dom"),
+    ordinaryDom: order(automaticDomList, "dom"),
+    ordinaryThree: order(automaticThreeList, "three"),
+    ordinaryCollectionCounters: collectionCounters,
+    ordinaryNumericCounters: numericCounters,
   }, null, 2) + "\n", { flag: "wx" });
 } catch (error) {
   primaryError = error;
@@ -493,6 +661,7 @@ try {
     () => forkRoot?.dispose(), () => opaqueRoot?.dispose(),
     () => unownedRoot?.dispose(),
     () => failingRoot?.dispose(), () => three?.dispose(),
+    () => automaticDomRoot?.dispose(), () => automaticThree?.dispose(),
     () => plugin.closeBundle?.call(context)]) {
     try { await dispose(); } catch (error) { cleanupErrors.push(error); }
   }

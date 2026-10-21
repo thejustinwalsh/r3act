@@ -225,6 +225,8 @@ struct NativeComponentMetadata {
     prop_only_sites: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     numeric_primitive_props: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    numeric_retained_props: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     state_layout: Option<NativeStateLayoutMetadata>,
     host_leaf_output: bool,
@@ -4067,6 +4069,7 @@ fn compile_native_component_module(
         stable_refs: &'s BTreeSet<SymbolId>,
         certified_spans: &'s BTreeSet<(u32, u32)>,
         eligible: BTreeMap<String, BTreeSet<String>>,
+        retained_children: BTreeSet<String>,
     }
     impl<'a> Visit<'a> for ClosedNumericOwnerCollector<'_, 'a> {
         fn visit_function(&mut self, node: &Function<'a>, flags: ScopeFlags) {
@@ -4077,9 +4080,14 @@ fn compile_native_component_module(
                 && let Some(callable) = ClosedCallable::function(node)
             {
                 let mut required_props = BTreeSet::new();
+                let mut retained_children = false;
                 if closed_numeric_owner_body(&callable, component, self.semantic,
-                    self.stable_refs, self.certified_spans, &mut required_props) {
+                    self.stable_refs, self.certified_spans, &mut required_props,
+                    &mut retained_children) {
                     self.eligible.insert(component.component_site_id.clone(), required_props);
+                    if retained_children {
+                        self.retained_children.insert(component.component_site_id.clone());
+                    }
                 }
             }
             walk::walk_function(self, node, flags);
@@ -4094,9 +4102,14 @@ fn compile_native_component_module(
                 && let Some(callable) = ClosedCallable::arrow(arrow, symbol)
             {
                 let mut required_props = BTreeSet::new();
+                let mut retained_children = false;
                 if closed_numeric_owner_body(&callable, component, self.semantic,
-                    self.stable_refs, self.certified_spans, &mut required_props) {
+                    self.stable_refs, self.certified_spans, &mut required_props,
+                    &mut retained_children) {
                     self.eligible.insert(component.component_site_id.clone(), required_props);
+                    if retained_children {
+                        self.retained_children.insert(component.component_site_id.clone());
+                    }
                 }
             }
             walk::walk_variable_declarator(self, node);
@@ -4197,6 +4210,7 @@ fn compile_native_component_module(
         components: &state_plan.components, semantic: &semantic,
         stable_refs: &stable_refs, certified_spans: &certified_spans,
         eligible: BTreeMap::new(),
+        retained_children: BTreeSet::new(),
     };
     numeric_owners.visit_program(&parsed.program);
     for (candidate_index, (candidate, classification)) in
@@ -4286,7 +4300,7 @@ fn compile_native_component_module(
         }
     }
     usage.outside_state_reads.extend(fallback_sites);
-    let component_prop_sites: BTreeMap<_, _> = state_plan
+    let mut component_prop_sites: BTreeMap<_, _> = state_plan
         .components
         .iter()
         .map(|component| {
@@ -4303,6 +4317,23 @@ fn compile_native_component_module(
             (component.component_site_id.clone(), sites)
         })
         .collect();
+    for component in &state_plan.components {
+        let owner = &component.component_site_id;
+        if !numeric_owners.retained_children.contains(owner) ||
+            !component_prop_sites.get(owner).is_some_and(|sites| !sites.is_empty()) {
+            continue;
+        }
+        let sites = &component_prop_sites[owner];
+        let ordered = component.state_sites.iter()
+            .filter(|state| sites.contains(&state.site_id) &&
+                layout_eligible_sites.contains(&state.site_id))
+            .map(|state| state.site_id.as_str()).collect::<Vec<_>>();
+        let sinks = numeric_programs.iter()
+            .filter(|sink| &sink.owner_program_id == owner).collect::<Vec<_>>();
+        if emit_owner_update_program(owner, &ordered, &sinks, 3).is_none() {
+            component_prop_sites.get_mut(owner).unwrap().clear();
+        }
+    }
     let component_state_layouts: BTreeMap<_, _> = state_plan
         .components
         .iter()
@@ -4327,6 +4358,11 @@ fn compile_native_component_module(
             (component.component_site_id.clone(), slots)
         })
         .collect();
+    let numeric_retained_props: BTreeMap<_, _> = numeric_owners.retained_children.iter()
+        .filter(|owner| component_prop_sites.get(*owner).is_some_and(|sites| !sites.is_empty()) &&
+            numeric_programs.iter().any(|sink| &sink.owner_program_id == *owner))
+        .map(|owner| (owner.clone(), BTreeSet::from(["children".to_owned()])))
+        .collect();
     let numeric_primitive_props: BTreeMap<_, _> = numeric_owners.eligible.into_iter()
         .filter(|(owner, _)| component_prop_sites.get(owner).is_some_and(|sites| !sites.is_empty()))
         .collect();
@@ -4339,6 +4375,7 @@ fn compile_native_component_module(
         &numeric_programs,
         &component_prop_sites,
         &numeric_primitive_props,
+        &numeric_retained_props,
         &component_state_layouts,
         &closed_resource_programs,
         &closed_store_programs,
@@ -4360,6 +4397,8 @@ fn compile_native_component_module(
                 .cloned()
                 .collect(),
             numeric_primitive_props: numeric_primitive_props
+                .get(&component.component_site_id).into_iter().flatten().cloned().collect(),
+            numeric_retained_props: numeric_retained_props
                 .get(&component.component_site_id).into_iter().flatten().cloned().collect(),
             state_layout: component_state_layouts
                 .get(&component.component_site_id)
@@ -4464,6 +4503,7 @@ fn numeric_expression_is_pure(source: &str, state_names: &BTreeSet<String>) -> b
 fn emit_primitive_owner_cut_kernels(
     numeric_programs: &[Sink],
     state_layouts: &BTreeMap<String, Vec<NativeStateLayoutSlotMetadata>>,
+    retained_props: &BTreeMap<String, BTreeSet<String>>,
     kernel_alias: &str,
     helper_module: &str,
 ) -> (String, BTreeMap<String, usize>) {
@@ -4483,7 +4523,9 @@ fn emit_primitive_owner_cut_kernels(
             .collect();
         let ordered_layout_site_ids: Vec<_> =
             layout.iter().map(|entry| entry.site_id.as_str()).collect();
-        let Some(code) = emit_owner_update_program(&owner, &ordered_layout_site_ids, &sinks) else {
+        let schema_version = if retained_props.contains_key(&owner) { 3 } else { 2 };
+        let Some(code) = emit_owner_update_program(&owner, &ordered_layout_site_ids,
+            &sinks, schema_version) else {
             continue;
         };
         indices.insert(owner, kernels.len());
@@ -4531,7 +4573,7 @@ fn closed_numeric_owner_value(
         && props_symbol.is_some_and(|symbol| reference_symbol(object, semantic) == Some(symbol))
     {
         let name = member.property.name.as_str();
-        if matches!(name, "key" | "ref") { return false; }
+        if matches!(name, "key" | "ref" | "children") { return false; }
         required_props.insert(name.to_string());
         return true;
     }
@@ -4540,7 +4582,7 @@ fn closed_numeric_owner_value(
         &mut |identifier| {
             let Some(symbol) = reference_symbol(identifier, semantic) else { return false; };
             if let Some(name) = prop_bindings.get(&symbol) {
-                if matches!(name.as_str(), "key" | "ref") { return false; }
+                if matches!(name.as_str(), "key" | "ref" | "children") { return false; }
                 required_props.insert(name.clone());
                 true
             } else { values.contains(&symbol) }
@@ -4585,10 +4627,40 @@ fn closed_numeric_setter_event(
     closed_numeric_value(body, &BTreeSet::from([symbol]), semantic)
 }
 
+struct RetainedChildEffectUse<'s, 'a> {
+    semantic: &'s Semantic<'a>,
+    props_symbol: SymbolId,
+    references: BTreeSet<(u32, u32)>,
+    direct_fields: BTreeSet<(u32, u32)>,
+    field_names: BTreeSet<String>,
+    reads_children: bool,
+}
+
+impl<'a> Visit<'a> for RetainedChildEffectUse<'_, 'a> {
+    fn visit_expression(&mut self, node: &Expression<'a>) {
+        if let Expression::StaticMemberExpression(member) = node
+            && let Expression::Identifier(object) = &member.object
+            && reference_symbol(object, self.semantic) == Some(self.props_symbol)
+        {
+            self.direct_fields.insert((object.span.start, object.span.end));
+            self.field_names.insert(member.property.name.to_string());
+            if member.property.name == "children" { self.reads_children = true; }
+        }
+        walk::walk_expression(self, node);
+    }
+
+    fn visit_identifier_reference(&mut self, node: &oxc_ast::ast::IdentifierReference<'a>) {
+        if reference_symbol(node, self.semantic) == Some(self.props_symbol) {
+            self.references.insert((node.span.start, node.span.end));
+        }
+    }
+}
+
 fn closed_numeric_jsx(
     element: &JSXElement<'_>, values: &BTreeSet<SymbolId>,
     setters: &BTreeSet<SymbolId>, props_symbol: Option<SymbolId>,
     prop_bindings: &BTreeMap<SymbolId, String>, required_props: &mut BTreeSet<String>,
+    retained_children: &mut bool,
     semantic: &Semantic<'_>, stable_refs: &BTreeSet<SymbolId>,
     certified_spans: &BTreeSet<(u32, u32)>, depth: usize,
 ) -> bool {
@@ -4680,12 +4752,24 @@ fn closed_numeric_jsx(
     element.children.iter().all(|child| match child {
         JSXChild::Text(_) => true,
         JSXChild::Element(child) => closed_numeric_jsx(child, values, setters, props_symbol,
-            prop_bindings, required_props, semantic, stable_refs, certified_spans, depth + 1),
+            prop_bindings, required_props, retained_children, semantic, stable_refs,
+            certified_spans, depth + 1),
         JSXChild::ExpressionContainer(container) =>
             matches!(&container.expression, JSXExpression::EmptyExpression(_)) ||
-            container.expression.as_expression().is_some_and(|expression|
+            container.expression.as_expression().is_some_and(|expression| {
+                if let Expression::StaticMemberExpression(member) = expression
+                    && member.property.name == "children"
+                    && let Expression::Identifier(object) = &member.object
+                    && props_symbol.is_some_and(|symbol|
+                        reference_symbol(object, semantic) == Some(symbol))
+                {
+                    if *retained_children { return false; }
+                    *retained_children = true;
+                    return true;
+                }
                 closed_numeric_owner_value(expression, values, props_symbol,
-                    prop_bindings, required_props, semantic)),
+                    prop_bindings, required_props, semantic)
+            }),
         _ => false,
     })
 }
@@ -4695,6 +4779,7 @@ fn closed_numeric_owner_body(
     semantic: &Semantic<'_>, stable_refs: &BTreeSet<SymbolId>,
     certified_spans: &BTreeSet<(u32, u32)>,
     required_props: &mut BTreeSet<String>,
+    retained_children: &mut bool,
 ) -> bool {
     if component.state_sites.is_empty() || !component.store_sites.is_empty() ||
         !component.collection_sites.is_empty() || callable.params.rest.is_some() ||
@@ -4715,7 +4800,7 @@ fn closed_numeric_owner_body(
                     let BindingPattern::BindingIdentifier(local) = &property.value else { return false; };
                     if property.computed { return false; }
                     let Some(name) = type_property_name(&property.key) else { return false; };
-                    if matches!(name, "key" | "ref") { return false; }
+                    if matches!(name, "key" | "ref" | "children") { return false; }
                     let Some(symbol) = local.symbol_id.get() else { return false; };
                     prop_bindings.insert(symbol, name.to_owned());
                     required_props.insert(name.to_owned());
@@ -4728,6 +4813,8 @@ fn closed_numeric_owner_body(
     let mut setters = BTreeSet::new();
     let mut state_calls = BTreeSet::new();
     let mut effect_calls = BTreeSet::new();
+    let mut effect_uses_props_unsafely = false;
+    let mut effect_fields = BTreeSet::new();
     let preceding = callable.statements.len().saturating_sub(1);
     for statement in callable.statements.iter().take(preceding) {
         if let Some(Declaration::VariableDeclaration(declaration)) = statement.as_declaration() {
@@ -4771,6 +4858,19 @@ fn closed_numeric_owner_body(
                     matches!(setup, Expression::ArrowFunctionExpression(_) | Expression::FunctionExpression(_))) {
                 return false;
             }
+            if let (Some(symbol), Some(setup)) = (props_symbol,
+                call.arguments.first().and_then(Argument::as_expression)) {
+                let mut usage = RetainedChildEffectUse {
+                    semantic, props_symbol: symbol, references: BTreeSet::new(),
+                    direct_fields: BTreeSet::new(), field_names: BTreeSet::new(),
+                    reads_children: false,
+                };
+                usage.visit_expression(setup);
+                effect_uses_props_unsafely |= usage.reads_children ||
+                    usage.field_names.contains("key") || usage.field_names.contains("ref") ||
+                    !usage.references.is_subset(&usage.direct_fields);
+                effect_fields.extend(usage.field_names);
+            }
         } else { return false; }
     }
     if state_calls.len() != component.state_sites.len() ||
@@ -4780,8 +4880,13 @@ fn closed_numeric_owner_body(
         result = &parenthesized.expression;
     }
     let Expression::JSXElement(element) = result else { return false; };
-    closed_numeric_jsx(element, &values, &setters, props_symbol,
-        &prop_bindings, required_props, semantic, stable_refs, certified_spans, 0)
+    let closed = closed_numeric_jsx(element, &values, &setters, props_symbol,
+        &prop_bindings, required_props, retained_children, semantic,
+        stable_refs, certified_spans, 0);
+    if closed && *retained_children && !effect_uses_props_unsafely {
+        required_props.extend(effect_fields);
+        true
+    } else { closed && !*retained_children }
 }
 
 fn closed_collection_row_jsx(
@@ -6303,6 +6408,7 @@ fn transform_native_component_source(
     numeric_programs: &[Sink],
     prop_sites: &BTreeMap<String, BTreeSet<String>>,
     numeric_primitive_props: &BTreeMap<String, BTreeSet<String>>,
+    numeric_retained_props: &BTreeMap<String, BTreeSet<String>>,
     state_layouts: &BTreeMap<String, Vec<NativeStateLayoutSlotMetadata>>,
     closed_resource_programs: &BTreeMap<String, serde_json::Value>,
     closed_store_programs: &BTreeMap<String, serde_json::Value>,
@@ -6380,7 +6486,8 @@ fn transform_native_component_source(
         format!("\nconst {} = [{descriptors}] as const;", aliases[8])
     };
     let (owner_kernel_table, owner_kernel_indices) =
-        emit_primitive_owner_cut_kernels(numeric_programs, state_layouts, &aliases[9], &module);
+        emit_primitive_owner_cut_kernels(numeric_programs, state_layouts,
+            numeric_retained_props, &aliases[9], &module);
     let mut edits = Vec::new();
     let mut registrations = String::new();
     for component in &plan.components {
@@ -6413,6 +6520,13 @@ fn transform_native_component_source(
             .get(&component.component_site_id)
             .filter(|props| !props.is_empty())
             .map(|props| format!(", numericPrimitiveProps: [{}]", props.iter()
+                .map(|name| serde_json::to_string(name).unwrap_or_default())
+                .collect::<Vec<_>>().join(", ")))
+            .unwrap_or_default();
+        let retained_props_option = numeric_retained_props
+            .get(&component.component_site_id)
+            .filter(|props| !props.is_empty())
+            .map(|props| format!(", numericRetainedProps: [{}]", props.iter()
                 .map(|name| serde_json::to_string(name).unwrap_or_default())
                 .collect::<Vec<_>>().join(", ")))
             .unwrap_or_default();
@@ -6477,9 +6591,10 @@ fn transform_native_component_source(
                 format!(", closedCollectionRowPrograms: [{programs}]")
             }).unwrap_or_default();
         let options = format!(
-            "{{ propOnlySites: [{}]{}{}{}{}{}{}{}{}{} }}",
+            "{{ propOnlySites: [{}]{}{}{}{}{}{}{}{}{}{} }}",
             sites,
             primitive_props_option,
+            retained_props_option,
             if component.host_leaf_output {
                 ", hostLeafOutput: true"
             } else {
@@ -11142,6 +11257,55 @@ export function Row() {
             let code = plan.component_module.unwrap();
             assert_eq!(code.contains("numericPrimitiveProps: [\"id\"]"), eligible, "{code}");
         }
+    }
+
+    #[test]
+    fn numeric_owner_forwards_only_direct_retained_children_with_a_numeric_sink() {
+        let prefix = "import { useState, useEffect } from 'native_runtime_api.ts'; ";
+        let positive = "export function Motion(props) { const [phase] = useState(0); useEffect(() => { void props.id; }); return <group name={props.motionName} rotation-y={phase * 0.42}>{props.children}</group>; }";
+        let source = format!("{prefix}{positive}");
+        let response = compile_state("numeric-retained-child.tsx", &source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let plan = response.plan.unwrap();
+        let motion = &plan.components.as_ref().unwrap()[0];
+        assert_eq!(motion.prop_only_sites.len(), 1);
+        assert_eq!(motion.numeric_retained_props, vec!["children"]);
+        assert_eq!(motion.numeric_primitive_props, vec!["id", "motionName"]);
+        let code = plan.component_module.unwrap();
+        assert!(code.contains("numericRetainedProps: [\"children\"]"), "{code}");
+        assert!(code.contains("schemaVersion: 3, programId:"), "{code}");
+        assert!(code.contains("ownerUpdateProgram:"), "{code}");
+
+        let negative = [
+            "export function Motion(props) { const [phase] = useState(0); return <group rotation-y={phase} name={props.children} />; }",
+            "export function Motion(props) { const [phase] = useState(0); const child = props.children; return <group rotation-y={phase}>{child}</group>; }",
+            "export function Motion(props) { const [phase] = useState(0); return <group rotation-y={phase}>{consume(props.children)}</group>; }",
+            "export function Motion(props) { const [phase] = useState(0); return <group rotation-y={phase}>{props.children}{props.children}</group>; }",
+            "export function Motion(props) { const [phase] = useState(0); return <group rotation-y={phase}>{props['children']}</group>; }",
+            "export function Motion({ children }) { const [phase] = useState(0); return <group rotation-y={phase}>{children}</group>; }",
+            "export function Motion(props) { const [phase] = useState(0); useEffect(() => { void props.children; }); return <group rotation-y={phase}>{props.children}</group>; }",
+            "export function Motion(props) { const [phase] = useState(0); useEffect(() => { const alias = props; void alias.children; }); return <group rotation-y={phase}>{props.children}</group>; }",
+            "export function Motion(props) { const [phase] = useState(0); useEffect(() => { void props.key; }); return <group rotation-y={phase}>{props.children}</group>; }",
+            "export function Motion(props) { const [phase] = useState(0); useEffect(() => { void props.ref; }); return <group rotation-y={phase}>{props.children}</group>; }",
+            "export function Motion(props) { const [phase] = useState(0); return <group>{props.children}</group>; }",
+        ];
+        for (index, body) in negative.iter().enumerate() {
+            let source = format!("{prefix}{body}");
+            let response = compile_state(&format!("numeric-retained-negative-{index}.tsx"), &source);
+            assert!(response.error.is_none(), "{:?}", response.error);
+            let plan = response.plan.unwrap();
+            let motion = &plan.components.as_ref().unwrap()[0];
+            assert!(motion.numeric_retained_props.is_empty(), "{source}");
+            assert!(!plan.component_module.unwrap().contains("numericRetainedProps:"), "{source}");
+        }
+        let source = format!("{prefix}export function Motion(props) {{ const [phase] = useState(0); return <group position={{[phase, 0, 0]}}>{{props.children}}</group>; }}");
+        let response = compile_state("numeric-retained-no-kernel.tsx", &source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let plan = response.plan.unwrap();
+        let components = plan.components.unwrap();
+        let motion = &components[0];
+        assert!(motion.prop_only_sites.is_empty(), "retained child without a kernel must rerender");
+        assert!(motion.numeric_retained_props.is_empty());
     }
 
     #[test]

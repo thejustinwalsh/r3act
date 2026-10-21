@@ -1,0 +1,33 @@
+{
+  "purpose": "Task-local pnpm store routing adaptation for consolidated v3 gate; no product/source changes.",
+  "oldWrapper": {
+    "path": "/private/tmp/radix-dialog-darwin-v1-bin/pnpm",
+    "sha256": "7719c0c52c75197463a603a950610c1a2ed11f3f1ad176693d08c5fd12a84948",
+    "bytes": "#!/bin/sh\nif [ \"${1-}\" = \"install\" ]; then\n  exec /Users/mini/.local/share/mise/installs/node/26/bin/pnpm --store-dir /Volumes/Depot/.pnpm-store \"$@\"\nfi\nexec /Users/mini/.local/share/mise/installs/node/26/bin/pnpm \"$@\"\n",
+    "installStoreDir": "/Volumes/Depot/.pnpm-store",
+    "version": "11.25.0"
+  },
+  "taskWrapper": {
+    "path": "/private/tmp/r3act-realtime-pnpm-bin/pnpm",
+    "sha256": "046a8503c938430198165a7d752c8d558914376eafdcfdd64353a32bfbcb0d22",
+    "bytes": "#!/bin/sh\nif [ \"${1-}\" = \"install\" ] && [ \"${PWD-}\" != \"/Volumes/Depot/Developer/r3act\" ]; then\n  exec /Users/mini/.local/share/mise/installs/node/26/bin/pnpm --store-dir /Volumes/Depot/Developer/r3act/.pnpm-store \"$@\"\nfi\nexec /private/tmp/radix-dialog-darwin-v1-bin/pnpm \"$@\"\n",
+    "version": "11.25.0"
+  },
+  "node24": {
+    "path": "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+    "version": "v24.18.0"
+  },
+  "delegatedPnpm": {
+    "path": "/Users/mini/.local/share/mise/installs/node/26/bin/pnpm",
+    "version": "11.25.0"
+  },
+  "store": {
+    "path": "/Volumes/Depot/Developer/r3act/.pnpm-store",
+    "exists": true,
+    "writable": true,
+    "gitIgnored": true
+  },
+  "pathBefore": "/private/tmp/radix-dialog-darwin-v1-bin:/Users/mini/.local/share/mise/installs/node/24.18.0/bin:/Users/mini/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+  "pathForGate": "/private/tmp/r3act-realtime-pnpm-bin:/private/tmp/radix-dialog-darwin-v1-bin:/Users/mini/.local/share/mise/installs/node/24.18.0/bin:/Users/mini/.cargo/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+  "rule": "Delegate pnpm install to pnpm 11 with repo-local .pnpm-store only when invoked outside repo root; otherwise call preserved old wrapper."
+}
