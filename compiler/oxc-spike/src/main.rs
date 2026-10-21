@@ -5876,13 +5876,16 @@ fn closed_store_host_program<'a>(
     callable: &ClosedCallable<'a, '_>, component: &ComponentStateSiteIr,
     semantic: &Semantic<'a>, source: &str, revision: &str,
 ) -> Option<(serde_json::Value, Vec<SourceSpan>)> {
-    closed_store_host_program_inner(callable, component, semantic, source, revision, false)
-        .or_else(|| closed_store_host_program_inner(callable, component, semantic, source, revision, true))
+    closed_store_host_program_inner(callable, component, semantic, source, revision, false, true)
+        .or_else(|| closed_store_host_program_inner(callable, component, semantic, source, revision, true, true))
+        .or_else(|| closed_store_host_program_inner(callable, component, semantic, source, revision, false, false))
+        .or_else(|| closed_store_host_program_inner(callable, component, semantic, source, revision, true, false))
 }
 
 fn closed_store_host_program_inner<'a>(
     callable: &ClosedCallable<'a, '_>, component: &ComponentStateSiteIr,
     semantic: &Semantic<'a>, source: &str, revision: &str, projected: bool,
+    retained_child: bool,
 ) -> Option<(serde_json::Value, Vec<SourceSpan>)> {
     let input_count = component.store_sites.len();
     if callable.params.items.len() != 1 ||
@@ -5906,6 +5909,7 @@ fn closed_store_host_program_inner<'a>(
         }
         _ => return None,
     };
+    if retained_child && props_symbol.is_none() { return None; }
     if callable.statements.len() != input_count + 1 { return None; }
     let mut value_sites = BTreeMap::new();
     let mut projected_bindings = BTreeMap::new();
@@ -5937,6 +5941,7 @@ fn closed_store_host_program_inner<'a>(
             used_destructured.insert(symbol);
             name.clone()
         } else { return None; };
+        if retained_child && store_prop == "children" { return None; }
         if !store_prop.bytes().next().is_some_and(|byte| byte.is_ascii_alphabetic() || byte == b'_' || byte == b'$') ||
             !store_prop.bytes().all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'$') { return None; }
         source_sites.push(store_site.site_id.clone());
@@ -5952,7 +5957,18 @@ fn closed_store_host_program_inner<'a>(
         return_expression = &parenthesized.expression;
     }
     let Expression::JSXElement(element) = return_expression else { return None; };
-    if projected {
+    if retained_child {
+        let mut forwarded = element.children.iter().filter(|child| !closed_jsx_child_elided(child));
+        let JSXChild::ExpressionContainer(container) = forwarded.next()? else { return None; };
+        if forwarded.next().is_some() { return None; }
+        let Some(Expression::StaticMemberExpression(member)) = container.expression.as_expression()
+            else { return None; };
+        let Expression::Identifier(object) = &member.object else { return None; };
+        if member.property.name != "children" || reference_symbol(object, semantic) != props_symbol {
+            return None;
+        }
+    }
+    if projected && !retained_child {
         let mut proof = StoreProjectionProof { semantic, bindings: projected_bindings,
             paths: vec![Vec::new(); input_count], slots: Vec::new(), member_seen: false };
         let mut keys = BTreeSet::new();
@@ -5971,35 +5987,16 @@ fn closed_store_host_program_inner<'a>(
             "host": host,
         }), tuple_spans));
     }
-    let shared_tree = || {
-        if closed_jsx_children_empty(&element.children) && !element.opening_element.attributes.iter().any(|item| {
-            matches!(item, JSXAttributeItem::Attribute(attribute)
-                if matches!(&attribute.name, JSXAttributeName::Identifier(name) if name.name == "name") &&
-                    matches!(attribute.value.as_ref(), Some(JSXAttributeValue::StringLiteral(_))))
-        }) { return None; }
-        let mut keys = BTreeSet::new();
-        let mut count = 0;
-        let mut has_aggregate = false;
-        let mut tuple_spans = Vec::new();
-        let mut read = |expression: &Expression<'a>| closed_store_host_expression(expression, &value_sites,
-            &source_sites, semantic, source);
-        let host = closed_subtree_host(element, &mut read,
-            &mut keys, &mut count, 0, &mut has_aggregate,
-            &mut tuple_spans, false)?;
-        Some((serde_json::json!({
-            "schemaVersion": 4,
-            "componentProgramId": component.component_site_id,
-            "moduleRevision": revision,
-            "inputs": inputs,
-            "host": host,
-        }), tuple_spans))
-    };
-    if !closed_jsx_children_empty(&element.children) { return shared_tree(); }
+    let mut retained_projection = if retained_child && projected {
+        Some(StoreProjectionProof { semantic, bindings: projected_bindings,
+            paths: vec![Vec::new(); input_count], slots: Vec::new(), member_seen: false })
+    } else { None };
     let legacy_leaf = (|| {
         let JSXElementName::Identifier(tag) = &element.opening_element.name else { return None; };
         let tag = tag.name.as_str();
         if !matches!(tag, "mesh" | "group" | "div" | "span" | "output") ||
-            element.children.len() > 256 || !closed_jsx_children_empty(&element.children) ||
+            element.children.len() > 256 ||
+            (!retained_child && !closed_jsx_children_empty(&element.children)) ||
             element.opening_element.attributes.len() > 33 { return None; }
         let mut key = None;
         let mut props = Vec::<serde_json::Value>::new();
@@ -6024,8 +6021,11 @@ fn closed_store_host_program_inner<'a>(
                 let JSXAttributeValue::ExpressionContainer(container) = attribute.value.as_ref()? else { return None; };
                 let expression = container.expression.as_expression()?;
                 let program = if aggregate {
-                    let mut read = |expression: &Expression<'a>| closed_store_host_expression(expression,
-                        &value_sites, &source_sites, semantic, source);
+                    let mut read = |expression: &Expression<'a>| match retained_projection.as_mut() {
+                        Some(proof) => proof.expression(expression),
+                        None => closed_store_host_expression(expression,
+                            &value_sites, &source_sites, semantic, source),
+                    };
                     let program = closed_host_aggregate_expression(expression, tag, name,
                         &mut read)?;
                     has_aggregate = true;
@@ -6035,20 +6035,35 @@ fn closed_store_host_program_inner<'a>(
                     }
                     program
                 } else {
-                    closed_store_host_expression(expression, &value_sites,
-                        &source_sites, semantic, source)?
+                    match retained_projection.as_mut() {
+                        Some(proof) => proof.expression(expression)?,
+                        None => closed_store_host_expression(expression, &value_sites,
+                            &source_sites, semantic, source)?,
+                    }
                 };
                 props.push(serde_json::json!([name, program]));
             }
         }
         if props.is_empty() || (tag == "span" && !has_aggregate) { return None; }
         let key = key?;
+        let mut host = serde_json::json!({ "tag": tag, "key": key, "props": props, "child": null });
+        if retained_child {
+            if let Some(proof) = retained_projection.take() {
+                proof.finish(&mut host, &mut inputs)?;
+            } else {
+                for input in &mut inputs { input["paths"] = serde_json::json!([[]]); }
+            }
+        }
         let mut program = serde_json::json!({
             "componentProgramId": component.component_site_id,
             "moduleRevision": revision,
-            "host": { "tag": tag, "key": key, "props": props, "child": null }
+            "host": host
         });
-        if has_aggregate {
+        if retained_child {
+            program["schemaVersion"] = serde_json::json!(6);
+            program["inputs"] = serde_json::json!(inputs);
+            program["retainedChildProp"] = serde_json::json!("children");
+        } else if has_aggregate {
             program["schemaVersion"] = serde_json::json!(3);
             program["inputs"] = serde_json::json!(inputs);
         } else if input_count == 1 {
@@ -6061,7 +6076,30 @@ fn closed_store_host_program_inner<'a>(
         }
         Some((program, tuple_spans))
     })();
-    legacy_leaf.or_else(shared_tree)
+    let shared_tree = || {
+        if closed_jsx_children_empty(&element.children) && !element.opening_element.attributes.iter().any(|item| {
+            matches!(item, JSXAttributeItem::Attribute(attribute)
+                if matches!(&attribute.name, JSXAttributeName::Identifier(name) if name.name == "name") &&
+                    matches!(attribute.value.as_ref(), Some(JSXAttributeValue::StringLiteral(_))))
+        }) { return None; }
+        let mut keys = BTreeSet::new();
+        let mut count = 0;
+        let mut has_aggregate = false;
+        let mut tuple_spans = Vec::new();
+        let mut read = |expression: &Expression<'a>| closed_store_host_expression(expression, &value_sites,
+            &source_sites, semantic, source);
+        let host = closed_subtree_host(element, &mut read,
+            &mut keys, &mut count, 0, &mut has_aggregate,
+            &mut tuple_spans, false)?;
+        Some((serde_json::json!({
+            "schemaVersion": 4,
+            "componentProgramId": component.component_site_id,
+            "moduleRevision": revision,
+            "inputs": inputs,
+            "host": host,
+        }), tuple_spans))
+    };
+    if retained_child { legacy_leaf } else { legacy_leaf.or_else(shared_tree) }
 }
 
 struct ClosedStoreHostCollector<'p, 'a> {
@@ -10185,6 +10223,136 @@ export function ExistingTree(props) { const x = use(props.store); return <div ke
         let code = plan.component_module.unwrap();
         assert_eq!(code.matches("closedStoreHostProgram:").count(), 4);
         assert!(code.contains("closedStoreHostProgram: {"));
+    }
+
+    #[test]
+    fn emits_retained_child_store_host_only_for_direct_forwarding() {
+        let source = r#"import { use } from "native_runtime_api.ts";
+export function Motion(props) {
+  const x = use(props.clock);
+  return <group key="motion" position={[x, 0, 1]} visible={x > 0}>
+    {props.children}
+  </group>;
+}
+export const Joint = (props) => {
+  const x = use(props.clock);
+  const y = use(props.phase);
+  return <output key="joint" data-value={x + y} style={{ opacity: x }}>{props.children}</output>;
+};
+export function Projected(props) {
+  const frame = use(props.clock);
+  return <group key="projected" position={[frame.phase, frame.epoch, 0]} visible={frame.phase > 0}>{props.children}</group>;
+};"#;
+        let response = compile_state("retained-store-child.tsx", source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let plan = response.plan.unwrap();
+        let revision = plan.module_revision.clone();
+        let components = plan.components.as_ref().unwrap();
+        let motion = components.iter().find(|component| component.name == "Motion").unwrap();
+        let program = motion.closed_store_host_program.as_ref().unwrap();
+        assert_eq!(program["schemaVersion"], 6);
+        assert_eq!(program["componentProgramId"], motion.component_site_id);
+        assert_eq!(program["moduleRevision"], revision);
+        assert_eq!(program["retainedChildProp"], "children");
+        assert_eq!(program["inputs"], serde_json::json!([{
+            "storeUseSiteId": motion.store_sites[0].site_id, "storeProp": "clock", "paths": [[]]
+        }]));
+        assert_eq!(program["host"], serde_json::json!({
+            "tag": "group", "key": "motion", "props": [
+                ["position", {"kind":"tuple","items":[
+                    {"kind":"input","index":0},
+                    {"kind":"literal","value":0.0},
+                    {"kind":"literal","value":1.0}
+                ]}],
+                ["visible", {"kind":"binary","operator":">",
+                    "left":{"kind":"input","index":0},
+                    "right":{"kind":"literal","value":0.0}}]
+            ], "child": null
+        }));
+        let joint = components.iter().find(|component| component.name == "Joint").unwrap();
+        let joint_program = joint.closed_store_host_program.as_ref().unwrap();
+        assert_eq!(joint_program["schemaVersion"], 6);
+        assert_eq!(joint_program["inputs"], serde_json::json!([
+            {"storeUseSiteId": joint.store_sites[0].site_id, "storeProp": "clock", "paths": [[]]},
+            {"storeUseSiteId": joint.store_sites[1].site_id, "storeProp": "phase", "paths": [[]]},
+        ]));
+        assert_eq!(joint_program["host"]["props"][0][1], serde_json::json!({
+            "kind":"binary","operator":"+",
+            "left":{"kind":"input","index":0},
+            "right":{"kind":"input","index":1}
+        }));
+        assert_eq!(joint_program["host"]["props"][1][1]["kind"], "style");
+        let projected = components.iter().find(|component| component.name == "Projected").unwrap();
+        let projected_program = projected.closed_store_host_program.as_ref().unwrap();
+        assert_eq!(projected_program["schemaVersion"], 6);
+        assert_eq!(projected_program["inputs"], serde_json::json!([{
+            "storeUseSiteId": projected.store_sites[0].site_id,
+            "storeProp": "clock", "paths": [["phase"], ["epoch"]]
+        }]));
+        assert_eq!(projected_program["host"]["props"][0][1]["items"][0],
+            serde_json::json!({"kind":"input","index":0}));
+        assert_eq!(projected_program["host"]["props"][0][1]["items"][1],
+            serde_json::json!({"kind":"input","index":1}));
+        let code = plan.component_module.unwrap();
+        assert_eq!(code.matches("closedStoreHostProgram:").count(), 3);
+        assert!(code.contains("position={__nativeStabilizeHostTuple("), "{code}");
+    }
+
+    #[test]
+    fn retained_child_store_host_declines_noncanonical_syntax() {
+        for (name, parameter, prelude, host) in [
+            ("destructure", "{ clock, children }", "const x = use(clock);",
+                "<group key=\"k\" position-x={x}>{children}</group>"),
+            ("alias", "props", "const x = use(props.clock); const child = props.children;",
+                "<group key=\"k\" position-x={x}>{child}</group>"),
+            ("derived", "props", "const x = use(props.clock);",
+                "<group key=\"k\" position-x={x}>{props.children || null}</group>"),
+            ("extra-child", "props", "const x = use(props.clock);",
+                "<group key=\"k\" position-x={x}>{props.children}<mesh key=\"other\" /></group>"),
+            ("nested-child", "props", "const x = use(props.clock);",
+                "<group key=\"k\" position-x={x}><mesh key=\"inner\">{props.children}</mesh></group>"),
+            ("text", "props", "const x = use(props.clock);",
+                "<group key=\"k\" position-x={x}>text{props.children}</group>"),
+            ("other-prop", "props", "const x = use(props.clock);",
+                "<group key=\"k\" position-x={props.offset}>{props.children}</group>"),
+            ("event", "props", "const x = use(props.clock);",
+                "<group key=\"k\" position-x={x} onClick={props.click}>{props.children}</group>"),
+            ("ref", "props", "const x = use(props.clock);",
+                "<group key=\"k\" position-x={x} ref={props.ref}>{props.children}</group>"),
+            ("call", "props", "const x = use(props.clock);",
+                "<group key=\"k\" position-x={helper(x)}>{props.children}</group>"),
+            ("children-as-store", "props", "const x = use(props.children);",
+                "<group key=\"k\" position-x={x}>{props.children}</group>"),
+            ("unkeyed", "props", "const x = use(props.clock);",
+                "<group position-x={x}>{props.children}</group>"),
+        ] {
+            let source = format!("import {{ use }} from \"native_runtime_api.ts\"; \
+                export function Candidate({parameter}) {{ {prelude} return {host}; }}");
+            let response = compile_state(&format!("retained-store-{name}.tsx"), &source);
+            assert!(response.error.is_none(), "{name}: {:?}", response.error);
+            assert!(response.plan.unwrap().components.unwrap()[0].closed_store_host_program.is_none(),
+                "{name} unexpectedly closed");
+        }
+    }
+
+    #[test]
+    fn retained_child_store_host_bounds_direct_inputs() {
+        for count in [8, 9] {
+            let declarations = (0..count).map(|index|
+                format!("const v{index} = use(props.s{index});"))
+                .collect::<Vec<_>>().join(" ");
+            let expression = (0..count).map(|index| format!("v{index}"))
+                .collect::<Vec<_>>().join(" + ");
+            let source = format!("import {{ use }} from \"native_runtime_api.ts\"; \
+                export function Motion(props) {{ {declarations} \
+                return <group key=\"motion\" position-x={{{expression}}}>{{props.children}}</group>; }}");
+            let response = compile_state(&format!("retained-store-{count}.tsx"), &source);
+            assert!(response.error.is_none(), "{count}: {:?}", response.error);
+            let component = &response.plan.unwrap().components.unwrap()[0];
+            assert_eq!(component.closed_store_host_program.as_ref()
+                .map(|program| program["schemaVersion"].as_u64()),
+                if count == 8 { Some(Some(6)) } else { None }, "{count}");
+        }
     }
 
     #[test]

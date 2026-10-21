@@ -53,6 +53,28 @@ const subtreeData = (): any => ({
   ] },
 });
 
+Deno.test("Store schema 6 retains only a declared child slot and flattened numeric inputs", () => {
+  const raw = {
+    schemaVersion: 6, componentProgramId: "module#component:Motion",
+    moduleRevision: "revision", retainedChildProp: "children",
+    inputs: [{ storeUseSiteId: "site:0", storeProp: "clock",
+      paths: [["phase"], ["epoch"]] }],
+    host: { tag: "group", key: "motion", child: null,
+      props: [["rotation-y", { kind: "input", index: 0 }],
+        ["position-x", { kind: "input", index: 1 }]] },
+  };
+  const program = normalizeClosedStoreHostProgram(raw)!;
+  equal(program.schemaVersion, 6);
+  equal(closedStoreHostValueCount(program), 2);
+  equal(evaluateClosedStoreHostProgram(program, [2, 3])?.[0][1], 2);
+  equal(evaluateClosedStoreHostTree(program, [2, 3]), null);
+  raw.inputs[0].paths[0][0] = "changed";
+  equal(closedStoreHostInputPaths(closedStoreHostInputs(program)[0])[0][0], "phase");
+  equal(normalizeClosedStoreHostProgram({ ...raw, retainedChildProp: "content" }), null);
+  equal(normalizeClosedStoreHostProgram({ ...raw,
+    host: { ...raw.host, child: "unsafe" } }), null);
+});
+
 Deno.test("Store schema 5 freezes lexical paths and flattens expression inputs", () => {
   const raw = subtreeData();
   raw.schemaVersion = 5;

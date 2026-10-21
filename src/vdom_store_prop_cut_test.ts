@@ -1,4 +1,4 @@
-import { jsx } from "./jsx_binding_runtime.ts";
+import { copyRuntimeElement, jsx } from "./jsx_binding_runtime.ts";
 import {
   MemoryVDOMHost,
   VDOMSnapshotRoot,
@@ -75,6 +75,121 @@ Deno.test("Store prop cuts admit unrelated leaves and reject overlapping or repl
   ]));
   root.commit(tree());
   assert(!root.isStorePropDeltaCurrent(old), "remove/reinsert revived an old writer");
+  root.dispose();
+});
+
+Deno.test("retained-child Store prop cut preserves child identity and declines an intervening child write", () => {
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  root.commit(copyRuntimeElement("group", { key: "motion", "rotation-y": 0,
+    children: jsx("mesh", { key: "resource", x: 1 }) }, 1));
+  const group = container.children[0];
+  const child = group.children[0];
+  assert(root.prepareStorePropDelta([{ key: "motion", tag: "group",
+    props: [["rotation-y", 1]] }]) === null,
+  "ordinary prop-only cut crossed a child");
+  assert(root.prepareStorePropDelta([{ key: "motion", tag: "group",
+    props: [["rotation-y", 1]], retainedChildren: true, componentOwner: 1,
+    children: [] }]) === null,
+  "retained-child and fixed-tree descriptions mixed");
+  const first = root.prepareStorePropDelta([{ key: "motion", tag: "group",
+    props: [["rotation-y", 1]], retainedChildren: true, componentOwner: 1 }]);
+  assert(first, "retained-child prop cut declined");
+  accept(root, first);
+  assert(container.children[0] === group && group.children[0] === child &&
+    group.props["rotation-y"] === 1 && child.props.x === 1,
+  "retained child changed during wrapper write");
+  const stale = root.prepareStorePropDelta([{ key: "motion", tag: "group",
+    props: [["rotation-y", 2]], retainedChildren: true, componentOwner: 1 }]);
+  const childCut = root.prepareStorePropDelta([{ key: "resource", tag: "mesh",
+    props: [["x", 2]] }]);
+  assert(stale && childCut, "independent cut setup declined");
+  accept(root, childCut);
+  assert(!root.isStorePropDeltaCurrent(stale),
+    "a descendant publication left an old wrapper cut current");
+  assert(Object.is(child.props.x, 2) && group.children[0] === child,
+    "independent child publication lost its host");
+  root.dispose();
+});
+
+Deno.test("retained-child Store prop cut selects repeated literal keys by existing component owner", () => {
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  const scene = (owners: readonly number[]) => jsx("main", {}, owners.map((owner) =>
+    jsx("section", { key: `slot-${owner}` },
+      copyRuntimeElement("group", { key: "motion", "rotation-y": 0,
+        children: jsx("mesh", { key: `child-${owner}`, x: owner }) }, owner))));
+  root.commit(scene([1, 2]));
+  const first = container.children[0].children[0].children[0];
+  const second = container.children[0].children[1].children[0];
+  assert(root.prepareStorePropDelta([{ key: "motion", tag: "group",
+    props: [["rotation-y", 1]] }]) === null,
+  "unqualified duplicate host key was admitted");
+  const selected = root.prepareStorePropDelta([
+    { key: "motion", tag: "group", props: [["rotation-y", 1]],
+      retainedChildren: true, componentOwner: 1 },
+    { key: "motion", tag: "group", props: [["rotation-y", 2]],
+      retainedChildren: true, componentOwner: 2 },
+  ]);
+  assert(selected, "owner-qualified duplicate host keys declined");
+  accept(root, selected);
+  assert(first.props["rotation-y"] === 1 && second.props["rotation-y"] === 2,
+    "owner-qualified writes crossed");
+  const stale = root.prepareStorePropDelta([{ key: "motion", tag: "group",
+    props: [["rotation-y", 3]], retainedChildren: true, componentOwner: 1 }]);
+  assert(stale, "stale candidate setup declined");
+  root.commit(scene([2]));
+  root.commit(scene([1, 2]));
+  assert(!root.isStorePropDeltaCurrent(stale),
+    "removed owner writer revived after reinsert");
+  root.dispose();
+});
+
+Deno.test("retained-child Store second-writer failure preserves accepted frontier", () => {
+  class FailingHost extends MemoryVDOMHost {
+    writes = 0;
+    fail = false;
+    override setProp(node: ReturnType<MemoryVDOMHost["createContainer"]>,
+      name: string, value: unknown, previous?: unknown) {
+      super.setProp(node, name, value, previous);
+      if (this.fail && name === "rotation-y" && ++this.writes === 2) {
+        throw new Error("second wrapper write failed");
+      }
+    }
+  }
+  const host = new FailingHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  root.commit(jsx("main", {}, [1, 2].map((owner) =>
+    jsx("section", { key: `slot-${owner}` },
+      copyRuntimeElement("group", { key: "motion", "rotation-y": 0,
+        children: jsx("mesh", { key: `child-${owner}`, x: owner }) }, owner)))));
+  const before = JSON.stringify(root.snapshot);
+  const children = container.children[0].children.map((section) =>
+    section.children[0].children[0]);
+  const cut = root.prepareStorePropDelta([1, 2].map((componentOwner) => ({
+    key: "motion", tag: "group", props: [["rotation-y", 1]] as const,
+    retainedChildren: true as const, componentOwner,
+  })));
+  assert(cut, "grouped retained wrapper cut declined");
+  host.fail = true;
+  root.beginPublication();
+  let threw = false;
+  try { root.applyStorePropDelta(cut); } catch { threw = true; }
+  assert(threw, "second writer failure was masked");
+  assert(JSON.stringify(root.snapshot) === before,
+    "partial host write advanced accepted snapshot");
+  assert(container.children[0].children.every((section, index) =>
+    section.children[0].children[0] === children[index]),
+  "partial wrapper write detached retained children");
+  root.failPublication();
+  assert(root.prepareStorePropDelta([{ key: "motion", tag: "group",
+    props: [["rotation-y", 2]], retainedChildren: true,
+    componentOwner: 1 }]) === null,
+  "partial failure admitted replay");
+  host.fail = false;
   root.dispose();
 });
 

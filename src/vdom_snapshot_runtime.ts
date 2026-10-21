@@ -168,10 +168,13 @@ export interface PreparedRetainedSourceDelta {
   readonly readSources: readonly ScalarSource[];
 }
 
+/** Scoped host props; retained children use an existing component owner identity. */
 export type StorePropDelta = Readonly<{
   key: string;
   tag: string;
   props: readonly (readonly [string, ClosedHostOutputValue])[];
+  retainedChildren?: true;
+  componentOwner?: number;
   children?: readonly (Readonly<{ kind: "host"; key: string; tag: string }> |
     Readonly<{ kind: "text"; text: string }>)[];
 }>;
@@ -182,6 +185,10 @@ export interface PreparedStorePropDelta {
 }
 
 type StorePropDeltaRecord<H> = {
+  readonly buckets: readonly {
+    key: string;
+    members: readonly (readonly [MountedNode<H>, number | undefined])[];
+  }[];
   readonly targets: readonly {
     node: MountedNode<H>;
     vnode: VElement;
@@ -191,7 +198,9 @@ type StorePropDeltaRecord<H> = {
     bucket: KeyedRegionBuckets<MountedNode<H>> | undefined;
     writes: readonly (readonly [string, ClosedHostOutputValue, ClosedHostOutputValue])[];
     next: VElement;
+    componentOwner?: number;
     children?: readonly MountedNode<H>[];
+    retainedChildren?: readonly MountedNode<H>[];
     childVNodes?: readonly VNode[];
     nextChildVNodes?: readonly VNode[];
   }[];
@@ -3974,21 +3983,48 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       this.#numericWriteInProgress || regions.length === 0) return null;
     const writer = hostPropWriter(this.host);
     if (!writer) return null;
-    const seen = new Set<string>();
+    const seen = new Set<MountedNode<H>>();
+    const buckets = new Map<string, {
+      members: readonly (readonly [MountedNode<H>, number | undefined])[];
+      owners: ReadonlyMap<number, MountedNode<H> | null>;
+    }>();
     const targets: StorePropDeltaRecord<H>["targets"][number][] = [];
     const texts: StorePropDeltaRecord<H>["texts"][number][] = [];
     for (const region of regions) {
-      if (!region.key || !region.tag || seen.has(region.key) ||
+      if (!region.key || !region.tag ||
+        (region.componentOwner !== undefined &&
+          (region.retainedChildren !== true ||
+            !Number.isSafeInteger(region.componentOwner))) ||
+        (region.retainedChildren === true && region.componentOwner === undefined) ||
+        (region.retainedChildren === true && region.children !== undefined) ||
         (region.children === undefined && region.props.length === 0)) return null;
-      seen.add(region.key);
-      const matches = this.#nodesByKey.get(region.key);
-      if (matches?.size !== 1) return null;
-      const node = matches.values().next().value as MountedNode<H>;
+      let bucket = buckets.get(region.key);
+      if (!bucket) {
+        const matches = this.#nodesByKey.get(region.key);
+        if (!matches?.size) return null;
+        const members: Array<readonly [MountedNode<H>, number | undefined]> = [];
+        const owners = new Map<number, MountedNode<H> | null>();
+        for (const candidate of matches) {
+          const owner = candidate.vnode.componentOwner;
+          members.push([candidate, owner]);
+          if (owner !== undefined) owners.set(owner,
+            owners.has(owner) ? null : candidate);
+        }
+        bucket = { members, owners };
+        buckets.set(region.key, bucket);
+      }
+      const node: MountedNode<H> | null | undefined = region.componentOwner === undefined
+        ? bucket.members.length === 1 ? bucket.members[0][0] : null
+        : bucket.owners.get(region.componentOwner);
+      if (!node) return null;
+      if (seen.has(node)) return null;
+      seen.add(node);
       const vnode = node.vnode;
       if (node.hostDisposed || vnode.kind !== "element" ||
         vnode.key !== region.key || vnode.tag !== region.tag ||
         vnode.keyedRegionId !== null ||
-        (region.children === undefined && node.children.length !== 0) ||
+        (region.children === undefined && region.retainedChildren !== true &&
+          node.children.length !== 0) ||
         node.keyedChildren || node.scalarBindingGroups?.size ||
         node.scalarIncompatibleBindingProps?.size) return null;
       if (region.children !== undefined) {
@@ -3996,7 +4032,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           vnode.children.length !== region.children.length) return null;
         for (let index = 0; index < region.children.length; index++) {
           const description = region.children[index];
-          const child = node.children[index];
+          const child: MountedNode<H> | undefined = node.children[index];
           const childVNode = vnode.children[index];
           if (!child || child.hostDisposed || child.parent !== node ||
             child.parentIndex !== index || child.vnode.kind !== childVNode.kind) return null;
@@ -4062,9 +4098,15 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         bucket: parent?.keyedChildren,
         writes,
         next,
+        ...(region.componentOwner === undefined ? {} :
+          { componentOwner: region.componentOwner }),
         ...(region.children === undefined ? {} : {
           children: [...node.children], childVNodes: node.children.map((child) => child.vnode),
         }),
+        ...(region.retainedChildren === true ? {
+          retainedChildren: [...node.children],
+          childVNodes: node.children.map((child) => child.vnode),
+        } : {}),
       });
     }
     const byNode = new Map(targets.map((target) => [target.node, target] as const));
@@ -4079,9 +4121,14 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     const nextVNode = (target: StorePropDeltaRecord<H>["targets"][number]): VElement => {
       const existing = completed.get(target.node);
       if (existing) return existing;
-      const next = !target.children ? target.next : cloneMountedElementVNode(target.next, { children: target.children.map((child) =>
-        child.vnode.kind === "text" ? textByNode.get(child)!.next :
-          nextVNode(byNode.get(child)!)) });
+      const next = target.retainedChildren
+        ? cloneMountedElementVNode(target.next, {
+          children: target.retainedChildren.map((child) => child.vnode),
+        })
+        : !target.children ? target.next
+        : cloneMountedElementVNode(target.next, { children: target.children.map((child) =>
+          child.vnode.kind === "text" ? textByNode.get(child)!.next :
+            nextVNode(byNode.get(child)!)) });
       completed.set(target.node, next);
       return next;
     };
@@ -4094,6 +4141,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     if (texts.length && !textWriter) return null;
     const token = Object.freeze({}) as PreparedStorePropDelta;
     this.#storePropDeltas.set(token, {
+      buckets: [...buckets].map(([key, bucket]) => ({ key,
+        members: bucket.members })),
       targets, texts, writer, textWriter, applied: false, publicationToken: null,
       appliedVersion: null,
     });
@@ -4129,13 +4178,20 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         this.#version !== record.appliedVersion) return false;
     } else if (record.applied ||
       (allowActivePublication ? !this.#publicationToken : !!this.#publicationToken)) return false;
+    for (const bucket of record.buckets) {
+      const live = this.#nodesByKey.get(bucket.key);
+      if (!live || live.size !== bucket.members.length) return false;
+      if (bucket.members.some(([node, owner]) =>
+        !live.has(node) || node.vnode.componentOwner !== owner)) return false;
+    }
     for (const target of record.targets) {
       const { node, vnode, parent, bucket } = target;
       if (node.hostDisposed || node.handle !== target.handle ||
         node.parent !== parent || node.vnode !==
           (afterHost ? target.next : vnode) ||
-        this.#nodesByKey.get(vnode.key!)?.size !== 1 ||
-        !this.#nodesByKey.get(vnode.key!)?.has(node) ||
+        (target.componentOwner !== undefined &&
+          (vnode.componentOwner !== target.componentOwner ||
+            node.vnode.componentOwner !== target.componentOwner)) ||
         node.scalarBindingGroups?.size ||
         node.scalarIncompatibleBindingProps?.size) return false;
       if (parent) {
@@ -4152,6 +4208,16 @@ export class VDOMSnapshotRoot<H, Parent = H> {
             child.vnode !== (afterHost
               ? target.nextChildVNodes?.[index]
               : target.childVNodes?.[index])) return false;
+        }
+      }
+      if (target.retainedChildren) {
+        if (node.children.length !== target.retainedChildren.length ||
+          node.vnode.children.length !== target.retainedChildren.length) return false;
+        for (let index = 0; index < target.retainedChildren.length; index++) {
+          const child = target.retainedChildren[index];
+          if (node.children[index] !== child || child.hostDisposed ||
+            child.parent !== node || child.parentIndex !== index ||
+            child.vnode !== target.childVNodes?.[index]) return false;
         }
       }
     }

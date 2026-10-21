@@ -22,7 +22,7 @@ export type ClosedStoreProjectionInput = ClosedStoreHostInput & Readonly<{
   paths: readonly (readonly string[])[];
 }>;
 
-/** Compiler data program for one or more direct numeric Store reads and one keyed host leaf. */
+/** Finite Store output program for keyed hosts or one retained-child wrapper. */
 export type ClosedStoreHostProgram = Readonly<{
   componentProgramId: string;
   moduleRevision: string;
@@ -32,6 +32,7 @@ export type ClosedStoreHostProgram = Readonly<{
   | Readonly<{ schemaVersion: 3; inputs: readonly ClosedStoreHostInput[]; host: Host<ClosedHostValue> }>
   | Readonly<{ schemaVersion: 4; inputs: readonly ClosedStoreHostInput[]; host: ClosedHostTreeNode }>
   | Readonly<{ schemaVersion: 5; inputs: readonly ClosedStoreProjectionInput[]; host: ClosedHostTreeNode }>
+  | Readonly<{ schemaVersion: 6; inputs: readonly ClosedStoreProjectionInput[]; host: Host<ClosedHostValue>; retainedChildProp: "children" }>
 );
 
 export type ClosedStoreHostOutput = readonly (readonly [string, ClosedHostOutputValue])[];
@@ -78,28 +79,31 @@ export const normalizeClosedStoreHostProgram = (
       !root.componentProgramId || typeof root.moduleRevision !== "string" ||
       !root.moduleRevision) return null;
     let inputs: readonly ClosedStoreHostInput[];
+    let valueCount = 0;
     if (root.schemaVersion === 1) {
       if (!exact(root, ["schemaVersion", "componentProgramId", "moduleRevision", "storeUseSiteId", "storeProp", "host"])) return null;
       const one = input(root.storeUseSiteId, root.storeProp);
       if (!one) return null;
       inputs = Object.freeze([one]);
-    } else if (root.schemaVersion === 2 || root.schemaVersion === 3 || root.schemaVersion === 4 || root.schemaVersion === 5) {
-      if (!exact(root, ["schemaVersion", "componentProgramId", "moduleRevision", "inputs", "host"])) return null;
+    } else if (root.schemaVersion === 2 || root.schemaVersion === 3 || root.schemaVersion === 4 || root.schemaVersion === 5 || root.schemaVersion === 6) {
+      if (!exact(root, root.schemaVersion === 6
+        ? ["schemaVersion", "componentProgramId", "moduleRevision", "inputs", "host", "retainedChildProp"]
+        : ["schemaVersion", "componentProgramId", "moduleRevision", "inputs", "host"])) return null;
+      if (root.schemaVersion === 6 && root.retainedChildProp !== "children") return null;
       const rawInputs = array(root.inputs);
       if (!rawInputs || rawInputs.length < (root.schemaVersion === 2 ? 2 : 1) || rawInputs.length > 8) return null;
       const next: ClosedStoreHostInput[] = [];
       const sites = new Set<string>();
-      let valueCount = 0;
       let hasProjection = false;
       for (const rawInput of rawInputs) {
         const item = record(rawInput);
-        if (!item || !exact(item, root.schemaVersion === 5
+        if (!item || !exact(item, root.schemaVersion === 5 || root.schemaVersion === 6
           ? ["storeUseSiteId", "storeProp", "paths"]
           : ["storeUseSiteId", "storeProp"])) return null;
         const normalized = input(item.storeUseSiteId, item.storeProp);
         if (!normalized || sites.has(normalized.storeUseSiteId)) return null;
         sites.add(normalized.storeUseSiteId);
-        if (root.schemaVersion === 5) {
+        if (root.schemaVersion === 5 || root.schemaVersion === 6) {
           const paths = inputPaths(item.paths);
           if (!paths) return null;
           valueCount += paths.length;
@@ -128,7 +132,7 @@ export const normalizeClosedStoreHostProgram = (
     const host = record(root.host);
     if (!host || !exact(host, ["tag", "key", "props", "child"]) ||
       !["mesh", "group", "div", "span", "output"].includes(host.tag as string) ||
-      (root.schemaVersion !== 3 && host.tag === "span") ||
+      (root.schemaVersion !== 3 && root.schemaVersion !== 6 && host.tag === "span") ||
       typeof host.key !== "string" || host.key.length === 0 ||
       host.child !== null) return null;
     const tag = host.tag as Host<ClosedHostValue>["tag"];
@@ -139,8 +143,10 @@ export const normalizeClosedStoreHostProgram = (
     for (const rawProp of rawProps) {
       const pair = array(rawProp);
       if (!pair || pair.length !== 2 || typeof pair[0] !== "string" ||
-        (root.schemaVersion !== 3 && !allowedName(tag, pair[0])) || names.has(pair[0])) return null;
-      const expression = normalizeClosedHostValue(pair[1], tag, pair[0], inputs.length, root.schemaVersion === 3);
+        (root.schemaVersion !== 3 && root.schemaVersion !== 6 && !allowedName(tag, pair[0])) || names.has(pair[0])) return null;
+      const expression = normalizeClosedHostValue(pair[1], tag, pair[0],
+        root.schemaVersion === 6 ? valueCount : inputs.length,
+        root.schemaVersion === 3 || root.schemaVersion === 6);
       if (!expression) return null;
       names.add(pair[0]);
       props.push(Object.freeze([pair[0], expression] as const));
@@ -153,7 +159,8 @@ export const normalizeClosedStoreHostProgram = (
     };
     return root.schemaVersion === 1
       ? Object.freeze({ ...common, schemaVersion: 1, ...inputs[0] }) as ClosedStoreHostProgram
-      : Object.freeze({ ...common, schemaVersion: root.schemaVersion, inputs }) as ClosedStoreHostProgram;
+      : Object.freeze({ ...common, schemaVersion: root.schemaVersion, inputs,
+        ...(root.schemaVersion === 6 ? { retainedChildProp: "children" } : {}) }) as ClosedStoreHostProgram;
   } catch {
     return null;
   }
@@ -185,7 +192,8 @@ export const evaluateClosedStoreHostProgram = (
   numericValues: number | readonly number[],
 ): ClosedStoreHostOutput | null => {
   if (program.schemaVersion === 4 || program.schemaVersion === 5) return null;
-  const count = program.schemaVersion !== 1 ? program.inputs.length : 1;
+  const count = program.schemaVersion === 6 ? closedStoreHostValueCount(program)
+    : program.schemaVersion !== 1 ? program.inputs.length : 1;
   const values = typeof numericValues === "number"
     ? count === 1 ? [numericValues] : null
     : array(numericValues);
@@ -194,7 +202,7 @@ export const evaluateClosedStoreHostProgram = (
   const props: (readonly [string, ClosedHostOutputValue])[] = [];
   for (const [name, expression] of program.host.props) {
     const value = evaluateClosedHostValue(expression, values as number[]);
-    if (value === undefined || (program.schemaVersion !== 3 && !isClosedHostPrimitive(value))) return null;
+    if (value === undefined || (program.schemaVersion !== 3 && program.schemaVersion !== 6 && !isClosedHostPrimitive(value))) return null;
     props.push(Object.freeze([name, value] as const));
   }
   return Object.freeze(props);
@@ -205,6 +213,7 @@ export const evaluateClosedStoreHostTree = (
   program: ClosedStoreHostProgram,
   numericValues: number | readonly number[],
 ): RuntimeElement | null => {
+  if (program.schemaVersion === 6) return null;
   if (program.schemaVersion !== 4 && program.schemaVersion !== 5) {
     const output = evaluateClosedStoreHostProgram(program, numericValues);
     if (!output) return null;

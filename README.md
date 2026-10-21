@@ -23,6 +23,8 @@ Our central ambition is **one application state model driving multiple renderers
 
 ## What the evidence says
 
+The 21 October retained-child Store-clock slice passes 68 consolidated phases (1114 runtime tests, 93 Rust tests and 48 compiled fixtures). One shared Store drives retained wrapper props without component rerenders. Its sole canvas comparison remains much slower than React Compiler: publication median/p95 10.70/12.90 ms versus 0.60/0.90 ms. Values, identity and exposed cleanup pass; release speed and lifecycle qualification remain open. [Results and preserved failures](implementation/2026-10-21-retained-store-clock/results.md).
+
 The 21 October ranged owner-kernel slice passes 67 consolidated phases (1108 runtime tests, 90 Rust tests, 47 compiled fixtures). Compiled programs reuse whole-cut buffers across heterogeneous ranges. The sole current canvas comparison still favors React Compiler: Native publication median/p95 1.50/3.00 ms versus 0.80/1.10 ms. Values, identity and cleanup pass; no causal saving or release speed claim follows. [Results and preserved failure](implementation/2026-10-21-ranged-owner-kernels/results.md).
 
 The 21 October shared numeric expression DAG slice passes 65 consolidated phases (1102 runtime tests, 90 Rust tests and 46 compiled fixtures). Its three-prop installed canvas workload still favors React Compiler: Native publication median/p95 1.60/3.00 ms versus 0.90/1.30 ms. Actual compiler sharing, values, identity and cleanup pass; this establishes no causal saving against the earlier one-prop workload. [Results and preserved failures](implementation/2026-10-21-numeric-expression-dag/results.md).

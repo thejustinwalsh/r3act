@@ -1,10 +1,18 @@
-## Workbench watcher configuration — 21 October 2026
+## Retained-child Store clock — 21 October 2026
+
+Store schema 6 now supports closed numeric wrapper props around one direct retained child, reusing existing Store projections, owner identity, VDOM deltas and publication/history. Ordinary closed Store flushes can run without a resource subscription. The Three workbench uses one separate canonical frame Store and one RAF dispatch; child contents receive no purity claim. Repeated host keys resolve through existing owner identity without a persistent registry or recursive cache copy.
+
+Darwin-v4 passes 68/68 phases, 1114 runtime tests, 93 Rust tests and all 48 compiled fixtures, with 1544 input hashes matched. Three failed gates and the initial environment failure remain preserved. The installed consumer type failure is preserved separately; the corrected consumer is independently locked. Fresh installed proof verifies values, retained children, no owner rerenders and cleanup. The sole shared-clock canvas comparison is much slower than React Compiler: Native publication median/p95 10.70/12.90 ms versus 0.60/0.90 ms, imperative 0.10/0.30 ms. Both browser phases match 11449 hashes and close cleanly. This differs from the preceding local-cell/polynomial workload and supplies no causal old/new saving, R3F/GPU/presentation or cold/memory qualification.
+
+The full-plan goal remains active. Shared-clock performance, broader computation fusion, HMR delivery, lifecycle/independent-device gates and a separate native component-key scope gap remain open. Host parents do not currently create separate native component owner scopes; distinct component keys in the new fixture do not fix that gap. Historic narrow wins, qualified dense FAIL, exhausted Recording A and physical HOLD retain scope. [Results and failures](implementation/2026-10-21-retained-store-clock/results.md); [primary review](implementation/2026-10-21-retained-store-clock/source-review.md).
 
 ## Ranged owner kernels — 21 October 2026
 
 New compiler schemas 4/5 execute heterogeneous owner ranges over existing whole-cut buffers, retiring per-run arrays, subarray views and output remapping. Schemas 2/3 keep their legacy adapter. Original order, live validation, exact acknowledgement, accepted histories, resource lifetime and generic fallback remain; no identity/version registry or traversal layout changes.
 
 Corrected Darwin-v2 passes 67/67 phases: 1108 runtime tests, 90 Rust tests, all 47 compiled fixtures and fresh package consumers; all 1525 runner input hashes match. The initial command-shape failure remains preserved. Fresh installed proof verifies emitted ranged ABI, shared arithmetic, values, retained identities and cleanup. The sole 256-object, three-prop canvas comparison remains slower than React Compiler: Native publication median/p95 1.50/3.00 ms versus 0.80/1.10 ms, with imperative floor 0.10/0.10 ms. Both phases match 11449 hashes and close cleanly. No favorable repeat or causal old/new saving is claimed. Broader main-thread fusion, realtime performance, HMR delivery, cold/memory and independent-device requirements remain open under the full-plan goal. Historic wins, qualified dense FAIL, exhausted Recording A and physical HOLD retain scope. [Results and failures](implementation/2026-10-21-ranged-owner-kernels/results.md); [primary review](implementation/2026-10-21-ranged-owner-kernels/source-review.md).
+
+## Workbench watcher configuration — 21 October 2026
 
 Opt-in polling now reaches Vite before Chokidar backend selection, with precise exclusions for the checkout's frozen evidence/build roots. Default and explicit-false watcher behavior remains unchanged. Runtime, compiler, publication and installed package surfaces are unchanged. Two Sol reviews confirmed that the old environment-only polling attempt did not prove polling active; it does not prove the cause of the original missed update.
 

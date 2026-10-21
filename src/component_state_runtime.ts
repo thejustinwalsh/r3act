@@ -422,6 +422,7 @@ type ComponentCache = {
   readonly scopeExplicitHostKeys?: boolean;
   props: Record<string, unknown>;
   readonly numericPropsAdmitted?: boolean;
+  readonly retainedStoreChildAdmitted?: boolean;
   readonly numericStateAdmitted?: boolean;
   readonly collectionPropsOwned?: boolean;
   readonly collectionEntry?: object;
@@ -1027,7 +1028,7 @@ const numericOwnerPropsAdmitted = (
   return true;
 };
 
-const ownNumericOwnerProps = (
+const ownCompiledOwnerProps = (
   component: unknown,
   source: RuntimeElement,
   props: Record<string, unknown>,
@@ -1035,9 +1036,24 @@ const ownNumericOwnerProps = (
   const metadata = typeof component === "function"
     ? definedComponents.get(component)?.metadata : undefined;
   if ((metadata?.numericPrimitiveProps?.length ||
-    metadata?.numericRetainedProps?.length) && isRuntimeOwnedElement(source) &&
+    metadata?.numericRetainedProps?.length ||
+    metadata?.closedStoreHostProgram?.schemaVersion === 6) &&
+    isRuntimeOwnedElement(source) &&
     Object.isFrozen(source.props)) Object.freeze(props);
   return props;
+};
+
+const retainedStoreChildAdmitted = (
+  component: unknown, source: RuntimeElement,
+  props: Record<string, unknown>,
+): boolean => {
+  const program = typeof component === "function"
+    ? definedComponents.get(component)?.metadata?.closedStoreHostProgram : undefined;
+  if (program?.schemaVersion !== 6) return false;
+  const child = Object.getOwnPropertyDescriptor(props, "children");
+  return isRuntimeOwnedElement(source) && Object.isFrozen(source.props) &&
+    Object.isFrozen(props) && !!child && "value" in child &&
+    isRuntimeOwnedElement(child.value) && Object.isFrozen(child.value);
 };
 
 const closedCollectionSitesFor = (component: unknown): readonly string[] | undefined =>
@@ -2742,7 +2758,8 @@ export class ComponentStateRoot<H, Parent = H> {
     const inputStores = new Set<AnyAsyncStore>(selected);
     const inputResources = new Set<AsyncResource<any>>();
     type Input = { id: string; prop: string; source: unknown; membership?: Set<AnyAsyncStore> };
-    type Owner = { cache: ComponentCache; inputs: Input[]; next: RuntimeElement };
+    type Owner = { cache: ComponentCache; inputs: Input[]; next: RuntimeElement;
+      nextResult?: RuntimeElement };
     const owners = new Map<OwnerId, Owner>();
     const covered = new Set<string>();
     const seen = new Set<AnyAsyncStore>();
@@ -2871,7 +2888,8 @@ export class ComponentStateRoot<H, Parent = H> {
         const program = typeof cache?.type === "function"
           ? definedComponents.get(cache.type)?.metadata?.closedStoreHostProgram
           : undefined;
-        if (!cache || !program || cache.subtreeOwners.size !== 1 ||
+        if (!cache || !program ||
+          (program.schemaVersion !== 6 && cache.subtreeOwners.size !== 1) ||
           cache.ownEffects.size !== 0 || cache.propBoundSites.size !== 0 ||
           cache.keyedRegion || cache.nativeBoundary || !componentCodeCurrent(cache.type)) {
           throw new SparseCandidateIneligible();
@@ -2894,6 +2912,7 @@ export class ComponentStateRoot<H, Parent = H> {
             projections = stores.readClosedProjections(store, inputId, paths);
             if (selectedStores.has(store)) seen.add(store);
           } else {
+            if (program.schemaVersion === 6) throw new SparseCandidateIneligible();
             if (inputMembership || !(store instanceof AsyncResource)) {
               throw new SparseCandidateIneligible();
             }
@@ -2923,6 +2942,55 @@ export class ComponentStateRoot<H, Parent = H> {
           regions.push(...staged.regions);
           continue;
         }
+        if (program.schemaVersion === 6) {
+          const authored = cache.result;
+          const expanded = cache.expandedResult;
+          const hostKey = cache.scopeExplicitHostKeys === true
+            ? `${String(cache.hostKeyScope)}\u0000${program.host.key}`
+            : program.host.key;
+          const child = Object.getOwnPropertyDescriptor(cache.props, "children");
+          if (!cache.retainedStoreChildAdmitted || !Object.isFrozen(cache.props) ||
+            !child || !("value" in child) ||
+            !isRuntimeOwnedElement(child.value) || !Object.isFrozen(child.value) ||
+            !output || !isRuntimeOwnedElement(authored) ||
+            !isRuntimeOwnedElement(expanded) ||
+            getComponentOutputOwner(authored) !== owner ||
+            getComponentOutputOwner(expanded) !== owner ||
+            authored.type !== program.host.tag ||
+            expanded.type !== program.host.tag) throw new SparseCandidateIneligible();
+          const authoredProps = Object.getOwnPropertyDescriptors(authored.props);
+          const expandedProps = Object.getOwnPropertyDescriptors(expanded.props);
+          const expected = new Set(["key", "children", ...program.host.props.map(([name]) => name)]);
+          if (Object.keys(authoredProps).some((name) => !expected.has(name)) ||
+            Object.keys(expandedProps).some((name) => !expected.has(name)) ||
+            Object.getOwnPropertySymbols(authored.props).length !== 1 ||
+            Object.getOwnPropertySymbols(expanded.props).length !== 1 ||
+            authoredProps.key?.value !== hostKey ||
+            expandedProps.key?.value !== hostKey ||
+            authoredProps.children?.value !== child.value ||
+            !expandedProps.children || !("value" in expandedProps.children) ||
+            !isRuntimeOwnedElement(expandedProps.children.value)) {
+            throw new SparseCandidateIneligible();
+          }
+          for (const [name] of program.host.props) {
+            if (!("value" in (authoredProps[name] ?? {})) ||
+              !("value" in (expandedProps[name] ?? {}))) {
+              throw new SparseCandidateIneligible();
+            }
+          }
+          outputChanged ||= output.some(([name, value]) =>
+            !sameClosedHostOutput(program.host.tag, name, expandedProps[name].value, value));
+          const nextResult = copyRuntimeElement(program.host.tag,
+            Object.fromEntries([["key", hostKey], ...output,
+              ["children", child.value]]), owner);
+          const next = copyRuntimeElement(program.host.tag,
+            Object.fromEntries([["key", hostKey], ...output,
+              ["children", expandedProps.children.value]]), owner);
+          owners.set(owner, { cache, inputs, next, nextResult });
+          regions.push({ key: hostKey, tag: program.host.tag,
+            props: output, retainedChildren: true, componentOwner: owner });
+          continue;
+        }
         const previous = cache.expandedResult;
         if (!output || !previous || Array.isArray(previous) || typeof previous !== "object" ||
           previous.type !== program.host.tag || previous.props.key !== program.host.key ||
@@ -2936,20 +3004,24 @@ export class ComponentStateRoot<H, Parent = H> {
         owners.set(owner, { cache, inputs, next });
         regions.push({ key: program.host.key, tag: program.host.tag, props: output });
       }
-      if ([...selectedStores].some((store) =>
+      const ownerIds = new Set(owners.keys());
+      if ([...ownerIds].some((owner) =>
+        this.world.ownerLineage(owner).slice(1).some((ancestor) =>
+          ownerIds.has(ancestor))) ||
+        [...selectedStores].some((store) =>
         !seen.has(store) && !newlyStaged.has(store)) ||
         (requireOutputChange && !outputChanged) ||
         !current() || !stores.validate()) throw new SparseCandidateIneligible();
-      const ownerIds = new Set(owners.keys());
       return {
         owners: ownerIds, regions, current: () => current(),
         privateCurrent: () => current(true), inputStores, inputResources,
         privatePreparedCurrent: () => current(true) &&
           canonicalResourceCutCurrent(resources),
         publish: () => {
-          for (const [owner, { next }] of owners) {
+          for (const [owner, { next, nextResult }] of owners) {
             const cache = this.#componentCache.get(owner)!;
-            this.#componentCache.set(owner, { ...cache, result: next, expandedResult: next });
+            this.#componentCache.set(owner, { ...cache,
+              result: nextResult ?? next, expandedResult: next });
             this.#refreshDirectKeyedRegionOutput(owner);
             for (const ancestor of this.world.ownerLineage(owner).slice(1)) {
               const live = this.#componentCache.get(ancestor);
@@ -4550,7 +4622,7 @@ export class ComponentStateRoot<H, Parent = H> {
     const storeGenerationAtStart = this.#storeNotificationGeneration;
     const asyncWorkPending = this.#liveResourceSubscriptions.size > 0 ||
       this.#pendingResourceRetry || this.#pendingBoundaryRetries.size > 0;
-    const canTryClosedStores = this.#liveResourceSubscriptions.size > 0 &&
+    const canTryClosedStores =
       (this.#publicationIntents.size > 0 ||
         (!this.#pendingResourceRetry && this.#pendingBoundaryRetries.size === 0)) &&
       !this.#unheldCellChanges() && !this.#unheldCollectionChanges() &&
@@ -5776,7 +5848,7 @@ export class ComponentStateRoot<H, Parent = H> {
         for (const [name, descriptor] of Object.entries(step.descriptors)) {
           if (name !== "key" && name !== "ref") componentProps[name] = descriptor.value;
         }
-        ownNumericOwnerProps(step.type, step.node, componentProps);
+        ownCompiledOwnerProps(step.type, step.node, componentProps);
         preparedCaches.set(preparedOwners[index], {
           type: step.type,
           hostKeyScope: step.hostKeyScope,
@@ -7252,7 +7324,7 @@ export class ComponentStateRoot<H, Parent = H> {
         const authoredKey = rendered.props.key;
         if (authoredKey != null && String(authoredKey) !== key) return null;
         const { key: _key, ref: _ref, ...props } = rendered.props;
-        ownNumericOwnerProps(rendered.type, rendered, props);
+        ownCompiledOwnerProps(rendered.type, rendered, props);
         const collectionPropsOwned = ownCollectionOwnerProps(
           rendered.type, rendered, props,
         );
@@ -8475,7 +8547,7 @@ export class ComponentStateRoot<H, Parent = H> {
       else if (existingOwner === undefined) newlyAllocatedOwners.push(owner);
 
       const { key: _key, ref: _ref, ...props } = rendered.props;
-      ownNumericOwnerProps(rendered.type, rendered, props);
+      ownCompiledOwnerProps(rendered.type, rendered, props);
       const collectionPropsOwned = ownCollectionOwnerProps(
         rendered.type, rendered, props,
       );
@@ -10594,12 +10666,15 @@ export class ComponentStateRoot<H, Parent = H> {
         }
       }
       const { key: _key, ref: _ref, ...componentProps } = node.props;
-      ownNumericOwnerProps(node.type, node, componentProps);
+      ownCompiledOwnerProps(node.type, node, componentProps);
       const collectionPropsOwned = ownCollectionOwnerProps(
         node.type, node, componentProps,
       );
       const numericPropsAdmitted = numericOwnerPropsAdmitted(
         node.type, componentProps, isRuntimeOwnedElement(node),
+      );
+      const storeChildAdmitted = retainedStoreChildAdmitted(
+        node.type, node, componentProps,
       );
       const cached = this.#componentCache.get(owner);
       const scopeExplicitHostKeys = cached?.scopeExplicitHostKeys === true ||
@@ -10614,6 +10689,7 @@ export class ComponentStateRoot<H, Parent = H> {
       }
       const propsUnchanged = cached !== undefined &&
         cached.numericPropsAdmitted === numericPropsAdmitted &&
+        cached.retainedStoreChildAdmitted === storeChildAdmitted &&
         cached.collectionPropsOwned === collectionPropsOwned &&
         shallowEqual(cached.props, componentProps);
       const shouldRender = forceRender || dirtyOwners.has(owner) || !cached ||
@@ -10825,6 +10901,7 @@ export class ComponentStateRoot<H, Parent = H> {
           scopeExplicitHostKeys,
           props: componentProps,
           numericPropsAdmitted,
+          retainedStoreChildAdmitted: storeChildAdmitted,
           numericStateAdmitted,
           collectionEntry,
           collectionPropsOwned,

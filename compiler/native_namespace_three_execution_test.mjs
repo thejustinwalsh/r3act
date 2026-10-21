@@ -134,28 +134,25 @@ try {
   };
   const frameMetadata = registrations.get("FrameMarker");
   assert.ok(frameMetadata, "FrameMarker missing from actual workbench semantic registration");
-  assert.equal(programVersion(frameMetadata), 4,
-    "ordinary FrameMarker must use the v4 ranged owner program");
-  const frameSites = property(frameMetadata, "propOnlySites");
-  assert.ok(frameSites?.type === "ArrayExpression" && frameSites.elements.length > 0,
-    "actual FrameMarker must retain a finite compiled prop-only site");
+  const frameProgram = property(frameMetadata, "closedStoreHostProgram");
+  assert.equal(property(frameProgram, "schemaVersion")?.value, 5,
+    "FrameMarker must use the ordinary closed Store host program");
+  assert.equal(property(frameProgram, "inputs")?.elements?.length, 1,
+    "FrameMarker must read one canonical frame Store");
   assert.ok(registrations.has("KineticForm"),
     "workbench KineticForm must remain an authored compiler-registered wrapper");
   for (const name of ["SharedMotion", "OwnedMotion"]) {
     const metadata = registrations.get(name);
     assert.ok(metadata, `${name} missing from actual workbench semantic registration`);
-    assert.equal(programVersion(metadata), 5,
-      `${name} must bind retained children to a v5 ranged owner program`);
-    const sites = property(metadata, "propOnlySites");
-    assert.ok(sites?.type === "ArrayExpression" && sites.elements.length > 0,
-      `${name} must retain a finite compiled prop-only site`);
-    const retained = property(metadata, "numericRetainedProps");
-    assert.deepEqual(retained?.elements.map(element => element.value), ["children"],
-      `${name} must mark direct opaque children as retained structural input`);
-    const primitive = property(metadata, "numericPrimitiveProps");
-    assert.deepEqual(primitive?.elements.map(element => element.value),
-      ["id", "motionName", "x", "y"],
-      `${name} must guard every primitive motion prop, including the effect's id`);
+    const program = property(metadata, "closedStoreHostProgram");
+    assert.equal(property(program, "schemaVersion")?.value, 6,
+      `${name} must emit retained-child Store schema 6`);
+    assert.equal(property(program, "retainedChildProp")?.value, "children",
+      `${name} must forward its direct retained children`);
+    assert.equal(property(program, "inputs")?.elements?.length, 1,
+      `${name} must read one canonical frame Store`);
+    assert.equal(property(property(program, "host"), "child")?.type, "NullLiteral",
+      `${name} must leave descendant contents outside the closed Store program`);
   }
   const authoredProof = await workbenchCompiler.transform.call({
     addWatchFile() {}, error(message) { throw new Error(String(message)); },

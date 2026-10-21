@@ -4,9 +4,8 @@ import {
   createNativeRoot,
   createStore,
   createWorld,
+  storeRecord,
   use,
-  useEffect,
-  useState,
   type RuntimeNode,
 } from "../native_runtime_api.ts";
 import {
@@ -43,6 +42,10 @@ type StudioState = {
   readonly roughness: number;
   readonly playing: boolean;
   readonly nextId: number;
+};
+type FrameState = {
+  readonly phase: number;
+  readonly epoch: number;
 };
 
 const rootNames = [
@@ -82,6 +85,7 @@ const studio = createStore<StudioState>({
   playing: true,
   nextId: 4,
 });
+const frameClock = createStore<FrameState>(storeRecord({ phase: 0, epoch: 0 }));
 
 // This pair is deliberately borrowed by multiple meshes. The Three host must
 // detach handles without disposing assets that the application still owns.
@@ -114,8 +118,6 @@ let lastFrameTime: number | null = null;
 let requestedFrameEpoch = 0;
 let drawnFrameEpoch = 0;
 let deferredFrameCount = 0;
-let setFrameEpoch: ((epoch: number) => void) | null = null;
-const phaseSetters = new Map<string, (delta: number) => void>();
 const frameMarkerName = "accepted-frame";
 let resizeObserver: ResizeObserver | null = null;
 let pointerListener: ((event: PointerEvent) => void) | null = null;
@@ -236,6 +238,7 @@ function KineticForm({
   tint,
   roughness,
   onSelect,
+  clock,
 }: {
   key?: string;
   shape: Shape;
@@ -244,105 +247,85 @@ function KineticForm({
   tint: string;
   roughness: number;
   onSelect: (event: NativeThreePointerEvent) => void;
+  clock: StoreSource<FrameState>;
 }) {
   actorRenderCount++;
   const spacing = 1.62;
   const x = (index - (count - 1) / 2) * spacing;
   if (shape.kind === "shared") {
     return (
-      <SharedMotion id={shape.id} motionName={`motion:${shape.id}`} x={x} y={shape.height}>
-        <mesh
-          name={shape.id}
-          args={[sharedGeometry, sharedMaterial]}
-          rotation-z={shape.phaseOffset * 0.25}
-          scale={index === 0 ? [1, 1, 1] : [0.78, 0.78, 0.78]}
-          material-color={tint}
-          material-roughness={roughness}
-          castShadow
-          receiveShadow
-          onPointerDown={onSelect}
-        />
-      </SharedMotion>
+      <group name={`motion:${shape.id}`} position={[x, shape.height, 0]}>
+        <SharedMotion key="motion" clock={clock}>
+          <mesh
+            name={shape.id}
+            args={[sharedGeometry, sharedMaterial]}
+            rotation-z={shape.phaseOffset * 0.25}
+            scale={index === 0 ? [1, 1, 1] : [0.78, 0.78, 0.78]}
+            material-color={tint}
+            material-roughness={roughness}
+            castShadow
+            receiveShadow
+            onPointerDown={onSelect}
+          />
+        </SharedMotion>
+      </group>
     );
   }
 
   return (
-    <OwnedMotion id={shape.id} motionName={`motion:${shape.id}`} x={x} y={shape.height}>
-      <mesh
-        name={shape.id}
-        castShadow
-        receiveShadow
-        onPointerDown={onSelect}
-      >
-        <icosahedronGeometry args={[0.72, 2]} />
-        <meshStandardMaterial
-          color={tint}
-          roughness={roughness}
-          metalness={0.42}
-        />
-      </mesh>
-    </OwnedMotion>
+    <group name={`motion:${shape.id}`} position={[x, shape.height, 0]}>
+      <OwnedMotion key="motion" clock={clock}>
+        <mesh
+          name={shape.id}
+          castShadow
+          receiveShadow
+          onPointerDown={onSelect}
+        >
+          <icosahedronGeometry args={[0.72, 2]} />
+          <meshStandardMaterial
+            color={tint}
+            roughness={roughness}
+            metalness={0.42}
+          />
+        </mesh>
+      </OwnedMotion>
+    </group>
   );
 }
 
 type MotionProps = {
-  id: string;
-  motionName: string;
-  x: number;
-  y: number;
+  key?: string;
+  clock: StoreSource<FrameState>;
   children?: RuntimeNode;
 };
 
 function SharedMotion(props: MotionProps) {
-  const [phase, setPhase] = useState(0);
-  useEffect(() => {
-    const advance = (delta: number) => {
-      setPhase((current) => (current + delta) % (Math.PI * 200));
-    };
-    phaseSetters.set(props.id, advance);
-    return () => {
-      if (phaseSetters.get(props.id) === advance) phaseSetters.delete(props.id);
-    };
-  });
+  const frame = use(props.clock);
   return (
-    <group name={props.motionName} position={[props.x, props.y, 0]}
-      rotation-y={phase * 0.42} rotation-x={phase * 0.17}>
+    <group key="motion" rotation-y={frame.phase * 0.42} rotation-x={frame.phase * 0.17}>
       {props.children}
     </group>
   );
 }
 
 function OwnedMotion(props: MotionProps) {
-  const [phase, setPhase] = useState(0);
-  useEffect(() => {
-    const advance = (delta: number) => {
-      setPhase((current) => (current + delta) % (Math.PI * 200));
-    };
-    phaseSetters.set(props.id, advance);
-    return () => {
-      if (phaseSetters.get(props.id) === advance) phaseSetters.delete(props.id);
-    };
-  });
+  const frame = use(props.clock);
   return (
-    <group name={props.motionName} position={[props.x, props.y, 0]}
-      rotation-y={phase * -0.42} rotation-z={phase * 0.15}>
+    <group key="motion" rotation-y={frame.phase * -0.42} rotation-z={frame.phase * 0.15}>
       {props.children}
     </group>
   );
 }
 
-function FrameMarker() {
-  const [frameEpoch, updateFrameEpoch] = useState(0);
-  useEffect(() => {
-    setFrameEpoch = updateFrameEpoch;
-    return () => {
-      if (setFrameEpoch === updateFrameEpoch) setFrameEpoch = null;
-    };
-  });
-  return <group name="accepted-frame" position-x={frameEpoch} />;
+function FrameMarker(props: { key?: string; clock: StoreSource<FrameState> }) {
+  const frame = use(props.clock);
+  return <group key="frame-marker" name="accepted-frame" position-x={frame.epoch} />;
 }
 
-function SceneRoot({ store }: { store: StoreSource<StudioState> }) {
+function SceneRoot({ store, clock }: {
+  store: StoreSource<StudioState>;
+  clock: StoreSource<FrameState>;
+}) {
   sceneRenderCount++;
   const state = use(store);
   const onSelect = (shape: Shape) => (event: NativeThreePointerEvent) => {
@@ -356,7 +339,7 @@ function SceneRoot({ store }: { store: StoreSource<StudioState> }) {
 
   return (
     <group name="kinetic-study">
-      <FrameMarker />
+      <FrameMarker key="frame-marker" clock={clock} />
       <ambientLight args={["#d9e6d8", 1.05]} />
       <directionalLight
         args={["#ffddb1", 3.4]}
@@ -379,6 +362,7 @@ function SceneRoot({ store }: { store: StoreSource<StudioState> }) {
           tint={state.tint}
           roughness={state.roughness}
           onSelect={onSelect(shape)}
+          clock={clock}
         />
       ))}
     </group>
@@ -551,8 +535,6 @@ const dispose = () => {
   appDisposed = true;
   cancelAnimationFrame(frameId);
   frameId = 0;
-  phaseSetters.clear();
-  setFrameEpoch = null;
   resizeObserver?.disconnect();
   resizeObserver = null;
   if (pointerListener) {
@@ -665,7 +647,7 @@ const start = () => {
     rootId: rootNames[0],
     scheduleCommit() {},
   });
-  sceneRoot.mount(<SceneRoot store={studio} />);
+  sceneRoot.mount(<SceneRoot store={studio} clock={frameClock} />);
   hudRoot = createDOMRoot(hudMount, {
     world: sharedWorld,
     rootId: rootNames[1],
@@ -735,11 +717,14 @@ const start = () => {
       const elapsed = lastFrameTime === null ? 0 :
         Math.min(50, Math.max(0, time - lastFrameTime));
       lastFrameTime = time;
-      if (studio.getState().playing && !reducedMotion.matches &&
-        elapsed > 0 && phaseSetters.size > 0 && setFrameEpoch) {
+      if (studio.getState().playing && !reducedMotion.matches && elapsed > 0) {
         const delta = elapsed * 0.00072;
-        for (const advance of phaseSetters.values()) advance(delta);
-        setFrameEpoch(++requestedFrameEpoch);
+        const epoch = requestedFrameEpoch + 1;
+        frameClock.dispatch((frame) => storeRecord({
+          phase: (frame.phase + delta) % (Math.PI * 200),
+          epoch,
+        }));
+        requestedFrameEpoch = epoch;
       }
       sceneRoot?.flush();
       const accepted = scene.getObjectByName(frameMarkerName)?.position.x;
@@ -802,7 +787,8 @@ const start = () => {
       drawnFrameEpoch,
       hostFrameEpoch: scene?.getObjectByName(frameMarkerName)?.position.x ?? null,
       deferredFrameCount,
-      activePhaseSetters: phaseSetters.size,
+      activePhaseSetters: 0,
+      frameClock: frameClock.diagnostics(),
       phasePropWrites,
       allHostPropWrites,
       pointerEvents,
