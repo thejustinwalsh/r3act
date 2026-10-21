@@ -1,0 +1,195 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS_NUMERIC_DAG_CANVAS_DESCRIPTIVE_TIMING",
+  "phase": "timing",
+  "receipt": "canvas-timing-one-shot.json",
+  "buildProofSha256": "37df53a3d1bc84aca3aa4ddae73b953ee87c24a1852941a2c5dead697712b660",
+  "inputLockSha256": "5c1d594b9172adf998bc692276b53cbb70d49b48a3e21ffb00aae269753be76c",
+  "authorizationSha256": "4d6624f57010451058dd589f78380f4708dd5a69c09c47538a2df613e02ef8d0",
+  "sampleProtocol": {
+    "armOrder": [
+      "native",
+      "react",
+      "imperative"
+    ],
+    "warmupFramesPerArm": 12,
+    "measuredFramesPerArm": 60,
+    "percentileMethod": "nearest rank; p95 is sorted[ceil(0.95*n)-1]",
+    "browserClosed": true
+  },
+  "intervalScopes": {
+    "publishMs": "publishEnd - updateStart: synchronous arm.update through its publication return; excludes later inspect, Canvas draw and readback.",
+    "updateThroughDrawMs": "drawEnd - updateStart: arm.update, state inspection/validation and Canvas2D draw; excludes pixel readback/hash.",
+    "stateAgeMs": "drawStart - updateStart: age of the update at draw start; includes update/publication and inspection.",
+    "callbackMs": "callbackEnd - callbackEntry: whole JavaScript RAF callback, including update, inspection, draw and Canvas2D readback/hash.",
+    "rafIntervalMs": "Difference between consecutive requestAnimationFrame callback timestamps; not physical presentation or display cadence.",
+    "deadlineMissAt60HzReference": "Boolean callbackEnd - RAF timestamp > 1000/60 ms; a reference flag, not a display/presentation miss measurement."
+  },
+  "arms": {
+    "native": {
+      "warmupFrames": 12,
+      "measuredFrames": 60,
+      "retainedObjectCount": 256,
+      "medianAndNearestRankP95Ms": {
+        "publishMs": {
+          "median": 1.5999999940395355,
+          "p95NearestRank": 3,
+          "n": 60
+        },
+        "updateThroughDrawMs": {
+          "median": 1.6499999910593033,
+          "p95NearestRank": 3.199999988079071,
+          "n": 60
+        },
+        "stateAgeMs": {
+          "median": 1.5999999940395355,
+          "p95NearestRank": 3,
+          "n": 60
+        },
+        "callbackMs": {
+          "median": 2.7000000029802322,
+          "p95NearestRank": 4.200000017881393,
+          "n": 60
+        },
+        "rafIntervalMs": {
+          "median": 16.69999999999999,
+          "p95NearestRank": 16.700000000000045,
+          "n": 60
+        }
+      },
+      "referenceDeadlineFlags": {
+        "warmup": 1,
+        "measured": 0,
+        "total": 1,
+        "totalFrames": 72
+      },
+      "countersInTimingPhase": "null",
+      "cleanup": {
+        "setupMs": 46.19999998807907,
+        "setupScope": "root.mount through activation; scene/root construction excluded",
+        "sceneChildren": 0,
+        "registeredSetters": 0,
+        "ownerCount": 0,
+        "pending": 0,
+        "counters": {}
+      },
+      "contextClosed": true
+    },
+    "react": {
+      "warmupFrames": 12,
+      "measuredFrames": 60,
+      "retainedObjectCount": 256,
+      "medianAndNearestRankP95Ms": {
+        "publishMs": {
+          "median": 0.9000000059604645,
+          "p95NearestRank": 1.2999999821186066,
+          "n": 60
+        },
+        "updateThroughDrawMs": {
+          "median": 1.0999999940395355,
+          "p95NearestRank": 1.5999999940395355,
+          "n": 60
+        },
+        "stateAgeMs": {
+          "median": 1.0,
+          "p95NearestRank": 1.4000000059604645,
+          "n": 60
+        },
+        "callbackMs": {
+          "median": 2.5499999970197678,
+          "p95NearestRank": 3.5,
+          "n": 60
+        },
+        "rafIntervalMs": {
+          "median": 16.699999999999932,
+          "p95NearestRank": 16.700000000000045,
+          "n": 60
+        }
+      },
+      "referenceDeadlineFlags": {
+        "warmup": 0,
+        "measured": 0,
+        "total": 0,
+        "totalFrames": 72
+      },
+      "countersInTimingPhase": "null",
+      "cleanup": {
+        "setupMs": 4,
+        "setupScope": "flushSync root.render through activation; scene/object construction excluded",
+        "sceneChildren": 0,
+        "registeredSetters": 0,
+        "hostChildren": 0
+      },
+      "contextClosed": true
+    },
+    "imperative": {
+      "warmupFrames": 12,
+      "measuredFrames": 60,
+      "retainedObjectCount": 256,
+      "medianAndNearestRankP95Ms": {
+        "publishMs": {
+          "median": 0.09999999403953552,
+          "p95NearestRank": 0.19999998807907104,
+          "n": 60
+        },
+        "updateThroughDrawMs": {
+          "median": 0.29999998211860657,
+          "p95NearestRank": 0.4000000059604645,
+          "n": 60
+        },
+        "stateAgeMs": {
+          "median": 0.19999998807907104,
+          "p95NearestRank": 0.29999998211860657,
+          "n": 60
+        },
+        "callbackMs": {
+          "median": 1.9000000059604645,
+          "p95NearestRank": 2.5,
+          "n": 60
+        },
+        "rafIntervalMs": {
+          "median": 16.699999999999932,
+          "p95NearestRank": 16.799999999999955,
+          "n": 60
+        }
+      },
+      "referenceDeadlineFlags": {
+        "warmup": 0,
+        "measured": 0,
+        "total": 0,
+        "totalFrames": 72
+      },
+      "countersInTimingPhase": "null",
+      "cleanup": {
+        "setupMs": 1,
+        "setupScope": "object creation and attachment; scene/group construction excluded",
+        "sceneChildren": 0,
+        "retainedObjects": 256
+      },
+      "contextClosed": true
+    }
+  },
+  "quality": {
+    "blockedRequests": 0,
+    "requestFailures": 0,
+    "pageErrors": 0,
+    "consoleErrors": 0,
+    "runErrors": 0,
+    "cleanupErrors": 0,
+    "sourceBefore": {
+      "count": 11449,
+      "matched": 11449
+    },
+    "sourceAfter": {
+      "count": 11449,
+      "matched": 11449
+    },
+    "outputOracle": "All three arms\u2019 60 measured epoch/checksum/pixelChecksum sequences matched; 256 retained objects per sample.",
+    "timingCounters": "null on all timing-phase samples by design; counters were checked during untimed proof."
+  },
+  "scopeLimits": [
+    "Setup intervals have different construction exclusions and do not qualify matched cold mount.",
+    "RAF timestamps and Canvas2D readback do not establish physical presentation.",
+    "One fixed-order comparison only; no favorable repeat."
+  ]
+}

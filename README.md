@@ -23,6 +23,8 @@ Our central ambition is **one application state model driving multiple renderers
 
 ## What the evidence says
 
+The 21 October shared numeric expression DAG slice passes 65 consolidated phases (1102 runtime tests, 90 Rust tests and 46 compiled fixtures). Its three-prop installed canvas workload still favors React Compiler: Native publication median/p95 1.60/3.00 ms versus 0.90/1.30 ms. Actual compiler sharing, values, identity and cleanup pass; this establishes no causal saving against the earlier one-prop workload. [Results and preserved failures](implementation/2026-10-21-numeric-expression-dag/results.md).
+
 The 21 October component-output identity slice passes the consolidated gate (1102 runtime tests, 85 Rust tests and 45 compiled fixtures), including constant-host-key remounts and Suspense fallback adoption. Its one current-source canvas comparison remains slower than React Compiler: update/publication median/p95 1.60/2.40 ms versus 0.60/0.80 ms. This is a correctness milestone, with realtime performance, HMR delivery and lifecycle qualification still open. [Exact results and preserved failures](implementation/2026-10-21-component-output-identity/results.md).
 
 There are real workload-specific wins, and real losses. Earlier stable-tree binding studies substantially reduced update CPU versus their React baselines. The later integrated dense owner-kernel benchmark loses to React Compiler at all three tested sizes. Async DAG work demonstrates waterfall avoidance versus a sequential control, but no completion-latency advantage over equally preloaded React. Frame presentation, broader compatibility, and maintenance superiority remain unproven.

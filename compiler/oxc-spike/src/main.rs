@@ -22,6 +22,7 @@ use oxc_parser::Parser;
 use oxc_semantic::{ScopeFlags, Semantic, SemanticBuilder, SymbolId};
 use oxc_span::{GetSpan, SourceType};
 
+mod numeric_expression_dag;
 mod owner_update_program;
 mod semantic_plan;
 use semantic_plan::{SemanticPlan, build_semantic_plan, module_revision};

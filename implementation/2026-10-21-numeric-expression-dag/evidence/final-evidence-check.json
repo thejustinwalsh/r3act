@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS",
+  "verification": {
+    "darwinV1": {
+      "status": "FAIL",
+      "numericExitCode": 1,
+      "phases": 65,
+      "passed": 64,
+      "failed": [
+        {
+          "name": "compiled-46",
+          "exitCode": 1
+        }
+      ],
+      "preservedAt": "verification/darwin-v1/receipt.json"
+    },
+    "darwinV2": {
+      "status": "PASS",
+      "numericExitCode": 0,
+      "phases": 65,
+      "passed": 65,
+      "failed": [],
+      "rustTests": 90,
+      "denoTests": 1102,
+      "compiledFixtures": 46,
+      "packageConsumers": 13,
+      "sourceAudit": "MATCH",
+      "sourceInputCount": 1501,
+      "sourceArchive": "source-archive.json"
+    },
+    "proofCanvasV1": {
+      "status": "INCOMPLETE",
+      "numericExitCode": 1,
+      "preservedAt": "proof-canvas-v1/canvas-proof-one-shot.json",
+      "failure": "Playwright headless launch SIGABRT / EPERM before arm execution"
+    },
+    "proofCanvasV2": {
+      "status": "PASS_NUMERIC_DAG_CANVAS_UNTIMED_PROOF",
+      "numericExitCode": 0,
+      "arms": 3,
+      "browserClosed": true
+    },
+    "canvasTimingV2": {
+      "status": "PASS_NUMERIC_DAG_CANVAS_DESCRIPTIVE_TIMING",
+      "numericExitCode": 0,
+      "receipt": "proof-canvas-v2/canvas-timing-one-shot.json",
+      "framesPerArm": {
+        "warmup": 12,
+        "measured": 60
+      }
+    }
+  },
+  "hashAudit": {
+    "timingInputLockSha256": "5c1d594b9172adf998bc692276b53cbb70d49b48a3e21ffb00aae269753be76c",
+    "darwinV2ArchiveStatus": "ARCHIVED_BEFORE_PRODUCT_COMMANDS",
+    "archiveInputCount": 1511,
+    "packageSourceCount": 52,
+    "packageSourceMatchesLockAndArchive": 52,
+    "packageSourceMismatches": [],
+    "implementationFiles": [
+      {
+        "path": "compiler/oxc-spike/src/numeric_expression_dag.rs",
+        "currentSha256": "7f9a542b1f4d61f2edc8e0cc06bcf00c8d6e1cc053e38fff65ca0f8e77019385",
+        "darwinV2ArchiveSha256": "7f9a542b1f4d61f2edc8e0cc06bcf00c8d6e1cc053e38fff65ca0f8e77019385",
+        "matchesDarwinV2Archive": true,
+        "timingInputLockScope": "excluded: implementation test/compiler inputs are not installed package sources or canvas workload inputs"
+      },
+      {
+        "path": "compiler/compiled_numeric_expression_dag_test.mjs",
+        "currentSha256": "2c648e65defd3a0c47a31d34e6d1a29d94c20ea39713b7563f6e1008189ca7fb",
+        "darwinV2ArchiveSha256": "2c648e65defd3a0c47a31d34e6d1a29d94c20ea39713b7563f6e1008189ca7fb",
+        "matchesDarwinV2Archive": true,
+        "timingInputLockScope": "excluded: implementation test/compiler inputs are not installed package sources or canvas workload inputs"
+      }
+    ]
+  },
+  "postRunProcessSnapshot": {
+    "filter": "headless-browser/Playwright/Chromium/Chrome for Testing, r3act-owned project Vite/server/verify, VM/container runtimes; excluded shared vite-mcp-devtools processes",
+    "matchingProcesses": [],
+    "permissions": "Sandbox blocked ps; filtered snapshot succeeded with local-process escalation."
+  },
+  "evidenceFiles": {
+    "timingSummary": "proof-canvas-v2/timing-summary.json",
+    "timingReceipt": "proof-canvas-v2/canvas-timing-one-shot.json",
+    "darwinV1": "verification/darwin-v1/receipt.json",
+    "darwinV2": "verification/darwin-v2/receipt.json",
+    "proofCanvasV1": "proof-canvas-v1/canvas-proof-one-shot.json",
+    "proofCanvasV2": "proof-canvas-v2/canvas-proof-one-shot.json"
+  },
+  "finalFreeze": {
+    "maintainedSourceOrDocsEdited": false,
+    "newTestsBuildsOrBrowserRunsDuringEvidenceCollection": false,
+    "onlyEvidenceJsonFilesAdded": true,
+    "sourceFreeze": "Darwin-v2 source audit and timing input lock; all current package sources and the DAG Rust module/fixture 46 match archived hashes."
+  }
+}

@@ -8,6 +8,8 @@ use oxc_parser::Parser;
 use oxc_span::SourceType;
 use serde_json::{Value, json};
 
+use crate::numeric_expression_dag;
+
 #[derive(Clone, Debug)]
 pub(super) struct Sink {
     pub(super) owner_program_id: String,
@@ -280,7 +282,14 @@ pub(super) fn emit_owner_update_program(
         .join(", ");
     let mut switch_cases = String::new();
     for (slot_index, slot_site_id) in ordered_layout_site_ids.iter().enumerate() {
+        let affected_sinks = sinks.iter().enumerate().filter_map(|(index, sink)| {
+            sink.source_sites.iter().any(|site| site.as_str() == *slot_site_id).then_some(index)
+        }).collect::<Vec<_>>();
+        let (declarations, case_expressions) = numeric_expression_dag::lower_case(
+            &rewritten_expressions, &affected_sinks, ordered_layout_site_ids.len(),
+        ).unwrap_or_else(|| (String::new(), rewritten_expressions.clone()));
         let mut case_body = String::new();
+        case_body.push_str(&declarations);
         for (sink_index, sink) in sinks.iter().enumerate() {
             if !sink
                 .source_sites
@@ -290,7 +299,7 @@ pub(super) fn emit_owner_update_program(
                 continue;
             }
             let bit = 1u32 << sink_index;
-            let expression = &rewritten_expressions[sink_index];
+            let expression = &case_expressions[sink_index];
             case_body.push_str(&format!(
                 "if ((rowState.seenMask & {bit}) === 0) {{ rowState.seenMask |= {bit}; const next = ({expression}); const sinkState = rowState.sinks[{sink_index}]; const last = sinkState.lastValue; const same = last === next ? (typeof next !== 'number' || (typeof last === 'number' && (last !== 0 || 1 / last === 1 / next))) : (typeof last === 'number' && typeof next === 'number' && last !== last && next !== next); if (!same) {{ stagedInputIndices[stagedCount] = changeIndex; stagedSinkIds[stagedCount] = {sink_index}; stagedValues[stagedCount] = next; stagedCount++; }} }}"
             ));

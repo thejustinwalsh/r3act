@@ -1,5 +1,13 @@
 # Implementation checkpoint
 
+## Shared numeric expression DAG — 21 October 2026
+
+The compiler now preserves shared numeric subexpressions across affected props within each existing source-slot case. Deterministic structural interning and topologically ordered local constants retain floating-point grouping and consuming-sink guards. Runtime storage, dependency edges, sink order, validation, publication, accepted histories and exact acknowledgement are unchanged. This implements part of the human’s main-thread batching/shared-computation steer; broader DAG fusion remains open.
+
+Corrected Darwin-v2 passes 65/65 phases, 1102 runtime tests, 90 Rust tests and 46 compiled fixtures, with 1501 input hashes matched. The first gate’s fixture-observer failure remains preserved. The installed untimed proof verifies actual Native DAG kernels, React Compiler transforms, three-prop values, retained identities and cleanup; its initial sandboxed browser-launch failure remains preserved separately.
+
+The sole installed 256-object, three-prop canvas comparison remains slower than React Compiler: Native publication median/p95 1.60/3.00 ms versus 0.90/1.30 ms, with imperative floor 0.10/0.20 ms. Both proof and timing match 11449 hashes and close cleanly. This workload differs from the prior one-prop interaction, so it proves no causal old/new saving. There is no favorable repeat, presentation/R3F, matched cold/memory or independent-device claim. Historic narrow wins, qualified dense loss and physical HOLD retain scope. Realtime performance, broader batching/fusion, HMR delivery and remaining full-plan requirements stay open. [Exact results and failures](implementation/2026-10-21-numeric-expression-dag/results.md); [primary review](implementation/2026-10-21-numeric-expression-dag/source-review.md).
+
 ## Component output identity — 21 October 2026
 
 Managed intrinsic and primitive outputs now carry the existing World owner incarnation through retained VDOM compatibility. Changing a component key/type remounts a constant-explicit-key host; same-owner updates and keyed text moves retain it. Initial content may explicitly adopt a matching bare Suspense fallback, then accepts the real content owner; component-authored fallbacks remount. Candidate permission is absent from accepted snapshots and retained output caches. No alternate identity/version registry or eager whole-tree copy is added.

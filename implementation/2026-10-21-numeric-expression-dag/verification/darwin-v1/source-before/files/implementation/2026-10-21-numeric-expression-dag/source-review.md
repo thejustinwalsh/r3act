@@ -1,0 +1,13 @@
+# Primary source review
+
+The compiler replaces repeated closed numeric expression evaluation within each existing owner-kernel source-slot case. Structural keys retain operator and operand grouping, numeric literal bits and captured input identity. Topological temporary declarations carry the union of consuming sink bits; a child used by a parent includes the parent consumers. Each temporary skips evaluation when all its consumers have already been handled. Original sink staging order, source edges and seen-mask deduplication remain authoritative.
+
+Eligibility is restricted to already proven closed expressions and number-valued arithmetic over private numeric captures. Templates and unknown expressions are not hoisted. Numeric children under branches are effect-free; their grouping is retained. Bounds on source bytes, visited nodes, depth and shared nodes decline to original emission. No runtime source, persistent memo storage, public ABI, row traversal, accepted-history or acknowledgement mechanism changes.
+
+Review corrections replaced positional occurrence tuples with named fields and made declaration rewriting operate directly on the representative source span. Rust cases cover nested masks/topology, grouping, signed zero, unproven inputs and source bounds. These are authored checks until the consolidated gate executes them.
+
+Fixture 46 uses actual Rust/OXC output and AST kernel references, with Memory cuts, reverse source order, all-seen throwing-input probes, signed zero/NaN/infinity, promotion/opaque fallback and newer reentrant dispatch. The extracted function retains TypeScript non-null syntax; review corrected the probe to strip syntax from the exact emitted expression before evaluation. Three resource correctness is labeled generic unless an actual eligible kernel exists; the installed consumer independently requires actual generated DAG kernels for its two Three group owners.
+
+The new twelve-file installed consumer uses matching authored polynomial arithmetic across three transforms per object, with 256 retained objects and separate Native/React Compiler/imperative production graphs. AST proof requires masked shared temporaries and React Compiler success. The common oracle checks every field and retained identity before Canvas2D draw/readback. Setup excludes different construction work and cannot qualify matched cold mount. The prior one-prop interaction is a different workload and supplies no causal old/new timing baseline.
+
+Source review releases the frozen slice for consolidated verification. No saving, realtime advantage, presentation guarantee or general DAG-wide fusion is established by this review. Historical losses, physical HOLD, HMR delivery, cold/memory and independent-device gaps remain.
