@@ -1,6 +1,8 @@
 import {
+  Fragment,
   getComponentOutputOwner,
   jsx,
+  markSuspenseRevealAdoption,
   type RuntimeElement,
   stampComponentOutput,
 } from "./jsx_binding_runtime.ts";
@@ -79,5 +81,77 @@ Deno.test("keyed primitive component outputs move with their text hosts", () => 
     container.children[1].text !== "A2") {
     throw new Error("keyed text moves lost their new values");
   }
+  root.dispose();
+});
+
+Deno.test("flattened equal host keys retain distinct owner identities", () => {
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  const row = (owner: number, tag: string, text: string) =>
+    stampComponentOutput(jsx(tag, { key: "same:0" }, text), owner);
+  const a = row(41, "li", "A");
+  const b = row(42, "li", "B");
+
+  root.commit([jsx(Fragment, { key: "group", children: [a] }), [b]]);
+  const [first, second] = container.children;
+  root.commit([[b], jsx(Fragment, { key: "group", children: [a] })]);
+  assertSame(container.children[0], second, "second owner lost its host on move");
+  assertSame(container.children[1], first, "first owner lost its host on move");
+
+  root.commit([b]);
+  assertSame(container.children[0], second, "removal replaced the surviving owner");
+  root.commit([b, row(41, "section", "A2")]);
+  assertSame(container.children[0], second, "replacement changed the other owner");
+  assertDifferent(container.children[1], first, "host type change reused the old host");
+  root.dispose();
+});
+
+Deno.test("equal sibling keys still reject one owner or two unowned hosts", () => {
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  const sameOwner = [
+    stampComponentOutput(jsx("li", { key: "same:0" }), 51),
+    stampComponentOutput(jsx("li", { key: "same:0" }), 51),
+  ];
+  const unowned = [
+    jsx("li", { key: "same:0" }),
+    jsx("li", { key: "same:0" }),
+  ];
+  for (const tree of [sameOwner, unowned]) {
+    let rejected = false;
+    try {
+      root.commit(tree);
+    } catch (error) {
+      rejected = error instanceof Error && error.message.includes("Duplicate key");
+    }
+    if (!rejected || container.children.length !== 0) {
+      throw new Error("duplicate sibling key was accepted or mutated the host");
+    }
+  }
+  root.dispose();
+});
+
+Deno.test("bare fallback adoption respects a retained equal-key bare sibling", () => {
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  const bare = jsx("div", { key: "same:0" }, "fallback");
+  const managed = markSuspenseRevealAdoption(
+    stampComponentOutput(jsx("div", { key: "same:0" }, "ready"), 61) as RuntimeElement,
+    61,
+  );
+
+  root.commit([bare]);
+  const first = container.children[0];
+  root.commit([managed]);
+  assertSame(container.children[0], first, "approved reveal did not adopt bare host");
+
+  root.commit([bare]);
+  const retained = container.children[0];
+  root.commit([managed, bare]);
+  assertSame(container.children[1], retained, "managed reveal stole retained bare host");
+  assertDifferent(container.children[0], retained, "distinct owner aliased bare host");
   root.dispose();
 });

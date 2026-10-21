@@ -227,6 +227,41 @@ Deno.test("same-site sibling boundaries scope owners, effects, readers, and keye
   equal(cleanups, 2);
 });
 
+Deno.test("same-site boundaries under separate hosts retain and retry independently", async () => {
+  const left = deferred<string>(), right = deferred<string>(), leftNext = deferred<string>();
+  const View = defineComponent<{ id: string; promise: PromiseLike<string> }>(
+    "fixture.host-scope.boundary-view",
+    ({ id, promise }) => jsx("span", { key: "content" },
+      `${id}:${String(useAt("fixture.host-scope.read", promise))}`),
+  );
+  const host = new MemoryVDOMHost(), container = host.createContainer();
+  const root = new ComponentStateRoot(host, container);
+  const boundary = (id: string, promise: PromiseLike<string>) =>
+    jsx("section", { key: id }, jsx(Suspense, {
+      __nativeBoundarySite: "fixture.host-scope.boundary",
+      key: "same",
+      fallback: jsx("p", { key: "waiting" }, `${id}:waiting`),
+      children: jsx(View, { key: "same", id, promise }),
+    }));
+  const tree = (leftPromise: PromiseLike<string>) => jsx("main", {}, [
+    boundary("left", leftPromise), boundary("right", right.promise),
+  ]);
+  root.mount(tree(left.promise));
+  equal(text(container.children[0]), "left:waitingright:waiting");
+  left.resolve("ready");
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  equal(text(container.children[0]), "left:readyright:waiting");
+  right.resolve("ready");
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  equal(text(container.children[0]), "left:readyright:ready");
+  root.update(tree(leftNext.promise));
+  equal(text(container.children[0]), "left:readyright:ready");
+  leftNext.resolve("new");
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  equal(text(container.children[0]), "left:newright:ready");
+  root.dispose();
+});
+
 Deno.test("cached ancestor reuse keeps nested boundary owners and primary snapshots", async () => {
   const initial = deferred<string>(),
     next = deferred<string>(),

@@ -11,6 +11,7 @@ import { createNativeRoot, jsx, NativeRootWorkQueue,
   storeRecord } from "../src/native_runtime_api.ts";
 import { MemoryVDOMHost } from "../src/vdom_snapshot_runtime.ts";
 import { createThreeNativeRoot } from "../src/three_host.ts";
+import { expectedScopedOwnerSite } from "../src/structural_owner_scope_test_helpers.ts";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const directory = path.join(projectRoot, ".cache", `compiled-closed-rows-${randomUUID()}`);
@@ -295,10 +296,18 @@ try {
     const appSite = componentSites[appName];
     const appOwner = world.findOwner(rootOwner, appSite, `@slot:${appSite}:0`);
     assert.ok(appOwner, "missing app owner");
-    const listOwner = world.findOwner(appOwner, componentSites[listName], "list");
+    const appHost = kind === "dom" ? "section" : "group";
+    const appHostIdentity = automatic
+      ? ["key", "automatic-app"]
+      : kind === "dom" ? ["slot", "0"] : ["key", "app"];
+    const listOwner = world.findOwner(appOwner,
+      expectedScopedOwnerSite(componentSites[listName],
+        [["host", appHost, appHostIdentity]]), "list");
     assert.ok(listOwner, "missing collection owner");
-    return world.findOwner(listOwner,
-      `${componentSites[rowName]}\u0000collection:${collectionSites[listName]}`, key);
+    const rowSite = `${componentSites[rowName]}\u0000collection:${collectionSites[listName]}`;
+    return world.findOwner(listOwner, expectedScopedOwnerSite(rowSite,
+      [["host", kind === "dom" ? "ul" : "group",
+        ["key", automatic ? "automatic-rows" : "rows"]]]), key);
   };
   const oldDomBOwner = ownerFor(domRoot, "dom", "b");
   const oldThreeBOwner = ownerFor(three.root, "three", "b");

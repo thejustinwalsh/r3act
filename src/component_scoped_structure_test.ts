@@ -14,6 +14,7 @@ import {
 } from "./component_state_runtime.ts";
 import { createKeyedCollection } from "./keyed_collection.ts";
 import { jsx } from "./jsx_binding_runtime.ts";
+import { expectedScopedOwnerSite } from "./structural_owner_scope_test_helpers.ts";
 import { type MemoryNode, MemoryVDOMHost } from "./vdom_snapshot_runtime.ts";
 
 type Row = { id: string };
@@ -108,11 +109,16 @@ function rowOwner(
   assert(root !== undefined);
   const app = world.findOwner(root, `${id}:app`, `@slot:${id}:app:0`);
   assert(app !== undefined);
-  const list = world.findOwner(app, `${id}:list`, side);
+  const list = world.findOwner(app, expectedScopedOwnerSite(
+    `${id}:list`, [["host", "section", ["slot", "0"]]],
+  ), side);
   assert(list !== undefined);
   const row = world.findOwner(
     list,
-    `${id}:row\u0000collection:${id}:${side}:region`,
+    expectedScopedOwnerSite(
+      `${id}:row\u0000collection:${id}:${side}:region`,
+      [["host", "ul", ["slot", "0"]]],
+    ),
     key,
   );
   assert(row !== undefined);
@@ -242,7 +248,10 @@ Deno.test("accepted scoped removal revokes the owner before ref detach and clean
     assert(listOwner !== undefined);
     const owner = root.world.findOwner(
       listOwner,
-      `${id}:row\u0000collection:${id}:region`,
+      expectedScopedOwnerSite(
+        `${id}:row\u0000collection:${id}:region`,
+        [["host", "ul", ["slot", "0"]]],
+      ),
       "c",
     );
     assert(owner !== undefined);

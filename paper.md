@@ -1,5 +1,13 @@
 # A VDOM-First, Data-Oriented Runtime for Declarative UI
 
+## Structural owner scope and shared-clock validation — 21 October 2026
+
+Native component identity now includes structural host/container scope in the existing World tuple. Keyed host moves retain state; replacement retires descendants. Flattened VDOM sibling matching uses the same componentOwner identity, cached collection regions keep their subscriptions, and accepted snapshot serialization keeps the captured child representation. Closed Store coverage now makes one fresh reader pass per validation; no persistent owner/version registry or cached admission is added.
+
+Darwin-v3 passes all 69 phases: 1129 runtime tests, 93 Rust tests, all 49 compiled fixtures and package/Three/retention checks, with 1560 input hashes matched. Both failed gates remain preserved. Fresh installed proof verifies schema 6, 256 retained groups, equal component keys under distinct keyed hosts, matching outputs and cleanup. The sole canvas timing still loses to React Compiler: Native publication median/p95 3.10/3.80 ms versus 0.20/0.20 ms, imperative 0.10/0.20 ms. Each browser phase matches 11449 hashes before and after. Prior timings are not a causal old/new control; there is no favorable repeat, R3F/GPU/presentation, matched cold/memory or independent-device qualification.
+
+The semantic slice is complete; the full-plan goal remains active. Realtime speed, broader computation fusion, HMR delivery and lifecycle/independent-device requirements remain open. The next source-backed implementation candidate is compiled numeric Store kernels replacing recursive expression evaluation for proven shapes. Historical narrow wins, qualified dense FAIL, exhausted Recording A and physical HOLD retain scope. [Results and failures](implementation/2026-10-21-structural-owner-scope/results.md); [primary review](implementation/2026-10-21-structural-owner-scope/source-review.md).
+
 ## Retained-child Store clock — 21 October 2026
 
 Store schema 6 now supports closed numeric wrapper props around one direct retained child, reusing existing Store projections, owner identity, VDOM deltas and publication/history. Ordinary closed Store flushes can run without a resource subscription. The Three workbench uses one separate canonical frame Store and one RAF dispatch; child contents receive no purity claim. Repeated host keys resolve through existing owner identity without a persistent registry or recursive cache copy.

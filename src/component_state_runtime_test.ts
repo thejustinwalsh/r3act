@@ -18,6 +18,8 @@ import {
   keyedOwnerChildren,
 } from "./jsx_binding_runtime.ts";
 import { type MemoryNode, MemoryVDOMHost } from "./vdom_snapshot_runtime.ts";
+import { OwnerStateWorld } from "./owner_state_world.ts";
+import { expectedScopedOwnerSite } from "./structural_owner_scope_test_helpers.ts";
 
 const assertEquals = (
   actual: unknown,
@@ -40,6 +42,181 @@ const assertNotSame = (actual: unknown, expected: unknown, message: string) => {
 };
 const textContent = (node: MemoryNode): string =>
   (node.text ?? "") + node.children.map(textContent).join("");
+
+Deno.test("component keys are scoped by intrinsic parents and survive keyed host moves", () => {
+  const setters = new Map<string, (value: number) => boolean>();
+  const lifecycle: string[] = [];
+  const Child = defineComponent<{ label: string }>("fixture.host-scope.child", ({ label }) => {
+    const [count, setCount] = useStateAt("fixture.host-scope.count", 0);
+    setters.set(label, setCount);
+    useEffectAt("fixture.host-scope.effect", () => {
+      lifecycle.push(`mount:${label}`);
+      return () => lifecycle.push(`cleanup:${label}`);
+    });
+    return jsx("span", { key: `leaf:${label}`, "data-label": label },
+      `${label}:${count}`);
+  });
+  const App = defineComponent<{ order: string[]; replacement?: string; tag?: string }>(
+    "fixture.host-scope.app",
+    ({ order, replacement, tag }) => jsx("section", {}, order.map((label) =>
+      jsx(label === "right" ? (tag ?? "div") : "div", {
+        key: label === "right" ? (replacement ?? label) : label,
+      }, jsx(Child, { key: "same", label }))
+    )),
+  );
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const paths: string[] = [];
+  const root = new ComponentStateRoot(host, container, {
+    renderPreparation: "repeatable",
+    profile: phase => paths.push(phase),
+  });
+  const tree = (order: string[], replacement?: string, tag?: string) =>
+    jsx(App, { order, replacement, tag });
+  root.mount(tree(["left", "right"]));
+  assertEquals(lifecycle, ["mount:left", "mount:right"]);
+  const section = container.children[0];
+  const left = section.children[0];
+  const right = section.children[1];
+  setters.get("left")!(1);
+  root.flush();
+  assertEquals(paths.includes("dispatch.path.partial-owner"), true,
+    "state update did not exercise partial-owner publication");
+  setters.get("right")!(2);
+  root.flush();
+  assertEquals(section.children.map(textContent), ["left:1", "right:2"]);
+  root.update(tree(["right", "left"]));
+  assertSame(section.children[0], right, "keyed right host moved with its child");
+  assertSame(section.children[1], left, "keyed left host moved with its child");
+  assertEquals(section.children.map(textContent), ["right:2", "left:1"]);
+  root.update(tree(["right", "left"], "right-new"));
+  assertEquals(section.children.map(textContent), ["right:0", "left:1"]);
+  assertEquals(lifecycle.slice(-2), ["cleanup:right", "mount:right"]);
+  root.update(tree(["right", "left"], "right-new", "article"));
+  assertEquals(section.children.map(textContent), ["right:0", "left:1"]);
+  assertEquals(lifecycle.slice(-2), ["cleanup:right", "mount:right"]);
+  root.dispose();
+});
+
+Deno.test("nested arrays and Fragments separate component owners without changing direct root slots", () => {
+  const world = new OwnerStateWorld();
+  const setters = new Map<string, (value: number) => boolean>();
+  const Child = defineComponent<{ label: string }>("fixture.container-scope.child", ({ label }) => {
+    const [count, setCount] = useStateAt("fixture.container-scope.count", 0);
+    setters.set(label, setCount);
+    return jsx("span", { "data-label": label }, `${label}:${count}`);
+  });
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new ComponentStateRoot(host, container, { world, rootId: "container-scope" });
+  root.mount(jsx(Child, { key: "direct", label: "direct" }));
+  const rootOwner = world.findOwner(null, "@component-root:container-scope");
+  if (rootOwner === undefined) throw new Error("missing root owner");
+  assertSame(world.findOwner(rootOwner, "fixture.container-scope.child", "direct") !== undefined,
+    true, "direct root component changed World slot");
+  root.update(jsx("section", {}, [
+    [jsx(Child, { key: "same", label: "array-a" })],
+    [jsx(Child, { key: "same", label: "array-b" })],
+    jsx(Fragment, {}, jsx(Child, { key: "same", label: "fragment-a" })),
+    jsx(Fragment, {}, jsx(Child, { key: "same", label: "fragment-b" })),
+  ]));
+  assertEquals(container.children[0].children.map(textContent),
+    ["array-a:0", "array-b:0", "fragment-a:0", "fragment-b:0"]);
+  setters.get("array-a")!(1);
+  setters.get("fragment-b")!(2);
+  root.flush();
+  assertEquals(container.children[0].children.map(textContent),
+    ["array-a:1", "array-b:0", "fragment-a:0", "fragment-b:2"]);
+  root.dispose();
+});
+
+Deno.test("keyed Fragments move owners while unkeyed host positions remount", () => {
+  const setters = new Map<string, (value: number) => boolean>();
+  const Child = defineComponent<{ label: string }>("fixture.fragment-scope.child", ({ label }) => {
+    const [count, setCount] = useStateAt("fixture.fragment-scope.count", 0);
+    setters.set(label, setCount);
+    return jsx("span", { "data-label": label }, `${label}:${count}`);
+  });
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new ComponentStateRoot(host, container);
+  const fragments = (labels: string[]) => jsx("section", {}, labels.map(label =>
+    jsx(Fragment, { key: label }, jsx(Child, { key: "same", label }))));
+  root.mount(fragments(["a", "b"]));
+  setters.get("b")!(5);
+  root.flush();
+  root.update(fragments(["b", "a"]));
+  assertEquals(container.children[0].children.map(textContent), ["b:5", "a:0"]);
+  const hosts = (labels: string[]) => jsx("section", {}, labels.map(label =>
+    jsx("div", {}, jsx(Child, { key: "same", label }))));
+  root.update(hosts(["a", "b"]));
+  setters.get("b")!(7);
+  root.flush();
+  assertEquals(container.children[0].children.map(textContent), ["a:0", "b:7"]);
+  root.update(hosts(["b"]));
+  assertEquals(container.children[0].children.map(textContent), ["b:0"],
+    "unkeyed host movement retained a positional owner");
+  root.dispose();
+});
+
+Deno.test("authored component sites reserve NUL while host keys safely contain separators", () => {
+  let rejected = false;
+  try {
+    defineComponent("fixture.separator.child\u0000structural:[\"x\"]", () => null);
+  } catch (error) {
+    rejected = error instanceof Error && error.message.includes("cannot contain NUL");
+  }
+  assertEquals(rejected, true, "NUL site ID entered the runtime identity namespace");
+  const setters = new Map<string, (value: number) => boolean>();
+  const Child = defineComponent<{ label: string }>(
+    "fixture.separator.child", ({ label }) => {
+      const [count, setCount] = useStateAt("fixture.separator.count", 0);
+      setters.set(label, setCount);
+      return jsx("span", {}, `${label}:${count}`);
+    },
+  );
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new ComponentStateRoot(host, container);
+  root.mount(jsx("main", {}, [
+    jsx("div", { key: "left\u0000structural:[\"x\"]" },
+      jsx(Child, { key: "same", label: "left" })),
+    jsx("div", { key: "right:[\"x\"]" },
+      jsx(Child, { key: "same", label: "right" })),
+  ]));
+  setters.get("left")!(3);
+  root.flush();
+  assertEquals(container.children[0].children.map(textContent), ["left:3", "right:0"]);
+  root.dispose();
+});
+
+Deno.test("deep host scopes stay bounded and retain the innermost owner", () => {
+  let setCount: ((value: number) => boolean) | undefined;
+  const Child = defineComponent("fixture.deep-host-scope.child", () => {
+    const [count, set] = useStateAt("fixture.deep-host-scope.count", 0);
+    setCount = set;
+    return jsx("span", {}, String(count));
+  });
+  const tree = () => {
+    let node = jsx(Child, { key: "same" });
+    for (let depth = 0; depth < 64; depth++) {
+      node = jsx("div", { key: `\\\\:${depth}\u0000[\"scope\"]` }, node);
+    }
+    return node;
+  };
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new ComponentStateRoot(host, container,
+    { renderPreparation: "repeatable" });
+  root.mount(tree());
+  assertEquals(textContent(container.children[0]), "0");
+  setCount!(4);
+  root.flush();
+  assertEquals(textContent(container.children[0]), "4");
+  root.update(tree());
+  assertEquals(textContent(container.children[0]), "4");
+  root.dispose();
+});
 
 Deno.test("OXC-lowered state sites execute through VDOM and survive conditional activation", async () => {
   const panelPlan = componentStateSitesPlan.components.find((component) =>
@@ -161,7 +338,13 @@ Deno.test("failed component candidate removes new owner state and preserves comm
   const tree = (key: string, fail: boolean) =>
     jsx("section", {}, jsx(Flaky, { key, fail }));
   root.mount(tree("stable", false));
-  const rootOwner = root.world.resolveOwner(null, "@component-root");
+  const rootOwner = root.world.findOwner(null, `@component-root:${root.rootId}`);
+  if (rootOwner === undefined) throw new Error("Missing claimed component root");
+  const flakySite = expectedScopedOwnerSite(
+    "fixture.flaky", [["host", "section", ["slot", "0"]]],
+  );
+  assertSame(root.world.findOwner(rootOwner, flakySite, "stable") !== undefined,
+    true, "accepted owner was not at the scoped host address");
   const committedNode = container.children[0];
   setValue!("updated");
   try {
@@ -178,7 +361,7 @@ Deno.test("failed component candidate removes new owner state and preserves comm
     "Failed component candidate changed committed host output",
   );
   assertEquals(
-    root.world.findOwner(rootOwner, "fixture.flaky", "candidate"),
+    root.world.findOwner(rootOwner, flakySite, "candidate"),
     undefined,
     "Failed candidate leaked a component owner",
   );

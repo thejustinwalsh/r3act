@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { createNativeRoot, jsx } from "../src/native_runtime_api.ts";
 import { MemoryVDOMHost } from "../src/vdom_snapshot_runtime.ts";
 import { nativeModulePlugin } from "./vite_native_plugin.ts";
+import { expectedScopedOwnerSite } from "../src/structural_owner_scope_test_helpers.ts";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const cacheDirectory = path.join(projectRoot, ".cache/numeric-state-layout");
@@ -131,7 +132,8 @@ try {
   const collectionMatch = transformed.code.match(/__nativeRenderCollectionAt\("([^"\n]+#collection:\d+)"/);
   assert.ok(collectionMatch, "compiler must emit a stable keyed collection site");
   const rowOwnerSite = `${rowSite}\u0000collection:${collectionMatch[1]}`;
-  const ownerFor = (id) => root.world.findOwner(boardOwner, rowOwnerSite, id);
+  const ownerFor = (id) => root.world.findOwner(boardOwner,
+    expectedScopedOwnerSite(rowOwnerSite, [["host", "ul", ["slot", "0"]]]), id);
   const nodeFor = (id) => allNodes(container).find((node) => node.props?.["data-row"] === id);
   const addressesFor = (owner) => stateSites.map((site) => {
     const address = root.world.numericLane(owner, site);

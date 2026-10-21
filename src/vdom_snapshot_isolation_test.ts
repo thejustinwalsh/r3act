@@ -1,4 +1,4 @@
-import { jsx, keyedOwnerChildren } from "./jsx_binding_runtime.ts";
+import { jsx, keyedOwnerChildren, stampComponentOutput } from "./jsx_binding_runtime.ts";
 import {
   type MemoryNode,
   MemoryVDOMHost,
@@ -81,6 +81,59 @@ Deno.test("clean accepted snapshot and retained nested VNodes survive keyed publ
     equal(retainedParent.children, retainedRows, "retained child array changed");
   } finally {
     root.dispose();
+  }
+});
+
+Deno.test("dirty accepted snapshot keeps keyed bucket authority across raw-key collisions", () => {
+  for (const direction of ["ambiguous-to-unique", "unique-to-ambiguous"]) {
+    let root!: VDOMSnapshotRoot<MemoryNode, MemoryNode>;
+    let inspect = false;
+    let during: readonly unknown[] | undefined;
+    const host = new class extends MemoryVDOMHost {
+      override place(parent: MemoryNode, node: MemoryNode, before: MemoryNode | null) {
+        if (inspect && node.tag === "aside") during = root.snapshot;
+        super.place(parent, node, before);
+      }
+    }();
+    root = new VDOMSnapshotRoot(host, host.createContainer());
+    const row = (owner: number) =>
+      stampComponentOutput(jsx("article", { key: "same:0" }, owner), owner);
+    const initialRows = direction === "ambiguous-to-unique"
+      ? [row(71), row(72)] : [row(71)];
+    const nextRows = direction === "ambiguous-to-unique"
+      ? [row(72)] : [row(71), row(72)];
+    const scene = (items: ReturnType<typeof row>[], prefix: boolean, added: boolean) =>
+      jsx("main", { key: "root" }, [
+        ...(prefix ? [jsx("aside", { key: "prefix" })] : []),
+        jsx("section", { key: "rows" }, keyedOwnerChildren("rows-region", items)),
+        jsx("ul", { key: "touch" }, keyedOwnerChildren("touch-region", [
+          jsx("li", { key: "touch-a" }),
+          ...(added ? [jsx("li", { key: "touch-b" })] : []),
+        ])),
+      ]);
+    try {
+      root.commit(scene(initialRows, false, false));
+      equal(root.commitKeyedRegionDelta("root", "touch-region", [{
+        type: "insert", key: "touch-b", beforeKey: null,
+        tree: jsx("li", { key: "touch-b" }),
+      }]), true, `${direction} dirtying delta`);
+      root.beginPublication();
+      inspect = true;
+      root.commit(scene(nextRows, true, true));
+      inspect = false;
+      if (!during) throw new Error(`${direction} missed host-time snapshot`);
+      const acceptedRows = ((during[0] as SnapshotElement).children[0].children)
+        .map((node) => node.key);
+      equal(acceptedRows, initialRows.map(() => "same:0"),
+        `${direction} leaked candidate rows into accepted snapshot`);
+      root.publishAccepted();
+      const publishedRows = ((root.snapshot[0] as SnapshotElement).children[1].children)
+        .map((node) => node.key);
+      equal(publishedRows, nextRows.map(() => "same:0"),
+        `${direction} failed to publish candidate rows`);
+    } finally {
+      root.dispose();
+    }
   }
 });
 

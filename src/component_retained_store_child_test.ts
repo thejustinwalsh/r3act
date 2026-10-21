@@ -123,6 +123,51 @@ Deno.test("closed Store wrapper updates props while retaining an independently c
   assertEquals(childCleanup, 1);
 });
 
+Deno.test("closed Store cut declines an uncovered reader on the same owner", () => {
+  const sourceFile = "retained-store-child/extra-reader.tsx";
+  const revision = "retained-store-extra-reader-v1";
+  registerCompiledSemanticPlan({
+    schema_version: 1, source_file: sourceFile, module_revision: revision,
+    owners: [], sources: [], sinks: [], operations: [],
+    graph: { coverage: "proven-sinks-only", source_to_sinks: {}, execution_order: [] },
+  });
+  const clock = createAsyncStore(0, (_old: number, next: number) => next);
+  const shadow = createAsyncStore(0, (_old: number, next: number) => next);
+  const motionSite = `${sourceFile}#component:Motion`;
+  const clockSite = `${motionSite}#store:clock`;
+  const shadowSite = `${motionSite}#store:shadow`;
+  let renders = 0;
+  const Motion = defineComponent(motionSite,
+    (props: { clock: typeof clock; shadow: typeof shadow; children: RuntimeNode }) => {
+      renders++;
+      const phase = useStoreAt(clockSite, props.clock);
+      useStoreAt(shadowSite, props.shadow);
+      return jsx("group", { key: "motion", "rotation-y": phase }, props.children);
+    }, { propOnlySites: [], closedStoreHostProgram: {
+      schemaVersion: 6, componentProgramId: motionSite, moduleRevision: revision,
+      retainedChildProp: "children",
+      inputs: [{ storeUseSiteId: clockSite, storeProp: "clock", paths: [[]] }],
+      host: { tag: "group", key: "motion", child: null,
+        props: [["rotation-y", { kind: "input", index: 0 }]] },
+    } });
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new ComponentStateRoot(host, container,
+    { rootId: "retained-store-extra-reader", scheduleCommit() {} });
+  try {
+    root.mount(jsx(Motion, { key: "motion-owner", clock, shadow,
+      children: jsx("mesh", { key: "child" }) }));
+    clock.dispatch(1);
+    assertEquals(root.prepareStores([clock]), null,
+      "uncovered same-owner reader entered the closed Store cut");
+    root.flush();
+    assertEquals(container.children[0].props["rotation-y"], 1);
+    assert(renders > 1, "extra reader did not route through generic rendering");
+  } finally {
+    root.dispose();
+  }
+});
+
 Deno.test("retained Store proof declines caller-owned and nested Store children", () => {
   for (const kind of ["caller-owned", "proxy-child", "nested-reader"] as const) {
     const sourceFile = `retained-store-child/${kind}.tsx`;

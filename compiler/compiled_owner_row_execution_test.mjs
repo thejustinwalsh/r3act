@@ -8,6 +8,7 @@ import { createNativeRoot, jsx, inspectCompiledSemanticPlan } from "../src/nativ
 import { MemoryVDOMHost, VDOMSnapshotRoot } from "../src/vdom_snapshot_runtime.ts";
 import { nativeModulePlugin } from "./vite_native_plugin.ts";
 import { compiledNumericDescriptors } from "./compiled_numeric_descriptor_test_helpers.mjs";
+import { expectedScopedOwnerSite } from "../src/structural_owner_scope_test_helpers.ts";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const cacheDirectory = path.join(projectRoot, ".cache/compiled-owner-proof");
@@ -262,7 +263,8 @@ try {
   const collectionMatch = transformed.code.match(/__nativeRenderCollectionAt\("([^"\n]+#collection:\d+)"/);
   assert.ok(collectionMatch, "compiler emits stable keyed collection site");
   const rowOwnerSite = `${rowSite}\u0000collection:${collectionMatch[1]}`;
-  const ownerFor = (id) => root.world.findOwner(boardOwner, rowOwnerSite, id);
+  const ownerFor = (id) => root.world.findOwner(boardOwner,
+    expectedScopedOwnerSite(rowOwnerSite, [["host", "ul", ["slot", "0"]]]), id);
   const ownerA = ownerFor("a");
   const ownerB = ownerFor("b");
   assert.notEqual(ownerA, undefined, "row a owner is live");

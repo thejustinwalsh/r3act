@@ -11,6 +11,7 @@ import { createNativeRoot, jsx, storeRecord } from "../src/native_runtime_api.ts
 import { createThreeNativeRoot } from "../src/three_host.ts";
 import { MemoryVDOMHost } from "../src/vdom_snapshot_runtime.ts";
 import { NativeRootWorkQueue } from "../src/native_root_work_queue.ts";
+import { expectedScopedOwnerSite } from "../src/structural_owner_scope_test_helpers.ts";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const compilerBinary = path.join(projectRoot, "compiler/oxc-spike/target/debug/ui-graph-compiler-spike");
@@ -199,8 +200,12 @@ try {
     assert.notEqual(rootOwner, undefined, `${appName} root owner missing`);
     const appOwner = world.findOwner(rootOwner, appSite, `@slot:${appSite}:0`);
     assert.notEqual(appOwner, undefined, `${appName} owner missing`);
+    const boundarySite = `\u0000native-suspense:${boundarySites.get(appName)}`;
+    const boundaryScope = appName === "AppDom"
+      ? [["host", "section", ["slot", "0"]]]
+      : [["host", "group", ["key", "scene-root"]]];
     const boundaryOwner = world.findOwner(appOwner,
-      `\u0000native-suspense:${boundarySites.get(appName)}`, "joint-boundary");
+      expectedScopedOwnerSite(boundarySite, boundaryScope), "joint-boundary");
     assert.notEqual(boundaryOwner, undefined, `${appName} boundary owner missing`);
     const owners = [];
     let parent = boundaryOwner;

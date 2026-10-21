@@ -10,6 +10,7 @@ import { createKeyedCollection, type KeyedCollectionOperation } from "./keyed_co
 import { jsx } from "./jsx_binding_runtime.ts";
 import { type MemoryNode, MemoryVDOMHost } from "./vdom_snapshot_runtime.ts";
 import { OwnerStateWorld } from "./owner_state_world.ts";
+import { expectedScopedOwnerSite } from "./structural_owner_scope_test_helpers.ts";
 
 const assert = (condition: unknown, message: string) => {
   if (!condition) throw new Error(message);
@@ -24,6 +25,196 @@ const textContent = (node: MemoryNode): string =>
 const flushMicrotasks = async () => await new Promise<void>((resolve) => queueMicrotask(resolve));
 
 type RowData = { id: string; value: number };
+
+Deno.test("same-site collections under distinct hosts keep independent row owners", () => {
+  const leftRows = createKeyedCollection<RowData>([{ id: "a", value: 1 }], row => row.id);
+  const rightRows = createKeyedCollection<RowData>([{ id: "a", value: 10 }], row => row.id);
+  const setters = new Map<string, (value: number) => boolean>();
+  const Row = defineComponent<{ side: string; row: RowData }>(
+    "fixture.host-scoped-collection-row",
+    ({ side, row }) => {
+      const [count, setCount] = useStateAt("fixture.host-scoped-collection-count", 0);
+      setters.set(side, setCount);
+      return jsx("li", { key: row.id, "data-side": side }, `${side}:${row.value}:${count}`);
+    },
+  );
+  const App = defineComponent<{ leftHostKey?: string }>(
+    "fixture.host-scoped-collection-app", ({ leftHostKey }) =>
+    jsx("section", {}, [
+      jsx("ul", { key: leftHostKey ?? "left" }, renderCollectionAt(
+        "fixture.shared-collection-site", leftRows,
+        row => jsx(Row, { key: row.id, side: "left", row }),
+      )),
+      jsx("ul", { key: "right" }, renderCollectionAt(
+        "fixture.shared-collection-site", rightRows,
+        row => jsx(Row, { key: row.id, side: "right", row }),
+      )),
+    ]),
+  );
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new ComponentStateRoot(host, container, { renderPreparation: "repeatable" });
+  root.mount(jsx(App, {}));
+  const section = container.children[0];
+  const left = section.children[0];
+  const right = section.children[1];
+  equal([textContent(left), textContent(right)], ["left:1:0", "right:10:0"],
+    "same row key aliased across host parents");
+  setters.get("left")!(2);
+  root.flush();
+  equal([textContent(left), textContent(right)], ["left:1:2", "right:10:0"],
+    "row state crossed host scope");
+  assert(leftRows.apply(leftRows.version, [
+    { type: "replace", key: "a", value: { id: "a", value: 3 } },
+    { type: "insert", key: "b", beforeKey: null, value: { id: "b", value: 4 } },
+  ]).ok, "left collection update failed");
+  assert(root.flush(), "left collection did not publish");
+  equal([textContent(left), textContent(right)], ["left:3:2left:4:0", "right:10:0"],
+    "left collection update altered right row or lost left state");
+  assert(rightRows.apply(rightRows.version, [
+    { type: "replace", key: "a", value: { id: "a", value: 11 } },
+  ]).ok, "right collection update failed");
+  assert(root.flush(), "right collection did not publish");
+  equal([textContent(left), textContent(right)], ["left:3:2left:4:0", "right:11:0"],
+    "right collection update altered left rows");
+  root.update(jsx(App, { leftHostKey: "left-replaced" }));
+  equal([textContent(section.children[0]), textContent(section.children[1])],
+    ["left:3:0left:4:0", "right:11:0"],
+    "host replacement kept old collection row owners or altered sibling rows");
+  root.dispose();
+});
+
+Deno.test("cached parent carries every scoped collection reader through sibling updates", () => {
+  const first = createKeyedCollection<RowData>([{ id: "a", value: 1 }], row => row.id);
+  const second = createKeyedCollection<RowData>([{ id: "a", value: 10 }], row => row.id);
+  let listRenders = 0;
+  let updateSibling: ((value: number) => boolean) | undefined;
+  const Row = defineComponent<{ row: RowData }>(
+    "fixture.cached-regions.row", ({ row }) =>
+      jsx("li", { key: row.id }, `${row.id}:${row.value}`),
+  );
+  const Lists = defineComponent("fixture.cached-regions.lists", () => {
+    listRenders++;
+    return jsx("section", {}, [
+      jsx("ul", { key: "first" }, renderCollectionAt(
+        "fixture.cached-regions.shared-site", first,
+        row => jsx(Row, { key: row.id, row }),
+      )),
+      jsx("ul", { key: "second" }, renderCollectionAt(
+        "fixture.cached-regions.shared-site", second,
+        row => jsx(Row, { key: row.id, row }),
+      )),
+    ]);
+  });
+  const Sibling = defineComponent("fixture.cached-regions.sibling", () => {
+    const [count, setCount] = useStateAt("fixture.cached-regions.sibling-count", 0);
+    updateSibling = setCount;
+    return jsx("output", {}, String(count));
+  });
+  const tree = (showLists: boolean) => jsx("main", {}, [
+    showLists ? jsx(Lists, { key: "lists" }) : null,
+    jsx(Sibling, { key: "sibling" }),
+  ]);
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const paths: string[] = [];
+  const root = new ComponentStateRoot(host, container, {
+    scheduleCommit: () => {}, profile: phase => paths.push(phase),
+  });
+  root.mount(tree(true));
+  equal([first.stats().readerCount, second.stats().readerCount], [1, 1],
+    "initial collection readers");
+  paths.length = 0;
+  updateSibling!(1);
+  assert(root.flush(), "sibling state did not publish");
+  assert(paths.includes("dispatch.path.full-reconcile"),
+    "sibling update did not exercise full-candidate collection carryover");
+  equal(listRenders, 1, "unrelated update rerendered cached collection parent");
+  equal([first.stats().readerCount, second.stats().readerCount], [1, 1],
+    "cached parent dropped one scoped collection reader");
+  assert(first.apply(first.version, [
+    { type: "replace", key: "a", value: { id: "a", value: 2 } },
+  ]).ok, "first collection replacement failed");
+  assert(root.flush(), "first collection notification was lost");
+  equal(textContent(container.children[0]), "a:2a:101",
+    "first collection did not publish after cached reuse");
+  root.update(tree(false));
+  equal([first.stats().readerCount, second.stats().readerCount], [0, 0],
+    "removing collection parent retained a reader");
+  root.dispose();
+});
+
+Deno.test("authored collection sites cannot occupy the internal NUL namespace", () => {
+  const source = createKeyedCollection<RowData>([{ id: "a", value: 1 }], row => row.id);
+  const App = defineComponent("fixture.invalid-collection-site.app", () =>
+    renderCollectionAt("fixture.site\u0000structural:[\"x\"]", source,
+      row => jsx("li", { key: row.id }, String(row.value))));
+  const host = new MemoryVDOMHost();
+  const root = new ComponentStateRoot(host, host.createContainer());
+  let rejected = false;
+  try {
+    root.mount(jsx(App, {}));
+  } catch (error) {
+    rejected = error instanceof Error && error.message.includes("renderCollectionAt requires");
+  }
+  assert(rejected, "NUL collection site entered the scoped region namespace");
+  root.dispose();
+});
+
+Deno.test("structural owner removal retires all scoped collection readers", () => {
+  const first = createKeyedCollection<RowData>([{ id: "a", value: 1 }], row => row.id);
+  const second = createKeyedCollection<RowData>([{ id: "a", value: 10 }], row => row.id);
+  let setVisible: ((value: number) => boolean) | undefined;
+  const Row = defineComponent<{ row: RowData }>(
+    "fixture.retired-regions.row", ({ row }) => jsx("li", {}, String(row.value)),
+  );
+  const Lists = defineComponent("fixture.retired-regions.lists", () => {
+    const [visible, set] = useStateAt("fixture.retired-regions.visible", 2);
+    setVisible = set;
+    return jsx("section", {}, [
+      visible >= 1 ? jsx("ul", { key: "first" }, renderCollectionAt(
+        "fixture.retired-regions.site", first,
+        row => jsx(Row, { key: row.id, row }),
+      )) : null,
+      visible >= 2 ? jsx("ul", { key: "second" }, renderCollectionAt(
+        "fixture.retired-regions.site", second,
+        row => jsx(Row, { key: row.id, row }),
+      )) : null,
+    ]);
+  });
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const paths: string[] = [];
+  let scheduled = 0;
+  const root = new ComponentStateRoot(host, container, {
+    renderPreparation: "repeatable",
+    scheduleCommit: () => { scheduled++; },
+    profile: phase => paths.push(phase),
+  });
+  root.mount(jsx(Lists, {}));
+  equal([first.stats().readerCount, second.stats().readerCount], [1, 1],
+    "initial readers");
+  setVisible!(1);
+  assert(root.flush(), "single-region removal did not publish");
+  equal([first.stats().readerCount, second.stats().readerCount], [1, 0],
+    "single-region removal retained obsolete reader");
+  setVisible!(0);
+  assert(root.flush(), "all-region removal did not publish");
+  equal([first.stats().readerCount, second.stats().readerCount], [0, 0],
+    "all-region removal retained obsolete reader");
+  assert(paths.includes("dispatch.path.structural-owner"),
+    "owner local update did not exercise structural commit");
+  const scheduledAfterRemoval = scheduled;
+  assert(first.apply(first.version, [
+    { type: "replace", key: "a", value: { id: "a", value: 2 } },
+  ]).ok, "retired first collection update failed");
+  assert(second.apply(second.version, [
+    { type: "replace", key: "a", value: { id: "a", value: 20 } },
+  ]).ok, "retired second collection update failed");
+  equal(scheduled, scheduledAfterRemoval,
+    "retired collection still schedules its former root");
+  root.dispose();
+});
 
 Deno.test("native collection delta renders only changed rows and preserves surviving owner and host identity", async () => {
   const collection = createKeyedCollection<RowData>([
@@ -568,12 +759,19 @@ Deno.test("host failure during sparse delta rolls back candidate owners and make
   root.mount(jsx(List, { collection }));
   const rootOwner = world.findOwner(null, "@component-root:throwing-host-root")!;
   const listOwner = world.findOwner(rootOwner, "fixture.throw-list", "@slot:fixture.throw-list:0")!;
+  const rowSite = expectedScopedOwnerSite(
+    "fixture.throw-row\u0000collection:fixture.throw-region",
+    [["host", "ul", ["slot", "0"]]],
+  );
+  assert(world.findOwner(listOwner, rowSite, "a") !== undefined,
+    "accepted row was not at the scoped host address");
   host.throwOnNextPlace = true;
   collection.apply(collection.version, [{ type: "insert", key: "b", value: { id: "b", value: 2 }, beforeKey: null }]);
   let hostFailure = false;
   try { root.flush(); } catch { hostFailure = true; }
   assert(hostFailure, "host failure was not propagated");
-  assert(world.findOwner(listOwner, "fixture.throw-row\u0000collection:fixture.throw-region", "b") === undefined, "failed sparse candidate owner leaked");
+  assert(world.findOwner(listOwner, rowSite, "b") === undefined,
+    "failed sparse candidate owner leaked");
   let terminalFailure = false;
   try { root.flush(); } catch (error) {
     terminalFailure = String(error).includes("cannot continue after a host commit failure");

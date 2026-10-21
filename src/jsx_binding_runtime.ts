@@ -21,6 +21,7 @@ export type RuntimeElement = {
 
 const runtimeOwnedElements = new WeakSet<object>();
 const componentOutputOwnerTag = Symbol("component-output-owner");
+const generatedHostKeyTag = Symbol("generated-host-key");
 const suspenseRevealAdoptionTag = Symbol("suspense-reveal-adoption");
 
 /** True only for an element and props allocated by the runtime. */
@@ -42,6 +43,23 @@ export const copyRuntimeElement = (
   props: Object.freeze(componentOwner === undefined
     ? { ...props } : { ...props, [componentOutputOwnerTag]: componentOwner }),
 }));
+
+/** @internal Copy an intrinsic with a runtime-generated host key. */
+export const copyRuntimeElementWithGeneratedHostKey = (
+  type: string,
+  props: Record<string, any>,
+  componentOwner?: number,
+): RuntimeElement => copyRuntimeElement(type, {
+  ...props,
+  [generatedHostKeyTag]: true,
+}, componentOwner);
+
+/** @internal Read generated-key provenance only from a runtime-owned intrinsic. */
+export const hasGeneratedHostKey = (element: RuntimeElement): boolean => {
+  if (!isRuntimeOwnedElement(element) || typeof element.type !== "string") return false;
+  const descriptor = Object.getOwnPropertyDescriptor(element.props, generatedHostKeyTag);
+  return descriptor !== undefined && "value" in descriptor && descriptor.value === true;
+};
 
 const keyedOwnerRegionTag = Symbol("keyed-owner-region");
 const keyedOwnerVersionTag = Symbol("keyed-owner-version");

@@ -97,9 +97,11 @@ import {
   type ComponentType,
   copyKeyedOwnerMetadata,
   copyRuntimeElement,
+  copyRuntimeElementWithGeneratedHostKey,
   createKeyedOwnerVersion,
   Fragment,
   getComponentOutputOwner,
+  hasGeneratedHostKey,
   getKeyedOwnerRegionId,
   getKeyedOwnerVersion,
   isRuntimeOwnedElement,
@@ -525,6 +527,7 @@ type KeyedRegionCache = {
   regionId: string;
   version: object;
   componentSiteId: string;
+  siteScope?: string;
   outputsByKey: Map<string, RuntimeNode>;
   keysByOwner: Map<OwnerId, string>;
   collection?: CollectionRegionCache;
@@ -543,6 +546,7 @@ type CollectionRegionDescriptor<T = unknown> = {
 type CollectionRegionCache = CollectionRegionDescriptor<any> & {
   parentOwner: OwnerId;
   parentHostKey: string | null;
+  siteScope?: string;
   reader?: ReturnType<KeyedCollection<unknown>["createReader"]>;
   hostKeysByCollectionKey: Map<string, string>;
   unsubscribe?: () => void;
@@ -658,8 +662,9 @@ export const defineComponent = <P extends Record<string, unknown>>(
     readonly closedComponentForwardProgram?: ClosedComponentForwardProgram;
   },
 ): ComponentType<P> => {
-  if (siteId.length === 0) {
-    throw new Error("Component site ID must not be empty");
+  if (siteId.length === 0) throw new Error("Component site ID must not be empty");
+  if (siteId.includes("\u0000")) {
+    throw new Error("Component site ID cannot contain NUL");
   }
   const priorDefinition = definedComponents.get(render);
   if (priorDefinition && priorDefinition.siteId === siteId &&
@@ -1477,7 +1482,8 @@ export const renderCollectionAt = <T>(
     throw new Error("renderCollectionAt must run while an owner is rendering");
   }
   if (
-    !siteId || !collection || typeof collection.snapshot !== "function" ||
+    !siteId || siteId.includes("\u0000") || !collection ||
+    typeof collection.snapshot !== "function" ||
     typeof collection.createReader !== "function" ||
     typeof renderRow !== "function"
   ) {
@@ -1596,6 +1602,69 @@ const collectionOwnerSite = (
   componentSiteId: string,
 ) => `${componentSiteId}\u0000collection:${collectionSiteId}`;
 
+type StructuralScope = { siteScope?: string; position: string };
+const rootStructuralScope: StructuralScope = { position: "0" };
+const scopedOwnerSite = (site: string, scope?: string): string =>
+  scope === undefined ? site : `\u0000structural:${JSON.stringify([site, scope])}`;
+const collectionRegionKey = (
+  parentOwner: OwnerId, siteId: string, siteScope?: string,
+): string => `${parentOwner}\u0000${scopedOwnerSite(siteId, siteScope)}`;
+const hasSiblingCollectionSite = (
+  regions: Iterable<CollectionRegionCache>, region: CollectionRegionCache,
+): boolean => {
+  for (const other of regions) {
+    if (other !== region && other.parentOwner === region.parentOwner &&
+      other.siteId === region.siteId) return true;
+  }
+  return false;
+};
+const structuralChildPosition = (
+  scope: StructuralScope, index: number,
+): StructuralScope => ({ ...scope, position: `${scope.position}/${index}` });
+const appendStructuralSegment = (
+  siteScope: string | undefined, segment: readonly unknown[],
+): string => {
+  const encoded = JSON.stringify(segment);
+  return `${siteScope ?? ""}${encoded.length}:${encoded}`;
+};
+const structuralContainerScope = (
+  scope: StructuralScope, kind: "array" | "fragment",
+): StructuralScope => scope.position === "0" ? scope : {
+  siteScope: appendStructuralSegment(scope.siteScope,
+    [kind, ["slot", scope.position]]),
+  position: "0",
+};
+const structuralHostScope = (
+  scope: StructuralScope, node: RuntimeElement,
+): StructuralScope => {
+  const descriptor = isRuntimeOwnedElement(node)
+    ? Object.getOwnPropertyDescriptor(node.props, "key") : undefined;
+  const value = descriptor && "value" in descriptor ? descriptor.value : undefined;
+  const authoredKey = !hasGeneratedHostKey(node) &&
+      (typeof value === "string" || typeof value === "number")
+    ? String(value) : undefined;
+  return {
+    siteScope: appendStructuralSegment(scope.siteScope,
+      ["host", node.type,
+        authoredKey === undefined ? ["slot", scope.position] : ["key", authoredKey]]),
+    position: "0",
+  };
+};
+const structuralFragmentScope = (
+  scope: StructuralScope, node: RuntimeElement,
+): StructuralScope => {
+  const descriptor = isRuntimeOwnedElement(node)
+    ? Object.getOwnPropertyDescriptor(node.props, "key") : undefined;
+  const value = descriptor && "value" in descriptor ? descriptor.value : undefined;
+  return typeof value !== "string" && typeof value !== "number"
+    ? structuralContainerScope(scope, "fragment")
+    : {
+    siteScope: appendStructuralSegment(scope.siteScope,
+      ["fragment", String(value)]),
+    position: "0",
+  };
+};
+
 const carryHostKeys = (
   node: RuntimeNode,
   componentKey: OwnerKey,
@@ -1639,8 +1708,10 @@ const carryHostKeys = (
     ? `${String(componentKey)}\u0000${String(existingKey)}`
     : String(existingKey);
   const type = node.type;
-  return copyRuntimeElement(type, { ...node.props, key },
-    typeof type === "string" ? owner : undefined);
+  return typeof type === "string" && existingKey == null
+    ? copyRuntimeElementWithGeneratedHostKey(type, { ...node.props, key }, owner)
+    : copyRuntimeElement(type, { ...node.props, key },
+      typeof type === "string" ? owner : undefined);
 };
 
 const singleHostRootKey = (
@@ -2860,23 +2931,31 @@ export class ComponentStateRoot<H, Parent = H> {
       };
       return visit(host, previous, next) ? { regions: staged, changed } : null;
     };
-    const current = (privateOnly = false) => [...owners].every(([owner, { cache, inputs }]) =>
-      this.#liveOwners.has(owner) && canonicalWorldIsAlive.call(this.world, owner) &&
-      this.#componentCache.get(owner) === cache &&
-      (privateOnly ? componentCodeCurrentPrivate(cache.type) :
-        componentCodeCurrent(cache.type)) &&
-      inputs.every(({ id, prop, source, membership }) =>
-        ownValue(cache.props, prop) === source &&
-        (membership === undefined ||
-          (this.#liveStoreReaders.get(id) === membership && membership.size === 1 &&
-            membership.has(source as AnyAsyncStore)))
-      ) && [...this.#liveStoreReaders.keys()].every((id) =>
-        !id.startsWith(`${owner}\u0000`) || covered.has(id)
-      )
-    ) && [...this.#liveStoreReaders].every(([id, membership]) =>
-      ![...membership].some((store) => selectedStores.has(store)) ||
-      covered.has(id) || retiredPendingReaders.has(id)
-    ) && (privateOnly ? resources.validateCanonical() : resources.validate());
+    const current = (privateOnly = false) => {
+      const ownerPrefixes = new Set<string>();
+      for (const [owner, { cache, inputs }] of owners) {
+        if (!this.#liveOwners.has(owner) ||
+          !canonicalWorldIsAlive.call(this.world, owner) ||
+          this.#componentCache.get(owner) !== cache ||
+          !(privateOnly ? componentCodeCurrentPrivate(cache.type) :
+            componentCodeCurrent(cache.type)) ||
+          !inputs.every(({ id, prop, source, membership }) =>
+            ownValue(cache.props, prop) === source &&
+            (membership === undefined ||
+              (this.#liveStoreReaders.get(id) === membership && membership.size === 1 &&
+                membership.has(source as AnyAsyncStore)))
+          )) return false;
+        ownerPrefixes.add(String(owner));
+      }
+      for (const [id, membership] of this.#liveStoreReaders) {
+        const split = id.indexOf("\u0000");
+        if (split >= 0 && ownerPrefixes.has(id.slice(0, split)) &&
+          !covered.has(id)) return false;
+        if ([...membership].some((store) => selectedStores.has(store)) &&
+          !covered.has(id) && !retiredPendingReaders.has(id)) return false;
+      }
+      return privateOnly ? resources.validateCanonical() : resources.validate();
+    };
     try {
       for (const [id, membership] of this.#liveStoreReaders) {
         if (![...membership].some((store) => selectedStores.has(store))) continue;
@@ -4063,6 +4142,7 @@ export class ComponentStateRoot<H, Parent = H> {
     const nextOwners = new Set<OwnerId>();
     const nextEffects = new Map<string, EffectRegistration>();
     const nextCache = new Map<OwnerId, ComponentCache>();
+    const acceptedCache = this.#componentCache;
     const createdOwners: OwnerId[] = [];
     const keyedRegions = new Map<OwnerId, KeyedRegionCache>();
     const collectionRegions = new Map<string, CollectionRegionCache>();
@@ -4129,6 +4209,13 @@ export class ComponentStateRoot<H, Parent = H> {
       this.#collectedKeyedRegions = priorKeyed;
       this.#collectedCollectionRegions = priorCollections;
     }
+    const retainedCollectionRegions = new Map<string, CollectionRegionCache>();
+    for (const [key, region] of this.#liveCollectionRegions) {
+      if (nextCache.get(region.parentOwner) === acceptedCache.get(region.parentOwner) &&
+        nextCache.has(region.parentOwner)) {
+        retainedCollectionRegions.set(key, region);
+      }
+    }
     const capturedBoundValues = new Map<OwnerId, Map<string, number>>();
     for (const [owner, cache] of nextCache) {
       for (const site of cache.propBoundSites) {
@@ -4194,6 +4281,7 @@ export class ComponentStateRoot<H, Parent = H> {
       artifacts.keyedRegions = null;
       artifacts.collectionRegions?.clear();
       artifacts.collectionRegions = null;
+      retainedCollectionRegions.clear();
       artifacts.capturedBindings?.splice(0);
       artifacts.capturedBindings = null;
       artifacts.capturedChanges?.splice(0);
@@ -4412,6 +4500,7 @@ export class ComponentStateRoot<H, Parent = H> {
           this.#syncCollectionRegions(
             artifacts.nextCache!,
             artifacts.collectionRegions!,
+            retainedCollectionRegions,
           );
         } catch (error) {
           errors.push(error);
@@ -6467,10 +6556,16 @@ export class ComponentStateRoot<H, Parent = H> {
       ownEffects: prepared.ownEffects,
       propBoundSites: prepared.propBoundSites,
       numericStateAdmitted: prepared.numericStateAdmitted,
-      ...(structuralKeyedRegions?.get(owner)
-        ? { keyedRegion: structuralKeyedRegions.get(owner) }
-        : {}),
+      keyedRegion: structuralKeyedRegions?.get(owner),
     });
+    const retainedCollectionRegions = new Map<string, CollectionRegionCache>();
+    for (const [key, region] of this.#liveCollectionRegions) {
+      if (!affectedOwners.has(region.parentOwner) ||
+        nextComponentCache.get(region.parentOwner) ===
+          this.#componentCache.get(region.parentOwner)) {
+        retainedCollectionRegions.set(key, region);
+      }
+    }
     const capturedStructuralValues = new Map<OwnerId, Map<string, number>>();
     for (const [nextOwner, component] of nextComponentCache) {
       capturedStructuralValues.set(
@@ -6552,6 +6647,7 @@ export class ComponentStateRoot<H, Parent = H> {
       this.#syncCollectionRegions(
         this.#componentCache,
         structuralCollectionRegions ?? new Map(),
+        retainedCollectionRegions,
       );
     } catch (error) {
       effectErrors.push(error);
@@ -6572,12 +6668,15 @@ export class ComponentStateRoot<H, Parent = H> {
   ): RuntimeNode | null {
     let regionCount = 0;
     let reusedRows = 0;
-    const visit = (value: RuntimeNode): RuntimeNode | null => {
+    const visit = (
+      value: RuntimeNode, scope: StructuralScope,
+    ): RuntimeNode | null => {
       if (
         value == null || value === false || typeof value === "string" ||
         typeof value === "number"
       ) return value;
       if (Array.isArray(value)) {
+        const arrayScope = structuralContainerScope(scope, "array");
         const regionId = getKeyedOwnerRegionId(value);
         if (regionId !== null) {
           regionCount++;
@@ -6587,6 +6686,7 @@ export class ComponentStateRoot<H, Parent = H> {
             if (
               regionCount !== 1 || version === null || !keyedRegion ||
               keyedRegion.regionId !== regionId ||
+              keyedRegion.siteScope !== arrayScope.siteScope ||
               keyedRegion.version !== version ||
               keyedRegion.outputsByKey.size !== value.length ||
               previousOwnerCache.subtreeOwners.size !== value.length + 1
@@ -6638,7 +6738,8 @@ export class ComponentStateRoot<H, Parent = H> {
             const key = String(rawKey);
             if (seenKeys.has(key)) return null;
             seenKeys.add(key);
-            const childOwner = this.world.findOwner(parentOwner, siteId, key);
+            const childOwner = this.world.findOwner(parentOwner,
+              scopedOwnerSite(siteId, arrayScope.siteScope), key);
             if (childOwner === undefined || !this.#liveOwners.has(childOwner)) {
               return null;
             }
@@ -6661,8 +6762,9 @@ export class ComponentStateRoot<H, Parent = H> {
         }
         const output: RuntimeNode[] = [];
         let changed = false;
-        for (const child of value) {
-          const expanded = visit(child);
+        for (let index = 0; index < value.length; index++) {
+          const child = value[index]!;
+          const expanded = visit(child, structuralChildPosition(arrayScope, index));
           if (expanded === null) return null;
           output.push(expanded);
           if (expanded !== child) changed = true;
@@ -6670,13 +6772,16 @@ export class ComponentStateRoot<H, Parent = H> {
         return changed ? output : value;
       }
       if (typeof value.type === "function") return null;
-      const child = visit(value.props.children);
+      const child = visit(value.props.children,
+        value.type === Fragment
+          ? structuralFragmentScope(scope, value)
+          : structuralHostScope(scope, value));
       if (child === null) return null;
       return child === value.props.children
         ? value
         : copyRuntimeElement(value.type, { ...value.props, children: child });
     };
-    const result = visit(node);
+    const result = visit(node, rootStructuralScope);
     if (result === null || regionCount !== 1 || reusedRows === 0) {
       this.#count("owner.keyed-region.fallback");
       return null;
@@ -7009,14 +7114,19 @@ export class ComponentStateRoot<H, Parent = H> {
   #syncCollectionRegions(
     caches: ReadonlyMap<OwnerId, ComponentCache>,
     collected: ReadonlyMap<string, CollectionRegionCache> = new Map(),
+    retained: ReadonlyMap<string, CollectionRegionCache> = new Map(),
   ) {
     if (this.#disposed) return;
     const next = new Map<string, CollectionRegionCache>();
     for (const [owner, component] of caches) {
       const region = component.keyedRegion?.collection;
       if (!region) continue;
-      const key = `${owner}\u0000${region.siteId}`;
+      const key = collectionRegionKey(owner, region.siteId, region.siteScope);
       next.set(key, region);
+    }
+    for (const [key, region] of retained) {
+      if (caches.has(region.parentOwner) &&
+        this.#liveCollectionRegions.get(key) === region) next.set(key, region);
     }
     for (const [key, region] of collected) next.set(key, region);
     for (const [key, previous] of this.#liveCollectionRegions) {
@@ -7224,6 +7334,7 @@ export class ComponentStateRoot<H, Parent = H> {
         const ownerRegion = parentCache?.keyedRegion;
         if (
           !region || !region.reader || !parentCache || !ownerRegion ||
+          hasSiblingCollectionSite(this.#liveCollectionRegions.values(), region) ||
           ownerRegion.collection !== region || !region.parentHostKey ||
           region.requiresOwnerRender || !region.ownerInputsAdmitted ||
           (closedCollectionSitesFor(parentCache.type) !== undefined &&
@@ -7293,7 +7404,8 @@ export class ComponentStateRoot<H, Parent = H> {
         if (!node || !componentSiteId) return null;
         const owner = preparation.findOwner(
           stage.region.parentOwner,
-          collectionOwnerSite(stage.region.siteId, componentSiteId),
+          scopedOwnerSite(collectionOwnerSite(stage.region.siteId, componentSiteId),
+            stage.region.siteScope),
           key,
         );
         const cache = owner === undefined
@@ -7547,10 +7659,10 @@ export class ComponentStateRoot<H, Parent = H> {
                 typeof rendered.type !== "function"
               ) throw new SparseCandidateIneligible();
               const componentSiteId = getComponentSiteId(rendered.type);
-              const ownerSite = collectionOwnerSite(
+              const ownerSite = scopedOwnerSite(collectionOwnerSite(
                 stage.region.siteId,
                 componentSiteId,
-              );
+              ), stage.region.siteScope);
               const existing = preparation.findOwner(
                 stage.region.parentOwner,
                 ownerSite,
@@ -8428,6 +8540,7 @@ export class ComponentStateRoot<H, Parent = H> {
     const parentHostKey = region?.parentHostKey ?? null;
     if (
       !region || !region.reader || !parentCache || !ownerRegion ||
+      hasSiblingCollectionSite(this.#liveCollectionRegions.values(), region) ||
       ownerRegion.collection !== region || parentHostKey === null ||
       region.requiresOwnerRender || !region.ownerInputsAdmitted ||
       (closedCollectionSitesFor(parentCache.type) !== undefined &&
@@ -8485,7 +8598,8 @@ export class ComponentStateRoot<H, Parent = H> {
       if (!componentSiteId) return null;
       const owner = this.world.findOwner(
         region.parentOwner,
-        collectionOwnerSite(region.siteId, componentSiteId),
+        scopedOwnerSite(collectionOwnerSite(region.siteId, componentSiteId),
+          region.siteScope),
         key,
       );
       if (!node || owner === undefined) return null;
@@ -8504,7 +8618,8 @@ export class ComponentStateRoot<H, Parent = H> {
           componentSiteId
             ? this.world.findOwner(
               region.parentOwner,
-              collectionOwnerSite(region.siteId, componentSiteId),
+              scopedOwnerSite(collectionOwnerSite(region.siteId, componentSiteId),
+                region.siteScope),
               key,
             )
             : undefined,
@@ -8527,10 +8642,10 @@ export class ComponentStateRoot<H, Parent = H> {
           getComponentSiteId(rendered.type) !== region.componentSiteId)
       ) return null;
       const rowComponentSiteId = getComponentSiteId(rendered.type);
-      const ownerSiteId = collectionOwnerSite(
+      const ownerSiteId = scopedOwnerSite(collectionOwnerSite(
         region.siteId,
         rowComponentSiteId,
-      );
+      ), region.siteScope);
       const authoredKey = rendered.props.key;
       if (authoredKey != null && String(authoredKey) !== key) return null;
       const owner = stagedInsert
@@ -10042,12 +10157,14 @@ export class ComponentStateRoot<H, Parent = H> {
     protectedBranch = false,
     boundaryHostScope?: OwnerId,
     collectionEntry?: object,
+    structuralScope: StructuralScope = rootStructuralScope,
   ): RuntimeNode {
     if (
       node == null || node === false || typeof node === "string" ||
       typeof node === "number"
     ) return node;
     if (Array.isArray(node)) {
+      const arrayScope = structuralContainerScope(structuralScope, "array");
       const regionId = getKeyedOwnerRegionId(node);
       const version = getKeyedOwnerVersion(node);
       const collectionDescriptor = version === null
@@ -10121,6 +10238,7 @@ export class ComponentStateRoot<H, Parent = H> {
             false,
             undefined,
             collectionDescriptor?.rows.get(collectionKeys[index])?.entry,
+            structuralChildPosition(arrayScope, index),
           );
         } catch (error) {
           if (
@@ -10180,21 +10298,21 @@ export class ComponentStateRoot<H, Parent = H> {
                 })
                 | undefined)?.findOwner?.(
                   parentOwner,
-                  collectionDescriptor
+                  scopedOwnerSite(collectionDescriptor
                     ? collectionOwnerSite(
                       collectionDescriptor.siteId,
                       childSiteId,
                     )
-                    : childSiteId,
+                    : childSiteId, arrayScope.siteScope),
                   key,
                 ) ?? (ownerPreparation ? undefined : this.world.findOwner(
                   parentOwner,
-                  collectionDescriptor
+                  scopedOwnerSite(collectionDescriptor
                     ? collectionOwnerSite(
                       collectionDescriptor.siteId,
                       childSiteId,
                     )
-                    : childSiteId,
+                    : childSiteId, arrayScope.siteScope),
                   key,
                 ));
               if (outputsByKey.has(key) || owner === undefined) {
@@ -10235,17 +10353,20 @@ export class ComponentStateRoot<H, Parent = H> {
           rows: liveRows,
           parentOwner,
           parentHostKey: null,
+          siteScope: arrayScope.siteScope,
           hostKeysByCollectionKey,
         };
         if (this.#collectedCollectionRegions) {
           if (expansionJournal) {
             expansionJournal.set(
               this.#collectedCollectionRegions,
-              `${parentOwner}\u0000${collectedCollection.siteId}`,
+              collectionRegionKey(parentOwner, collectedCollection.siteId,
+                collectedCollection.siteScope),
               collectedCollection,
             );
           } else {this.#collectedCollectionRegions.set(
-              `${parentOwner}\u0000${collectedCollection.siteId}`,
+              collectionRegionKey(parentOwner, collectedCollection.siteId,
+                collectedCollection.siteScope),
               collectedCollection,
             );}
         }
@@ -10260,6 +10381,7 @@ export class ComponentStateRoot<H, Parent = H> {
           version,
           componentSiteId: regionSiteId ??
             collectionDescriptor?.componentSiteId ?? "",
+          siteScope: arrayScope.siteScope,
           outputsByKey,
           keysByOwner: keysByOwner!,
           ...(collectedCollection &&
@@ -10300,7 +10422,8 @@ export class ComponentStateRoot<H, Parent = H> {
       const identityKey = props.key == null
         ? `@slot:${siteId}:${ordinal}`
         : String(props.key);
-      const ownerSite = `\u0000native-suspense:${siteId}`;
+      const ownerSite = scopedOwnerSite(
+        `\u0000native-suspense:${siteId}`, structuralScope.siteScope);
       const priorBoundaryOwner = ownerPreparation
         ? ownerPreparation.findOwner(parentOwner, ownerSite, identityKey)
         : this.world.findOwner(parentOwner, ownerSite, identityKey);
@@ -10448,6 +10571,8 @@ export class ComponentStateRoot<H, Parent = H> {
           boundaryState,
           true,
           boundaryOwner,
+          undefined,
+          rootStructuralScope,
         );
         if (boundaryPrimaries) {
           const snapshot: BoundaryPrimary = {
@@ -10519,6 +10644,8 @@ export class ComponentStateRoot<H, Parent = H> {
               boundaryState,
               true,
               boundaryOwner,
+              undefined,
+              rootStructuralScope,
             );
             // Successful re-expansion records actual reads as retained dependencies,
             // naturally releasing conditional reads removed by this draft.
@@ -10576,6 +10703,8 @@ export class ComponentStateRoot<H, Parent = H> {
           boundaryState,
           protectedBranch,
           boundaryOwner,
+          undefined,
+          rootStructuralScope,
         );
         if (error instanceof ResourceRejection && boundaryPrimaries) {
           const snapshot: BoundaryPrimary = { tree: fallback };
@@ -10606,14 +10735,14 @@ export class ComponentStateRoot<H, Parent = H> {
       let key = boundaryHostScope === undefined
         ? String(ownerKey)
         : `${boundaryHostScope}\u0000${String(ownerKey)}`;
-      const ownerSite = collectionOwnerScope
+      const ownerSite = scopedOwnerSite(collectionOwnerScope
         ? collectionOwnerSite(
           collectionRowScopeKey === undefined
             ? collectionOwnerScope
             : `${collectionOwnerScope}#row:${collectionRowScopeKey}`,
           siteId,
         )
-        : siteId;
+        : siteId, structuralScope.siteScope);
       const acceptedOwner = collectionOwnerScope && collectionEntry &&
           ownerPreparation
         ? ownerPreparation.findOwner(parentOwner, ownerSite, ownerKey)
@@ -10861,6 +10990,9 @@ export class ComponentStateRoot<H, Parent = H> {
           boundaryPrimaries,
           boundaryState,
           protectedBranch,
+          undefined,
+          undefined,
+          rootStructuralScope,
         );
         const collectedKeyedRegion = this.#collectedKeyedRegions?.get(owner);
         const collectionRegion = collectedKeyedRegion?.collection;
@@ -10873,11 +11005,13 @@ export class ComponentStateRoot<H, Parent = H> {
             if (expansionJournal) {
               expansionJournal.set(
                 this.#collectedCollectionRegions,
-                `${owner}\u0000${completeRegion.siteId}`,
+                collectionRegionKey(owner, completeRegion.siteId,
+                  completeRegion.siteScope),
                 completeRegion,
               );
             } else {this.#collectedCollectionRegions.set(
-                `${owner}\u0000${completeRegion.siteId}`,
+              collectionRegionKey(owner, completeRegion.siteId,
+                completeRegion.siteScope),
                 completeRegion,
               );}
           }
@@ -10944,6 +11078,12 @@ export class ComponentStateRoot<H, Parent = H> {
       expansionJournal,
       boundaryPrimaries,
       boundaryState,
+      false,
+      undefined,
+      undefined,
+      node.type === Fragment
+        ? structuralFragmentScope(structuralScope, node)
+        : structuralHostScope(structuralScope, node),
     );
     const expanded = children === node.props.children
       ? node

@@ -714,8 +714,12 @@ const keyedChildrenFor = <H>(
   regionId: string | null,
   children: readonly MountedNode<H>[],
 ) => {
-  if (regionId === null || children.some((child) => child.vnode.key === null)) {
-    return undefined;
+  if (regionId === null) return undefined;
+  const keys = new Set<string>();
+  for (const child of children) {
+    const key = child.vnode.key;
+    if (key === null || keys.has(key)) return undefined;
+    keys.add(key);
   }
   return new KeyedRegionBuckets(
     children.map((child) => ({ key: child.vnode.key!, value: child })),
@@ -834,10 +838,10 @@ class AcceptedMountedJournal<H> {
     const before = this.#before.get(node);
     const vnode = before?.vnode ?? node.vnode;
     if (vnode.kind === "text") return vnode;
-    const keyed = before?.keyedChildren ?? node.keyedChildren;
+    const keyed = before ? before.keyedChildren : node.keyedChildren;
     const children = keyed
       ? this.#children(keyed)
-      : before?.children ?? node.children;
+      : before ? before.children : node.children;
     return publicElementSnapshot(
       vnode,
       children.map((child) => this.#serializeNode(child)),
@@ -872,7 +876,7 @@ const canAdoptSuspenseReveal = (
   left.tag === right.tag && left.key === right.key;
 
 const validateUniqueKeys = (siblings: readonly VNode[]) => {
-  const keys = new Set<string>();
+  const keys = new Map<string, Set<number | undefined>>();
   for (const node of siblings) {
     if (node.kind === "element") {
       const ref = node.props.ref;
@@ -886,10 +890,12 @@ const validateUniqueKeys = (siblings: readonly VNode[]) => {
       }
     }
     if (node.key !== null) {
-      if (keys.has(node.key)) {
+      let owners = keys.get(node.key);
+      if (owners?.has(node.componentOwner)) {
         throw new Error(`Duplicate key in next VDOM children: ${node.key}`);
       }
-      keys.add(node.key);
+      if (!owners) keys.set(node.key, owners = new Set());
+      owners.add(node.componentOwner);
     }
     if (node.kind === "element") validateUniqueKeys(node.children);
   }
@@ -1352,26 +1358,30 @@ const reconcileChildren = <H, P>(
     );
   }
 
-  const keyed = new Map<string, MountedNode<H>>();
+  const keyed = new Map<string, Map<number | undefined, MountedNode<H>>>();
   const unkeyed: MountedNode<H>[] = [];
   for (let index = 0; index < previous.length; index++) {
     const child = previous[index];
     const key = child.vnode.key;
     if (key == null) unkeyed.push(child);
     else {
-      if (keyed.has(key)) {
+      let owners = keyed.get(key);
+      if (owners?.has(child.vnode.componentOwner)) {
         throw new Error(`Duplicate key in previous VDOM children: ${key}`);
       }
-      keyed.set(key, child);
+      if (!owners) keyed.set(key, owners = new Map());
+      owners.set(child.vnode.componentOwner, child);
     }
   }
-  const nextKeys = new Set<string>();
+  const nextKeys = new Map<string, Set<number | undefined>>();
   for (const child of next) {
     if (child.key != null) {
-      if (nextKeys.has(child.key)) {
+      let owners = nextKeys.get(child.key);
+      if (owners?.has(child.componentOwner)) {
         throw new Error(`Duplicate key in next VDOM children: ${child.key}`);
       }
-      nextKeys.add(child.key);
+      if (!owners) nextKeys.set(child.key, owners = new Set());
+      owners.add(child.componentOwner);
     }
   }
 
@@ -1381,8 +1391,18 @@ const reconcileChildren = <H, P>(
   let lastPlacedIndex = -1;
   const selected = next.map((vnode, index) => {
     let candidate: MountedNode<H> | undefined;
-    if (vnode.key != null) candidate = keyed.get(vnode.key);
-    else candidate = unkeyed[unkeyedIndex++];
+    if (vnode.key != null) {
+      const owners = keyed.get(vnode.key);
+      candidate = owners?.get(vnode.componentOwner);
+      if (
+        !candidate && vnode.componentOwner !== undefined &&
+        !nextKeys.get(vnode.key)?.has(undefined)
+      ) {
+        const bare = owners?.get(undefined);
+        if (bare && !used.has(bare) &&
+          canAdoptSuspenseReveal(bare.vnode, vnode)) candidate = bare;
+      }
+    } else candidate = unkeyed[unkeyedIndex++];
     if (!candidate || (!compatible(candidate.vnode, vnode) &&
       !canAdoptSuspenseReveal(candidate.vnode, vnode))) {
       needsPlacement[index] = 1;
