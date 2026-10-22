@@ -240,8 +240,8 @@ struct NativeComponentMetadata {
     closed_resource_host_program: Option<serde_json::Value>,
     #[serde(rename = "closedStoreHostProgram", skip_serializing_if = "Option::is_none")]
     closed_store_host_program: Option<serde_json::Value>,
-    #[serde(rename = "closedStoreNumericKernel", skip_serializing_if = "Option::is_none")]
-    closed_store_numeric_kernel: Option<serde_json::Value>,
+    #[serde(rename = "closedStoreExecution", skip_serializing_if = "Option::is_none")]
+    closed_store_execution: Option<serde_json::Value>,
     #[serde(rename = "closedComponentForwardProgram", skip_serializing_if = "Option::is_none")]
     closed_component_forward_program: Option<serde_json::Value>,
     #[serde(default)]
@@ -3864,9 +3864,9 @@ fn compile_native_component_module(
     closed_store_collector.visit_program(&parsed.program);
     let closed_store_programs = closed_store_collector.programs;
     let closed_store_tuple_spans = closed_store_collector.tuple_spans;
-    let closed_store_numeric_kernels = closed_store_programs.iter()
+    let closed_store_data_executions = closed_store_programs.iter()
         .filter_map(|(site, program)| store_numeric_kernel::emit(program)
-            .map(|kernel| (site.clone(), kernel)))
+            .map(|execution| (site.clone(), execution)))
         .collect::<BTreeMap<_, _>>();
     let closed_forward_programs = closed_component_forward_programs(
         &parsed.program, &state_plan.components, &semantic, source, revision,
@@ -4389,7 +4389,7 @@ fn compile_native_component_module(
         &component_state_layouts,
         &closed_resource_programs,
         &closed_store_programs,
-        &closed_store_numeric_kernels,
+        &closed_store_data_executions,
         &closed_forward_programs,
         &closed_row_programs,
         &closed_store_tuple_spans,
@@ -4453,9 +4453,9 @@ fn compile_native_component_module(
             closed_store_host_program: closed_store_programs
                 .get(&component.component_site_id)
                 .cloned(),
-            closed_store_numeric_kernel: closed_store_numeric_kernels
+            closed_store_execution: closed_store_data_executions
                 .get(&component.component_site_id)
-                .map(|kernel| kernel.descriptor.clone()),
+                .map(|execution| execution.descriptor.clone()),
             closed_component_forward_program: closed_forward_programs
                 .get(&component.component_site_id)
                 .map(|edge| edge.program.clone()),
@@ -6500,7 +6500,7 @@ fn transform_native_component_source(
     state_layouts: &BTreeMap<String, Vec<NativeStateLayoutSlotMetadata>>,
     closed_resource_programs: &BTreeMap<String, serde_json::Value>,
     closed_store_programs: &BTreeMap<String, serde_json::Value>,
-    closed_store_numeric_kernels: &BTreeMap<String, store_numeric_kernel::StoreNumericKernel>,
+    closed_store_data_executions: &BTreeMap<String, store_numeric_kernel::StoreDataExecution>,
     closed_forward_programs: &BTreeMap<String, ClosedForwardEdge>,
     closed_row_programs: &BTreeMap<String, Vec<ClosedCollectionRowEdge>>,
     closed_store_tuple_spans: &BTreeMap<String, Vec<SourceSpan>>,
@@ -6645,9 +6645,9 @@ fn transform_native_component_source(
             .get(&component.component_site_id)
             .map(|program| format!(", closedStoreHostProgram: {program}"))
             .unwrap_or_default();
-        let closed_store_numeric_option = closed_store_numeric_kernels
+        let closed_store_execution_option = closed_store_data_executions
             .get(&component.component_site_id)
-            .map(|kernel| format!(", closedStoreNumericKernel: {}", kernel.code))
+            .map(|execution| format!(", closedStoreExecution: {}", execution.code))
             .unwrap_or_default();
         let closed_forward_option = closed_forward_programs
             .get(&component.component_site_id)
@@ -6697,7 +6697,7 @@ fn transform_native_component_source(
             owner_kernel_option,
             closed_resource_option,
             closed_store_option,
-            closed_store_numeric_option,
+            closed_store_execution_option,
             closed_forward_option,
             closed_collection_option,
             closed_row_option,
@@ -11867,7 +11867,7 @@ export function Row() {
     }
 
     #[test]
-    fn emits_optional_store_numeric_ranges_for_function_and_arrow_leaves() {
+    fn emits_data_execution_for_function_and_arrow_numeric_leaves() {
         let source = r#"import { use } from "native_runtime_api.ts";
 export function Pair(props) {
   const x = use(props.a); const y = use(props.b);
@@ -11887,23 +11887,17 @@ export function Aggregate(props) {
         let revision = plan.module_revision.clone();
         let code = plan.component_module.unwrap();
         let components = plan.components.unwrap();
-        for (name, count, props) in [
-            ("Pair", 2, serde_json::json!(["data-a", "data-b"])),
-            ("Arrow", 1, serde_json::json!(["data-a"])),
-        ] {
+        for name in ["Pair", "Arrow"] {
             let component = components.iter().find(|component| component.name == name).unwrap();
-            let kernel = component.closed_store_numeric_kernel.as_ref().unwrap();
-            assert_eq!(kernel["componentProgramId"], component.component_site_id);
-            assert_eq!(kernel["moduleRevision"], revision);
-            assert_eq!(kernel["inputCount"], count);
-            assert_eq!(kernel["propNames"], props);
+            let execution = component.closed_store_execution.as_ref().unwrap();
+            assert_eq!(execution["componentProgramId"], component.component_site_id);
+            assert_eq!(execution["moduleRevision"], revision);
+            assert_eq!(execution["kind"], "owned-data");
         }
         assert!(components.iter().find(|component| component.name == "Aggregate")
-            .unwrap().closed_store_numeric_kernel.is_none());
-        assert_eq!(code.matches("closedStoreNumericKernel:").count(), 2);
-        assert!(code.contains("const $r3actDag0"));
-        assert!(code.contains("inputStart + $r3actRow * 2"));
-        assert!(code.contains("outputStart + $r3actRow * 2"));
+            .unwrap().closed_store_execution.is_none());
+        assert_eq!(code.matches("closedStoreExecution:").count(), 2);
+        assert!(!code.contains("executeRange"));
     }
 
     #[test]
@@ -11938,7 +11932,7 @@ export function StateMember(props) {
         let components = plan.components.unwrap();
         let motion = components.iter().find(|component| component.name == "Motion").unwrap();
         let program = motion.closed_store_host_program.as_ref().unwrap();
-        let kernel = motion.closed_store_numeric_kernel.as_ref().unwrap();
+        let execution = motion.closed_store_execution.as_ref().unwrap();
         assert_eq!(program["schemaVersion"], 7);
         assert_eq!(program["moduleRevision"], revision);
         assert_eq!(program["retainedChildProp"], "children");
@@ -11948,17 +11942,36 @@ export function StateMember(props) {
         assert_eq!(program["inputs"][1]["paths"], serde_json::json!([["y"]]));
         assert_eq!(program["stateSites"], serde_json::json!([motion.state_sites[0].site_id]));
         assert_eq!(program["effectSites"], serde_json::json!([motion.effect_sites[0].site_id]));
-        assert_eq!(kernel["inputCount"], 3);
-        assert_eq!(kernel["moduleRevision"], revision);
-        assert_eq!(kernel["propNames"], serde_json::json!(["position-x", "position-y"]));
+        assert_eq!(execution["kind"], "owned-data");
+        assert_eq!(execution["moduleRevision"], revision);
         let arrow = components.iter().find(|component| component.name == "Arrow").unwrap();
         assert_eq!(arrow.closed_store_host_program.as_ref().unwrap()["schemaVersion"], 7);
         assert_eq!(arrow.closed_store_host_program.as_ref().unwrap()["retainedChildProp"], serde_json::Value::Null);
-        assert_eq!(arrow.closed_store_numeric_kernel.as_ref().unwrap()["inputCount"], 2);
+        assert_eq!(arrow.closed_store_execution.as_ref().unwrap()["kind"], "owned-data");
         assert!(components.iter().find(|component| component.name == "Opaque")
             .unwrap().closed_store_host_program.is_none());
         assert!(components.iter().find(|component| component.name == "StateMember")
             .unwrap().closed_store_host_program.is_none());
-        assert_eq!(code.matches("closedStoreNumericKernel:").count(), 2);
+        assert_eq!(code.matches("closedStoreExecution:").count(), 2);
+        assert!(!code.contains("executeRange"));
+    }
+
+    #[test]
+    fn emits_data_marker_for_renamed_empty_primitive_group() {
+        let source = r#"import { use } from "native_runtime_api.ts";
+export function FrameMarker(props) {
+  const frame = use(props.clock);
+  return <group key="other-marker" name="phase-anchor" visible={true} position-x={frame.epoch} />;
+}"#;
+        let response = compile_state("frame-marker-data.tsx", source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let plan = response.plan.unwrap();
+        let component = &plan.components.as_ref().unwrap()[0];
+        assert_eq!(component.closed_store_host_program.as_ref().unwrap()["schemaVersion"], 5);
+        assert_eq!(component.closed_store_execution.as_ref().unwrap()["kind"], "owned-data");
+        let code = plan.component_module.unwrap();
+        assert!(code.contains("closedStoreExecution:"));
+        assert!(!code.contains("closedStoreNumericKernel:"));
+        assert!(!code.contains("executeRange"));
     }
 }

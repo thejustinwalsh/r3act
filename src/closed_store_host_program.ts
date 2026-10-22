@@ -39,6 +39,18 @@ export type ClosedStoreHostProgram = Readonly<{
 );
 
 export type ClosedStoreHostOutput = readonly (readonly [string, ClosedHostOutputValue])[];
+const normalizedPrograms = new WeakSet<object>();
+
+/** Check that a program came from this module's complete data normalization. */
+export const isNormalizedClosedStoreHostProgram = (
+  program: unknown,
+): program is ClosedStoreHostProgram =>
+  typeof program === "object" && program !== null && normalizedPrograms.has(program);
+
+const ownProgram = (program: ClosedStoreHostProgram): ClosedStoreHostProgram => {
+  normalizedPrograms.add(program);
+  return program;
+};
 
 const record = closedDataRecord;
 const exact = exactClosedFields;
@@ -51,7 +63,7 @@ const input = (site: unknown, prop: unknown): ClosedStoreHostInput | null =>
   typeof site === "string" && site.length > 0 &&
     typeof prop === "string" && /^[A-Za-z_$][\w$]*$/.test(prop)
     ? Object.freeze({ storeUseSiteId: site, storeProp: prop }) : null;
-const directPath = Object.freeze([Object.freeze([] as string[])]);
+const directPath = normalizeClosedProjectionPaths([[]])!;
 
 /** Copy untrusted metadata into a frozen, data-only executable plan. */
 export const normalizeClosedStoreHostProgram = (
@@ -123,13 +135,13 @@ export const normalizeClosedStoreHostProgram = (
         : inputs.length;
       const host = normalizeClosedHostTree(root.host, inputCount, true,
         root.schemaVersion === 5 ? 32 : 8);
-      return host ? Object.freeze({
+      return host ? ownProgram(Object.freeze({
         schemaVersion: root.schemaVersion,
         componentProgramId: root.componentProgramId,
         moduleRevision: root.moduleRevision,
         inputs: inputs as readonly ClosedStoreProjectionInput[],
         host,
-      }) as ClosedStoreHostProgram : null;
+      }) as ClosedStoreHostProgram) : null;
     }
     const host = record(root.host);
     if (!host || !exact(host, ["tag", "key", "props", "child"]) ||
@@ -161,7 +173,7 @@ export const normalizeClosedStoreHostProgram = (
       moduleRevision: root.moduleRevision,
       host: Object.freeze({ tag, key: host.key, props: Object.freeze(props), child: null }),
     };
-    return root.schemaVersion === 1
+    return ownProgram(root.schemaVersion === 1
       ? Object.freeze({ ...common, schemaVersion: 1, ...inputs[0] }) as ClosedStoreHostProgram
       : Object.freeze({ ...common, schemaVersion: root.schemaVersion, inputs,
         ...(root.schemaVersion === 6 ? { retainedChildProp: "children" } : {}),
@@ -169,7 +181,7 @@ export const normalizeClosedStoreHostProgram = (
           stateSites: stateSites!,
           effectSites: effectSites!,
           retainedChildProp: root.retainedChildProp,
-        } : {}) }) as ClosedStoreHostProgram;
+        } : {}) }) as ClosedStoreHostProgram);
   } catch {
     return null;
   }

@@ -1,7 +1,8 @@
 import { assert, assertEquals, assertStrictEquals } from "jsr:@std/assert";
 import { createAsyncStore } from "./async_store_runtime.ts";
+import { storeRecord } from "./owned_store_record.ts";
 import {
-  ComponentStateRoot, defineComponent, useStoreAt,
+  ComponentStateRoot, defineComponent, useEffectAt, useStateAt, useStoreAt,
 } from "./component_state_runtime.ts";
 import {
   normalizeClosedStoreHostProgram,
@@ -295,4 +296,280 @@ Deno.test("bad numeric output declines before host publication and uses generic 
   } finally {
     root.dispose();
   }
+});
+
+Deno.test("owned Store data evaluates in one passive batch and retains host identity", () => {
+  const sourceFile = "owned-store-data/passive.tsx", revision = "owned-store-data-v1";
+  registerPlan(sourceFile, revision);
+  const clock = createAsyncStore(1, (_old: number, next: number) => next);
+  const site = `${sourceFile}#component:Motion`, useSite = `${site}#store:0`;
+  let renders = 0;
+  const Motion = defineComponent(site, (props: { clock: typeof clock }) => {
+    renders++;
+    return jsx("group", { key: "motion", "position-x": useStoreAt(useSite, props.clock) });
+  }, { propOnlySites: [], closedStoreHostProgram: {
+    schemaVersion: 1, componentProgramId: site, moduleRevision: revision,
+    storeUseSiteId: useSite, storeProp: "clock",
+    host: { tag: "group", key: "motion", child: null,
+      props: [["position-x", { kind: "input", index: 0 }]] },
+  }, closedStoreExecution: { schemaVersion: 1, kind: "owned-data",
+    componentProgramId: site, moduleRevision: revision } });
+  const host = new MemoryVDOMHost(), container = host.createContainer();
+  const observed: Record<string, number> = {};
+  const root = new ComponentStateRoot(host, container, { rootId: "owned-store-data",
+    scheduleCommit() {}, profileCounter: (counters) => Object.assign(observed, counters) });
+  try {
+    root.mount(jsx(Motion, { clock }));
+    const retained = container.children[0];
+    clock.dispatch(3);
+    const candidate = root.prepareStores([clock]);
+    assert(candidate);
+    assert(candidate.validate());
+    candidate.commitHost();
+    assert(candidate.validatePostHost());
+    candidate.preparePublication(); candidate.publish(); candidate.runEffects();
+    assertStrictEquals(container.children[0], retained);
+    assertEquals(retained.props["position-x"], 3);
+    assertEquals(renders, 1);
+    clock.dispatch(5);
+    root.flush();
+    assertEquals(retained.props["position-x"], 5);
+    assertEquals(observed["store.owned-data.rows"], 1);
+    assertEquals(observed["store.owned-data.batches"], 1);
+  } finally { root.dispose(); }
+});
+
+Deno.test("empty schema-5 data groups with one host key retain distinct owners", () => {
+  const sourceFile = "owned-store-data/empty-groups.tsx", revision = "empty-groups-v1";
+  registerPlan(sourceFile, revision);
+  const clock = createAsyncStore(storeRecord({ phase: 1 }));
+  const site = `${sourceFile}#component:Group`, useSite = `${site}#store:0`;
+  let renders = 0;
+  const Group = defineComponent(site, (props: { clock: typeof clock }) => {
+    renders++;
+    return jsx("group", { key: "data", name: "phase-anchor",
+      "position-x": useStoreAt(useSite, props.clock).phase * 2 });
+  }, { propOnlySites: [], closedStoreHostProgram: {
+    schemaVersion: 5, componentProgramId: site, moduleRevision: revision,
+    inputs: [{ storeUseSiteId: useSite, storeProp: "clock", paths: [["phase"]] }],
+    host: { tag: "group", key: "data", children: [], props: [
+      ["name", { kind: "literal", value: "phase-anchor" }],
+      ["position-x", { kind: "binary", operator: "*",
+        left: { kind: "input", index: 0 }, right: { kind: "literal", value: 2 } }],
+    ] },
+  }, closedStoreExecution: { schemaVersion: 1, kind: "owned-data",
+    componentProgramId: site, moduleRevision: revision } });
+  const host = new MemoryVDOMHost(), container = host.createContainer();
+  const counters: Record<string, number> = {};
+  const root = new ComponentStateRoot(host, container, { rootId: "owned-empty-groups",
+    scheduleCommit() {}, profileCounter: (frame) => Object.assign(counters, frame) });
+  try {
+    root.mount(jsx("group", { key: "scene" }, ["a", "b"].map((key) =>
+      jsx(Group, { key, clock }))));
+    const retained = [...container.children[0].children];
+    clock.dispatch(() => storeRecord({ phase: 3 }));
+    assertEquals(root.flush(), true);
+    assertEquals(counters["store.owned-data.rows"], 2);
+    assertEquals(counters["store.owned-data.batches"], 1);
+    assertEquals(renders, 2);
+    for (const [index, node] of container.children[0].children.entries()) {
+      assertStrictEquals(node, retained[index]);
+      assertEquals(node.props.name, "phase-anchor");
+      assertEquals(node.props["position-x"], 6);
+      assertEquals(node.children.length, 0);
+    }
+  } finally { root.dispose(); }
+});
+
+Deno.test("schema-7 metadata rejects simultaneous data and callback execution", () => {
+  const sourceFile = "owned-store-data/dual.tsx", revision = "owned-store-dual-v1";
+  registerPlan(sourceFile, revision);
+  const site = `${sourceFile}#component:Dual`, useSite = `${site}#store:0`;
+  const host = {
+    schemaVersion: 7 as const, componentProgramId: site, moduleRevision: revision,
+    inputs: [{ storeUseSiteId: useSite, storeProp: "clock", paths: [[]] }],
+    stateSites: [`${site}#state:0`], effectSites: [], retainedChildProp: null,
+    host: { tag: "output", key: "dual", child: null, props: [
+      ["data-value", { kind: "binary", operator: "+",
+        left: { kind: "input", index: 0 },
+        right: { kind: "input", index: 1 } }],
+    ] },
+  } as const;
+  const render = (_props: Record<string, unknown>) => jsx("output", { key: "dual" });
+  let rejected = false;
+  try {
+    defineComponent(site, render, { propOnlySites: [], closedStoreHostProgram: host,
+      closedStoreExecution: { schemaVersion: 1, kind: "owned-data",
+        componentProgramId: site, moduleRevision: revision },
+      closedStoreNumericKernel: { schemaVersion: 1, componentProgramId: site,
+        moduleRevision: revision, inputCount: 2, propNames: ["data-value"],
+        executeRange(_inputs, _start, rows) { return rows; } },
+    });
+  } catch { rejected = true; }
+  assert(rejected);
+});
+
+Deno.test("mixed owned data and callback kernel keep original owner order", () => {
+  const sourceFile = "owned-store-data/mixed.tsx", revision = "owned-store-mixed-v1";
+  registerPlan(sourceFile, revision);
+  const clock = createAsyncStore(1, (_old: number, next: number) => next);
+  const observed: string[] = [];
+  const make = (name: string, legacy: boolean) => {
+    const site = `${sourceFile}#component:${name}`, useSite = `${site}#store:0`;
+    return defineComponent(site, (props: { clock: typeof clock }) =>
+      jsx("output", { key: name, "data-value": useStoreAt(useSite, props.clock) }),
+    { propOnlySites: [], closedStoreHostProgram: {
+      schemaVersion: 1, componentProgramId: site, moduleRevision: revision,
+      storeUseSiteId: useSite, storeProp: "clock",
+      host: { tag: "output", key: name, child: null,
+        props: [["data-value", { kind: "input", index: 0 }]] },
+    }, ...(legacy ? { closedStoreNumericKernel: {
+      schemaVersion: 1 as const, componentProgramId: site, moduleRevision: revision,
+      inputCount: 1, propNames: ["data-value"],
+      executeRange(inputs: readonly number[], start: number, rows: number,
+        outputs: number[], outputStart: number) {
+        observed.push(name);
+        for (let row = 0; row < rows; row++) outputs[outputStart + row] = inputs[start + row];
+        return rows;
+      },
+    } } : { closedStoreExecution: {
+      schemaVersion: 1 as const, kind: "owned-data" as const,
+      componentProgramId: site, moduleRevision: revision,
+    } }) });
+  };
+  const First = make("First", false), Legacy = make("Legacy", true);
+  const Last = make("Last", false);
+  const host = new MemoryVDOMHost(), container = host.createContainer();
+  const observedCounters: Record<string, number> = {};
+  const root = new ComponentStateRoot(host, container, { rootId: "owned-store-mixed",
+    scheduleCommit() {}, profileCounter: (counters) =>
+      Object.assign(observedCounters, counters) });
+  try {
+    root.mount(jsx("section", {}, [jsx(First, { clock }), jsx(Legacy, { clock }),
+      jsx(Last, { clock })]));
+    clock.dispatch(4);
+    const candidate = root.prepareStores([clock]);
+    assert(candidate);
+    assert(candidate.validate());
+    candidate.commitHost();
+    assert(candidate.validatePostHost());
+    candidate.preparePublication(); candidate.publish(); candidate.runEffects();
+    assertEquals(observed, ["Legacy"]);
+    assertEquals(container.children[0].children.map((node) => node.props["data-value"]),
+      [4, 4, 4]);
+    clock.dispatch(6);
+    root.flush();
+    assertEquals(observed, ["Legacy", "Legacy"]);
+    assertEquals(container.children[0].children.map((node) => node.props["data-value"]),
+      [6, 6, 6]);
+    assertEquals(observedCounters["store.owned-data.rows"], 2);
+    assertEquals(observedCounters["store.owned-data.batches"] ?? 0, 0);
+  } finally { root.dispose(); }
+});
+
+Deno.test("late World publication overrides cannot run after Store acceptance", () => {
+  const sourceFile = "owned-store-data/late-world.tsx", revision = "late-world-v1";
+  registerPlan(sourceFile, revision);
+  const clock = createAsyncStore(1, (_old: number, next: number) => next);
+  const site = `${sourceFile}#component:Motion`, useSite = `${site}#store:0`;
+  const Motion = defineComponent(site, (props: { clock: typeof clock }) =>
+    jsx("group", { key: "motion", "position-x": useStoreAt(useSite, props.clock) }),
+  { propOnlySites: [], closedStoreHostProgram: {
+    schemaVersion: 1, componentProgramId: site, moduleRevision: revision,
+    storeUseSiteId: useSite, storeProp: "clock",
+    host: { tag: "group", key: "motion", child: null,
+      props: [["position-x", { kind: "input", index: 0 }]] },
+  }, closedStoreExecution: { schemaVersion: 1, kind: "owned-data",
+    componentProgramId: site, moduleRevision: revision } });
+  const host = new MemoryVDOMHost(), container = host.createContainer();
+  const root = new ComponentStateRoot(host, container,
+    { rootId: "late-world-publication", scheduleCommit() {} });
+  let lineageCalls = 0, acknowledgementCalls = 0;
+  try {
+    root.mount(jsx(Motion, { clock }));
+    clock.dispatch(3);
+    const candidate = root.prepareStores([clock]);
+    assert(candidate);
+    assert(candidate.validate());
+    candidate.commitHost();
+    assert(candidate.validatePostHost());
+    candidate.preparePublication();
+    Object.defineProperty(root.world, "ownerLineage", { configurable: true,
+      value() { lineageCalls++; throw new Error("late lineage override"); } });
+    Object.defineProperty(root.world, "clearCellChangesThrough", { configurable: true,
+      value() { acknowledgementCalls++; throw new Error("late acknowledgement override"); } });
+    candidate.publish();
+    assertEquals(container.children[0].props["position-x"], 3);
+    assertEquals(lineageCalls, 0);
+    assertEquals(acknowledgementCalls, 0);
+    candidate.runEffects();
+  } finally {
+    Reflect.deleteProperty(root.world, "ownerLineage");
+    Reflect.deleteProperty(root.world, "clearCellChangesThrough");
+    root.dispose();
+  }
+});
+
+Deno.test("owned mixed cut acknowledges its old cell version and retains host-time action", () => {
+  const sourceFile = "owned-store-data/newer-cell.tsx", revision = "newer-cell-v1";
+  registerPlan(sourceFile, revision);
+  const clock = createAsyncStore(1, (_old: number, next: number) => next);
+  const site = `${sourceFile}#component:Motion`, useSite = `${site}#store:0`;
+  const stateSite = `${site}#state:0`, effectSite = `${site}#effect:0`;
+  let setOffset!: (value: number) => boolean;
+  let renders = 0;
+  const Motion = defineComponent(site, (props: { clock: typeof clock }) => {
+    renders++;
+    const phase = useStoreAt(useSite, props.clock);
+    const [offset, set] = useStateAt(stateSite, 2);
+    useEffectAt(effectSite, () => { setOffset = set; });
+    return jsx("group", { key: "motion", "position-x": phase + offset });
+  }, { propOnlySites: [], closedStoreHostProgram: {
+    schemaVersion: 7, componentProgramId: site, moduleRevision: revision,
+    inputs: [{ storeUseSiteId: useSite, storeProp: "clock", paths: [[]] }],
+    stateSites: [stateSite], effectSites: [effectSite], retainedChildProp: null,
+    host: { tag: "group", key: "motion", child: null, props: [
+      ["position-x", { kind: "binary", operator: "+",
+        left: { kind: "input", index: 0 }, right: { kind: "input", index: 1 } }],
+    ] },
+  }, closedStoreExecution: { schemaVersion: 1, kind: "owned-data",
+    componentProgramId: site, moduleRevision: revision } });
+  class InterleavingHost extends MemoryVDOMHost {
+    onWrite: (() => void) | undefined;
+    override setProp(node: MemoryNode, name: string, value: unknown,
+      previous?: unknown) {
+      super.setProp(node, name, value, previous);
+      if (name === "position-x") {
+        const callback = this.onWrite;
+        this.onWrite = undefined;
+        callback?.();
+      }
+    }
+  }
+  const host = new InterleavingHost(), container = host.createContainer();
+  const root = new ComponentStateRoot(host, container,
+    { rootId: "owned-newer-cell", scheduleCommit() {} });
+  try {
+    root.mount(jsx(Motion, { key: "owner", clock }));
+    const rootOwner = root.world.findOwner(null, `@component-root:${root.rootId}`);
+    assert(rootOwner !== undefined);
+    const owner = root.world.findOwner(rootOwner, site, "owner");
+    assert(owner !== undefined);
+    const handle = root.world.cellHandle(owner, stateSite);
+    assert(handle);
+    assert(setOffset(3));
+    clock.dispatch(4);
+    host.onWrite = () => { assert(setOffset(5)); };
+    const candidate = root.prepareTransaction({ cells: [handle], collections: [],
+      stores: [clock] });
+    assert(candidate);
+    assert(candidate.validate());
+    candidate.commitHost();
+    assert(candidate.validatePostHost());
+    candidate.preparePublication(); candidate.publish(); candidate.runEffects();
+    assertEquals(container.children[0].props["position-x"], 7);
+    root.flush();
+    assertEquals(container.children[0].props["position-x"], 9);
+    assertEquals(renders, 1);
+  } finally { root.dispose(); }
 });

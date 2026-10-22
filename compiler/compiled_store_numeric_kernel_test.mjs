@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { stripTypeScriptTypes } from "node:module";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { parse } from "@babel/parser";
@@ -9,7 +8,8 @@ import { transformWithOxc } from "vite";
 import * as THREE from "three";
 import { nativeModuleCompilerPlugin } from "./vite_native_module.ts";
 import { createNativeRoot, jsx, storeRecord } from "../src/native_runtime_api.ts";
-import { evaluateClosedStoreHostProgram } from "../src/closed_store_host_program.ts";
+import { evaluateClosedStoreHostProgram, normalizeClosedStoreHostProgram } from "../src/closed_store_host_program.ts";
+import { normalizeClosedStoreDataExecution, evaluateClosedStoreDataExecution } from "../src/closed_store_execution.ts";
 import { createThreeNativeRoot } from "../src/three_host.ts";
 import { MemoryVDOMHost } from "../src/vdom_snapshot_runtime.ts";
 
@@ -117,50 +117,39 @@ try {
     const registration = registrations.get(name);
     assert.ok(registration, `${name} registration missing`);
     const program = property(registration.metadata, "closedStoreHostProgram");
-    const kernel = property(registration.metadata, "closedStoreNumericKernel");
+    const execution = property(registration.metadata, "closedStoreExecution");
+    assert.equal(property(registration.metadata, "closedStoreNumericKernel"), null);
     assert.equal(literal(property(program, "schemaVersion")), 6);
-    assert.equal(literal(property(kernel, "schemaVersion")), 1);
+    assert.equal(literal(property(execution, "schemaVersion")), 1);
+    assert.equal(literal(property(execution, "kind")), "owned-data");
+    assert.equal(execution.properties.length, 4);
     assert.equal(literal(property(program, "componentProgramId")), registration.id);
-    assert.equal(literal(property(kernel, "componentProgramId")), registration.id);
+    assert.equal(literal(property(execution, "componentProgramId")), registration.id);
     assert.equal(literal(property(program, "moduleRevision")), revision);
-    assert.equal(literal(property(kernel, "moduleRevision")), revision);
+    assert.equal(literal(property(execution, "moduleRevision")), revision);
     const inputs = property(program, "inputs")?.elements;
     assert.equal(inputs?.length, 1);
     assert.equal(literal(property(inputs[0], "storeProp")), "clock");
     assert.deepEqual(property(inputs[0], "paths")?.elements?.map(item =>
       item.elements.map(literal)), [["phase"], ["epoch"]]);
-    assert.equal(literal(property(kernel, "inputCount")), 2);
-    const propNames = property(kernel, "propNames")?.elements?.map(literal);
-    const hostNames = property(property(program, "host"), "props")?.elements
+    const propNames = property(property(program, "host"), "props")?.elements
       ?.map(item => literal(item.elements?.[0]));
-    assert.deepEqual(propNames, hostNames);
-    const execute = property(kernel, "executeRange");
-    assert.equal(execute?.type, "ObjectMethod");
-    const expression = stripTypeScriptTypes(`(${transformed.code.slice(kernel.start, kernel.end)})`,
-      { mode: "strip" });
-    const executable = Function(`"use strict"; return ${expression};`)();
     const programObject = Function(`"use strict"; return (${transformed.code.slice(program.start, program.end)});`)();
+    const rawExecution = Function(`"use strict"; return (${transformed.code.slice(execution.start, execution.end)});`)();
+    const normalizedHost = normalizeClosedStoreHostProgram(programObject);
+    assert.ok(normalizedHost);
+    const owned = normalizeClosedStoreDataExecution(rawExecution, normalizedHost);
+    assert.ok(owned, `${name} actual compiler data marker normalizes`);
     const inputRows = [[0, 0], [2, 3], [-0, 0], [5, -2]];
-    const input = [99, ...inputRows.flat(), 98], output = Array(2 + inputRows.length * propNames.length + 2).fill(777);
-    const written = executable.executeRange(input, 1, inputRows.length, output, 2);
-    assert.equal(written, inputRows.length * propNames.length);
-    assert.deepEqual(output.slice(0, 2), [777, 777]);
-    assert.deepEqual(output.slice(2 + written), [777, 777]);
-    for (let row = 0; row < inputRows.length; row++) {
-      const oracle = evaluateClosedStoreHostProgram(programObject, inputRows[row]);
+    for (const row of inputRows) {
+      const oracle = evaluateClosedStoreHostProgram(programObject, row);
+      const actual = evaluateClosedStoreDataExecution(owned, row);
       assert.ok(oracle, `${name} evaluator accepts finite row`);
-      for (let column = 0; column < propNames.length; column++)
-        assert.ok(Object.is(output[2 + row * propNames.length + column], oracle[column][1]),
-          `${name} row ${row}, ${propNames[column]} differs from legacy evaluator`);
+      assert.deepEqual(actual, oracle, `${name} differs from legacy evaluator`);
     }
-    assert.equal(evaluateClosedStoreHostProgram(programObject, [Infinity, 0]), null);
+    assert.equal(evaluateClosedStoreDataExecution(owned, [Infinity, 0]), null);
     if (name !== "Alternate") {
-      const body = transformed.code.slice(execute.start, execute.end);
-      assert.match(body, /\$r3actDag\d+/, "shared expression DAG must emit a temporary");
-      const overflow = Array(propNames.length).fill(777);
-      assert.equal(executable.executeRange([1e308, 1e308], 0, 1, overflow, 0), propNames.length);
-      assert.ok(overflow.some(value => !Number.isFinite(value)));
-      assert.equal(evaluateClosedStoreHostProgram(programObject, [1e308, 1e308]), null,
+      assert.equal(evaluateClosedStoreDataExecution(owned, [1e308, 1e308]), null,
         "finite captured inputs with a nonfinite output must decline");
     }
     proofs.push({ name, id: registration.id, revision, inputCount: 2, propNames });
@@ -203,9 +192,10 @@ try {
   for (const key of Object.keys(counters)) delete counters[key];
   app.clock.dispatch(() => storeRecord({ phase: 2, epoch: 3 }));
   assert.equal(dom.flush(), true);
-  assert.equal(counters["store.numeric-kernel.runs"], 3,
-    "A,A,B,A owner sequence must remain three contiguous original-order runs");
-  assert.equal(counters["store.numeric-kernel.rows"], 4);
+  assert.equal(counters["store.numeric-kernel.runs"] ?? 0, 0);
+  assert.equal(counters["store.owned-data.rows"], 4);
+  assert.equal(counters["store.owned-data.batches"], 1,
+    "heterogeneous data owners must use the enclosed passive capture");
   for (const [id, expected] of [["a", 18], ["b", 18], ["c", 4], ["d", 18]]) {
     const motion = children[id]?.parent;
     assert.ok(motion);
@@ -221,7 +211,7 @@ try {
   assert.equal(fallback.flush(), true);
   assert.ok(app.trace.opaqueCalls > opaqueCalls);
   assert.equal(three.root.flush(), true);
-  assert.equal(threeCounters["store.numeric-kernel.rows"], 1);
+  assert.equal(threeCounters["store.owned-data.rows"], 1);
   assert.equal(mesh.geometry, geometry); assert.equal(mesh.material, material);
   setter(7); assert.equal(dom.flush(), true);
   assert.equal(children.a.props["data-count"], 7);
@@ -230,11 +220,11 @@ try {
   fallback.dispose(); fallback = null; assert.equal(fallbackContainer.children.length, 0);
   three.dispose(); three = null; assert.equal(scene.children.length, 0);
   await writeFile(path.join(artifact, "result.json"), JSON.stringify({ status: "PASS", proofs,
-    assertions: { actualRustOxcKernel: true, directOffsetOracle: true, sharedExpression: true,
+    assertions: { actualRustOxcOwnedData: true, legacyDescriptorOracle: true, finiteSignedZeroOracle: true,
       mixedRuns: true, stateEventResourceForkFallback: true },
     boundary: "No timing claim; stale code, newer reentry and partial host failure have dedicated runtime gates." },
   null, 2) + "\n", { flag: "wx" });
-  console.log(`PASS compiled Store numeric kernel; provenance: ${artifact}`);
+  console.log(`PASS compiled Store owned numeric data; provenance: ${artifact}`);
 } catch (error) { primaryError = error; }
 const cleanupErrors = [];
 try { dom?.dispose(); } catch (error) { cleanupErrors.push(error); }

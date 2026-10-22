@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { stripTypeScriptTypes } from "node:module";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { parse } from "@babel/parser";
@@ -10,7 +9,10 @@ import * as THREE from "three";
 import { nativeModuleCompilerPlugin } from "./vite_native_module.ts";
 import { createNativeRoot, jsx, NativeRootWorkQueue, storeRecord } from "../src/native_runtime_api.ts";
 import { admitPreparedNativeGroup } from "../src/component_state_runtime.ts";
+import { evaluateClosedHostValue } from "../src/closed_host_value.ts";
+import { normalizeClosedStoreHostProgram } from "../src/closed_store_host_program.ts";
 import { OwnerStateWorld } from "../src/owner_state_world.ts";
+import { normalizeClosedStoreDataExecution, evaluateClosedStoreDataExecution } from "../src/closed_store_execution.ts";
 import { createThreeNativeRoot } from "../src/three_host.ts";
 import { MemoryVDOMHost } from "../src/vdom_snapshot_runtime.ts";
 
@@ -126,10 +128,13 @@ try {
     const registration = registrations.get(name);
     assert.ok(registration, `${name} registration missing`);
     const program = property(registration.metadata, "closedStoreHostProgram");
-    const kernel = property(registration.metadata, "closedStoreNumericKernel");
+    const execution = property(registration.metadata, "closedStoreExecution");
+    assert.equal(property(registration.metadata, "closedStoreNumericKernel"), null);
     assert.equal(literal(property(program, "schemaVersion")), 7);
-    assert.equal(literal(property(kernel, "schemaVersion")), 1);
-    for (const owner of [program, kernel]) {
+    assert.equal(literal(property(execution, "schemaVersion")), 1);
+    assert.equal(literal(property(execution, "kind")), "owned-data");
+    assert.equal(execution.properties.length, 4);
+    for (const owner of [program, execution]) {
       assert.equal(literal(property(owner, "componentProgramId")), registration.id);
       assert.equal(literal(property(owner, "moduleRevision")), revision);
     }
@@ -141,14 +146,17 @@ try {
     assert.deepEqual(property(program, "inputs")?.elements?.flatMap(input =>
       property(input, "paths")?.elements?.map(item => item.elements.map(literal)) ?? []),
       [["phase"], ["epoch"]]);
-    assert.equal(literal(property(kernel, "inputCount")), 3);
-    assert.deepEqual(property(kernel, "propNames")?.elements?.map(literal), props);
-    const expression = stripTypeScriptTypes(`(${transformed.code.slice(kernel.start, kernel.end)})`,
-      { mode: "strip" });
-    const executable = Function(`"use strict"; return ${expression};`)();
-    const output = [777, 777, 777];
-    assert.equal(executable.executeRange([3, 4, 2], 0, 1, output, 1), 1);
-    assert.deepEqual([output[0], output[2]], [777, 777]);
+    assert.deepEqual(property(property(program, "host"), "props")?.elements
+      ?.map(item => literal(item.elements?.[0])), props);
+    const programObject = Function(`"use strict"; return (${transformed.code.slice(program.start, program.end)});`)();
+    const rawExecution = Function(`"use strict"; return (${transformed.code.slice(execution.start, execution.end)});`)();
+    const normalizedHost = normalizeClosedStoreHostProgram(programObject);
+    assert.ok(normalizedHost);
+    const owned = normalizeClosedStoreDataExecution(rawExecution, normalizedHost);
+    assert.ok(owned);
+    const values = evaluateClosedStoreDataExecution(owned, [3, 4, 2]);
+    assert.deepEqual(values, programObject.host.props.map(([name, expression]) =>
+      [name, evaluateClosedHostValue(expression, [3, 4, 2])]));
     proofs.push({ name, id: registration.id, revision, propNames: props });
   }
   const emitted = await transformWithOxc(transformed.code, sourcePath,
@@ -345,7 +353,7 @@ try {
     assert.ok(app.trace.cleanups[id] >= 1, `${id} activation cleanup missing`);
   await writeFile(path.join(artifact, "result.json"), JSON.stringify({ status: "PASS",
     proofs, laterPublicCalls, cleanups: app.trace.cleanups,
-    assertions: { actualSchema7AndKernel: true, sharedStoreLocalAndRetainedChildren: true,
+    assertions: { actualSchema7AndOwnedData: true, sharedStoreLocalAndRetainedChildren: true,
       groupFinalAdmission: true, forkReentryAndExactAck: true,
       partialFailureOldAcceptance: true },
   }, null, 2) + "\n", { flag: "wx" });

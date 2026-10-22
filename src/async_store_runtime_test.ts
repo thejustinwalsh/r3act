@@ -1,6 +1,7 @@
 import {
   AsyncStore, captureCanonicalStoreReaderReceipt, createAsyncStore,
-  inspectCanonicalStoreReaderReceipt, StoreRenderTransaction,
+  inspectCanonicalStoreReaderReceipt, readOwnedClosedProjectionBatch,
+  StoreRenderTransaction,
 } from "./async_store_runtime.ts";
 import { normalizeClosedProjectionPaths, storeRecord } from "./owned_store_record.ts";
 
@@ -15,6 +16,85 @@ function equal<T>(actual: T, expected: T, message: string): void {
     );
   }
 }
+
+Deno.test("owned batch stages distinct readers and leaves failed paths unstaged", () => {
+  const paths = normalizeClosedProjectionPaths([["phase"]])!;
+  const missing = normalizeClosedProjectionPaths([["missing"]])!;
+  const store = createAsyncStore(storeRecord({ phase: 4 }));
+  const failed = new StoreRenderTransaction("batch-root");
+  equal(readOwnedClosedProjectionBatch(failed, [
+    { store, readerId: "first", paths },
+    { store, readerId: "second", paths: missing },
+  ]), null, "missing projection should decline");
+  equal(failed.readers.size, 0, "decline staged a reader");
+  equal(failed.stores.size, 0, "decline pinned a snapshot");
+  const transaction = new StoreRenderTransaction("batch-root");
+  const values = readOwnedClosedProjectionBatch(transaction, [
+    { store, readerId: "first", paths },
+    { store, readerId: "second", paths },
+  ]);
+  assert(values, "canonical batch declined");
+  equal(values[0][0], 4, "first projection");
+  equal(values[1][0], 4, "second projection");
+  equal(transaction.readers.size, 2, "reader membership was shared");
+  equal(transaction.observations.size, 2, "reader observations were shared");
+  transaction.preparePublication();
+  transaction.publishAccepted();
+  equal(store.diagnostics().readers, 2, "accepted reader histories were shared");
+});
+
+Deno.test("owned batch reuses one projection per Store and branded path identity", () => {
+  const paths = normalizeClosedProjectionPaths([["phase"]])!;
+  const equalButDistinctPaths = normalizeClosedProjectionPaths([["phase"]])!;
+  const first = createAsyncStore(storeRecord({ phase: 6 }));
+  const second = createAsyncStore(storeRecord({ phase: 6 }));
+  const transaction = new StoreRenderTransaction("batch-reuse");
+  const requests = Array.from({ length: 257 }, (_, index) => ({
+    store: first, readerId: `reader-${index}`, paths,
+  }));
+  const values = readOwnedClosedProjectionBatch(transaction, [
+    ...requests,
+    { store: first, readerId: "other-path", paths: equalButDistinctPaths },
+    { store: second, readerId: "other-store", paths },
+  ]);
+  assert(values, "canonical repeated-path batch declined");
+  for (let index = 1; index < 257; index++) {
+    assert(values[index] === values[0], "identical Store/path repeated projection allocation");
+  }
+  assert(values[257] !== values[0], "distinct path identity shared a projection");
+  assert(values[258] !== values[0], "distinct Store shared a projection");
+  assert(transaction.readClosedProjections(first, "after-batch", paths) === values[0],
+    "transaction-local projection memo was not seeded");
+  equal(transaction.readers.size, 260, "reused projection collapsed reader membership");
+  equal(transaction.observations.size, 260, "reused projection collapsed observations");
+  transaction.discard();
+});
+
+Deno.test("owned batch audits after the last request trap", () => {
+  const paths = normalizeClosedProjectionPaths([["phase"]])!;
+  const first = createAsyncStore(storeRecord({ phase: 1 }));
+  const second = createAsyncStore(storeRecord({ phase: 2 }));
+  const original = Object.getOwnPropertyDescriptor(AsyncStore.prototype, "_validateRender")!;
+  const last = new Proxy({ store: second, readerId: "second", paths }, {
+    getOwnPropertyDescriptor(target, key) {
+      if (key === "paths") {
+        Object.defineProperty(AsyncStore.prototype, "_validateRender", {
+          ...original, value() { return false; },
+        });
+      }
+      return Reflect.getOwnPropertyDescriptor(target, key);
+    },
+  });
+  try {
+    const transaction = new StoreRenderTransaction("batch-order");
+    equal(readOwnedClosedProjectionBatch(transaction, [
+      { store: first, readerId: "first", paths }, last,
+    ]), null, "batch accepted a prototype revoked by the last request");
+    equal(transaction.readers.size, 0, "revoked batch staged readers");
+  } finally {
+    Object.defineProperty(AsyncStore.prototype, "_validateRender", original);
+  }
+});
 
 Deno.test("owned projections share a pinned value without sharing reader history or forks", () => {
   const paths = normalizeClosedProjectionPaths([["phase"]])!;

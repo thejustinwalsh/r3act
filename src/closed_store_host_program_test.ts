@@ -76,6 +76,14 @@ Deno.test("Store schema 6 retains only a declared child slot and flattened numer
     host: { ...raw.host, child: "unsafe" } }), null);
 });
 
+Deno.test("legacy direct Store path carries owned projection provenance", () => {
+  const program = normalizeClosedStoreHostProgram(data())!;
+  const paths = closedStoreHostInputPaths(closedStoreHostInputs(program)[0]);
+  equal(isOwnedClosedProjectionPaths(paths), true);
+  equal(paths.length, 1);
+  equal(paths[0].length, 0);
+});
+
 Deno.test("Store schema 5 freezes lexical paths and flattens expression inputs", () => {
   const raw = subtreeData();
   raw.schemaVersion = 5;

@@ -1,5 +1,16 @@
 # A VDOM-First, Data-Oriented Runtime for Declarative UI
 
+## Data-owned Store execution — 22 October 2026
+
+Compiler-selected closed Store owners now emit normalized data execution instead of callback kernels. One passive operation captures canonical World inputs and distinct Store/path projections while retaining independent reader history. Legacy callbacks and conservative fallback remain. Specialized final publication uses canonical internal bookkeeping, exact old-cut acknowledgement and newer-action preservation; resource retirement shares existing destruction with a finite zero-lane eligibility check. No identity/version registry or physical redesign is added. Recursive evaluation loses generated CSE/inlining and its cold/memory costs remain unmeasured.
+
+Darwin-v3 passes 73/73 phases, 1165 runtime tests, 101 Rust tests and all 53 compiled fixtures, with 1742 matching runner hashes. Both failed gates and the first verifier-induced browser failure remain preserved. Fresh installed v2 proof verifies actual data metadata and React Compiler transforms, matching values/pixels/retained identities, exactly257 rows/one batch per frame, and 512 exactly-once resource disposals per arm. All12378 browser source checks match before/after and cleanup is empty.
+
+The sole four-arm comparison still loses to declarative React/R3F: Native update-step median/p95 **3.45/3.90ms** versus **0.70/0.90ms**; through-draw **5.85/7.20ms** versus **4.40/5.20ms**. R3F useFrame observes3.00/3.20 and6.40/13.00ms; imperative0.10/0.20 and3.90/4.70ms. This is one fixed-order12/60 episode, not causal old/new saving, phase attribution, presentation, matched cold/memory or independent-device evidence. No favorable repeat occurs.
+
+The semantic capability is retained; performance parity remains **FAIL**. [Results and failures](implementation/2026-10-22-owned-store-execution/results.md), [primary review](implementation/2026-10-22-owned-store-execution/source-review.md), and [Astra’s exact next Sol orchestration](implementation/2026-10-22-astra-speed-orchestration/orchestration.md) define the boundary. The next separately bounded candidate retires repeated owner reconstruction, scalar-only tree assembly and immediate deferred-adapter construction while keeping one publication state machine. Full-plan, HMR/lifecycle/cold/memory/independent-device obligations stay open. Historical narrow wins, dense FAIL, exhausted RecordingA/physical HOLD and zero-participant/no-maintenance-advantage limits remain.
+
+
 ## Compiled numeric Store kernels — 21 October 2026
 
 Rust now emits revision-associated numeric Store range kernels using the shared expression DAG. Root executes contiguous same-program rows over cut buffers and stages existing Store prop deltas; retained children, reader history, exact acknowledgement and generic fallback remain. Arithmetic/bitwise numeric leaf expressions qualify; logical/conditional, aggregate, subtree, resource and opaque forms keep their existing routes. No parallel identity/version registry or storage layout is added.

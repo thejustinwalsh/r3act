@@ -1,4 +1,4 @@
-import { ScalarSource } from "./jsx_binding_runtime.ts";
+import { ScalarSource, canonicalScalarSourceValue } from "./jsx_binding_runtime.ts";
 import { NumericColumn } from "./jsx_binding_runtime.ts";
 import {
   compiledStateLayoutSlot,
@@ -11,6 +11,9 @@ import {
   type PreparedDirtyMembership,
   WorldDirtyJournal,
 } from "./world_dirty_journal.ts";
+
+const ownedWorldCaptureKey = Symbol("owned-world-capture");
+const ownedWorldRetirementKey = Symbol("owned-world-retirement");
 
 /** A component instance in the owner graph. IDs are allocated once and never reused. */
 export type OwnerId = number;
@@ -397,6 +400,19 @@ export type StateCellHandle = Readonly<{
   cellIdentity: object;
 }>;
 
+export type OwnedClosedWorldInputCell = Readonly<{
+  handle: StateCellHandle;
+  source: ScalarSource;
+  version: number;
+  value: number;
+}>;
+
+export type OwnedClosedWorldInputRow = Readonly<{
+  owner: OwnerId;
+  lineage: readonly OwnerId[];
+  cells: readonly OwnedClosedWorldInputCell[];
+}>;
+
 type OwnerRecord = {
   id: OwnerId;
   parent: OwnerId | null;
@@ -526,6 +542,82 @@ export class OwnerStateWorld {
     readonly ((handle: StateCellHandle, version: number) => void)[] = [];
   #claimedRootIds = new Map<string, OwnerId>();
   #stagedOwners = new Set<OwnerId>();
+
+  static _canRetireOwnedOwner(
+    key: symbol,
+    world: OwnerStateWorld,
+    owner: OwnerId,
+  ): boolean {
+    if (key !== ownedWorldRetirementKey) return false;
+    if (typeof world !== "object" || world === null || !(#owners in world)) return false;
+    return Number.isSafeInteger(owner) && world.#canRetireOwnedOwner(owner);
+  }
+
+  static _retireOwnedOwner(
+    key: symbol,
+    world: OwnerStateWorld,
+    owner: OwnerId,
+  ): boolean {
+    if (key !== ownedWorldRetirementKey) return false;
+    if (typeof world !== "object" || world === null || !(#owners in world)) return false;
+    if (!Number.isSafeInteger(owner) || !world.#canRetireOwnedOwner(owner)) return false;
+    return world.#destroyOwner(owner, true);
+  }
+
+  static _captureOwnedClosedInputs(
+    key: symbol,
+    world: OwnerStateWorld,
+    requests: readonly { owner: OwnerId; sites: readonly StateSiteId[] }[],
+  ): readonly OwnedClosedWorldInputRow[] | null {
+    if (key !== ownedWorldCaptureKey) return null;
+    if (typeof world !== "object" || world === null || !(#owners in world)) return null;
+    try {
+      if (Object.getPrototypeOf(world) !== OwnerStateWorld.prototype) return null;
+      for (const name of closedWorldCaptureMethods) {
+        if (Object.hasOwn(world, name)) return null;
+        const current = Object.getOwnPropertyDescriptor(OwnerStateWorld.prototype, name);
+        const expected = closedWorldCaptureDescriptors.get(name);
+        if (!current || !expected || current.value !== expected.value ||
+          current.get !== expected.get || current.set !== expected.set ||
+          current.writable !== expected.writable ||
+          current.enumerable !== expected.enumerable ||
+          current.configurable !== expected.configurable) return null;
+      }
+      const rows: OwnedClosedWorldInputRow[] = [];
+      for (const request of requests) {
+        const owner = request.owner;
+        if (!Number.isSafeInteger(owner) || !world.#owners.has(owner) ||
+          world.#stagedOwners.has(owner)) return null;
+        const lineage: OwnerId[] = [];
+        let ancestor: OwnerId | null = owner;
+        while (ancestor !== null) {
+          lineage.push(ancestor);
+          ancestor = world.#owners.get(ancestor)!.parent;
+        }
+        const cells: OwnedClosedWorldInputCell[] = [];
+        for (const site of request.sites) {
+          const cell = world.#stateByOwner.get(owner)?.get(site);
+          if (!cell || cell.lane || !cell.source) return null;
+          const descriptor = Object.getOwnPropertyDescriptor(cell, "value");
+          const value = descriptor && "value" in descriptor ? descriptor.value : undefined;
+          const sourceValue = canonicalScalarSourceValue(cell.source);
+          if (typeof value !== "number" || !Number.isFinite(value) ||
+            sourceValue === null || !Object.is(value, sourceValue)) return null;
+          cells.push(Object.freeze({
+            handle: world.#handleForCell(owner, site, cell),
+            source: cell.source,
+            version: cell.version,
+            value,
+          }));
+        }
+        rows.push(Object.freeze({ owner, lineage: Object.freeze(lineage), cells: Object.freeze(cells) }));
+      }
+      return Object.freeze(rows);
+    } catch (error) {
+      if (error instanceof TypeError) return null;
+      throw error;
+    }
+  }
 
   #layoutRecord(owner: OwnerId, layout: CompiledStateLayout) {
     if (!this.#owners.has(owner)) throw new Error(`Owner ${owner} is not alive`);
@@ -2259,9 +2351,35 @@ export class OwnerStateWorld {
 
   /** Destroy an owner and all nested keyed/component owners, including state traits. */
   destroyOwner(owner: OwnerId): boolean {
+    return this.#destroyOwner(owner, false);
+  }
+
+  #canRetireOwnedOwner(owner: OwnerId): boolean {
+    const root = this.#owners.get(owner);
+    if (!root || this.#stagedOwners.has(owner)) return false;
+    const pending = [root];
+    while (pending.length > 0) {
+      const record = pending.pop()!;
+      if (this.#stagedOwners.has(record.id)) return false;
+      for (const cell of this.#stateByOwner.get(record.id)?.values() ?? []) {
+        if (cell.lane) return false;
+      }
+      for (const child of record.children) {
+        const childRecord = this.#owners.get(child);
+        if (!childRecord) return false;
+        pending.push(childRecord);
+      }
+    }
+    return true;
+  }
+
+  #destroyOwner(owner: OwnerId, canonicalChildren: boolean): boolean {
     const record = this.#owners.get(owner);
     if (!record) return false;
-    for (const child of [...record.children]) this.destroyOwner(child);
+    for (const child of [...record.children]) {
+      if (canonicalChildren) this.#destroyOwner(child, true);
+      else this.destroyOwner(child);
+    }
 
     const bySite = this.#childrenBySlot.get(record.parent);
     const byKey = bySite?.get(record.componentSiteId);
@@ -2400,5 +2518,62 @@ export class OwnerStateWorld {
       for (const listener of changeListeners) listener(change);
     }
     return true;
+  }
+}
+
+const closedWorldCaptureMethods = Object.freeze([
+  "cellHandle", "scalarSourceForCell", "versionForCell", "ownerLineage",
+] as const);
+const closedWorldCaptureDescriptors = new Map(
+  closedWorldCaptureMethods.map((name) => [
+    name, Object.getOwnPropertyDescriptor(OwnerStateWorld.prototype, name)!,
+  ]),
+);
+const canonicalCaptureOwnedClosedInputs = OwnerStateWorld._captureOwnedClosedInputs;
+const canonicalCanRetireOwnedOwner = OwnerStateWorld._canRetireOwnedOwner;
+const canonicalRetireOwnedOwner = OwnerStateWorld._retireOwnedOwner;
+
+export function canRetireOwnedWorldOwner(world: OwnerStateWorld, owner: OwnerId): boolean {
+  return canonicalCanRetireOwnedOwner.call(
+    OwnerStateWorld, ownedWorldRetirementKey, world, owner,
+  );
+}
+
+export function retireOwnedWorldOwner(world: OwnerStateWorld, owner: OwnerId): boolean {
+  return canonicalRetireOwnedOwner.call(
+    OwnerStateWorld, ownedWorldRetirementKey, world, owner,
+  );
+}
+
+export function captureOwnedClosedWorldInputs(
+  world: OwnerStateWorld,
+  requests: readonly { owner: OwnerId; sites: readonly StateSiteId[] }[],
+): readonly OwnedClosedWorldInputRow[] | null {
+  try {
+    const length = Object.getOwnPropertyDescriptor(requests, "length")?.value;
+    if (!Number.isSafeInteger(length) || length < 0 || length > 65536) return null;
+    const copied: { owner: OwnerId; sites: StateSiteId[] }[] = [];
+    for (let index = 0; index < length; index++) {
+      const request = Object.getOwnPropertyDescriptor(requests, String(index));
+      if (!request || !("value" in request) || !request.value) return null;
+      const owner = Object.getOwnPropertyDescriptor(request.value, "owner");
+      const sites = Object.getOwnPropertyDescriptor(request.value, "sites");
+      if (!owner || !("value" in owner) || !sites || !("value" in sites)) return null;
+      const siteLength = Object.getOwnPropertyDescriptor(sites.value, "length")?.value;
+      if (!Number.isSafeInteger(siteLength) || siteLength < 0 || siteLength > 256) return null;
+      const copiedSites: StateSiteId[] = [];
+      for (let siteIndex = 0; siteIndex < siteLength; siteIndex++) {
+        const site = Object.getOwnPropertyDescriptor(sites.value, String(siteIndex));
+        if (!site || !("value" in site) || typeof site.value !== "string" || !site.value) return null;
+        copiedSites.push(site.value);
+      }
+      copied.push({ owner: owner.value, sites: copiedSites });
+    }
+    return canonicalCaptureOwnedClosedInputs.call(
+      OwnerStateWorld, ownedWorldCaptureKey, world, copied,
+    );
+  } catch (error) {
+    if (error instanceof TypeError) return null;
+    throw error;
   }
 }

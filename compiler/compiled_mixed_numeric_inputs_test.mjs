@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { stripTypeScriptTypes } from "node:module";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { parse } from "@babel/parser";
@@ -9,8 +8,9 @@ import { transformWithOxc } from "vite";
 import * as THREE from "three";
 import { nativeModuleCompilerPlugin } from "./vite_native_module.ts";
 import { createNativeRoot, jsx, storeRecord } from "../src/native_runtime_api.ts";
-import { evaluateClosedStoreHostProgram } from "../src/closed_store_host_program.ts";
+import { evaluateClosedStoreHostProgram, normalizeClosedStoreHostProgram } from "../src/closed_store_host_program.ts";
 import { evaluateClosedHostValue } from "../src/closed_host_value.ts";
+import { normalizeClosedStoreDataExecution, evaluateClosedStoreDataExecution } from "../src/closed_store_execution.ts";
 import { createThreeNativeRoot } from "../src/three_host.ts";
 import { MemoryVDOMHost } from "../src/vdom_snapshot_runtime.ts";
 
@@ -138,13 +138,16 @@ try {
     const registration = registrations.get(name);
     assert.ok(registration, `${name} registration missing`);
     const program = property(registration.metadata, "closedStoreHostProgram");
-    const kernel = property(registration.metadata, "closedStoreNumericKernel");
+    const execution = property(registration.metadata, "closedStoreExecution");
+    assert.equal(property(registration.metadata, "closedStoreNumericKernel"), null);
     assert.equal(literal(property(program, "schemaVersion")), 7);
-    assert.equal(literal(property(kernel, "schemaVersion")), 1);
+    assert.equal(literal(property(execution, "schemaVersion")), 1);
+    assert.equal(literal(property(execution, "kind")), "owned-data");
+    assert.equal(execution.properties.length, 4);
     assert.equal(literal(property(program, "componentProgramId")), registration.id);
-    assert.equal(literal(property(kernel, "componentProgramId")), registration.id);
+    assert.equal(literal(property(execution, "componentProgramId")), registration.id);
     assert.equal(literal(property(program, "moduleRevision")), revision);
-    assert.equal(literal(property(kernel, "moduleRevision")), revision);
+    assert.equal(literal(property(execution, "moduleRevision")), revision);
     const inputs = property(program, "inputs")?.elements;
     assert.equal(inputs?.length, name === "ThreeMotion" ? 1 : 2);
     assert.deepEqual(inputs.flatMap(input => property(input, "paths")?.elements?.map(item =>
@@ -157,30 +160,23 @@ try {
     assert.deepEqual(effects, [`${registration.id}#effect:0`]);
     assert.equal(literal(property(program, "retainedChildProp")), "children");
     assert.equal(property(property(program, "host"), "child")?.type, "NullLiteral");
-    assert.equal(literal(property(kernel, "inputCount")), paths.length + stateCount);
-    assert.deepEqual(property(kernel, "propNames")?.elements?.map(literal), props);
     assert.deepEqual(property(property(program, "host"), "props")?.elements
       ?.map(item => literal(item.elements?.[0])), props);
-    const expression = stripTypeScriptTypes(`(${transformed.code.slice(kernel.start, kernel.end)})`,
-      { mode: "strip" });
-    const executable = Function(`"use strict"; return ${expression};`)();
     const programObject = Function(`"use strict"; return (${transformed.code.slice(program.start, program.end)});`)();
+    const rawExecution = Function(`"use strict"; return (${transformed.code.slice(execution.start, execution.end)});`)();
+    const normalizedHost = normalizeClosedStoreHostProgram(programObject);
+    assert.ok(normalizedHost);
+    const owned = normalizeClosedStoreDataExecution(rawExecution, normalizedHost);
+    assert.ok(owned);
     const rows = name === "Motion" ? [[0, 0, 2, 0, 1], [3, 4, 5, -2, 7]] :
       name === "Alternate" ? [[0, 0, 2, 0], [3, 4, 5, -2]] : [[0, 0, 0], [3, 4, -2]];
-    const input = [99, ...rows.flat(), 98], output = Array(2 + rows.length * props.length + 2).fill(777);
-    const written = executable.executeRange(input, 1, rows.length, output, 2);
-    assert.equal(written, rows.length * props.length);
-    assert.deepEqual(output.slice(0, 2), [777, 777]);
-    assert.deepEqual(output.slice(2 + written), [777, 777]);
-    for (let row = 0; row < rows.length; row++) {
+    for (const row of rows) {
       const oracle = programObject.host.props.map(([name, descriptor]) =>
-        [name, evaluateClosedHostValue(descriptor, rows[row])]);
-      for (let column = 0; column < props.length; column++)
-        assert.ok(Object.is(output[2 + row * props.length + column], oracle[column][1]),
-          `${name} row ${row}, ${props[column]} differs from descriptor evaluator`);
+        [name, evaluateClosedHostValue(descriptor, row)]);
+      assert.deepEqual(evaluateClosedStoreDataExecution(owned, row), oracle);
     }
     assert.equal(evaluateClosedStoreHostProgram(programObject, rows[0]), null,
-      "schema 7 must require its associated kernel in production");
+      "raw public schema-7 evaluation stays unsupported; private normalized data is required");
     proofs.push({ name, id: registration.id, revision, inputCount: paths.length + stateCount, props });
   }
   assert.equal(property(registrations.get("Opaque")?.metadata, "closedStoreHostProgram"), null);
@@ -237,14 +233,14 @@ try {
   assert.equal(motion("a").props["data-a"], 34);
   assert.equal(motion("b").props["data-a"], 28);
   assert.equal(motion("c").props["data-a"], 17);
-  assert.equal(counters["store.numeric-kernel.rows"] >= 4, true);
+  assert.equal(counters["store.owned-data.rows"] >= 4, true);
   assert.equal(find(forkContainer, node => node.props?.["data-a"] === 0)?.props?.["data-a"], 0,
     "fork keeps its accepted Store history");
   const opaqueCalls = app.trace.opaqueCalls;
   assert.equal(fallback.flush(), true);
   assert.ok(app.trace.opaqueCalls > opaqueCalls);
   assert.equal(three.root.flush(), true);
-  assert.equal(threeCounters["store.numeric-kernel.rows"] >= 1, true);
+  assert.equal(threeCounters["store.owned-data.rows"] >= 1, true);
   assert.equal(mesh.geometry, geometry); assert.equal(mesh.material, material);
   assert.equal(controls.a.trim(7), true);
   assert.equal(controls.d.offset(-2), true);
