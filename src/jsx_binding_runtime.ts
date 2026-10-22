@@ -44,6 +44,21 @@ export const copyRuntimeElement = (
     ? { ...props } : { ...props, [componentOutputOwnerTag]: componentOwner }),
 }));
 
+/** @internal Copy known data entries directly into a new runtime-owned element. */
+export const copyRuntimeElementFromEntries = (
+  type: ElementType,
+  entries: Iterable<readonly [string, unknown]>,
+  componentOwner?: number,
+): RuntimeElement => {
+  const props: Record<string, unknown> = Object.fromEntries(entries);
+  if (componentOwner !== undefined) {
+    Object.defineProperty(props, componentOutputOwnerTag, {
+      value: componentOwner, enumerable: true, writable: true, configurable: true,
+    });
+  }
+  return ownRuntimeElement(Object.freeze({ type, props: Object.freeze(props) }));
+};
+
 /** @internal Copy an intrinsic with a runtime-generated host key. */
 export const copyRuntimeElementWithGeneratedHostKey = (
   type: string,

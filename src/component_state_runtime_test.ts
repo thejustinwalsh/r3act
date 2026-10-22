@@ -3,7 +3,10 @@ import {
   defineComponent,
   useEffectAt,
   useStateAt,
+  useStoreAt,
 } from "./component_state_runtime.ts";
+import { createAsyncStore } from "./async_store_runtime.ts";
+import { registerCompiledSemanticPlan } from "./compiled_semantic_plan.ts";
 import { componentStateSitesPlan } from "./browser/generated_component_state_sites.ts";
 import {
   ConditionalPanel,
@@ -16,6 +19,7 @@ import {
   Fragment,
   jsx,
   keyedOwnerChildren,
+  type RuntimeNode,
 } from "./jsx_binding_runtime.ts";
 import { type MemoryNode, MemoryVDOMHost } from "./vdom_snapshot_runtime.ts";
 import { OwnerStateWorld } from "./owner_state_world.ts";
@@ -42,6 +46,58 @@ const assertNotSame = (actual: unknown, expected: unknown, message: string) => {
 };
 const textContent = (node: MemoryNode): string =>
   (node.text ?? "") + node.children.map(textContent).join("");
+
+Deno.test("closed Store output receipt retains child and refreshes after generic replacement", () => {
+  const file = "component-state/closed-output-replacement.tsx";
+  const revision = "closed-output-replacement-v1";
+  registerCompiledSemanticPlan({
+    schema_version: 1, source_file: file, module_revision: revision,
+    owners: [], sources: [], sinks: [], operations: [],
+    graph: { coverage: "proven-sinks-only", source_to_sinks: {}, execution_order: [] },
+  });
+  const clock = createAsyncStore(0, (_: number, next: number) => next);
+  const site = `${file}#component:Motion`, storeSite = `${site}#store:0`;
+  let renders = 0;
+  const Motion = defineComponent(site,
+    (props: { clock: typeof clock; children: RuntimeNode }) => {
+      renders++;
+      const phase = useStoreAt(storeSite, props.clock);
+      return jsx("group", { key: "motion", "position-x": phase }, props.children);
+    }, { propOnlySites: [], closedStoreHostProgram: {
+      schemaVersion: 6, componentProgramId: site, moduleRevision: revision,
+      retainedChildProp: "children",
+      inputs: [{ storeUseSiteId: storeSite, storeProp: "clock", paths: [[]] }],
+      host: { tag: "group", key: "motion", child: null,
+        props: [["position-x", { kind: "input", index: 0 }]] },
+    } });
+  const host = new MemoryVDOMHost(), container = host.createContainer();
+  const root = new ComponentStateRoot(host, container,
+    { rootId: "closed-output-replacement", scheduleCommit() {} });
+  const tree = (childKey: string) => jsx(Motion,
+    { key: "owner", clock, children: jsx("mesh", { key: childKey, y: 1 }) });
+  try {
+    root.mount(tree("first"));
+    const group = container.children[0], firstChild = group.children[0];
+    for (const value of [1, 2, 2, 3]) {
+      clock.dispatch(value);
+      root.flush();
+      assertSame(container.children[0], group, "Store update replaced the host");
+      assertSame(group.children[0], firstChild, "Store update replaced retained child");
+      assertEquals(group.props["position-x"], value);
+    }
+    assertEquals(renders, 1, "closed cuts rerendered the owner");
+    root.update(tree("replacement"));
+    const replacement = container.children[0].children[0];
+    assertNotSame(replacement, firstChild, "generic replacement retained old child");
+    clock.dispatch(4);
+    root.flush();
+    assertSame(container.children[0].children[0], replacement,
+      "closed cut used stale child after generic replacement");
+    assertEquals(container.children[0].props["position-x"], 4);
+  } finally {
+    root.dispose();
+  }
+});
 
 Deno.test("component keys are scoped by intrinsic parents and survive keyed host moves", () => {
   const setters = new Map<string, (value: number) => boolean>();

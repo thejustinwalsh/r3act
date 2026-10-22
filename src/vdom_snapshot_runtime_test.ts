@@ -8,7 +8,9 @@ import {
 import {
   type MemoryNode,
   MemoryVDOMHost,
+  type StorePropDelta,
   VDOMSnapshotRoot,
+  createOwnedScalarStorePropDelta,
 } from "./vdom_snapshot_runtime.ts";
 
 const assertEquals = (
@@ -32,6 +34,80 @@ const assertSame = (actual: unknown, expected: unknown, message: string) => {
 const assertNotSame = (actual: unknown, expected: unknown, message: string) => {
   if (actual === expected) throw new Error(message);
 };
+
+Deno.test("owned scalar Store regions copy data and preserve explicit empty marker children", () => {
+  const props: Array<readonly [string, number]> = [["x", 2]];
+  const children: Array<{ kind: "text"; text: string }> = [];
+  const source: StorePropDelta = { key: "marker", tag: "mesh", props, children };
+  const owned = createOwnedScalarStorePropDelta(source);
+  if (!owned) throw new Error("empty marker region was declined");
+  props[0] = ["x", 9];
+  children.push({ kind: "text", text: "late" });
+  assertEquals(owned.props, [["x", 2]]);
+  assertEquals(owned.children, []);
+  assertEquals(Object.isFrozen(owned), true);
+  assertEquals(Object.isFrozen(owned.props[0]), true);
+  assertEquals(createOwnedScalarStorePropDelta({ key: "motion", tag: "group",
+    props: [["rotation-y", 1]], retainedChildren: true, componentOwner: 4,
+    children: [] }), null, "contradictory child forms were admitted");
+  assertEquals(createOwnedScalarStorePropDelta({ key: "marker", tag: "mesh",
+    props: [["x", 1], ["x", 2]], children: [] }), null,
+  "duplicate scalar name was admitted");
+  assertEquals(createOwnedScalarStorePropDelta({ key: "marker", tag: "div",
+    props: [["style", "invalid"]], children: [] }), null,
+  "primitive style bypassed scoped host value eligibility");
+  assertEquals(createOwnedScalarStorePropDelta({ key: "marker", tag: "mesh",
+    props: Array.from({ length: 33 }, (_, index) => [`p${index}`, index] as const),
+    children: [] }), null, "oversize scalar region was admitted");
+  const getter: StorePropDelta = { key: "marker", tag: "mesh", props: [["x", 1]] };
+  Object.defineProperty(getter, "key", { get: () => "marker" });
+  assertEquals(createOwnedScalarStorePropDelta(getter), null,
+    "accessor region was admitted");
+});
+
+Deno.test("owned and arbitrary scalar Store cuts publish the same accepted output", () => {
+  const results: string[] = [];
+  for (const owned of [false, true]) {
+    const host = new MemoryVDOMHost();
+    const container = host.createContainer();
+    const root = new VDOMSnapshotRoot(host, container);
+    root.commit(jsx("main", {}, jsx("mesh", { key: "marker", x: 1 })));
+    const input = { key: "marker", tag: "mesh", props: [["x", 2]] as const,
+      children: [] as const };
+    const region = owned ? createOwnedScalarStorePropDelta(input) : input;
+    if (!region) throw new Error("owned scalar region declined");
+    const program = root.prepareScopedKeyedRetainedAndStoreDeltas([], [], [region]);
+    if (!program || !program.validate()) throw new Error("scalar program declined");
+    root.beginPublication();
+    program.commit();
+    root.publishAccepted();
+    results.push(JSON.stringify(root.snapshot));
+    assertEquals(container.children[0].children[0].props.x, 2);
+    root.dispose();
+  }
+  assertEquals(results[0], results[1]);
+});
+
+Deno.test("mixed owned and arbitrary Store regions retain the generic value guard", () => {
+  for (const reversed of [false, true]) {
+    const host = new MemoryVDOMHost();
+    const container = host.createContainer();
+    const root = new VDOMSnapshotRoot(host, container);
+    root.commit(jsx("main", {}, [
+      jsx("mesh", { key: "owned", x: 1 }),
+      jsx("div", { key: "generic", style: { left: 1 } }),
+    ]));
+    const owned = createOwnedScalarStorePropDelta({ key: "owned", tag: "mesh",
+      props: [["x", 2]], children: [] });
+    if (!owned) throw new Error("owned mixed setup declined");
+    const generic: StorePropDelta = { key: "generic", tag: "div",
+      props: [["style", "invalid"]] };
+    const regions = reversed ? [generic, owned] : [owned, generic];
+    assertEquals(root.prepareStorePropDelta(regions), null,
+      "generic scalar eligibility changed with region order");
+    root.dispose();
+  }
+});
 
 Deno.test("JSX runtime elements and child arrays are immutable for safe retained reuse", () => {
   const sourceChildren = [jsx("i", {}, "a"), [jsx("b", {}, "b")]];

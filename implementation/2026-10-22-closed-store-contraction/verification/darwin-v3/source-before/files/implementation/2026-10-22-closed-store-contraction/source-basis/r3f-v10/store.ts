@@ -1,0 +1,437 @@
+// Types only. Core never imports a three value: the Vector3/Frustum/... a store needs are created
+// once its root has loaded a renderer support (see ./three.ts and configure() in ./configuration.ts).
+import type { WebGLRenderer, Scene, Raycaster, Vector2, Vector3, Frustum } from 'three'
+import type { WebGPURenderer } from 'three/webgpu'
+import * as React from 'react'
+import { createWithEqualityFn } from 'zustand/traditional'
+import { getScheduler } from '@pmndrs/scheduler'
+
+//* Type Imports ==============================
+import type {
+  Dpr,
+  Size,
+  Frameloop,
+  Viewport,
+  RenderCallback,
+  XRManager,
+  RootState,
+  RootStore,
+  DomEvent,
+  EventManager,
+  ThreeEvent,
+  ThreeCamera,
+  VisibilityEntry,
+  PointerState,
+  RendererSupport,
+} from '#types'
+
+import { calculateDpr, is, isOrthographicCamera, updateCamera, updateFrustum } from './utils'
+import { defineRendererAccessors, preserveAccessors } from './utils/stateAccessors'
+import { getThree } from './three'
+
+//* Cross-Bundle Singleton ==============================
+// Defined in ./context (three-free, so the extension entry can ship it); re-exported here so
+// existing imports of `context` from the store keep working.
+export { context } from './context'
+
+/** Apply a size and its ownership together, before subscribers observe the change. */
+function updateSize(state: RootState, size: Size, imperative: boolean): void {
+  state.set((current) => ({
+    size,
+    viewport: { ...current.viewport, ...current.viewport.getCurrentViewport(current.camera, undefined, size) },
+    _sizeImperative: imperative,
+  }))
+  // Wake only this root so a demand Canvas renders the resize.
+  state.invalidate()
+}
+
+/** @internal Apply measured/prop dimensions only while the store owns automatic sizing. */
+export function configureSize(store: RootStore, size: Size): void {
+  const state = store.getState()
+  if (state._sizeImperative || is.equ(size, state.size, { objects: 'shallow', strict: false })) return
+  updateSize(state, size, false)
+}
+
+/**
+ * Creates the Zustand store that holds one root's {@link RootState}.
+ *
+ * The store starts unconfigured: the renderer, `camera`, `scene`, `raycaster`, `frustum` and `pointer`
+ * are `null` placeholders until the root's renderer support has loaded and `configure()` in
+ * `configuration.ts` fills them in. Only core's part of `RootState` is created here; packages building on
+ * fiber add their own fields through root extensions.
+ *
+ * Besides the initial state, the store wires up:
+ * - `state.gl` and `state.renderer` as accessors over `internal.actualRenderer`. `gl` reports a
+ *   deprecation when user code reads it outside legacy mode.
+ * - `rootScene` following `scene` whenever `scene` is set to a real `THREE.Scene`.
+ * - On a size or DPR change: updating the camera and resizing the root's own canvas target (or the
+ *   renderer when there is none).
+ * - On a camera change: adding an unparented camera to `rootScene`, then refreshing the viewport and
+ *   (when `autoUpdateFrustum` is set) the frustum.
+ * - Calling `invalidate(state)` after every state change.
+ *
+ * `createRoot` calls this once per canvas.
+ *
+ * @param invalidate - Requests frames for a root. Bound into `state.invalidate` and called on every store change.
+ * @param advance - Steps a root manually. Bound into `state.advance`.
+ * @returns The root's store, which is also the reconciler container for that root.
+ */
+export const createStore = (
+  invalidate: (state?: RootState, frames?: number, stackFrames?: boolean) => void,
+  advance: (timestamp: number, runGlobalEffects?: boolean, state?: RootState, frame?: XRFrame) => void,
+): RootStore => {
+  const rootStore = createWithEqualityFn<RootState>((rawSet, get, api) => {
+    // Every state object keeps the `gl` / `renderer` accessors installed below (#4014)
+    const set = (api.setState = preserveAccessors(rawSet, get))
+    // Scratch vectors, created on first use: getCurrentViewport runs after the root's renderer
+    // support is loaded (configure sets the size), which is when three's classes exist.
+    let position: Vector3 | undefined
+    let defaultTarget: Vector3 | undefined
+    let tempTarget: Vector3 | undefined
+    function getCurrentViewport(
+      camera: ThreeCamera = get().camera,
+      target: Vector3 | Parameters<Vector3['set']> | undefined = undefined,
+      size: Size = get().size,
+    ): Omit<Viewport, 'dpr' | 'initialDpr'> {
+      const { Vector3 } = getThree()
+      position ??= new Vector3()
+      defaultTarget ??= new Vector3()
+      tempTarget ??= new Vector3()
+      target ??= defaultTarget
+      const { width, height, top, left } = size
+      const aspect = width / height
+      if ((target as Vector3).isVector3) tempTarget.copy(target as Vector3)
+      else tempTarget.set(...(target as Parameters<Vector3['set']>))
+      const distance = camera.getWorldPosition(position).distanceTo(tempTarget)
+      if (isOrthographicCamera(camera)) {
+        return { width: width / camera.zoom, height: height / camera.zoom, top, left, factor: 1, distance, aspect }
+      } else {
+        const fov = (camera.fov * Math.PI) / 180 // convert vertical fov to radians
+        const h = 2 * Math.tan(fov / 2) * distance // visible height
+        const w = h * (width / height)
+        return { width: w, height: h, top, left, factor: width / w, distance, aspect }
+      }
+    }
+
+    let performanceTimeout: ReturnType<typeof setTimeout> | undefined = undefined
+    const setPerformanceCurrent = (current: number) =>
+      set((state) => ({ performance: { ...state.performance, current } }))
+
+    // Packages building on fiber (e.g. @react-three/tsl) augment RootState with fields their root
+    // extension's setup adds, so what core creates is only its own part of RootState.
+    const rootState: Partial<RootState> = {
+      set,
+      get,
+
+      // Mock objects that have to be configured
+      // primaryStore is set after store creation (self-reference for primary, primary's store for secondary)
+      primaryStore: null as unknown as RootStore,
+      gl: null as unknown as WebGLRenderer,
+      renderer: null as unknown as WebGPURenderer,
+      camera: null as unknown as ThreeCamera,
+      // frustum, pointer and mouse are three objects; configure() creates them with the renderer
+      frustum: null as unknown as Frustum,
+      autoUpdateFrustum: true,
+      raycaster: null as unknown as Raycaster,
+      events: {
+        priority: 1,
+        enabled: true,
+        connected: false,
+        frameTimedRaycasts: true,
+        alwaysFireOnScroll: true,
+        updateOnFrame: false,
+      },
+      scene: null as unknown as Scene,
+      rootScene: null as unknown as Scene,
+      xr: null as unknown as XRManager,
+      inspector: null,
+
+      invalidate: (frames = 1, stackFrames = false) => invalidate(get(), frames, stackFrames),
+      advance: (timestamp: number, runGlobalEffects?: boolean) => advance(timestamp, runGlobalEffects, get()),
+
+      textureColorSpace: 'srgb', // THREE.SRGBColorSpace
+      isLegacy: false,
+      webGPUSupported: false,
+      isNative: false,
+
+      controls: null,
+      pointer: null as unknown as Vector2,
+      mouse: null as unknown as Vector2,
+
+      frameloop: 'always',
+      onPointerMissed: undefined,
+      onDragOverMissed: undefined,
+      onDropMissed: undefined,
+
+      performance: {
+        current: 1,
+        min: 0.5,
+        max: 1,
+        debounce: 200,
+        regress: () => {
+          const state = get()
+          // Clear timeout
+          if (performanceTimeout) clearTimeout(performanceTimeout)
+          // Set lower bound performance
+          if (state.performance.current !== state.performance.min) setPerformanceCurrent(state.performance.min)
+          // Go back to upper bound performance after a while unless something regresses meanwhile
+          performanceTimeout = setTimeout(
+            () => setPerformanceCurrent(get().performance.max),
+            state.performance.debounce,
+          )
+        },
+      },
+
+      size: { width: 0, height: 0, top: 0, left: 0 },
+      viewport: {
+        initialDpr: 0,
+        dpr: 0,
+        width: 0,
+        height: 0,
+        top: 0,
+        left: 0,
+        aspect: 0,
+        distance: 0,
+        factor: 0,
+        getCurrentViewport,
+      },
+
+      setEvents: (events: Partial<EventManager<any>>) => set((state) => ({ events: { ...state.events, ...events } })),
+      setSize: (width?: number, height?: number, top?: number, left?: number) => {
+        const state = get()
+
+        // No args = reset to props/container mode
+        if (width === undefined) {
+          // If we have stored props, apply them; otherwise size will be updated by next container measurement
+          if (state._sizeProps) {
+            const { width: propW, height: propH } = state._sizeProps
+            if (propW !== undefined || propH !== undefined) {
+              // Re-apply props (container will fill in missing dimensions)
+              const currentSize = state.size
+              const newSize = {
+                width: propW ?? currentSize.width,
+                height: propH ?? currentSize.height,
+                top: currentSize.top,
+                left: currentSize.left,
+              }
+              updateSize(state, newSize, false)
+              return
+            }
+          }
+          set({ _sizeImperative: false })
+          return
+        }
+
+        // Single arg = square, two args = rectangle
+        const w = width
+        const h = height ?? width
+        const t = top ?? state.size.top
+        const l = left ?? state.size.left
+
+        const size = { width: w, height: h, top: t, left: l }
+        updateSize(state, size, true)
+      },
+      setDpr: (dpr: Dpr) =>
+        set((state) => {
+          const resolved = calculateDpr(dpr)
+          return { viewport: { ...state.viewport, dpr: resolved, initialDpr: state.viewport.initialDpr || resolved } }
+        }),
+      setFrameloop: (frameloop: Frameloop = 'always') => {
+        const rootId = (get().internal as any).rootId as string | undefined
+        // Update a registered scheduler root first so the store mutation's invalidation
+        // is evaluated against the new mode. In particular, entering demand must retain
+        // one transition frame for rendering and deferred event flushes.
+        if (rootId) getScheduler().setRootFrameloop(rootId, frameloop)
+        // Before registration this remains state-only; registerRoot reads the stored mode.
+        set(() => ({ frameloop }))
+      },
+      setError: (error: Error | null) => set(() => ({ error })),
+      error: null as Error | null,
+
+      //* Texture registry (useTextures) ==============================
+      // TSL fields (uniforms, nodes, ..., renderPipeline) are added by @react-three/tsl's root extension.
+      textures: new Map(),
+      _textureRefs: new Map(),
+      _sizeImperative: false,
+      _sizeProps: null,
+
+      previousRoot: undefined,
+      internal: {
+        // Events
+        interaction: [],
+        subscribers: [],
+        // Per-pointer state (new unified structure)
+        pointerMap: new Map<number, PointerState>(),
+        pointerDirty: new Map<number, DomEvent>(),
+        lastEvent: React.createRef(),
+        // Deprecated but kept for backwards compatibility
+        hovered: new Map<string, ThreeEvent<DomEvent>>(),
+        initialClick: [0, 0],
+        initialHits: [],
+        capturedMap: new Map(),
+
+        // Visibility tracking (onFramed, onOccluded, onVisible)
+        visibilityRegistry: new Map<string, VisibilityEntry>(),
+
+        // Occlusion system (WebGPU only)
+        occlusionEnabled: false,
+        occlusionObserver: null,
+        occlusionCache: new Map(),
+        helperGroup: null,
+
+        // Updates
+        active: false,
+        frames: 0,
+        priority: 0,
+        subscribe: (ref: React.RefObject<RenderCallback>, priority: number, store: RootStore) => {
+          const internal = get().internal
+          // If this subscription was given a priority, it takes rendering into its own hands
+          // For that reason we switch off automatic rendering and increase the manual flag
+          // As long as this flag is positive there can be no internal rendering at all
+          // because there could be multiple render subscriptions
+          internal.priority = internal.priority + (priority > 0 ? 1 : 0)
+          internal.subscribers.push({ ref, priority, store })
+          // Register subscriber and sort layers from lowest to highest, meaning,
+          // highest priority renders last (on top of the other frames)
+          internal.subscribers = internal.subscribers.sort((a, b) => a.priority - b.priority)
+          return () => {
+            const internal = get().internal
+            if (internal?.subscribers) {
+              // Decrease manual flag if this subscription had a priority
+              internal.priority = internal.priority - (priority > 0 ? 1 : 0)
+              // Remove subscriber from list
+              internal.subscribers = internal.subscribers.filter((s) => s.ref !== ref)
+            }
+          }
+        },
+
+        // Renderer Storage (single source of truth)
+        actualRenderer: null as unknown as WebGLRenderer | WebGPURenderer,
+        // The renderer support configure() loads for this root
+        support: null as unknown as RendererSupport,
+
+        // Scheduler for useFrameNext (initialized in loop.ts)
+        scheduler: null,
+
+        // Replaces the default render call when set (see setRenderOverride)
+        renderOverride: null,
+      },
+    }
+
+    return rootState as RootState
+  })
+
+  const state = rootStore.getState()
+
+  //* Setup Renderer Accessors ==============================
+  // state.renderer and state.gl both map to internal.actualRenderer; state.gl logs a one-time
+  // deprecation notice when a WebGPU root is read through it. preserveAccessors above keeps them on
+  // every later state object.
+  defineRendererAccessors(state)
+
+  //* Scene Sync Subscription ==============================
+  // If someone sets scene to an actual THREE.Scene (not a portal container),
+  // automatically sync rootScene to match
+  let oldScene = state.scene
+  rootStore.subscribe(() => {
+    const currentState = rootStore.getState()
+    const { scene, rootScene, set } = currentState
+
+    // Only sync if scene changed and it's an actual Scene (has isScene property)
+    if (scene !== oldScene) {
+      oldScene = scene
+      // If the new scene is a real THREE.Scene and different from rootScene, update rootScene
+      if ((scene as any)?.isScene && scene !== rootScene) {
+        set({ rootScene: scene })
+      }
+    }
+  })
+
+  let oldSize = state.size
+  let oldDpr = state.viewport.dpr
+  let oldCamera = state.camera
+  rootStore.subscribe(() => {
+    const { camera, size, viewport, set, internal } = rootStore.getState()
+
+    const actualRenderer = internal.actualRenderer
+    const canvasTarget = internal.canvasTarget
+
+    // Resize camera and renderer on changes to size and pixelratio
+    if (size.width !== oldSize.width || size.height !== oldSize.height || viewport.dpr !== oldDpr) {
+      oldSize = size
+      oldDpr = viewport.dpr
+      // Update camera
+      updateCamera(camera, size)
+
+      // Size our own canvas target if we have one, otherwise the renderer.
+      //
+      // Renderer.setSize / setPixelRatio are target-IMPLICIT -- they forward to
+      // `renderer._canvasTarget`, whichever target setCanvasTarget last pointed at. In
+      // multi-canvas mode that is normally some *other* canvas, since the secondaries run after
+      // the primary in the scheduler and nothing restores the primary's target afterwards. So
+      // the primary resizing used to resize a secondary's canvas element to the primary's
+      // dimensions, before sizing its own target correctly on the next line: the renderer call
+      // was redundant for us and wrong for whoever happened to be active. See #3847.
+      //
+      // Once a canvas target exists, `isSecondary` stops mattering here -- primary and secondary
+      // both own exactly one target and should touch only that.
+      //
+      // Never pass updateStyle=true to Three.js setSize — explicit pixel CSS on the canvas
+      // breaks flex/percentage layouts. R3F manages canvas CSS sizing via the container divs
+      // (width: 100%, height: 100%), and only the canvas buffer attributes need pixel values.
+      const resizeTarget = canvasTarget ?? actualRenderer
+      if (viewport.dpr > 0) resizeTarget.setPixelRatio(viewport.dpr)
+      resizeTarget.setSize(size.width, size.height, false)
+
+      // Invalidate this root's cached render pass descriptor on the next frame, if three didn't.
+      //
+      // WebGPUBackend caches the depth-stencil attachment view per canvas and only rebuilds it
+      // when the sample count changes, while the colour attachment is pulled fresh from the swap
+      // chain every frame. They stay in step only because Renderer._onCanvasTargetResize ->
+      // backend.updateSize() clears the cache -- but that listener is attached to one target at a
+      // time and setCanvasTarget moves it on every swap, so only the active canvas can hear its
+      // own resize. Every other one resizes silently and renders against a stale depth view
+      // forever, which surfaces as a per-frame GPUValidationError about mismatched attachment
+      // sizes. updateSize() compounds it by deleting the *active* target rather than the resized
+      // one, so it cannot be called safely from here. The flush happens in the canvas-target job
+      // (see loop.ts), which runs in the `start` phase where our own target is guaranteed
+      // active. See #3847.
+      //
+      // When our target *is* the active one (a lone primary owns the renderer's default target,
+      // so this is the whole single-canvas path) the listener already ran inside setSize and a
+      // second flush would only reconfigure the swap chain again for nothing.
+      const activeTarget = (actualRenderer as Partial<{ getCanvasTarget(): unknown }>).getCanvasTarget?.()
+      if (!canvasTarget || activeTarget !== canvasTarget) internal.canvasTargetSizeDirty = true
+    }
+
+    // Update viewport and frustum once the camera changes
+    if (camera !== oldCamera) {
+      oldCamera = camera
+
+      // Ensure camera is a child of the scene so camera children (HUDs, etc.) render
+      // Skip if user has already parented the camera elsewhere
+      // https://github.com/pmndrs/react-three-fiber/issues/3632
+      const { rootScene } = rootStore.getState()
+      if (camera && rootScene && !camera.parent) {
+        rootScene.add(camera)
+      }
+
+      // Update viewport
+      set((state) => ({ viewport: { ...state.viewport, ...state.viewport.getCurrentViewport(camera) } }))
+      // Update frustum from new camera (if auto-update enabled)
+      const currentState = rootStore.getState()
+      if (currentState.autoUpdateFrustum && camera) {
+        updateFrustum(camera, currentState.frustum)
+      }
+    }
+  })
+
+  // Invalidate on any change
+  rootStore.subscribe((state) => {
+    // Configuration and committed teardown can still publish state while the root is inactive.
+    if (state.internal.active) invalidate(state)
+  })
+
+  // Return root state
+  return rootStore
+}

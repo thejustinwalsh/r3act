@@ -1,4 +1,8 @@
-import { createAsyncStore, StoreRenderTransaction } from "./async_store_runtime.ts";
+import {
+  AsyncStore, captureCanonicalStoreReaderReceipt, createAsyncStore,
+  inspectCanonicalStoreReaderReceipt, StoreRenderTransaction,
+} from "./async_store_runtime.ts";
+import { normalizeClosedProjectionPaths, storeRecord } from "./owned_store_record.ts";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -11,6 +15,80 @@ function equal<T>(actual: T, expected: T, message: string): void {
     );
   }
 }
+
+Deno.test("owned projections share a pinned value without sharing reader history or forks", () => {
+  const paths = normalizeClosedProjectionPaths([["phase"]])!;
+  const store = createAsyncStore(storeRecord({ phase: 2 }));
+  const root = new StoreRenderTransaction("root");
+  const first = root.readClosedProjections(store, "first", paths);
+  const second = root.readClosedProjections(store, "second", paths);
+  assert(first === second, "same snapshot and path plan did not share immutable values");
+  equal(root.readers.size, 2, "reader membership was shared");
+  equal(root.observations.size, 2, "reader observations were shared");
+  const checkpoint = root.checkpoint();
+  root.readClosedProjections(store, "temporary", paths);
+  root.rollbackTo(checkpoint);
+  equal(root.readers.size, 2, "rollback retained reader membership");
+  equal(root.observations.size, 2, "rollback retained reader observation");
+  root.releaseCheckpoint(checkpoint);
+  root.preparePublication();
+  root.publishAccepted();
+  equal(store.diagnostics().readers, 2, "accepted reader count changed");
+
+  const fork = new StoreRenderTransaction("fork");
+  const forkValues = fork.readClosedProjections(store, "fork-reader", paths);
+  assert(forkValues !== first, "fork reused a different pinned snapshot's values");
+  fork.preparePublication();
+  fork.publishAccepted();
+  equal(store.diagnostics().readers, 3, "fork reader disappeared");
+});
+
+Deno.test("direct selector direct changes reset previous selection and retain exact receipt", () => {
+  const store = createAsyncStore(3);
+  const selector = store.select((_value, previous: number | undefined) => (previous ?? 0) + 1);
+  const root = "reader-root";
+  const site = "site";
+  const direct = new StoreRenderTransaction(root);
+  equal(direct.read(store, site), 3, "direct read");
+  direct.preparePublication();
+  direct.publishAccepted();
+  const directReceipt = captureCanonicalStoreReaderReceipt(store, root, site);
+  assert(directReceipt, "direct history had no receipt");
+  equal(inspectCanonicalStoreReaderReceipt(store, root, site, directReceipt), "current", "direct receipt state");
+  const selected = new StoreRenderTransaction(root);
+  equal(selected.read(selector, site), 1, "selector inherited direct history");
+  selected.preparePublication();
+  selected.publishAccepted();
+  const back = new StoreRenderTransaction(root);
+  equal(back.read(store, site), 3, "direct reread");
+  back.preparePublication();
+  back.publishAccepted();
+  const selectedAgain = new StoreRenderTransaction(root);
+  equal(selectedAgain.read(selector, site), 1, "direct read retained stale selector previous");
+  selectedAgain.discard();
+  equal(inspectCanonicalStoreReaderReceipt(store, root, site, directReceipt), null, "old receipt survived replacement");
+});
+
+Deno.test("later closed admission rejects a prototype changed by an earlier selector", () => {
+  const paths = normalizeClosedProjectionPaths([["phase"]])!;
+  const store = createAsyncStore(storeRecord({ phase: 1 }));
+  const original = Object.getOwnPropertyDescriptor(AsyncStore.prototype, "_validateRender")!;
+  const selected = store.select((state) => {
+    Object.defineProperty(AsyncStore.prototype, "_validateRender", {
+      ...original, value: function () { return true; },
+    });
+    return state.phase;
+  });
+  const cut = new StoreRenderTransaction("root");
+  try {
+    equal(cut.read(selected, "selector"), 1, "selector value");
+    equal(cut.readClosedProjections(store, "later", paths), null, "later admission accepted changed prototype");
+    equal(cut.readers.has("later"), false, "declined reader was staged");
+  } finally {
+    Object.defineProperty(AsyncStore.prototype, "_validateRender", original);
+    cut.discard();
+  }
+});
 
 Deno.test("prepared store readers remain old until accepted publication", () => {
   const store = createAsyncStore(7);

@@ -6,6 +6,7 @@ import {
 } from "./closed_host_value.ts";
 import { evaluateClosedHostTree, normalizeClosedHostTree, type ClosedHostTreeNode } from "./closed_host_tree.ts";
 import { jsx, type RuntimeElement } from "./jsx_binding_runtime.ts";
+import { normalizeClosedProjectionPaths } from "./owned_store_record.ts";
 
 type Host<Value extends ClosedHostValue> = Readonly<{
   tag: "mesh" | "group" | "div" | "span" | "output";
@@ -51,25 +52,6 @@ const input = (site: unknown, prop: unknown): ClosedStoreHostInput | null =>
     typeof prop === "string" && /^[A-Za-z_$][\w$]*$/.test(prop)
     ? Object.freeze({ storeUseSiteId: site, storeProp: prop }) : null;
 const directPath = Object.freeze([Object.freeze([] as string[])]);
-const safePathSegment = (segment: unknown): segment is string =>
-  typeof segment === "string" && /^[A-Za-z_$][\w$]*$/.test(segment) &&
-  segment !== "__proto__" && segment !== "constructor" && segment !== "prototype";
-
-const inputPaths = (raw: unknown): readonly (readonly string[])[] | null => {
-  const rawPaths = array(raw, 32);
-  if (!rawPaths || rawPaths.length === 0) return null;
-  const paths: (readonly string[])[] = [];
-  const seen = new Set<string>();
-  for (const rawPath of rawPaths) {
-    const parts = array(rawPath, 8);
-    if (!parts || !parts.every(safePathSegment)) return null;
-    const key = JSON.stringify(parts);
-    if (seen.has(key)) return null;
-    seen.add(key);
-    paths.push(Object.freeze(parts as string[]));
-  }
-  return Object.freeze(paths);
-};
 
 /** Copy untrusted metadata into a frozen, data-only executable plan. */
 export const normalizeClosedStoreHostProgram = (
@@ -122,7 +104,7 @@ export const normalizeClosedStoreHostProgram = (
         if (!normalized || sites.has(normalized.storeUseSiteId)) return null;
         sites.add(normalized.storeUseSiteId);
         if (root.schemaVersion === 5 || root.schemaVersion === 6 || root.schemaVersion === 7) {
-          const paths = inputPaths(item.paths);
+          const paths = normalizeClosedProjectionPaths(item.paths);
           if (!paths) return null;
           valueCount += paths.length;
           if (valueCount > 32) return null;

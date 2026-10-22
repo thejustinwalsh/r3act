@@ -3,6 +3,7 @@ import {
   type MemoryNode,
   MemoryVDOMHost,
   VDOMSnapshotRoot,
+  createOwnedScalarStorePropDelta,
 } from "./vdom_snapshot_runtime.ts";
 
 type SnapshotElement = {
@@ -36,6 +37,49 @@ const tree = () =>
       ])),
       jsx("article", { key: "b" }, "B"),
     ])));
+
+Deno.test("owned Store application retains old accepted view through a throwing second writer", () => {
+  let root!: VDOMSnapshotRoot<MemoryNode, MemoryNode>;
+  let inspect = false;
+  let observed = "";
+  let writes = 0;
+  const failure = new Error("second writer");
+  const host = new class extends MemoryVDOMHost {
+    override setProp(node: MemoryNode, name: string, value: unknown, previous: unknown) {
+      if (inspect) {
+        observed = JSON.stringify(root.snapshot);
+        if (++writes === 2) throw failure;
+      }
+      super.setProp(node, name, value, previous);
+    }
+  }();
+  const container = host.createContainer();
+  root = new VDOMSnapshotRoot(host, container);
+  root.commit(jsx("main", {}, [
+    jsx("mesh", { key: "left", x: 1 }),
+    jsx("mesh", { key: "right", x: 1 }),
+  ]));
+  const before = JSON.stringify(root.snapshot);
+  const left = createOwnedScalarStorePropDelta({ key: "left", tag: "mesh",
+    props: [["x", 2]], children: [] });
+  const right = createOwnedScalarStorePropDelta({ key: "right", tag: "mesh",
+    props: [["x", 2]], children: [] });
+  if (!left || !right) throw new Error("owned setup declined");
+  const program = root.prepareScopedKeyedRetainedAndStoreDeltas([], [], [left, right]);
+  if (!program) throw new Error("owned program declined");
+  root.beginPublication();
+  inspect = true;
+  let caught: unknown;
+  try { program.commit(); } catch (error) { caught = error; }
+  inspect = false;
+  equal(caught, failure, "second writer error identity");
+  equal(observed, before, "writer saw old accepted snapshot");
+  equal(JSON.stringify(root.snapshot), before, "failed cut advanced accepted history");
+  root.failPublication();
+  equal(root.prepareScopedKeyedRetainedAndStoreDeltas([], [], [left]), null,
+    "failed domain admitted another cut");
+  root.dispose();
+});
 
 Deno.test("clean accepted snapshot and retained nested VNodes survive keyed publication", () => {
   let root!: VDOMSnapshotRoot<MemoryNode, MemoryNode>;

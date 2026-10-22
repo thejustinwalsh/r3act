@@ -101,6 +101,7 @@ import {
   type ComponentType,
   copyKeyedOwnerMetadata,
   copyRuntimeElement,
+  copyRuntimeElementFromEntries,
   copyRuntimeElementWithGeneratedHostKey,
   createKeyedOwnerVersion,
   Fragment,
@@ -127,6 +128,7 @@ import {
   type RuntimeCounterCallback,
   type RuntimeProfileCallback,
   type StorePropDelta,
+  createOwnedScalarStorePropDelta,
   type VDOMHost,
   type VDOMKeyIndexMaintenance,
   VDOMSnapshotRoot,
@@ -444,7 +446,22 @@ type ComponentCache = {
   /** A sparse keyed host commit changed a descendant output in this snapshot. */
   invalidatedBySparseStore?: boolean;
   keyedRegion?: KeyedRegionCache;
+  closedStoreOutputShape?: ClosedStoreOutputShape;
 };
+
+type ClosedStoreOutputShape = Readonly<{
+  program: ClosedStoreHostProgram;
+  owner: OwnerId;
+  cacheProps: ComponentCache["props"];
+  authored: RuntimeElement;
+  authoredProps: RuntimeElement["props"];
+  expanded: RuntimeElement;
+  expandedProps: RuntimeElement["props"];
+  hostKey: string;
+  tag: string;
+  authoredChild?: RuntimeNode;
+  expandedChild?: RuntimeNode;
+}>;
 
 const canAdoptBareSuspenseFallback = (
   boundaryOwner: OwnerId,
@@ -2863,7 +2880,7 @@ export class ComponentStateRoot<H, Parent = H> {
       membership?: Set<AnyAsyncStore>; acceptedReceipt?: AcceptedStoreReaderReceipt };
     type Owner = { cache: ComponentCache; inputs: Input[];
       stateInputs: readonly RetainedCellWrite[]; next: RuntimeElement;
-      nextResult?: RuntimeElement };
+      nextResult?: RuntimeElement; nextShape?: ClosedStoreOutputShape };
     const owners = new Map<OwnerId, Owner>();
     let hasMixedOwner = false;
     const covered = new Set<string>();
@@ -2885,6 +2902,29 @@ export class ComponentStateRoot<H, Parent = H> {
       const descriptor = Object.getOwnPropertyDescriptor(object, name);
       return descriptor && "value" in descriptor ? descriptor.value : undefined;
     };
+    const ownedShape = (
+      cache: ComponentCache, program: ClosedStoreHostProgram, owner: OwnerId,
+      hostKey: string, authored: RuntimeNode, expanded: RuntimeNode,
+    ): ClosedStoreOutputShape | undefined => {
+      const shape = cache.closedStoreOutputShape;
+      if (!shape || shape.program !== program || shape.owner !== owner ||
+        shape.cacheProps !== cache.props || shape.authored !== authored ||
+        shape.expanded !== expanded || shape.hostKey !== hostKey ||
+        shape.tag !== program.host.tag ||
+        shape.authoredProps !== shape.authored.props ||
+        shape.expandedProps !== shape.expanded.props) return undefined;
+      return shape;
+    };
+    const nextShape = (
+      cache: ComponentCache, program: ClosedStoreHostProgram, owner: OwnerId,
+      hostKey: string, authored: RuntimeElement, expanded: RuntimeElement,
+      authoredChild?: RuntimeNode, expandedChild?: RuntimeNode,
+    ): ClosedStoreOutputShape => Object.freeze({ program, owner,
+      cacheProps: cache.props, authored, authoredProps: authored.props,
+      expanded, expandedProps: expanded.props, hostKey, tag: program.host.tag,
+      authoredChild, expandedChild });
+    const scalarRegion = (region: StorePropDelta): StorePropDelta =>
+      createOwnedScalarStorePropDelta(region) ?? region;
     const treeRegions = (
       host: ClosedHostTreeNode, previous: RuntimeNode, next: RuntimeNode,
     ): { regions: StorePropDelta[]; changed: boolean } | null => {
@@ -2973,7 +3013,7 @@ export class ComponentStateRoot<H, Parent = H> {
         }
         return true;
       };
-      return visit(host, previous, next) ? { regions: staged, changed } : null;
+      return visit(host, previous, next) ? { regions: staged.map(scalarRegion), changed } : null;
     };
     const stageLeaf = (
       { owner, cache, inputs, stateInputs, program }: NumericRow,
@@ -2991,42 +3031,44 @@ export class ComponentStateRoot<H, Parent = H> {
           !child || !("value" in child) ||
           !isRuntimeOwnedElement(child.value) || !Object.isFrozen(child.value) ||
           !output || !isRuntimeOwnedElement(authored) ||
-          !isRuntimeOwnedElement(expanded) ||
-          getComponentOutputOwner(authored) !== owner ||
-          getComponentOutputOwner(expanded) !== owner ||
-          authored.type !== program.host.tag ||
-          expanded.type !== program.host.tag) throw new SparseCandidateIneligible();
-        const authoredProps = Object.getOwnPropertyDescriptors(authored.props);
-        const expandedProps = Object.getOwnPropertyDescriptors(expanded.props);
-        const expected = new Set(["key", "children", ...program.host.props.map(([name]) => name)]);
-        if (Object.keys(authoredProps).some((name) => !expected.has(name)) ||
-          Object.keys(expandedProps).some((name) => !expected.has(name)) ||
-          Object.getOwnPropertySymbols(authored.props).length !== 1 ||
-          Object.getOwnPropertySymbols(expanded.props).length !== 1 ||
-          authoredProps.key?.value !== hostKey ||
-          expandedProps.key?.value !== hostKey ||
-          authoredProps.children?.value !== child.value ||
-          !expandedProps.children || !("value" in expandedProps.children) ||
-          !isRuntimeOwnedElement(expandedProps.children.value)) {
-          throw new SparseCandidateIneligible();
-        }
-        for (const [name] of program.host.props) {
-          if (!("value" in (authoredProps[name] ?? {})) ||
-            !("value" in (expandedProps[name] ?? {}))) {
+          !isRuntimeOwnedElement(expanded)) throw new SparseCandidateIneligible();
+        const proof = ownedShape(cache, program, owner, hostKey, authored, expanded);
+        if (!proof) {
+          if (getComponentOutputOwner(authored) !== owner ||
+            getComponentOutputOwner(expanded) !== owner ||
+            authored.type !== program.host.tag || expanded.type !== program.host.tag) {
             throw new SparseCandidateIneligible();
           }
-        }
+          const authoredProps = Object.getOwnPropertyDescriptors(authored.props);
+          const expandedProps = Object.getOwnPropertyDescriptors(expanded.props);
+          const expected = new Set(["key", "children", ...program.host.props.map(([name]) => name)]);
+          if (Object.keys(authoredProps).some((name) => !expected.has(name)) ||
+            Object.keys(expandedProps).some((name) => !expected.has(name)) ||
+            Object.getOwnPropertySymbols(authored.props).length !== 1 ||
+            Object.getOwnPropertySymbols(expanded.props).length !== 1 ||
+            authoredProps.key?.value !== hostKey || expandedProps.key?.value !== hostKey ||
+            authoredProps.children?.value !== child.value ||
+            !expandedProps.children || !("value" in expandedProps.children) ||
+            !isRuntimeOwnedElement(expandedProps.children.value) ||
+            program.host.props.some(([name]) =>
+              !("value" in (authoredProps[name] ?? {})) ||
+              !("value" in (expandedProps[name] ?? {})))) {
+            throw new SparseCandidateIneligible();
+          }
+        } else if (proof.authoredChild !== child.value ||
+          !isRuntimeOwnedElement(proof.expandedChild)) throw new SparseCandidateIneligible();
+        const expandedChild = proof ? proof.expandedChild : expanded.props.children;
         outputChanged ||= output.some(([name, value]) =>
-          !sameClosedHostOutput(program.host.tag, name, expandedProps[name].value, value));
-        const nextResult = copyRuntimeElement(program.host.tag,
-          Object.fromEntries([["key", hostKey], ...output,
-            ["children", child.value]]), owner);
-        const next = copyRuntimeElement(program.host.tag,
-          Object.fromEntries([["key", hostKey], ...output,
-            ["children", expandedProps.children.value]]), owner);
-        owners.set(owner, { cache, inputs, stateInputs, next, nextResult });
-        regions.push({ key: hostKey, tag: program.host.tag,
-          props: output, retainedChildren: true, componentOwner: owner });
+          !sameClosedHostOutput(program.host.tag, name, expanded.props[name], value));
+        const nextResult = copyRuntimeElementFromEntries(program.host.tag,
+          [["key", hostKey], ...output, ["children", child.value]], owner);
+        const next = copyRuntimeElementFromEntries(program.host.tag,
+          [["key", hostKey], ...output, ["children", expandedChild]], owner);
+        owners.set(owner, { cache, inputs, stateInputs, next, nextResult,
+          nextShape: nextShape(cache, program, owner, hostKey, nextResult, next,
+            child.value, expandedChild) });
+        regions.push(scalarRegion({ key: hostKey, tag: program.host.tag,
+          props: output, retainedChildren: true, componentOwner: owner }));
         return;
       }
       if (program.schemaVersion === 7) {
@@ -3036,33 +3078,39 @@ export class ComponentStateRoot<H, Parent = H> {
           ? `${String(cache.hostKeyScope)}\u0000${program.host.key}`
           : program.host.key;
         if (!output || !isRuntimeOwnedElement(authored) ||
-          !isRuntimeOwnedElement(expanded) ||
-          getComponentOutputOwner(authored) !== owner ||
-          getComponentOutputOwner(expanded) !== owner ||
-          authored.type !== program.host.tag || expanded.type !== program.host.tag ||
-          Object.getOwnPropertySymbols(authored.props).length !== 1 ||
-          Object.getOwnPropertySymbols(expanded.props).length !== 1) {
+          !isRuntimeOwnedElement(expanded)) {
           throw new SparseCandidateIneligible();
         }
-        const before = Object.getOwnPropertyDescriptors(expanded.props);
-        const authoredProps = Object.getOwnPropertyDescriptors(authored.props);
-        const expected = new Set(["key", ...program.host.props.map(([name]) => name)]);
-        if (Object.keys(before).some((name) => !expected.has(name)) ||
-          Object.keys(authoredProps).some((name) => !expected.has(name)) ||
-          before.key?.value !== hostKey || authoredProps.key?.value !== hostKey ||
-          before.children !== undefined || authoredProps.children !== undefined ||
-          program.host.props.some(([name]) =>
-            !("value" in (before[name] ?? {})) ||
-            !("value" in (authoredProps[name] ?? {})))) {
-          throw new SparseCandidateIneligible();
+        const proof = ownedShape(cache, program, owner, hostKey, authored, expanded);
+        if (!proof) {
+          if (getComponentOutputOwner(authored) !== owner ||
+            getComponentOutputOwner(expanded) !== owner ||
+            authored.type !== program.host.tag || expanded.type !== program.host.tag ||
+            Object.getOwnPropertySymbols(authored.props).length !== 1 ||
+            Object.getOwnPropertySymbols(expanded.props).length !== 1) {
+            throw new SparseCandidateIneligible();
+          }
+          const before = Object.getOwnPropertyDescriptors(expanded.props);
+          const authoredProps = Object.getOwnPropertyDescriptors(authored.props);
+          const expected = new Set(["key", ...program.host.props.map(([name]) => name)]);
+          if (Object.keys(before).some((name) => !expected.has(name)) ||
+            Object.keys(authoredProps).some((name) => !expected.has(name)) ||
+            before.key?.value !== hostKey || authoredProps.key?.value !== hostKey ||
+            before.children !== undefined || authoredProps.children !== undefined ||
+            program.host.props.some(([name]) =>
+              !("value" in (before[name] ?? {})) ||
+              !("value" in (authoredProps[name] ?? {})))) {
+            throw new SparseCandidateIneligible();
+          }
         }
         outputChanged ||= output.some(([name, value]) =>
-          !sameClosedHostOutput(program.host.tag, name, before[name].value, value));
-        const next = copyRuntimeElement(program.host.tag,
-          Object.fromEntries([["key", hostKey], ...output]), owner);
-        owners.set(owner, { cache, inputs, stateInputs, next });
-        regions.push({ key: hostKey, tag: program.host.tag, props: output,
-          retainedChildren: true, componentOwner: owner });
+          !sameClosedHostOutput(program.host.tag, name, expanded.props[name], value));
+        const next = copyRuntimeElementFromEntries(program.host.tag,
+          [["key", hostKey], ...output], owner);
+        owners.set(owner, { cache, inputs, stateInputs, next,
+          nextShape: nextShape(cache, program, owner, hostKey, next, next) });
+        regions.push(scalarRegion({ key: hostKey, tag: program.host.tag, props: output,
+          retainedChildren: true, componentOwner: owner }));
         return;
       }
       const previous = cache.expandedResult;
@@ -3073,10 +3121,10 @@ export class ComponentStateRoot<H, Parent = H> {
       }
       outputChanged ||= output.some(([name, value]) =>
         !sameClosedHostOutput(program.host.tag, name, previous.props[name], value));
-      const next = copyRuntimeElement(program.host.tag,
-        Object.fromEntries([["key", program.host.key], ...output]), owner);
+      const next = copyRuntimeElementFromEntries(program.host.tag,
+        [["key", program.host.key], ...output], owner);
       owners.set(owner, { cache, inputs, stateInputs, next });
-      regions.push({ key: program.host.key, tag: program.host.tag, props: output });
+      regions.push(scalarRegion({ key: program.host.key, tag: program.host.tag, props: output }));
     };
     const flushNumericRun = () => {
       const run = numericRun;
@@ -3330,17 +3378,22 @@ export class ComponentStateRoot<H, Parent = H> {
         privatePreparedCurrent: () => current(true) &&
           canonicalResourceCutCurrent(resources),
         publish: () => {
-          for (const [owner, { next, nextResult }] of owners) {
+          const ancestors = new Set<OwnerId>();
+          for (const [owner, { next, nextResult, nextShape }] of owners) {
             const cache = this.#componentCache.get(owner)!;
             this.#componentCache.set(owner, { ...cache,
-              result: nextResult ?? next, expandedResult: next });
+              result: nextResult ?? next, expandedResult: next,
+              closedStoreOutputShape: nextShape });
             this.#refreshDirectKeyedRegionOutput(owner);
             for (const ancestor of this.world.ownerLineage(owner).slice(1)) {
-              const live = this.#componentCache.get(ancestor);
-              if (live) this.#componentCache.set(ancestor, {
-                ...live, expandedResult: null, invalidatedBySparseStore: true,
-              });
+              ancestors.add(ancestor);
             }
+          }
+          for (const ancestor of ancestors) {
+            const live = this.#componentCache.get(ancestor);
+            if (live) this.#componentCache.set(ancestor, {
+              ...live, expandedResult: null, invalidatedBySparseStore: true,
+            });
           }
         },
         release: () => {
@@ -5784,7 +5837,7 @@ export class ComponentStateRoot<H, Parent = H> {
       if (complete) {
         try {
           if (complete.validate()) {
-            complete.commitHost();
+            commitAdmittedNativeCandidate(complete);
             complete.publish();
             if (this.#liveStoreSubscriptions.size === selected.length &&
               selected.every((store) => this.#liveStoreSubscriptions.has(store))) {
@@ -5806,7 +5859,7 @@ export class ComponentStateRoot<H, Parent = H> {
         if (!candidate) continue;
         try {
           if (!candidate.validate()) { candidate.discard(); continue; }
-          candidate.commitHost();
+          commitAdmittedNativeCandidate(candidate);
           candidate.publish();
           published = true;
           candidate.runEffects();

@@ -1,0 +1,10 @@
+# Closed Store contraction: verification in progress
+
+The first consolidated Darwin arm64 gate is preserved as FAIL: 67 phases pass, four fail and package consumer is skipped after package-build failure. Rust passes 99 tests and 51/52 numbered compiled fixtures pass. All 1654 runner input hashes match before/after. The supervisor exits 1 after 102.13 seconds with no stop reason. [Raw receipt](verification/darwin-v1/receipt.json).
+
+Deno, native tooling and package build are blocked by one array-descriptor typing error; two newly authored tests also need explicit tuple/child types. The runtime suite does not execute. Fixture 52 passes its earlier behavior stages but fails a post-disposal mesh/geometry identity assertion: the host restores the mesh's default geometry when releasing its attachment. The corrected fixture retains pre-disposal identity checks and observes exactly-once disposal events on the captured geometry/material, plus balanced host resource counts. The descriptor boundary and test types are corrected without changing runtime logic.
+
+Primary reviewed these corrections before releasing a fresh consolidated gate. No installed build, browser proof or timing exists for the new source. The 12 consumer and 13 renderer-source-basis files remain byte-identical to the preceding unit; prior timings are not inherited. [Astra findings](../2026-10-22-astra-realtime-gap/report.md); [source review](source-review.md); [slice contract](design.md). Full-plan scope and evidence limits remain active.
+
+
+Darwin-v2 preserves a narrower FAIL: 71/72 phases pass, including all 52 compiled fixtures, 99 Rust tests, native tooling and package build/consumer. Deno executes 1146 passing tests and one failure: the new manual output-shape fixture uses unsupported Three prop `x`, causing program normalization to reject registration before its behavior assertions. The fixture now uses supported `position-x`; registration checks are unchanged. All 1655 runner hashes match. Supervisor exit 1, 119.04 seconds, no stop reason. [V2 receipt](verification/darwin-v2/receipt.json). A fresh consolidated gate is required; no installed/browser/timing stage has run.

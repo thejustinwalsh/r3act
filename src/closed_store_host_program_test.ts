@@ -6,6 +6,7 @@ import {
   evaluateClosedStoreHostTree,
   normalizeClosedStoreHostProgram,
 } from "./closed_store_host_program.ts";
+import { isOwnedClosedProjectionPaths } from "./owned_store_record.ts";
 
 const equal = (actual: unknown, expected: unknown) => {
   if (!Object.is(actual, expected)) {
@@ -89,6 +90,7 @@ Deno.test("Store schema 5 freezes lexical paths and flattens expression inputs",
   equal(paths[1].join("."), "position.y");
   equal(Object.isFrozen(paths), true);
   equal(Object.isFrozen(paths[0]), true);
+  equal(isOwnedClosedProjectionPaths(paths), true);
   raw.inputs[0].paths[0][1] = "z";
   equal(paths[0][1], "x");
   equal(evaluateClosedStoreHostTree(program, [2, 3, 4])?.props.children[0].props.children,

@@ -23,7 +23,7 @@ Our central ambition is **one application state model driving multiple renderers
 
 ## What the evidence says
 
-Current mixed Store/local-state kernels pass consolidated verification and an installed WebGL proof. A matched declarative React Compiler + R3F observation remains faster: publication median/p95 0.60/0.80 ms versus Native 4.10/5.30 ms. This replaces the earlier adapter comparator for this slice; no presentation or general speed claim follows. [Exact results and limits](implementation/2026-10-22-mixed-numeric-inputs/results.md).
+Current closed Store contractions pass consolidated verification and an installed WebGL proof. The fresh declarative React Compiler + R3F observation remains faster: publication median/p95 0.90/1.00 ms versus Native 3.90/4.70 ms. No realtime speed or presentation win is established. [Exact results and limits](implementation/2026-10-22-closed-store-contraction/results.md).
 
 The human identified a comparator mismatch: the recent canvas timings pair Native declarative host ownership with React components that return null and directly mutate pre-created Three objects in layout effects. Those numbers remain valid output-matched adapter measurements, but do not establish a declarative React/R3F renderer loss or a Store-specific bottleneck. The new primary comparison uses declarative Native versus declarative React Compiler + R3F owning equivalent scene objects/resources, with identical real WebGL draw/readback; the old adapter is no longer the primary. Historical qualified dense DOM results keep their separate scope.
 

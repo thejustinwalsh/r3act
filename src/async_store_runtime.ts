@@ -1,4 +1,7 @@
-import { captureClosedProjectionValues } from "./owned_store_record.ts";
+import {
+  captureClosedProjectionValues, captureOwnedClosedProjectionValues,
+  isOwnedClosedProjectionPaths,
+} from "./owned_store_record.ts";
 export { storeRecord } from "./owned_store_record.ts";
 
 /**
@@ -121,10 +124,11 @@ export type StoreChange = {
 
 type StoreNotificationBatch = Map<string, StorePriority>;
 const capturedReaderCut = Symbol("captured-reader-cut");
-type PendingReaderValues = ReadonlyMap<object, unknown> | typeof capturedReaderCut | null;
+const directReaderCut = Symbol("direct-reader-cut");
+type PendingReaderValues = ReadonlyMap<object, unknown> | typeof capturedReaderCut | typeof directReaderCut | null;
 type StoreRootStamp = Readonly<{ version: number; rootEpoch: object }>;
 type AcceptedReaderHistory = Readonly<{
-  selections: Map<object, unknown> | null;
+  selections: Map<object, unknown> | typeof directReaderCut | null;
   stamp: StoreRootStamp | null;
 }>;
 export type AcceptedStoreReaderReceipt = Readonly<{
@@ -194,7 +198,7 @@ export interface StoreSource<S> {
  * only after that commit succeeds.
  */
 export class StoreRenderSnapshot<S, A = StoreAction<S, S>> {
-  #pending = new Map<string, Map<object, unknown>>();
+  #pending = new Map<string, PendingReaderValues>();
   #committed = false;
   readonly #capturedStore: AsyncStore<S, A>;
   readonly #capturedRootId: string;
@@ -441,7 +445,9 @@ export class AsyncStore<S, A = StoreAction<S, S>> implements StoreSource<S> {
         if (transitionId !== null && (pending || open)) return null;
         state = entry.state;
       }
-      const values = captureClosedProjectionValues(state, paths);
+      const values = isOwnedClosedProjectionPaths(paths)
+        ? captureOwnedClosedProjectionValues(state, paths)
+        : captureClosedProjectionValues(state, paths);
       if (!values || !canonicalClosedNumericStore.call(this)) return null;
       this.#knownRoots.add(rootId);
       if (!rootEpoch) this.#rootEpochs.set(rootId, rootEpoch = {});
@@ -463,10 +469,8 @@ export class AsyncStore<S, A = StoreAction<S, S>> implements StoreSource<S> {
     try {
       this.#entries;
       if (Object.getPrototypeOf(this) !== AsyncStore.prototype) return false;
-      const currentKeys = Reflect.ownKeys(AsyncStore.prototype);
-      if (currentKeys.length !== closedNumericPrototypeKeys.length) return false;
+      if (Reflect.ownKeys(AsyncStore.prototype).length !== closedNumericPrototypeKeys.length) return false;
       for (const key of closedNumericPrototypeKeys) {
-        if (!currentKeys.includes(key)) return false;
         const expected = closedNumericPrototypeDescriptors.get(key);
         const actual = Object.getOwnPropertyDescriptor(AsyncStore.prototype, key);
         if (
@@ -476,9 +480,7 @@ export class AsyncStore<S, A = StoreAction<S, S>> implements StoreSource<S> {
           expected.enumerable !== actual.enumerable ||
           expected.configurable !== actual.configurable
         ) return false;
-      }
-      for (const name of Object.getOwnPropertyNames(AsyncStore.prototype)) {
-        if (name !== "constructor" && Object.hasOwn(this, name)) return false;
+        if (typeof key === "string" && key !== "constructor" && Object.hasOwn(this, key)) return false;
       }
       return !Object.hasOwn(this, storeDependencies);
     } catch (error) {
@@ -812,10 +814,10 @@ export class AsyncStore<S, A = StoreAction<S, S>> implements StoreSource<S> {
     readerId: string,
     transitions: readonly string[],
     snapshotStates: ReadonlyMap<object, unknown>,
-    pending: Map<string, Map<object, unknown>>,
+    pending: Map<string, PendingReaderValues>,
   ): T {
-    const previous = this.#readerValues.get(rootId)?.get(readerId)?.selections ??
-      new Map<object, unknown>();
+    const selections = this.#readerValues.get(rootId)?.get(readerId)?.selections;
+    const previous = selections instanceof Map ? selections : new Map<object, unknown>();
     const session = new StoreReadSession(
       rootId,
       readerId,
@@ -824,7 +826,8 @@ export class AsyncStore<S, A = StoreAction<S, S>> implements StoreSource<S> {
       snapshotStates,
     );
     const value = source.read(session);
-    pending.set(readerId, session.next);
+    pending.set(readerId, Object.is(source, this) && session.next.size === 0
+      ? directReaderCut : session.next);
     return value;
   }
 
@@ -833,7 +836,8 @@ export class AsyncStore<S, A = StoreAction<S, S>> implements StoreSource<S> {
     rootId: string,
     readerId: string,
   ): ReadonlyMap<object, unknown> {
-    return this.#readerValues.get(rootId)?.get(readerId)?.selections ?? new Map();
+    const selections = this.#readerValues.get(rootId)?.get(readerId)?.selections;
+    return selections instanceof Map ? selections : new Map();
   }
 
   _captureCanonicalReaderReceipt(
@@ -889,7 +893,7 @@ export class AsyncStore<S, A = StoreAction<S, S>> implements StoreSource<S> {
 
   _commitReaderValues(
     rootId: string,
-    pending: Map<string, Map<object, unknown>>,
+    pending: Map<string, PendingReaderValues>,
     stamp?: StoreRootStamp,
   ) {
     if (this._prepareReaderValues !== canonicalPrepareReaderValues) {
@@ -918,6 +922,10 @@ export class AsyncStore<S, A = StoreAction<S, S>> implements StoreSource<S> {
         const accepted = existing?.get(readerId);
         prepared.set(readerId, accepted?.selections ? accepted : Object.freeze({
           selections: null, stamp: stamp ?? null,
+        }));
+      } else if (values === directReaderCut) {
+        prepared.set(readerId, Object.freeze({
+          selections: directReaderCut, stamp: stamp ?? null,
         }));
       } else {
         prepared.set(readerId, Object.freeze({
@@ -1243,6 +1251,7 @@ export class StoreRenderTransaction {
   #states = new Map<object, unknown>();
   #readers = new Map<string, ReadonlySet<AnyAsyncStore>>();
   #pending = new Map<AnyAsyncStore, Map<string, PendingReaderValues>>();
+  #ownedProjectionValues = new Map<StoreRenderSnapshot<any, any>, Map<readonly (readonly string[])[], readonly number[]>>();
   #values = new Map<string, { source: StoreSource<unknown>; value: unknown }>();
   #closed = false;
   #preparedPublication?: Map<
@@ -1545,10 +1554,18 @@ export class StoreRenderTransaction {
       snapshot = captured.snapshot;
       values = captured.values;
     } else {
-      values = captureClosedProjectionValues(snapshot.state, paths);
+      values = isOwnedClosedProjectionPaths(paths)
+        ? this.#ownedProjectionValues.get(snapshot)?.get(paths) ??
+          captureOwnedClosedProjectionValues(snapshot.state, paths)
+        : captureClosedProjectionValues(snapshot.state, paths);
     }
     if (!snapshot.closedNumeric || !canonicalClosedNumericStore.call(store)) return null;
     if (!values) return null;
+    if (isOwnedClosedProjectionPaths(paths)) {
+      let byPath = this.#ownedProjectionValues.get(snapshot);
+      if (!byPath) this.#ownedProjectionValues.set(snapshot, byPath = new Map());
+      byPath.set(paths, values);
+    }
     if (!this.#snapshots.has(store)) {
       if (store.mutationEpoch > this.#startedEpoch) this.#discoveredAfterMutation = true;
       this.#snapshots.set(store, snapshot);
@@ -1561,7 +1578,7 @@ export class StoreRenderTransaction {
         pending = new Map();
         this.#setJournaled(this.#pending, store, pending);
       }
-      this.#setJournaled(pending, readerId, new Map());
+      this.#setJournaled(pending, readerId, directReaderCut);
       this.#setJournaled(this.#values, readerId, {
         source: store,
         value: snapshot.state,
@@ -1616,7 +1633,8 @@ export class StoreRenderTransaction {
         pending = new Map();
         this.#setJournaled(this.#pending, store, pending);
       }
-      this.#setJournaled(pending, readerId, session.next);
+      this.#setJournaled(pending, readerId,
+        Object.is(source, store) && session.next.size === 0 ? directReaderCut : session.next);
     }
     this.#setJournaled(this.#values, readerId, { source, value });
     this.#recordBranchChange(readerId);
@@ -1696,6 +1714,7 @@ export class StoreRenderTransaction {
     }
     this.#closed = true;
     this.#preparedPublication = undefined;
+    this.#ownedProjectionValues.clear();
     this.#releaseSavepoints();
   }
   notifyPublished(): void {}
@@ -1711,6 +1730,7 @@ export class StoreRenderTransaction {
     this.#preparedPublication = undefined;
     this.#pending.clear();
     this.#values.clear();
+    this.#ownedProjectionValues.clear();
     this.#releaseSavepoints();
   }
 

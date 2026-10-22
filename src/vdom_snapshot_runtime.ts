@@ -179,12 +179,113 @@ export type StorePropDelta = Readonly<{
     Readonly<{ kind: "text"; text: string }>)[];
 }>;
 
+const ownedScalarStorePropDeltas = new WeakSet<StorePropDelta>();
+
+const ownScalarRegionData = (input: unknown): Record<string, unknown> | null => {
+  if (input === null || typeof input !== "object") return null;
+  try {
+    const prototype = Object.getPrototypeOf(input);
+    if (prototype !== Object.prototype && prototype !== null) return null;
+    const descriptors = Object.getOwnPropertyDescriptors(input);
+    const keys = Reflect.ownKeys(descriptors);
+    if (keys.length < 3 || keys.length > 5 ||
+      keys.some((key) => typeof key !== "string" ||
+        !["key", "tag", "props", "retainedChildren", "componentOwner", "children"]
+          .includes(key)) ||
+      !descriptors.key || !descriptors.tag || !descriptors.props) return null;
+    const copy: Record<string, unknown> = Object.create(null);
+    for (const key of keys as string[]) {
+      const descriptor = descriptors[key];
+      if (!descriptor || !("value" in descriptor)) return null;
+      copy[key] = descriptor.value;
+    }
+    return copy;
+  } catch { return null; }
+};
+
+const ownArray = (input: unknown, limit: number): readonly unknown[] | null => {
+  if (!Array.isArray(input)) return null;
+  try {
+    if (Object.getPrototypeOf(input) !== Array.prototype) return null;
+    const size = Object.getOwnPropertyDescriptor(input, "length")?.value;
+    if (!Number.isSafeInteger(size) || size < 0 || size > limit) return null;
+    const descriptors = Object.getOwnPropertyDescriptors(input) as unknown as
+      Record<string, PropertyDescriptor>;
+    const length = descriptors.length?.value;
+    if (length !== size ||
+      Reflect.ownKeys(descriptors).length !== length + 1) return null;
+    const copy: unknown[] = [];
+    for (let index = 0; index < length; index++) {
+      const descriptor = descriptors[index];
+      if (!descriptor || !("value" in descriptor)) return null;
+      copy.push(descriptor.value);
+    }
+    return copy;
+  } catch { return null; }
+};
+
+/** Copy a scalar Store region into a privately owned, immutable data shape. */
+export const createOwnedScalarStorePropDelta = (
+  region: StorePropDelta,
+): StorePropDelta | null => {
+  const data = ownScalarRegionData(region);
+  return data ? copyOwnedScalarRegion(data) : null;
+};
+
+const copyOwnedScalarRegion = (fields: Record<string, unknown>): StorePropDelta | null => {
+  const { key, tag, props, retainedChildren, componentOwner, children } = fields;
+  if (typeof key !== "string" || !key || typeof tag !== "string" || !tag ||
+    !["div", "span", "output", "group", "mesh"].includes(tag) ||
+    (Object.hasOwn(fields, "retainedChildren") !==
+      Object.hasOwn(fields, "componentOwner")) ||
+    (Object.hasOwn(fields, "children") && children === undefined) ||
+    (retainedChildren !== undefined && retainedChildren !== true) ||
+    (componentOwner !== undefined &&
+      (retainedChildren !== true || typeof componentOwner !== "number" ||
+        !Number.isSafeInteger(componentOwner))) ||
+    (retainedChildren === true && (componentOwner === undefined ||
+      children !== undefined))) return null;
+  const rawProps = ownArray(props, 32);
+  if (!rawProps || (!rawProps.length && children === undefined)) return null;
+  const pairs: (readonly [string, ClosedHostOutputValue])[] = [];
+  const names = new Set<string>();
+  for (const rawPair of rawProps) {
+    const pair = ownArray(rawPair, 2);
+    if (!pair || pair.length !== 2 || typeof pair[0] !== "string" ||
+      !pair[0] || pair[0] === "__proto__" || pair[0] === "prototype" ||
+      pair[0] === "constructor" || pair[0] === "ref" ||
+      /^on[A-Z]/.test(pair[0]) || names.has(pair[0])) return null;
+    const value = pair[1];
+    if (value !== null && typeof value !== "string" &&
+      typeof value !== "boolean" &&
+      !(typeof value === "number" && Number.isFinite(value))) return null;
+    const captured = snapshotScopedHostProp(tag, pair[0], value);
+    if (!captured.accepted || captured.value === undefined ||
+      !Object.is(captured.value, value)) return null;
+    names.add(pair[0]);
+    pairs.push(Object.freeze([pair[0], value] as const));
+  }
+  if (children !== undefined) {
+    const empty = ownArray(children, 0);
+    if (!empty || empty.length !== 0) return null;
+  }
+  const copy: StorePropDelta = Object.freeze({ key, tag,
+    props: Object.freeze(pairs),
+    ...(retainedChildren === true ? { retainedChildren: true as const,
+      componentOwner: componentOwner as number } : {}),
+    ...(children === undefined ? {} : { children: Object.freeze([]) }),
+  });
+  ownedScalarStorePropDeltas.add(copy);
+  return copy;
+};
+
 const storePropDeltaBrand: unique symbol = Symbol();
 export interface PreparedStorePropDelta {
   readonly [storePropDeltaBrand]: never;
 }
 
 type StorePropDeltaRecord<H> = {
+  readonly ownedScalar: boolean;
   readonly buckets: readonly {
     key: string;
     members: readonly (readonly [MountedNode<H>, number | undefined])[];
@@ -196,6 +297,7 @@ type StorePropDeltaRecord<H> = {
     parent: MountedNode<H> | null;
     parentIndex: number;
     bucket: KeyedRegionBuckets<MountedNode<H>> | undefined;
+    ownedScalar: boolean;
     writes: readonly (readonly [string, ClosedHostOutputValue, ClosedHostOutputValue])[];
     next: VElement;
     componentOwner?: number;
@@ -642,7 +744,7 @@ const snapshotScopedHostTree = <H>(
 
 const cloneMountedElementVNode = (
   vnode: VElement,
-  changes: Pick<VElement, "children">,
+  changes: Pick<VElement, "children"> & Partial<Pick<VElement, "props">>,
 ): VElement => {
   const copy = { ...vnode, ...changes };
   if (vnode.scopedSourceProps) {
@@ -3459,16 +3561,21 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     storeRegions: readonly StorePropDelta[],
     replacements: readonly { key: string; tree: RuntimeNode }[] = [],
   ): PreparedScopedKeyedRetainedProgram | null {
-    if (!deltas.length && !updates.length && !storeRegions.length &&
-      !replacements.length) return null;
-    const retained = updates.length ? this.prepareRetainedSourceDelta(updates) : null;
-    if (updates.length && !retained) return null;
-    const store = storeRegions.length ? this.prepareStorePropDelta(storeRegions) : null;
-    if (storeRegions.length && !store) return null;
-    const keyed = deltas.length
+    const hasDeltas = deltas.length > 0;
+    const hasUpdates = updates.length > 0;
+    const hasStore = storeRegions.length > 0;
+    const hasReplacements = replacements.length > 0;
+    if (!hasDeltas && !hasUpdates && !hasStore && !hasReplacements) return null;
+    const retained = hasUpdates ? this.prepareRetainedSourceDelta(updates) : null;
+    if (hasUpdates && !retained) return null;
+    const store = hasStore ? this.prepareStorePropDelta(storeRegions) : null;
+    if (hasStore && !store) return null;
+    const ownedStoreOnly = !!store && !hasDeltas && !hasUpdates &&
+      !hasReplacements && this.#storePropDeltas.get(store)?.ownedScalar === true;
+    const keyed = hasDeltas
       ? this.#prepareKeyedRegionDeltas(deltas, [], { scoped: true },
-        replacements.length > 0, store) : null;
-    const replacement = replacements.length
+        hasReplacements, store) : null;
+    const replacement = hasReplacements
       ? this.prepareScopedHostSubtreeReplacements(replacements) : null;
     const structural = [keyed, replacement].filter(
       (plan): plan is PreparedKeyedVDOMProgram => plan !== null,
@@ -3477,8 +3584,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       keyed.overlapsHostReplacementTargets?.(replacements.map(({ key }) => key)) ||
       (keyed.hostKeys ?? []).some((key) => replacement.hostKeys?.includes(key))
     );
-    if (((deltas.length || replacements.length) &&
-      ((deltas.length && !keyed) || (replacements.length && !replacement))) ||
+    if (((hasDeltas || hasReplacements) &&
+      ((hasDeltas && !keyed) || (hasReplacements && !replacement))) ||
       overlap ||
       structural.some((plan) => plan.structuralVersionDelta !== 1 ||
         !plan.validate()) ||
@@ -3487,7 +3594,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       (store && structural.some((plan) =>
         plan.overlapsStoreTargets(store))) ||
       (retained && !this.#isRetainedSourceDeltaCurrent(retained, undefined, true)) ||
-      (store && !this.isStorePropDeltaCurrent(store))) {
+      (store && !ownedStoreOnly && !this.isStorePropDeltaCurrent(store))) {
       keyed?.discard();
       replacement?.discard();
       return null;
@@ -3551,7 +3658,10 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         else keyed?.commit();
         if (admitted) replacement?.commitAdmitted();
         else replacement?.commit();
-        if (store) this.#applyStorePropDelta(store, admitted);
+        if (store) {
+          if (ownedStoreOnly) this.#applyCheckedStorePropDelta(store);
+          else this.#applyStorePropDelta(store, admitted);
+        }
       },
       commitAdmitted: () => {
         admittedCommit = true;
@@ -4010,7 +4120,10 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     }>();
     const targets: StorePropDeltaRecord<H>["targets"][number][] = [];
     const texts: StorePropDeltaRecord<H>["texts"][number][] = [];
+    let allOwnedScalar = true;
     for (const region of regions) {
+      const ownedScalar = ownedScalarStorePropDeltas.has(region);
+      allOwnedScalar &&= ownedScalar;
       if (!region.key || !region.tag ||
         (region.componentOwner !== undefined &&
           (region.retainedChildren !== true ||
@@ -4103,7 +4216,9 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         const prior = descriptors[name];
         if (names.has(name) || !prior || !("value" in prior)) return null;
         names.add(name);
-        const captured = capture(name, proposed, false);
+        const captured = ownedScalar
+          ? { accepted: true, value: proposed }
+          : capture(name, proposed, false);
         if (!captured?.accepted || captured.value === undefined) return null;
         const next = captured.value as ClosedHostOutputValue;
         const previous = nextProps[name] as ClosedHostOutputValue;
@@ -4111,11 +4226,17 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         writes.push([name, next, previous]);
       }
       const parent = node.parent;
-      const next = { ...vnode, props: Object.freeze(nextProps) };
+      const frozenProps = Object.freeze(nextProps);
+      const next = ownedScalar
+        ? cloneMountedElementVNode(vnode, { props: frozenProps,
+          children: region.retainedChildren === true
+            ? node.children.map((child) => child.vnode) : vnode.children })
+        : { ...vnode, props: frozenProps };
       targets.push({
         node, vnode, handle: node.handle, parent,
         parentIndex: node.parentIndex,
         bucket: parent?.keyedChildren,
+        ownedScalar,
         writes,
         next,
         ...(region.componentOwner === undefined ? {} :
@@ -4141,7 +4262,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     const nextVNode = (target: StorePropDeltaRecord<H>["targets"][number]): VElement => {
       const existing = completed.get(target.node);
       if (existing) return existing;
-      const next = target.retainedChildren
+      const next = target.ownedScalar ? target.next : target.retainedChildren
         ? cloneMountedElementVNode(target.next, {
           children: target.retainedChildren.map((child) => child.vnode),
         })
@@ -4161,6 +4282,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     if (texts.length && !textWriter) return null;
     const token = Object.freeze({}) as PreparedStorePropDelta;
     this.#storePropDeltas.set(token, {
+      ownedScalar: allOwnedScalar,
       buckets: [...buckets].map(([key, bucket]) => ({ key,
         members: bucket.members })),
       targets, texts, writer, textWriter, applied: false, publicationToken: null,
@@ -4261,12 +4383,24 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     if (!record || !this.#isStorePropDeltaCurrent(token, false, true, privateOnly)) {
       throw new Error("Prepared Store prop delta is stale");
     }
+    this.#applyCheckedStorePropDelta(token);
+  }
+
+  #applyCheckedStorePropDelta(token: PreparedStorePropDelta): void {
+    const record = this.#storePropDeltas.get(token);
+    if (!record) throw new Error("Prepared Store prop delta is stale");
     record.applied = true;
     const versionAtApply = this.#version;
+    const publicationAtApply = this.#publicationToken;
     for (const target of record.targets) {
       this.#acceptedJournal?.capture(target.node);
       for (const [name, next, previous] of target.writes) {
         if (!Object.is(previous, next)) {
+          if (record.ownedScalar &&
+            !this.#isStoreTargetReady(target, record.writer, versionAtApply,
+              publicationAtApply)) {
+            throw new Error("Prepared Store prop delta changed during host application");
+          }
           record.writer.call(this.host, target.handle, name, next, previous);
         }
       }
@@ -4287,6 +4421,35 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     this.#snapshotDirty = true;
     record.publicationToken = this.#publicationToken;
     record.appliedVersion = this.#version;
+  }
+
+  #isStoreTargetReady(
+    target: StorePropDeltaRecord<H>["targets"][number],
+    writer: VDOMHost<H>["setProp"],
+    version: number,
+    publication: object | null,
+  ): boolean {
+    const { node, vnode, parent, bucket } = target;
+    if (hostPropWriter(this.host) !== writer) return false;
+    if (this.#version !== version || this.#publicationToken !== publication ||
+      this.#publicationFailed || node.hostDisposed ||
+      node.vnode !== vnode || node.handle !== target.handle ||
+      node.parent !== parent || node.parentIndex !== target.parentIndex ||
+      this.#nodesByKey.get(vnode.key!)?.has(node) !== true) return false;
+    if (parent) {
+      if (parent.hostDisposed || parent.keyedChildren !== bucket ||
+        (bucket ? bucket.get(vnode.key!) !== node :
+          parent.children[target.parentIndex] !== node)) return false;
+    } else if (this.#mounted[target.parentIndex] !== node) return false;
+    if (target.children && (node.children.length !== target.children.length ||
+      vnode.children.length !== target.children.length)) return false;
+    if (target.retainedChildren &&
+      (node.children.length !== target.retainedChildren.length ||
+        vnode.children.length !== target.retainedChildren.length ||
+        target.retainedChildren.some((child, index) =>
+          node.children[index] !== child || child.hostDisposed || child.parent !== node ||
+          child.parentIndex !== index || child.vnode !== target.childVNodes?.[index]))) return false;
+    return true;
   }
 
   /** Prepare only the compiler-proven retained writers reached by this cut. */
