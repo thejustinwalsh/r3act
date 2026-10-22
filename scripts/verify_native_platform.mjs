@@ -364,13 +364,15 @@ try {
     "compiled_mixed_numeric_inputs_test", "compiled_closed_store_contraction_test",
     "compiled_owned_store_execution_test", "compiled_mounted_scalar_execution_test",
     "compiled_realtime_store_progress_test",
-    "compiled_compact_scalar_output_test", "compiled_owned_scalar_capture_test"];
+    "compiled_compact_scalar_output_test", "compiled_owned_scalar_capture_test",
+    "compiled_owned_frame_transaction_test"];
   for (const [index, fixture] of fixtures.entries()) {
     const name = `compiled-${String(index + 1).padStart(2, "0")}`;
     const before = await compilerHash();
     await runStep(name, process.execPath, ["--experimental-transform-types",
       ...(["compiled_mounted_scalar_execution_test", "compiled_compact_scalar_output_test",
-        "compiled_owned_scalar_capture_test"].includes(fixture) ? ["--expose-gc"] : []),
+        "compiled_owned_scalar_capture_test", "compiled_owned_frame_transaction_test"].includes(fixture)
+        ? ["--expose-gc"] : []),
       `compiler/${fixture}.mjs`],
       { depends: ["install", "cargo-debug", "compiler-info"], deadlineMs: 300_000,
         env: fixture === "compiled_publication_callbacks_execution_test"

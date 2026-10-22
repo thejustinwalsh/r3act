@@ -1,0 +1,29 @@
+warning: variable does not need to be mutable
+    --> src/main.rs:5891:21
+     |
+5891 |     fn finish_paths(mut self, host: &mut serde_json::Value,
+     |                     ----^^^^
+     |                     |
+     |                     help: remove this `mut`
+     |
+     = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variant `FlatRange` is never constructed
+  --> src/numeric_expression_dag.rs:45:30
+   |
+45 | enum InputSyntax { OwnerRow, FlatRange, ScalarBuffers }
+   |      -----------             ^^^^^^^^^
+   |      |
+   |      variant in this enum
+   |
+   = note: `InputSyntax` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `lower_all` is never used
+   --> src/numeric_expression_dag.rs:311:15
+    |
+311 | pub(super) fn lower_all(
+    |               ^^^^^^^^^
+
+warning: `ui-graph-compiler-spike` (bin "ui-graph-compiler-spike") generated 3 warnings (run `cargo fix --bin "ui-graph-compiler-spike" -p ui-graph-compiler-spike` to apply 1 suggestion)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.42s

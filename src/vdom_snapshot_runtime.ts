@@ -381,6 +381,8 @@ type StorePropDeltaRecord<H> = {
   applied: boolean;
   publicationToken: object | null;
   appliedVersion: number | null;
+  preparedSweeps: number;
+  postHostSweeps: number;
 };
 
 type RetainedSourceDeltaRecord<H> = {
@@ -681,6 +683,15 @@ export type PreparedScopedKeyedRetainedProgram = PreparedKeyedVDOMProgram & {
   readonly readSources: readonly ScalarSource[];
   readonly storeScalarPlans?: readonly (MountedScalarStorePlan | null)[];
 };
+
+export type OwnedScalarPhases = Readonly<{
+  preflightPrepared(): boolean;
+  preflightPostHost(): boolean;
+  readCounts(): Readonly<{ preparedSweeps: number; postHostSweeps: number }>;
+}>;
+
+export type PreparedOwnedScalarStoreProgram = PreparedScopedKeyedRetainedProgram &
+  Readonly<{ ownedScalarPhases: OwnedScalarPhases }>;
 
 const elementKey = (element: RuntimeElement): string | null => {
   const key = element.props.key;
@@ -3694,6 +3705,83 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     return program;
   }
 
+  /** Prepare the private immediate scalar route through the retained Store record. */
+  prepareOwnedScalarStoreDeltas(
+    regions: readonly OwnedScalarStoreRegion[],
+    scalarPlans?: readonly (MountedScalarStorePlan | null)[],
+  ): PreparedOwnedScalarStoreProgram | null {
+    const store = this.#prepareStorePropDelta(regions, scalarPlans, true);
+    if (!store) return null;
+    const record = this.#storePropDeltas.get(store);
+    if (!record?.ownedScalar || record.texts.length !== 0 ||
+      record.targets.length !== regions.length ||
+      record.targets.some((target) => target.kind !== "image")) {
+      this.#storePropDeltas.delete(store);
+      return null;
+    }
+    let state: "prepared" | "committed" | "discarded" = "prepared";
+    const preflightPrepared = () => state === "prepared" &&
+      hostPropWriter(this.host) === record.writer && state === "prepared" &&
+      !this.#publicationToken && !this.#publicationFailed &&
+      this.#compiledGraph === null && !this.#numericWriteInProgress &&
+      !record.applied;
+    const preflightPostHost = () => state === "committed" &&
+      hostPropWriter(this.host) === record.writer && state === "committed" &&
+      !this.#publicationFailed && !this.#numericWriteInProgress &&
+      this.#compiledGraph === null && record.applied &&
+      record.publicationToken !== null &&
+      this.#publicationToken === record.publicationToken &&
+      this.#version === record.appliedVersion;
+    const ownedScalarPhases: OwnedScalarPhases = Object.freeze({
+      preflightPrepared,
+      preflightPostHost,
+      readCounts: () => Object.freeze({
+        preparedSweeps: record.preparedSweeps,
+        postHostSweeps: record.postHostSweeps,
+      }),
+    });
+    const program: PreparedOwnedScalarStoreProgram = {
+      scoped: true,
+      structuralVersionDelta: 0,
+      readSources: [],
+      get storeScalarPlans() { return record.scalarPlans; },
+      ownedScalarPhases,
+      overlapsRetainedTargets: () => false,
+      overlapsStoreTargets: () => false,
+      validate: () => preflightPrepared() &&
+        this.isStorePropDeltaCurrent(store),
+      validatePreparedPrivate: () => state === "prepared" &&
+        this.#isStorePropDeltaCurrent(store, false, false, true),
+      validatePostHost: () => preflightPostHost() &&
+        this.isStorePropDeltaCurrent(store, { afterHost: true }),
+      validatePostHostPrivate: () => state === "committed" &&
+        this.#isStorePropDeltaCurrent(store, true, false, true),
+      commit: () => {
+        if (state !== "prepared" ||
+          !this.#isStorePropDeltaCurrent(store, false, true)) {
+          throw new Error("Prepared scoped VDOM transaction is stale");
+        }
+        state = "committed";
+        this.#applyCheckedStorePropDelta(store);
+      },
+      commitAdmitted: () => {
+        if (state !== "prepared" ||
+          !this.#isStorePropDeltaCurrent(store, false, true, true)) {
+          throw new Error("Prepared scoped VDOM transaction is stale");
+        }
+        state = "committed";
+        this.#applyCheckedStorePropDelta(store);
+      },
+      discard: () => {
+        if (state === "discarded") return;
+        if (state === "prepared") state = "discarded";
+        record.scalarPlans = undefined;
+        this.#storePropDeltas.delete(store);
+      },
+    };
+    return program;
+  }
+
   /** Prepare one scoped keyed, retained-source and Store-prop publication. */
   prepareScopedKeyedRetainedAndStoreDeltas(
     deltas: readonly KeyedRegionDeltaRequest[],
@@ -4277,6 +4365,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
   #prepareStorePropDelta(
     regions: readonly (StorePropDelta | OwnedScalarStoreRegion)[],
     scalarPlans?: readonly (MountedScalarStorePlan | null)[],
+    internalOwnedScalar = false,
   ): PreparedStorePropDelta | null {
     if (this.#publicationToken || this.#publicationFailed ||
       this.#compiledGraph !== null ||
@@ -4655,8 +4744,9 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       scalarPlans: Object.freeze(successors),
       applied: false, publicationToken: null,
       appliedVersion: null,
+      preparedSweeps: 0, postHostSweeps: 0,
     });
-    if (!this.isStorePropDeltaCurrent(token)) return null;
+    if (!internalOwnedScalar && !this.isStorePropDeltaCurrent(token)) return null;
     if (allOwnedScalar && this.#profileCounter) {
       this.#profileCounter({
         "store.scalar-target.bucket-builds": bucketBuilds,
@@ -4700,6 +4790,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         this.#version !== record.appliedVersion) return false;
     } else if (record.applied ||
       (allowActivePublication ? !this.#publicationToken : !!this.#publicationToken)) return false;
+    if (afterHost) record.postHostSweeps++;
+    else record.preparedSweeps++;
     for (const bucket of record.buckets) {
       const live = this.#nodesByKey.get(bucket.key);
       if (!live || live.size !== bucket.members.length) return false;

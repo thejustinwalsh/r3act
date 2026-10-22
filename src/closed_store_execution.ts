@@ -15,7 +15,8 @@ import {
   type StoreRenderTransaction,
 } from "./async_store_runtime.ts";
 import {
-  bindOwnedClosedWorldInputRequest, captureOwnedClosedWorldInputs,
+  bindOwnedClosedWorldInputRequest, captureOwnedClosedWorldInputBatch,
+  type ClosedWorldCellCut,
   type OwnedClosedWorldInputCell, type OwnedClosedWorldInputRequest,
   type OwnerStateWorld,
 } from "./owner_state_world.ts";
@@ -439,7 +440,8 @@ export const prepareOwnedClosedStoreOutputs = (
   transaction: StoreRenderTransaction,
   orderedRequests: readonly (OwnedClosedStoreOutputRequest | BoundClosedStoreOutputRequest)[],
   counts?: OwnedScalarOutputCounts,
-): { kind: "ready"; rows: readonly OwnedClosedStoreOutputRow[] } |
+): { kind: "ready"; rows: readonly OwnedClosedStoreOutputRow[];
+  cellCut: ClosedWorldCellCut } |
   { kind: "public-required" } | null => {
   try {
     const rawRequests = closedDataArray(orderedRequests, 65536);
@@ -451,10 +453,11 @@ export const prepareOwnedClosedStoreOutputs = (
       if (!request) return null;
       normalized.push(request);
     }
-    const worldRows = captureOwnedClosedWorldInputs(world,
+    const worldBatch = captureOwnedClosedWorldInputBatch(world,
       normalized.map(({ owner, facts, worldRequest }) =>
         worldRequest ?? { owner, sites: facts.stateSites }));
-    if (!worldRows) return { kind: "public-required" };
+    if (!worldBatch) return { kind: "public-required" };
+    const worldRows = worldBatch.rows;
     const projectionRequests: (OwnedClosedProjectionRequest | BoundClosedProjectionRequest)[] = [];
     for (const row of normalized) {
       for (let index = 0; index < row.inputs.length; index++) {
@@ -503,7 +506,8 @@ export const prepareOwnedClosedStoreOutputs = (
       ownedClosedOutputRows.add(row);
       rows.push(row);
     }
-    return Object.freeze({ kind: "ready" as const, rows: Object.freeze(rows) });
+    return Object.freeze({ kind: "ready" as const, rows: Object.freeze(rows),
+      cellCut: worldBatch.cellCut });
   } catch {
     return null;
   }

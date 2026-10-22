@@ -413,6 +413,11 @@ export type OwnedClosedWorldInputRow = Readonly<{
   cells: readonly OwnedClosedWorldInputCell[];
 }>;
 
+export type OwnedClosedWorldInputBatch = Readonly<{
+  rows: readonly OwnedClosedWorldInputRow[];
+  cellCut: ClosedWorldCellCut;
+}>;
+
 type ClosedWorldCell = Readonly<{
   owner: OwnerId;
   site: StateSiteId;
@@ -600,12 +605,16 @@ export class OwnerStateWorld {
     key: symbol,
     world: OwnerStateWorld,
     requests: readonly { owner: OwnerId; sites: readonly StateSiteId[] }[],
-  ): readonly OwnedClosedWorldInputRow[] | null {
+    includeCut = false,
+  ): OwnedClosedWorldInputBatch | readonly OwnedClosedWorldInputRow[] | null {
     if (key !== ownedWorldCaptureKey) return null;
     if (typeof world !== "object" || world === null || !(#owners in world)) return null;
     try {
       if (!OwnerStateWorld.#closedCaptureShapeCanonical(world)) return null;
       const rows: OwnedClosedWorldInputRow[] = [];
+      const capturedCells: ClosedWorldCell[] = [];
+      const byOwner = includeCut
+        ? new Map<OwnerId, Map<StateSiteId, ClosedWorldCell>>() : null;
       for (const request of requests) {
         const owner = request.owner;
         if (!Number.isSafeInteger(owner) || !world.#owners.has(owner) ||
@@ -625,8 +634,27 @@ export class OwnerStateWorld {
           const sourceValue = canonicalScalarSourceValue(cell.source);
           if (typeof value !== "number" || !Number.isFinite(value) ||
             sourceValue === null || !Object.is(value, sourceValue)) return null;
+          const handle = world.#handleForCell(owner, site, cell);
+          if (byOwner) {
+            const captured = Object.freeze({
+              owner, site, identity: handle.cellIdentity, source: cell.source,
+              version: cell.version, value,
+            });
+            let sites = byOwner.get(owner);
+            if (!sites) byOwner.set(owner, sites = new Map());
+            const previous = sites.get(site);
+            if (previous) {
+              if (previous.identity !== captured.identity ||
+                previous.source !== captured.source ||
+                previous.version !== captured.version ||
+                !Object.is(previous.value, captured.value)) return null;
+            } else {
+              sites.set(site, captured);
+              capturedCells.push(captured);
+            }
+          }
           cells.push(Object.freeze({
-            handle: world.#handleForCell(owner, site, cell),
+            handle,
             source: cell.source,
             version: cell.version,
             value,
@@ -634,7 +662,10 @@ export class OwnerStateWorld {
         }
         rows.push(Object.freeze({ owner, lineage: Object.freeze(lineage), cells: Object.freeze(cells) }));
       }
-      return Object.freeze(rows);
+      const frozenRows = Object.freeze(rows);
+      return includeCut ? Object.freeze({ rows: frozenRows, cellCut:
+        new PrivateClosedWorldCellCut(closedWorldCellCutKey, Object.freeze(capturedCells)) })
+        : frozenRows;
     } catch (error) {
       if (error instanceof TypeError) return null;
       throw error;
@@ -2684,40 +2715,66 @@ export type OwnedClosedWorldInputRequest = PrivateOwnedClosedWorldInputRequest;
 export const bindOwnedClosedWorldInputRequest = PrivateOwnedClosedWorldInputRequest.bind;
 const canonicalUnwrapOwnedWorldInputRequest = PrivateOwnedClosedWorldInputRequest.unwrap;
 
+function normalizeOwnedClosedWorldInputRequests(
+  requests: readonly ({ owner: OwnerId; sites: readonly StateSiteId[] } |
+    OwnedClosedWorldInputRequest)[],
+): { owner: OwnerId; sites: readonly StateSiteId[] }[] | null {
+  const length = Object.getOwnPropertyDescriptor(requests, "length")?.value;
+  if (!Number.isSafeInteger(length) || length < 0 || length > 65536) return null;
+  const copied: { owner: OwnerId; sites: readonly StateSiteId[] }[] = [];
+  for (let index = 0; index < length; index++) {
+    const request = Object.getOwnPropertyDescriptor(requests, String(index));
+    if (!request || !("value" in request) || !request.value) return null;
+    const bound = canonicalUnwrapOwnedWorldInputRequest(
+      ownedWorldInputBindingKey, request.value);
+    if (bound) {
+      copied.push(bound);
+      continue;
+    }
+    const owner = Object.getOwnPropertyDescriptor(request.value, "owner");
+    const sites = Object.getOwnPropertyDescriptor(request.value, "sites");
+    if (!owner || !("value" in owner) || !sites || !("value" in sites)) return null;
+    const siteLength = Object.getOwnPropertyDescriptor(sites.value, "length")?.value;
+    if (!Number.isSafeInteger(siteLength) || siteLength < 0 || siteLength > 256) return null;
+    const copiedSites: StateSiteId[] = [];
+    for (let siteIndex = 0; siteIndex < siteLength; siteIndex++) {
+      const site = Object.getOwnPropertyDescriptor(sites.value, String(siteIndex));
+      if (!site || !("value" in site) || typeof site.value !== "string" || !site.value) return null;
+      copiedSites.push(site.value);
+    }
+    copied.push({ owner: owner.value, sites: copiedSites });
+  }
+  return copied;
+}
+
+export function captureOwnedClosedWorldInputBatch(
+  world: OwnerStateWorld,
+  requests: readonly ({ owner: OwnerId; sites: readonly StateSiteId[] } |
+    OwnedClosedWorldInputRequest)[],
+): OwnedClosedWorldInputBatch | null {
+  try {
+    const copied = normalizeOwnedClosedWorldInputRequests(requests);
+    if (!copied) return null;
+    return canonicalCaptureOwnedClosedInputs.call(
+      OwnerStateWorld, ownedWorldCaptureKey, world, copied, true,
+    ) as OwnedClosedWorldInputBatch | null;
+  } catch (error) {
+    if (error instanceof TypeError) return null;
+    throw error;
+  }
+}
+
 export function captureOwnedClosedWorldInputs(
   world: OwnerStateWorld,
   requests: readonly ({ owner: OwnerId; sites: readonly StateSiteId[] } |
     OwnedClosedWorldInputRequest)[],
 ): readonly OwnedClosedWorldInputRow[] | null {
   try {
-    const length = Object.getOwnPropertyDescriptor(requests, "length")?.value;
-    if (!Number.isSafeInteger(length) || length < 0 || length > 65536) return null;
-    const copied: { owner: OwnerId; sites: readonly StateSiteId[] }[] = [];
-    for (let index = 0; index < length; index++) {
-      const request = Object.getOwnPropertyDescriptor(requests, String(index));
-      if (!request || !("value" in request) || !request.value) return null;
-      const bound = canonicalUnwrapOwnedWorldInputRequest(
-        ownedWorldInputBindingKey, request.value);
-      if (bound) {
-        copied.push(bound);
-        continue;
-      }
-      const owner = Object.getOwnPropertyDescriptor(request.value, "owner");
-      const sites = Object.getOwnPropertyDescriptor(request.value, "sites");
-      if (!owner || !("value" in owner) || !sites || !("value" in sites)) return null;
-      const siteLength = Object.getOwnPropertyDescriptor(sites.value, "length")?.value;
-      if (!Number.isSafeInteger(siteLength) || siteLength < 0 || siteLength > 256) return null;
-      const copiedSites: StateSiteId[] = [];
-      for (let siteIndex = 0; siteIndex < siteLength; siteIndex++) {
-        const site = Object.getOwnPropertyDescriptor(sites.value, String(siteIndex));
-        if (!site || !("value" in site) || typeof site.value !== "string" || !site.value) return null;
-        copiedSites.push(site.value);
-      }
-      copied.push({ owner: owner.value, sites: copiedSites });
-    }
+    const copied = normalizeOwnedClosedWorldInputRequests(requests);
+    if (!copied) return null;
     return canonicalCaptureOwnedClosedInputs.call(
-      OwnerStateWorld, ownedWorldCaptureKey, world, copied,
-    );
+      OwnerStateWorld, ownedWorldCaptureKey, world, copied, false,
+    ) as readonly OwnedClosedWorldInputRow[] | null;
   } catch (error) {
     if (error instanceof TypeError) return null;
     throw error;

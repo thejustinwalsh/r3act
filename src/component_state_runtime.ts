@@ -60,6 +60,8 @@ import {
   inspectCanonicalBlockedStoreReaderReceipt,
   inspectCanonicalStoreReaderReceipt,
   StoreRenderTransaction,
+  prepareCanonicalClosedStorePublication,
+  readOwnedClosedStoreCaptureCounts,
   type StoreSource,
   validateCanonicalClosedStorePhase,
 } from "./async_store_runtime.ts";
@@ -610,6 +612,7 @@ type ClosedStoreOutputCut = {
   readonly inputStores: ReadonlySet<AnyAsyncStore>;
   readonly inputCells: readonly StateCellHandle[];
   readonly inputCellWrites: readonly RetainedCellWrite[];
+  readonly producerCellCut: ClosedWorldCellCut | null;
   readonly ordinaryScalar: boolean;
   readonly deferredValidation: boolean;
   useExternalCellCut(cut: ClosedWorldCellCut): void;
@@ -635,6 +638,8 @@ type CandidateLifecycleSpec<H, Parent> = {
   permitHeldFullCandidate?: () => boolean;
   admissionCurrent?(): boolean;
   codeCurrent(): boolean;
+  validationStrategy?: { kind: "owned-scalar-immediate";
+    preflightPrepared(): boolean; preflightPostHost(): boolean };
   referencesCompiledSource?: (sourceFile: string) => boolean;
   validatePrepared(): boolean;
   validatePreparedPrivate(): boolean;
@@ -3286,6 +3291,7 @@ export class ComponentStateRoot<H, Parent = H> {
     const owners = new Map<OwnerId, Owner>();
     let privateCellCut: ClosedWorldCellCut | null = null;
     let phaseCellCut: ClosedWorldCellCut | null = null;
+    let producerCellCut: ClosedWorldCellCut | null = null;
     let externalCellCutCovered = false;
     let hasMixedOwner = false;
     const covered = new Set<string>();
@@ -3989,6 +3995,7 @@ export class ComponentStateRoot<H, Parent = H> {
         if (batch === null) throw new SparseCandidateIneligible();
         if (batch.kind !== "ready") seen.clear();
         if (batch.kind === "ready") {
+          producerCellCut = batch.cellCut;
           if (batch.rows.length !== passiveRows.length) throw new SparseCandidateIneligible();
           passive = batch.rows;
           for (let index = 0; index < passiveRows.length; index++) {
@@ -4265,6 +4272,7 @@ export class ComponentStateRoot<H, Parent = H> {
         postHostPrivateCurrent: () => current(true, true),
         inputStores, inputResources,
         inputCells, inputCellWrites: stagedCellWrites,
+        producerCellCut,
         ordinaryScalar: !!passive && allOwnedScalar && regions.length > 0,
         deferredValidation: deferPrivateCells && !!passive,
         privatePreparedCurrent: () => current(true) &&
@@ -4314,6 +4322,7 @@ export class ComponentStateRoot<H, Parent = H> {
           inputCells.length = 0;
           stagedCellWrites.length = 0;
           passive = null; privateCellCut = null; phaseCellCut = null;
+          producerCellCut = null;
           externalCellCutCovered = false;
           passiveRows.length = 0; passiveByReader.clear();
           stagedByRegion.length = 0;
@@ -4328,6 +4337,7 @@ export class ComponentStateRoot<H, Parent = H> {
       inputStores.clear(); inputResources.clear(); regions.length = 0;
       inputCells.length = 0;
       passive = null; privateCellCut = null; phaseCellCut = null;
+      producerCellCut = null;
       externalCellCutCovered = false;
       passiveRows.length = 0; passiveByReader.clear();
       if (kernelInputs) kernelInputs.length = 0;
@@ -4415,6 +4425,7 @@ export class ComponentStateRoot<H, Parent = H> {
     let privateCellCut: ClosedWorldCellCut | null = null;
     let cellFootprint: RetainedCellWrite[] = [];
     let ownedCellCut = false;
+    let ownedScalarPhases: import("./vdom_snapshot_runtime.ts").OwnedScalarPhases | null = null;
     try {
       if (selected.length || mixedWrites.length) {
         closed = this.#stageClosedStoreOutputs(selected, stores,
@@ -4424,8 +4435,20 @@ export class ComponentStateRoot<H, Parent = H> {
       ownedCellCut = closed?.ordinaryScalar === true &&
         writes.every(({ handle }) => closed!.owners.has(handle.owner));
       if (ownedCellCut) {
-        cellFootprint = [...writes, ...closed!.inputCellWrites];
-        privateCellCut = createClosedWorldCellCut(cellFootprint);
+        const producerCovered = !!closed!.producerCellCut && writes.every((write) =>
+          closed!.inputCellWrites.some((input) =>
+            input.handle.owner === write.handle.owner &&
+            input.handle.site === write.handle.site &&
+            input.handle.cellIdentity === write.handle.cellIdentity &&
+            input.source === write.source && input.version === write.version &&
+            Object.is(input.value, write.value)));
+        if (producerCovered) {
+          privateCellCut = closed!.producerCellCut;
+          if (this.#activeCounters) this.#count("store.world-cut.producer-reuse");
+        } else {
+          cellFootprint = [...writes, ...closed!.inputCellWrites];
+          privateCellCut = createClosedWorldCellCut(cellFootprint);
+        }
         if (!privateCellCut ||
           !validateClosedWorldCellCut(this.world, privateCellCut, "prepared")) {
           throw new SparseCandidateIneligible();
@@ -4438,10 +4461,28 @@ export class ComponentStateRoot<H, Parent = H> {
         (!closed.current() || !closed.storeCurrent())) {
         throw new SparseCandidateIneligible();
       }
-      program = this.#vdom.prepareScopedKeyedRetainedAndStoreDeltas([], writes.filter(
-        ({ handle }) => !closed?.owners.has(handle.owner)).map(
-        ({ source, value }) => [source, value] as const,
-      ), closed?.regions ?? [], [], closed?.scalarPlans);
+      const remainingWrites = writes.filter(({ handle }) =>
+        !closed?.owners.has(handle.owner)).map(
+        ({ source, value }) => [source, value] as const);
+      const ownedRegions = closed?.regions;
+      const isOwnedRegion = (region: StorePropDelta |
+        import("./vdom_snapshot_runtime.ts").OwnedScalarStoreRegion):
+        region is import("./vdom_snapshot_runtime.ts").OwnedScalarStoreRegion =>
+        "frame" in region;
+      const narrowOwnedScalar = internalCellCapture && selected.length > 0 &&
+        ownedCellCut && remainingWrites.length === 0 &&
+        closed?.ordinaryScalar === true && closed.inputResources.size === 0 &&
+        acceptedCollections.length === 0 && acceptedResources.size === 0 &&
+        acceptedCollectionFootprint.length === 0 &&
+        ownedRegions?.every(isOwnedRegion) === true;
+      const ownedProgram = narrowOwnedScalar && ownedRegions &&
+        ownedRegions.every(isOwnedRegion)
+        ? this.#vdom.prepareOwnedScalarStoreDeltas(
+          ownedRegions, closed!.scalarPlans)
+        : null;
+      program = ownedProgram ?? this.#vdom.prepareScopedKeyedRetainedAndStoreDeltas(
+        [], remainingWrites, closed?.regions ?? [], [], closed?.scalarPlans);
+      ownedScalarPhases = ownedProgram?.ownedScalarPhases ?? null;
       if (!program || program.readSources.some((source) => !sources.has(source))) {
         throw new SparseCandidateIneligible();
       }
@@ -4481,6 +4522,8 @@ export class ComponentStateRoot<H, Parent = H> {
         ? !privateCellCut || validateClosedWorldCellCut(this.world, privateCellCut,
           afterHost ? "after-host" : "prepared")
         : this.#validateRetainedCellsPrivate(writes, afterHost);
+    let conservativeOwnedPrepared = false;
+    let conservativeOwnedPostHost = false;
     const lifecycleSpec: CandidateLifecycleSpec<H, Parent> = {
       baseVersion: this.#publicationVersion, baseVDOMVersion: this.#vdom.version,
       scope: { kind: "retained" }, stores, transitions: [], pendingResources: [], blocked: false,
@@ -4496,10 +4539,25 @@ export class ComponentStateRoot<H, Parent = H> {
           holdResources, resourceLease)) &&
         (!resourceLease || this.#publicationIntents.has(resourceLease)),
       codeCurrent,
-      validatePrepared: () => program!.validate() && this.#validateRetainedCells(writes, false) &&
+      ...(ownedScalarPhases ? { validationStrategy: {
+        kind: "owned-scalar-immediate" as const,
+        preflightPrepared: () => {
+          conservativeOwnedPrepared = !ownedScalarPhases!.preflightPrepared();
+          return true;
+        },
+        preflightPostHost: () => {
+          conservativeOwnedPostHost = !ownedScalarPhases!.preflightPostHost();
+          return true;
+        },
+      } } : {}),
+      validatePrepared: () =>
+        (ownedScalarPhases && !conservativeOwnedPrepared || program!.validate()) &&
+        this.#validateRetainedCells(writes, false) &&
         (closed?.current() ?? true) &&
         (closed?.storeCurrent() ?? stores.validate()),
-      validatePreparedPrivate: () => program!.validatePreparedPrivate() &&
+      validatePreparedPrivate: () =>
+        (ownedScalarPhases && !conservativeOwnedPrepared ||
+          program!.validatePreparedPrivate()) &&
         (!resourceLease || this.#publicationIntents.has(resourceLease)) &&
         !this.#resourceHoldWait(
           acceptedResources,
@@ -4519,10 +4577,14 @@ export class ComponentStateRoot<H, Parent = H> {
           return this.#liveOwners.has(handle.owner) && cache !== undefined &&
             componentCodeCurrentPrivate(cache.type);
         }),
-      validatePostHost: () => program!.validatePostHost() && this.#validateRetainedCells(writes, true) &&
+      validatePostHost: () =>
+        (ownedScalarPhases && !conservativeOwnedPostHost ||
+          program!.validatePostHost()) &&
+        this.#validateRetainedCells(writes, true) &&
         (closed?.postHostCurrent() ?? true) &&
         (closed?.storeCurrent(true) ?? stores.validatePublicationInputs()),
-      finalGroupCurrent: () => program!.validatePostHostPrivate() &&
+      finalGroupCurrent: () =>
+        (ownedScalarPhases || program!.validatePostHostPrivate()) &&
         privateCellsCurrent(true) &&
         (closed?.postHostPrivateCurrent() ?? true) && stores.validatePublicationInputsCanonical() &&
         acceptedCurrent() &&
@@ -4534,10 +4596,19 @@ export class ComponentStateRoot<H, Parent = H> {
           const cache = this.#componentCache.get(handle.owner);
           return this.#liveOwners.has(handle.owner) && cache !== undefined &&
             componentCodeCurrentPrivate(cache.type);
-        }),
+        }) && (!ownedScalarPhases || program!.validatePostHostPrivate()),
       commitHost: () => program!.commit(),
       commitHostAdmitted: () => program!.commitAdmitted(),
-      preparePublication: () => stores.preparePublicationAfterHost(),
+      preparePublication: () => {
+        if (ownedScalarPhases) {
+          const status = prepareCanonicalClosedStorePublication(stores);
+          if (status === "stale") {
+            throw new Error("Closed Store publication became stale after host commit");
+          }
+          if (status === "ready") return;
+        }
+        stores.preparePublicationAfterHost();
+      },
       publish: () => {
         stores.publishAccepted();
         closed?.publish();
@@ -4551,6 +4622,20 @@ export class ComponentStateRoot<H, Parent = H> {
       runEffects: () => { stores.notifyPublished(); return []; },
       discard: () => stores.discard(),
       releaseArtifacts: () => {
+        if (this.#activeCounters && ownedScalarPhases) {
+          const readerCounts = readOwnedClosedStoreCaptureCounts(stores);
+          if (readerCounts) {
+            this.#count("store.reader-staging.owned-direct-rows",
+              readerCounts.ownedDirectRows);
+            this.#count("store.reader-staging.generic-materializations",
+              readerCounts.genericMaterializations);
+          }
+          const phaseCounts = ownedScalarPhases.readCounts();
+          this.#count("store.scalar-target.full-prepared-sweeps",
+            phaseCounts.preparedSweeps);
+          this.#count("store.scalar-target.full-post-host-sweeps",
+            phaseCounts.postHostSweeps);
+        }
         program?.discard(); program = null;
         closed?.release(); closed = null;
         privateCellCut = null; cellFootprint.length = 0;
@@ -4880,6 +4965,8 @@ export class ComponentStateRoot<H, Parent = H> {
           );
         }
         phase = "host-committed";
+        if (admitted && spec.validationStrategy?.kind === "owned-scalar-immediate" &&
+          this.#activeCounters) this.#count("publication.owned-scalar-phase-runs");
       } catch (error) {
         failUnpublished(error);
       } finally {
@@ -4901,6 +4988,7 @@ export class ComponentStateRoot<H, Parent = H> {
         spec.codeCurrent() &&
         (scopedDelta || (this.#publicationVersion === spec.baseVersion &&
           this.#vdom.version === spec.baseVDOMVersion)) &&
+        (spec.validationStrategy?.preflightPrepared() ?? true) &&
         spec.validatePrepared() && !this.#codeInvalidated &&
         (!scopedDelta || spec.permitPendingDirectIntent?.() ||
           this.#pendingDirectIntent === null) &&
@@ -4916,6 +5004,7 @@ export class ComponentStateRoot<H, Parent = H> {
         spec.codeCurrent() &&
         this.#publicationVersion === admittedVersion &&
         this.#vdom.appliedVersion === admittedVDOMVersion + appliedVDOMDelta &&
+        (spec.validationStrategy?.preflightPostHost() ?? true) &&
         spec.validatePostHost() && !this.#codeInvalidated &&
         (!scopedDelta || spec.permitPendingDirectIntent?.() ||
           this.#pendingDirectIntent === null) &&

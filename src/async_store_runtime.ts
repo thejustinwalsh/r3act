@@ -988,27 +988,52 @@ export class AsyncStore<S, A = StoreAction<S, S>> implements StoreSource<S> {
     pending: ReadonlyMap<string, PendingReaderValues>,
     stamp?: StoreRootStamp,
   ): PreparedReaderValues {
+    return this.#prepareReaderEntries(rootId, pending, stamp);
+  }
+
+  _prepareOwnedDirectReaderValues(
+    rootId: string,
+    readerIds: readonly string[],
+    stamp: StoreRootStamp,
+  ): PreparedReaderValues {
+    return this.#prepareReaderEntries(rootId, readerIds, stamp, true);
+  }
+
+  #prepareReaderEntries(
+    rootId: string,
+    pending: ReadonlyMap<string, PendingReaderValues> | readonly string[],
+    stamp?: StoreRootStamp,
+    direct = false,
+  ): PreparedReaderValues {
     if (!this.#knownRoots.has(rootId)) {
       throw new Error(`Store reader root is no longer live: ${rootId}`);
     }
     const prepared = new Map<string, AcceptedReaderHistory | null>();
     const existing = this.#readerValues.get(rootId);
-    for (const [readerId, values] of pending) {
-      if (values === null) {
-        prepared.set(readerId, null);
-      } else if (values === capturedReaderCut) {
-        const accepted = existing?.get(readerId);
-        prepared.set(readerId, accepted?.selections ? accepted : Object.freeze({
-          selections: null, stamp: stamp ?? null,
-        }));
-      } else if (values === directReaderCut) {
+    if (direct) {
+      for (const readerId of pending as readonly string[]) {
         prepared.set(readerId, Object.freeze({
           selections: directReaderCut, stamp: stamp ?? null,
         }));
-      } else {
-        prepared.set(readerId, Object.freeze({
-          selections: new Map(values), stamp: stamp ?? null,
-        }));
+      }
+    } else {
+      for (const [readerId, values] of pending as ReadonlyMap<string, PendingReaderValues>) {
+        if (values === null) {
+          prepared.set(readerId, null);
+        } else if (values === capturedReaderCut) {
+          const accepted = existing?.get(readerId);
+          prepared.set(readerId, accepted?.selections ? accepted : Object.freeze({
+            selections: null, stamp: stamp ?? null,
+          }));
+        } else if (values === directReaderCut) {
+          prepared.set(readerId, Object.freeze({
+            selections: directReaderCut, stamp: stamp ?? null,
+          }));
+        } else {
+          prepared.set(readerId, Object.freeze({
+            selections: new Map(values), stamp: stamp ?? null,
+          }));
+        }
       }
     }
     return {
@@ -1231,6 +1256,8 @@ const canonicalValidateRender = AsyncStore.prototype._validateRender;
 const canonicalValidateRenderStamp = AsyncStore.prototype._validateRenderStampCanonical;
 const canonicalValidateRenderLineage = AsyncStore.prototype._validateRenderLineage;
 const canonicalPrepareReaderValues = AsyncStore.prototype._prepareReaderValues;
+const canonicalPrepareOwnedDirectReaderValues =
+  AsyncStore.prototype._prepareOwnedDirectReaderValues;
 const canonicalPublishReaderValues = AsyncStore.prototype._publishPreparedReaderValues;
 const canonicalCaptureReaderReceipt = AsyncStore.prototype._captureCanonicalReaderReceipt;
 const canonicalInspectReaderReceipt = AsyncStore.prototype._inspectCanonicalReaderReceipt;
@@ -1411,6 +1438,14 @@ type CheckpointState = {
   next?: CheckpointState;
 };
 
+type OwnedDirectReader = Readonly<{
+  store: AnyAsyncStore;
+  snapshot: StoreRenderSnapshot<any, any>;
+}>;
+type ReaderStorage =
+  | { kind: "generic" }
+  | { kind: "owned-direct"; rows: Map<string, OwnedDirectReader> };
+
 /** Discover the full dependency set before evaluating any selector callback. */
 export function storesForSource(
   source: StoreSource<unknown>,
@@ -1459,6 +1494,10 @@ export class StoreRenderTransaction {
   #pending = new Map<AnyAsyncStore, Map<string, PendingReaderValues>>();
   #ownedProjectionValues = new Map<StoreRenderSnapshot<any, any>, Map<readonly (readonly string[])[], readonly number[]>>();
   #values = new Map<string, { source: StoreSource<unknown>; value: unknown }>();
+  #readerStorage: ReaderStorage = { kind: "generic" };
+  #discarded = false;
+  #ownedDirectRows = 0;
+  #genericMaterializations = 0;
   #closed = false;
   #preparedPublication?: Map<
     AnyAsyncStore,
@@ -1480,6 +1519,7 @@ export class StoreRenderTransaction {
       this.#capturedTransitions.length !== 0 ||
       Object.getPrototypeOf(this) !== StoreRenderTransaction.prototype ||
       !transactionPhaseMethodsCanonical(this) ||
+      this.#readerStorage.kind === "owned-direct" ||
       !this.#readers.get(readerId)?.has(store) ||
       this.#pending.get(store)?.get(readerId) !== capturedReaderCut ||
       !canonicalClosedNumericStore.call(store)) return null;
@@ -1529,6 +1569,43 @@ export class StoreRenderTransaction {
     }
     return "current";
   }
+  _prepareCanonicalClosedPublication(key: symbol):
+    "ready" | "stale" | "public-required" {
+    if (typeof this !== "object" || this === null || !(#snapshots in this) ||
+      key !== ownedBatchKey) return "public-required";
+    if (Object.getPrototypeOf(this) !== StoreRenderTransaction.prototype ||
+      !transactionPublicationMethodsCanonical(this) ||
+      this.#readerStorage.kind !== "owned-direct") return "public-required";
+    if (this.#closed) return "stale";
+    if (this.#preparedPublication) return "ready";
+    const status = canonicalValidateStorePhase.call(this, key, "after-host");
+    if (status !== "current") return status === "stale" ? "stale" : "public-required";
+    const readersByStore = new Map<AnyAsyncStore, string[]>();
+    for (const [readerId, row] of this.#readerStorage.rows) {
+      let readers = readersByStore.get(row.store);
+      if (!readers) readersByStore.set(row.store, readers = []);
+      readers.push(readerId);
+    }
+    const prepared = new Map<AnyAsyncStore, PreparedReaderValues>();
+    for (const [store, readerIds] of readersByStore) {
+      const snapshot = this.#snapshots.get(store)!;
+      prepared.set(store, canonicalPrepareOwnedDirectReaderValues.call(
+        store, this.#capturedRootId, readerIds, canonicalSnapshotRootStamp.call(snapshot),
+      ));
+    }
+    const finalStatus = canonicalValidateStorePhase.call(this, key, "after-host");
+    if (finalStatus === "public-required") return "public-required";
+    if (finalStatus === "stale") return "stale";
+    this.#preparedPublication = prepared;
+    return "ready";
+  }
+  _readOwnedCaptureCounts(key: symbol):
+    Readonly<{ ownedDirectRows: number; genericMaterializations: number }> | null {
+    if (typeof this !== "object" || this === null || !(#snapshots in this) ||
+      key !== ownedBatchKey) return null;
+    return Object.freeze({ ownedDirectRows: this.#ownedDirectRows,
+      genericMaterializations: this.#genericMaterializations });
+  }
   constructor(
     readonly rootId: string,
     private readonly options: StoreReadOptions = {},
@@ -1549,7 +1626,8 @@ export class StoreRenderTransaction {
     if (typeof this !== "object" || this === null || !(#snapshots in this)) return null;
     if (key !== ownedBatchKey || this.#closed || this.#preparedPublication ||
       this.#snapshots.size || this.#states.size || this.#readers.size ||
-      this.#pending.size || this.#values.size || this.#discoveredAfterMutation ||
+      this.#pending.size || this.#values.size ||
+      this.#readerStorage.kind !== "generic" || this.#discoveredAfterMutation ||
       this.#capturedTransitions.length !== 0) return null;
     if (Object.getPrototypeOf(this) !== StoreRenderTransaction.prototype ||
       Object.hasOwn(this, "readClosedProjections")) return null;
@@ -1570,6 +1648,7 @@ export class StoreRenderTransaction {
       !transitions || !("value" in transitions) ||
       transitions.value !== this.#capturedTransitions) return null;
     if (!closedNumericPrototypeIsCanonical()) return null;
+    if (requests.length === 0) return Object.freeze([]);
     const stores = new Set<AnyAsyncStore>();
     const readerSources = new Map<string, AnyAsyncStore>();
     for (const request of requests) {
@@ -1616,33 +1695,44 @@ export class StoreRenderTransaction {
       this.#states.set(store, snapshot.state);
       this.#ownedProjectionValues.set(snapshot, projectionValues.get(store)!);
     }
+    const directRows = new Map<string, OwnedDirectReader>();
     for (let index = 0; index < requests.length; index++) {
       const { store, readerId } = requests[index];
       const snapshot = snapshots.get(store)!;
-      const cached = this.#values.get(readerId);
-      if (cached) {
-        continue;
-      }
-      this.#setJournaled(this.#readers, readerId, new Set([store]));
-      let pending = this.#pending.get(store);
-      if (!pending) {
-        pending = new Map();
-        this.#setJournaled(this.#pending, store, pending);
-      }
-      this.#setJournaled(pending, readerId, directReaderCut);
-      this.#setJournaled(this.#values, readerId, { source: store, value: snapshot.state });
-      this.#recordBranchChange(readerId);
+      if (!directRows.has(readerId)) directRows.set(readerId, { store, snapshot });
     }
+    this.#readerStorage = { kind: "owned-direct", rows: directRows };
+    this.#ownedDirectRows += directRows.size;
     return Object.freeze(result);
+  }
+  #promoteDirectReaders(): void {
+    if (this.#readerStorage.kind !== "owned-direct") return;
+    const rows = this.#readerStorage.rows;
+    for (const [readerId, { store, snapshot }] of rows) {
+      this.#readers.set(readerId, new Set([store]));
+      let pending = this.#pending.get(store);
+      if (!pending) this.#pending.set(store, pending = new Map());
+      pending.set(readerId, directReaderCut);
+      this.#values.set(readerId, { source: store, value: snapshot.state });
+    }
+    this.#readerStorage = { kind: "generic" };
+    this.#genericMaterializations++;
   }
   get stores(): ReadonlySet<AnyAsyncStore> {
     return new Set(this.#snapshots.keys());
   }
   get readers(): ReadonlyMap<string, ReadonlySet<AnyAsyncStore>> {
+    if (this.#readerStorage.kind === "owned-direct")
+      return new Map([...this.#readerStorage.rows].map(([id, row]) =>
+        [id, new Set([row.store])]));
     return new Map(this.#readers);
   }
   /** Current branch's successfully completed reader observations. */
   get observations(): ReadonlyMap<string, StoreRenderObservation> {
+    if (this.#discarded) return new Map();
+    if (this.#readerStorage.kind === "owned-direct")
+      return new Map([...this.#readerStorage.rows].map(([id, row]) =>
+        [id, { source: row.store, value: row.snapshot.state }]));
     return new Map(this.#values);
   }
 
@@ -1660,6 +1750,7 @@ export class StoreRenderTransaction {
     if (this.#closed || this.#preparedPublication) {
       throw new Error("Cannot checkpoint a closed store transaction");
     }
+    this.#promoteDirectReaders();
     const token = Object.freeze({}) as StoreRenderCheckpoint;
     const state: CheckpointState = {
       cursor: this.#journal.length,
@@ -1744,6 +1835,11 @@ export class StoreRenderTransaction {
 
   /** O(1) lookup for a single boundary reader. */
   getObservation(readerId: string): StoreRenderObservation | undefined {
+    if (this.#discarded) return undefined;
+    if (this.#readerStorage.kind === "owned-direct") {
+      const row = this.#readerStorage.rows.get(readerId);
+      return row && { source: row.store, value: row.snapshot.state };
+    }
     return this.#values.get(readerId);
   }
 
@@ -1783,6 +1879,7 @@ export class StoreRenderTransaction {
     if (this.#closed || this.#preparedPublication) {
       throw new Error("Cannot preserve readers in a closed store transaction");
     }
+    this.#promoteDirectReaders();
     for (const [readerId, readerStores] of readers) {
       if (!readerId) throw new Error("A store reader requires a site ID");
       for (const store of readerStores) this.#pinStore(store);
@@ -1823,6 +1920,7 @@ export class StoreRenderTransaction {
     if (this.#closed || this.#preparedPublication) {
       throw new Error("Cannot drop readers from a closed store transaction");
     }
+    this.#promoteDirectReaders();
     for (const readerId of readerIds) {
       this.#deleteJournaled(this.#readers, readerId);
       this.#deleteJournaled(this.#values, readerId);
@@ -1841,6 +1939,7 @@ export class StoreRenderTransaction {
     if (this.#closed || this.#preparedPublication) {
       throw new Error("Cannot retire readers in a closed store transaction");
     }
+    this.#promoteDirectReaders();
     for (const [readerId, stores] of readers) {
       if (!readerId) return false;
       for (const store of stores) {
@@ -1904,6 +2003,7 @@ export class StoreRenderTransaction {
       throw new Error("Cannot read a closed or prepared store transaction");
     }
     if (!readerId) throw new Error("A store reader requires a site ID");
+    this.#promoteDirectReaders();
     const cached = this.#values.get(readerId);
     if (cached && cached.source !== store) return null;
     let snapshot = this.#snapshots.get(store);
@@ -1960,6 +2060,7 @@ export class StoreRenderTransaction {
       throw new Error("Cannot read a closed or prepared store transaction");
     }
     if (!readerId) throw new Error("A store reader requires a site ID");
+    this.#promoteDirectReaders();
     const cached = this.#values.get(readerId);
     if (cached) {
       if (cached.source !== source) {
@@ -2026,6 +2127,7 @@ export class StoreRenderTransaction {
   preparePublication(): void {
     if (this.#closed) throw new Error("Store render transaction is closed");
     if (this.#preparedPublication) return;
+    this.#promoteDirectReaders();
     if (!this.validate()) {
       throw new Error(`Store render transaction for ${this.rootId} is stale`);
     }
@@ -2035,6 +2137,7 @@ export class StoreRenderTransaction {
   preparePublicationAfterHost(): void {
     if (this.#closed) throw new Error("Store render transaction is closed");
     if (this.#preparedPublication) return;
+    this.#promoteDirectReaders();
     if (!this.validatePublicationInputs()) {
       throw new Error(`Store publication inputs for ${this.rootId} are stale`);
     }
@@ -2087,6 +2190,7 @@ export class StoreRenderTransaction {
   }
   discard(): void {
     this.#closed = true;
+    this.#discarded = true;
     this.#preparedPublication = undefined;
     this.#pending.clear();
     this.#values.clear();
@@ -2117,6 +2221,10 @@ const canonicalCaptureBlockedReaderReceipt =
   StoreRenderTransaction.prototype._captureCanonicalBlockedReaderReceipt;
 const canonicalValidateStorePhase =
   StoreRenderTransaction.prototype._validateCanonicalClosedPhase;
+const canonicalPrepareClosedPublication =
+  StoreRenderTransaction.prototype._prepareCanonicalClosedPublication;
+const canonicalReadCaptureCounts =
+  StoreRenderTransaction.prototype._readOwnedCaptureCounts;
 const canonicalTransactionClosedRead =
   Object.getOwnPropertyDescriptor(StoreRenderTransaction.prototype, "readClosedProjections")!;
 const transactionPhaseMethodNames = Object.freeze([
@@ -2130,6 +2238,39 @@ const transactionPhaseDescriptors = new Map(transactionPhaseMethodNames.map((nam
 function transactionPhaseMethodsCanonical(transaction: object): boolean {
   return phaseMethodsCanonical(transaction, StoreRenderTransaction.prototype,
     transactionPhaseMethodNames, transactionPhaseDescriptors);
+}
+const transactionPublicationMethodNames = Object.freeze([
+  ...transactionPhaseMethodNames, "preparePublication", "preparePublicationAfterHost",
+] as const);
+const transactionPublicationDescriptors = new Map(transactionPublicationMethodNames.map((name) => [
+  name, Object.getOwnPropertyDescriptor(StoreRenderTransaction.prototype, name)!,
+]));
+function transactionPublicationMethodsCanonical(transaction: object): boolean {
+  return phaseMethodsCanonical(transaction, StoreRenderTransaction.prototype,
+    transactionPublicationMethodNames, transactionPublicationDescriptors);
+}
+
+export function prepareCanonicalClosedStorePublication(
+  transaction: StoreRenderTransaction,
+): "ready" | "stale" | "public-required" {
+  try {
+    return canonicalPrepareClosedPublication.call(transaction, ownedBatchKey);
+  } catch (error) {
+    if (error instanceof TypeError &&
+      (typeof transaction !== "object" || transaction === null)) return "public-required";
+    throw error;
+  }
+}
+
+export function readOwnedClosedStoreCaptureCounts(
+  transaction: StoreRenderTransaction,
+): Readonly<{ ownedDirectRows: number; genericMaterializations: number }> | null {
+  try {
+    return canonicalReadCaptureCounts.call(transaction, ownedBatchKey);
+  } catch (error) {
+    if (error instanceof TypeError) return null;
+    throw error;
+  }
 }
 
 /** Audit selected owned Store snapshots and their captured phase stamps. */
