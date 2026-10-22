@@ -362,8 +362,11 @@ Deno.test("empty schema-5 data groups with one host key retain distinct owners",
       ["position-x", { kind: "binary", operator: "*",
         left: { kind: "input", index: 0 }, right: { kind: "literal", value: 2 } }],
     ] },
-  }, closedStoreExecution: { schemaVersion: 1, kind: "owned-data",
-    componentProgramId: site, moduleRevision: revision } });
+  }, closedStoreExecution: { schemaVersion: 2, kind: "owned-data",
+    componentProgramId: site, moduleRevision: revision,
+    numericKernel: (inputs: readonly number[], outputs: number[]) => {
+      outputs[0] = (inputs[0] * 2);
+    } } });
   const host = new MemoryVDOMHost(), container = host.createContainer();
   const counters: Record<string, number> = {};
   const root = new ComponentStateRoot(host, container, { rootId: "owned-empty-groups",

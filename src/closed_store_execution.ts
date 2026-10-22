@@ -19,13 +19,23 @@ import {
 import { snapshotScopedHostProp } from "./scoped_host_values.ts";
 import type { ClosedHostOutputValue } from "./closed_host_value.ts";
 import type { StorePropDelta } from "./vdom_snapshot_runtime.ts";
+import {
+  proveClosedScalarNumericKernel, type ClosedScalarKernelProof,
+} from "./closed_scalar_kernel_proof.ts";
 
-export type ClosedStoreDataExecution = Readonly<{
-  schemaVersion: 1;
+type ClosedStoreDataExecutionIdentity = Readonly<{
   kind: "owned-data";
   componentProgramId: string;
   moduleRevision: string;
 }>;
+export type ClosedStoreDataExecution = ClosedStoreDataExecutionIdentity & (
+  Readonly<{
+  schemaVersion: 1;
+  }> | Readonly<{
+    schemaVersion: 2;
+    numericKernel?: (inputs: readonly number[], outputs: number[]) => void;
+  }>
+);
 
 type ExecutionFacts = Readonly<{
   host: ClosedStoreHostProgram;
@@ -34,13 +44,18 @@ type ExecutionFacts = Readonly<{
   inputCount: number;
   valueCount: number;
   retainedChildren: boolean;
+  scalarProof: ClosedScalarKernelProof | null;
+  diagnostic: Readonly<{ mode: "verified-scalar" | "interpreted"; reason: string }>;
 }>;
 const associations = new WeakMap<object, ExecutionFacts>();
 
 declare const normalizedExecutionBrand: unique symbol;
-export type NormalizedClosedStoreDataExecution = ClosedStoreDataExecution & Readonly<{
+export type NormalizedClosedStoreDataExecution = ClosedStoreDataExecutionIdentity & Readonly<{
+  schemaVersion: 1 | 2;
   [normalizedExecutionBrand]: true;
 }>;
+const intrinsicApply = Reflect.apply;
+const intrinsicDefineProperty = Object.defineProperty;
 
 const numericExpression = (value: ClosedNumericExpression): boolean => {
   switch (value.kind) {
@@ -75,13 +90,24 @@ export const normalizeClosedStoreDataExecution = (
   try {
     if (!isNormalizedClosedStoreHostProgram(host) || !supportedHost(host)) return null;
     const data = closedDataRecord(raw);
-    if (!data || !exactClosedFields(data, [
-      "schemaVersion", "kind", "componentProgramId", "moduleRevision",
-    ]) || data.schemaVersion !== 1 || data.kind !== "owned-data" ||
+    if (!data || (data.schemaVersion !== 1 && data.schemaVersion !== 2) ||
+      !exactClosedFields(data, data.schemaVersion === 1 ? [
+        "schemaVersion", "kind", "componentProgramId", "moduleRevision",
+      ] : Object.hasOwn(data, "numericKernel") ? [
+        "schemaVersion", "kind", "componentProgramId", "moduleRevision", "numericKernel",
+      ] : ["schemaVersion", "kind", "componentProgramId", "moduleRevision"]) ||
+      data.kind !== "owned-data" ||
       data.componentProgramId !== host.componentProgramId ||
       data.moduleRevision !== host.moduleRevision) return null;
+    const scalarProof = data.schemaVersion === 2 && typeof data.numericKernel === "function"
+      ? proveClosedScalarNumericKernel(data.numericKernel, host) : null;
+    const diagnostic = Object.freeze(scalarProof?.kind === "verified"
+      ? { mode: "verified-scalar" as const, reason: "verified" }
+      : { mode: "interpreted" as const,
+        reason: scalarProof?.reason ?? (data.schemaVersion === 1
+          ? "schema-1" : "numeric-kernel-unavailable") });
     const normalized = Object.freeze({
-      schemaVersion: 1 as const,
+      schemaVersion: data.schemaVersion as 1 | 2,
       kind: "owned-data" as const,
       componentProgramId: host.componentProgramId,
       moduleRevision: host.moduleRevision,
@@ -95,12 +121,20 @@ export const normalizeClosedStoreDataExecution = (
       valueCount: closedStoreHostValueCount(host),
       retainedChildren: host.schemaVersion === 5 || host.schemaVersion === 6 ||
         host.schemaVersion === 7,
+      scalarProof, diagnostic,
     }));
     return normalized as NormalizedClosedStoreDataExecution;
   } catch {
     return null;
   }
 };
+
+/** Report registration-time selection without exposing executable state. */
+export const inspectClosedStoreDataExecution = (
+  execution: NormalizedClosedStoreDataExecution,
+): Readonly<{ mode: "verified-scalar" | "interpreted"; reason: string }> | null =>
+  typeof execution === "object" && execution !== null
+    ? associations.get(execution)?.diagnostic ?? null : null;
 
 /** Evaluate only privately associated, finite numeric inputs into candidate-owned props. */
 export const evaluateClosedStoreDataExecution = (
@@ -114,18 +148,47 @@ export const evaluateClosedStoreDataExecution = (
     const values = closedDataArray(numericValues);
     if (!values || values.length !== facts.valueCount ||
       values.some((value) => typeof value !== "number" || !Number.isFinite(value))) return null;
-    return evaluateOwnedProps(facts, values as number[]);
+    if (facts.scalarProof?.kind !== "verified")
+      return evaluateOwnedProps(facts, values as number[]);
+    const inputScratch = denseNumericScratch(values.length);
+    for (let index = 0; index < values.length; index++)
+      inputScratch[index] = values[index] as number;
+    return evaluateOwnedProps(facts, inputScratch);
   } catch {
     return null;
   }
 };
 
+const denseNumericScratch = (length: number): number[] => {
+  const values: number[] = [];
+  growNumericScratch(values, length);
+  return values;
+};
+
+const growNumericScratch = (values: number[], length: number): void => {
+  for (let index = values.length; index < length; index++) {
+    intrinsicDefineProperty(values, index, { value: 0, writable: true,
+      enumerable: true, configurable: true });
+  }
+};
+
 const evaluateOwnedProps = (
-  facts: ExecutionFacts, values: readonly number[],
+  facts: ExecutionFacts, values: readonly number[], outputScratch?: number[],
 ): ClosedStoreHostOutput | null => {
+  const proof = facts.scalarProof;
+  const numericIndices = proof?.kind === "verified" ? proof.numericPropIndices : null;
+  let outputs: number[] | null = null;
+  if (proof?.kind === "verified" && numericIndices) {
+    outputs = outputScratch ?? denseNumericScratch(numericIndices.length);
+    for (let index = 0; index < numericIndices.length; index++) outputs[index] = NaN;
+    intrinsicApply(proof.kernel, undefined, [values, outputs]);
+  }
   const props: (readonly [string, string | number | boolean | null])[] = [];
+  let numericIndex = 0;
   for (const [name, expression] of facts.host.host.props) {
-    const value = evaluateClosedHostValue(expression, values);
+    const value = outputs && numericIndices && numericIndex < numericIndices.length &&
+        numericIndices[numericIndex] === props.length
+      ? outputs[numericIndex++] : evaluateClosedHostValue(expression, values);
     if (!isClosedHostPrimitive(value)) return null;
     props.push(Object.freeze([name, value] as const));
   }
@@ -315,7 +378,8 @@ export const prepareOwnedClosedStoreOutputs = (
     }
     const projections = readOwnedClosedProjectionBatch(transaction, projectionRequests);
     if (!projections) return { kind: "public-required" };
-    const scratch: number[] = [];
+    const scratch = denseNumericScratch(0);
+    const outputScratch = denseNumericScratch(0);
     const rows: OwnedClosedStoreOutputRow[] = [];
     let projectionIndex = 0;
     for (let index = 0; index < normalized.length; index++) {
@@ -323,7 +387,10 @@ export const prepareOwnedClosedStoreOutputs = (
       const worldRow = worldRows[index];
       if (!worldRow || worldRow.owner !== request.owner ||
         worldRow.cells.length !== request.facts.stateSites.length) return null;
-      scratch.length = request.facts.valueCount;
+      growNumericScratch(scratch, request.facts.valueCount);
+      const proof = request.facts.scalarProof;
+      if (proof?.kind === "verified")
+        growNumericScratch(outputScratch, proof.numericPropIndices.length);
       let cursor = 0;
       for (let input = 0; input < request.inputs.length; input++) {
         const values = projections[projectionIndex++];
@@ -337,8 +404,8 @@ export const prepareOwnedClosedStoreOutputs = (
         if (typeof cell.value !== "number" || !Number.isFinite(cell.value)) return null;
         scratch[cursor++] = cell.value;
       }
-      if (cursor !== scratch.length) return null;
-      const props = evaluateOwnedProps(request.facts, scratch);
+      if (cursor !== request.facts.valueCount) return null;
+      const props = evaluateOwnedProps(request.facts, scratch, outputScratch);
       if (!props) return null;
       rows.push(Object.freeze({ owner: request.owner, lineage: worldRow.lineage,
         cells: worldRow.cells,

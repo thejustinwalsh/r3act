@@ -12,7 +12,7 @@ import { admitPreparedNativeGroup } from "../src/component_state_runtime.ts";
 import { evaluateClosedHostValue } from "../src/closed_host_value.ts";
 import { normalizeClosedStoreHostProgram } from "../src/closed_store_host_program.ts";
 import { OwnerStateWorld } from "../src/owner_state_world.ts";
-import { normalizeClosedStoreDataExecution, evaluateClosedStoreDataExecution } from "../src/closed_store_execution.ts";
+import { normalizeClosedStoreDataExecution, evaluateClosedStoreDataExecution, inspectClosedStoreDataExecution } from "../src/closed_store_execution.ts";
 import { createThreeNativeRoot } from "../src/three_host.ts";
 import { MemoryVDOMHost } from "../src/vdom_snapshot_runtime.ts";
 
@@ -131,9 +131,10 @@ try {
     const execution = property(registration.metadata, "closedStoreExecution");
     assert.equal(property(registration.metadata, "closedStoreNumericKernel"), null);
     assert.equal(literal(property(program, "schemaVersion")), 7);
-    assert.equal(literal(property(execution, "schemaVersion")), 1);
+    assert.equal(literal(property(execution, "schemaVersion")), 2);
     assert.equal(literal(property(execution, "kind")), "owned-data");
-    assert.equal(execution.properties.length, 4);
+    assert.equal(execution.properties.length, 5);
+    assert.equal(property(execution, "numericKernel")?.type, "ArrowFunctionExpression");
     for (const owner of [program, execution]) {
       assert.equal(literal(property(owner, "componentProgramId")), registration.id);
       assert.equal(literal(property(owner, "moduleRevision")), revision);
@@ -153,6 +154,7 @@ try {
     const normalizedHost = normalizeClosedStoreHostProgram(programObject);
     assert.ok(normalizedHost);
     const owned = normalizeClosedStoreDataExecution(rawExecution, normalizedHost);
+    assert.equal(inspectClosedStoreDataExecution(owned)?.mode, "verified-scalar");
     assert.ok(owned);
     const values = evaluateClosedStoreDataExecution(owned, [3, 4, 2]);
     assert.deepEqual(values, programObject.host.props.map(([name, expression]) =>

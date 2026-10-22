@@ -4,12 +4,16 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { transformWithOxc } from "vite";
+import { parse } from "@babel/parser";
 import { nativeModuleCompilerPlugin } from "./vite_native_module.ts";
 import { createNativeRoot, jsx, storeRecord } from "../src/native_runtime_api.ts";
 import { defineComponent, useStoreAt } from "../src/component_state_runtime.ts";
-import { registerCompiledSemanticPlan } from "../src/compiled_semantic_plan.ts";
+import { invalidateCompiledSemanticPlan, registerCompiledSemanticPlan } from "../src/compiled_semantic_plan.ts";
 import { MemoryVDOMHost } from "../src/vdom_snapshot_runtime.ts";
 import { OwnerStateWorld } from "../src/owner_state_world.ts";
+import { normalizeClosedStoreHostProgram } from "../src/closed_store_host_program.ts";
+import { evaluateClosedStoreDataExecution, inspectClosedStoreDataExecution,
+  normalizeClosedStoreDataExecution } from "../src/closed_store_execution.ts";
 
 const rootPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const artifact = path.join(rootPath, ".cache", `compiled-owned-store-execution-${randomUUID()}`);
@@ -42,6 +46,47 @@ try {
   assert.match(transformed.code, /closedStoreExecution:/);
   assert.doesNotMatch(transformed.code, /closedStoreNumericKernel:/);
   assert.match(transformed.code, /renamed-phase-anchor/);
+  const ast = parse(transformed.code, { sourceType: "module", plugins: ["typescript", "jsx"] });
+  const visit = (node, callback) => {
+    if (!node || typeof node !== "object") return;
+    callback(node);
+    for (const [name, value] of Object.entries(node)) {
+      if (["loc", "start", "end", "extra", "comments"].includes(name)) continue;
+      if (Array.isArray(value)) value.forEach(item => visit(item, callback));
+      else if (value && typeof value === "object") visit(value, callback);
+    }
+  };
+  const property = (node, name) => node?.type === "ObjectExpression"
+    ? node.properties.find(item => !item.computed &&
+      (item.key?.name ?? item.key?.value) === name)?.value ?? null : null;
+  let registration, semanticPlan;
+  visit(ast, node => {
+    if (node.type === "CallExpression" && node.callee?.name === "__registerNativeSemanticPlan")
+      semanticPlan = node.arguments[0];
+    if (node.type === "CallExpression" && /^__nativeDefineComponent_*$/.test(
+      node.callee?.name ?? "") && node.arguments[0]?.value?.endsWith("#component:Data"))
+      registration = node.arguments[2];
+  });
+  assert.ok(registration, "actual Data registration missing");
+  const emittedSourceFile = property(semanticPlan, "source_file")?.value;
+  assert.equal(typeof emittedSourceFile, "string");
+  const programNode = property(registration, "closedStoreHostProgram");
+  const executionNode = property(registration, "closedStoreExecution");
+  assert.equal(property(executionNode, "schemaVersion")?.value, 2);
+  assert.equal(executionNode.properties.length, 5);
+  assert.equal(property(executionNode, "numericKernel")?.type, "ArrowFunctionExpression");
+  const emittedProgram = Function(`"use strict"; return (${transformed.code.slice(
+    programNode.start, programNode.end)});`)();
+  const emittedExecution = Function(`"use strict"; return (${transformed.code.slice(
+    executionNode.start, executionNode.end)});`)();
+  const normalizedHost = normalizeClosedStoreHostProgram(emittedProgram);
+  assert.ok(normalizedHost);
+  const selected = normalizeClosedStoreDataExecution(emittedExecution, normalizedHost);
+  assert.ok(selected);
+  assert.equal(inspectClosedStoreDataExecution(selected)?.mode, "verified-scalar");
+  assert.deepEqual(evaluateClosedStoreDataExecution(selected, [2]), [
+    ["name", "renamed-phase-anchor"], ["position-x", 4],
+  ]);
   await writeFile(path.join(artifact, "transformed.tsx"), transformed.code, { flag: "wx" });
   const emitted = await transformWithOxc(transformed.code, sourcePath,
     { lang: "tsx", jsx: { runtime: "classic", pragma: "jsx", pragmaFrag: "Fragment" } });
@@ -93,6 +138,7 @@ try {
   app.clock.dispatch(() => storeRecord({ phase: 2 }));
   assert.equal(pure.root.flush(), true);
   assert.equal(counters["store.owned-data.rows"], 2);
+  assert.equal(counters["store.owned-data.verified-rows"], 2);
   assert.equal(counters["publication.immediate.runs"], 1);
   assert.equal(counters["publication.deferred-adapters"] ?? 0, 0);
   assert.equal(counters["store.owned-data.batches"], 1);
@@ -115,6 +161,7 @@ try {
   app.clock.dispatch(() => storeRecord({ phase: 3 }));
   assert.equal(mixed.root.flush(), true);
   assert.equal(counters["store.owned-data.rows"], 2);
+  assert.equal(counters["store.owned-data.verified-rows"], 2);
   assert.equal(counters["store.owned-data.batches"] ?? 0, 0);
   assert.equal(counters["store.owned-data.enclosed-batches"] ?? 0, 0);
   assert.equal(counters["store.numeric-kernel.runs"], 1);
@@ -168,6 +215,20 @@ try {
   assert.deepEqual(publicNodes.map(node => node.props["position-x"]), [10, 10]);
   conservative.container.children[0].children.forEach((node, index) =>
     assert.equal(node, publicNodes[index]));
+  const retiring = make("verified-retirement");
+  retiring.root.mount(jsx(app.Data, { clock: app.clock }));
+  const priorNode = retiring.container.children[0];
+  const priorValue = priorNode.props["position-x"];
+  app.clock.dispatch(() => storeRecord({ phase: 6 }));
+  const oldCode = retiring.root.prepareStores([app.clock]);
+  assert.ok(oldCode);
+  assert.equal(oldCode.validate(), true);
+  assert.equal(invalidateCompiledSemanticPlan(
+    emittedSourceFile, emittedProgram.moduleRevision), true);
+  assert.equal(oldCode.validate(), false, "retired compiled arithmetic must not retain admission");
+  assert.equal(retiring.root.retired, true);
+  assert.equal(priorNode.props["position-x"], priorValue);
+  oldCode.discard();
   console.log(`PASS compiled owned data and manual legacy execution; provenance: ${artifact}`);
 } catch (error) { primaryError = error; }
 const cleanup = [];

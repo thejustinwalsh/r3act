@@ -9,7 +9,7 @@ import * as THREE from "three";
 import { nativeModuleCompilerPlugin } from "./vite_native_module.ts";
 import { createNativeRoot, jsx, storeRecord } from "../src/native_runtime_api.ts";
 import { evaluateClosedStoreHostProgram, normalizeClosedStoreHostProgram } from "../src/closed_store_host_program.ts";
-import { normalizeClosedStoreDataExecution, evaluateClosedStoreDataExecution } from "../src/closed_store_execution.ts";
+import { normalizeClosedStoreDataExecution, evaluateClosedStoreDataExecution, inspectClosedStoreDataExecution } from "../src/closed_store_execution.ts";
 import { createThreeNativeRoot } from "../src/three_host.ts";
 import { MemoryVDOMHost } from "../src/vdom_snapshot_runtime.ts";
 
@@ -120,9 +120,10 @@ try {
     const execution = property(registration.metadata, "closedStoreExecution");
     assert.equal(property(registration.metadata, "closedStoreNumericKernel"), null);
     assert.equal(literal(property(program, "schemaVersion")), 6);
-    assert.equal(literal(property(execution, "schemaVersion")), 1);
+    assert.equal(literal(property(execution, "schemaVersion")), 2);
     assert.equal(literal(property(execution, "kind")), "owned-data");
-    assert.equal(execution.properties.length, 4);
+    assert.equal(execution.properties.length, 5);
+    assert.equal(property(execution, "numericKernel")?.type, "ArrowFunctionExpression");
     assert.equal(literal(property(program, "componentProgramId")), registration.id);
     assert.equal(literal(property(execution, "componentProgramId")), registration.id);
     assert.equal(literal(property(program, "moduleRevision")), revision);
@@ -139,6 +140,7 @@ try {
     const normalizedHost = normalizeClosedStoreHostProgram(programObject);
     assert.ok(normalizedHost);
     const owned = normalizeClosedStoreDataExecution(rawExecution, normalizedHost);
+    assert.equal(inspectClosedStoreDataExecution(owned)?.mode, "verified-scalar");
     assert.ok(owned, `${name} actual compiler data marker normalizes`);
     const inputRows = [[0, 0], [2, 3], [-0, 0], [5, -2]];
     for (const row of inputRows) {

@@ -42,13 +42,14 @@ struct Scanner<'a> {
 }
 
 #[derive(Clone, Copy)]
-enum InputSyntax { OwnerRow, FlatRange }
+enum InputSyntax { OwnerRow, FlatRange, ScalarBuffers }
 
 impl InputSyntax {
     fn reference(self, slot: usize) -> String {
         match self {
             Self::OwnerRow => format!("rowState.inputValues[{slot}]"),
             Self::FlatRange => format!("inputValues[$r3actInputBase + {slot}]"),
+            Self::ScalarBuffers => format!("inputs[{slot}]"),
         }
     }
 }
@@ -80,6 +81,10 @@ impl Scanner<'_> {
                             if literal.value == slot as f64),
                     InputSyntax::FlatRange => matches!(&member.object,
                         Expression::Identifier(identifier) if identifier.name.as_str() == "inputValues"),
+                    InputSyntax::ScalarBuffers => matches!(&member.object,
+                        Expression::Identifier(identifier) if identifier.name.as_str() == "inputs")
+                        && matches!(&member.expression, Expression::NumericLiteral(literal)
+                            if literal.value == slot as f64),
                 };
                 if !valid {
                     return None;
@@ -148,7 +153,37 @@ impl Scanner<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::{MAX_SOURCE_BYTES, lower_all, lower_case};
+    use super::{MAX_SOURCE_BYTES, lower_all, lower_case, lower_scalar_buffers};
+
+    #[test]
+    fn scalar_buffers_share_nested_subtrees_in_dependency_order() {
+        let sum = "inputs[0] + inputs[1]";
+        let product = format!("({sum}) * inputs[2]");
+        let expressions = vec![format!("({product}) + 1"),
+            format!("({product}) / 2"), format!("({sum}) - 3")];
+        let (declarations, rewritten) = lower_scalar_buffers(&expressions, 3).unwrap();
+        let first = declarations.find("const $r3actDag0").unwrap();
+        let second = declarations.find("const $r3actDag1").unwrap();
+        assert!(first < second);
+        assert!(declarations[second..].contains("$r3actDag0"));
+        assert!(rewritten[0].contains("$r3actDag1"));
+        assert!(rewritten[1].contains("$r3actDag1"));
+        assert!(rewritten[2].contains("$r3actDag0"));
+        assert!(!declarations.contains("seenMask"));
+    }
+
+    #[test]
+    fn scalar_buffers_keep_structural_and_input_slot_boundaries() {
+        let expressions = vec!["inputs[0] - (inputs[1] - inputs[2])".to_owned(),
+            "(inputs[0] - inputs[1]) - inputs[2]".to_owned()];
+        let (declarations, rewritten) = lower_scalar_buffers(&expressions, 3).unwrap();
+        assert!(declarations.is_empty());
+        assert_eq!(rewritten, expressions);
+        let wrong = vec!["inputs[3] + 1".to_owned(); 2];
+        let (declarations, rewritten) = lower_scalar_buffers(&wrong, 3).unwrap();
+        assert!(declarations.is_empty());
+        assert_eq!(rewritten, wrong);
+    }
 
     #[test]
     fn shares_flat_range_expression_without_owner_masks() {
@@ -278,6 +313,13 @@ pub(super) fn lower_all(
 ) -> Option<(String, Vec<String>)> {
     lower(expressions, &(0..expressions.len()).collect::<Vec<_>>(), slot_count,
         InputSyntax::FlatRange, true)
+}
+
+pub(super) fn lower_scalar_buffers(
+    expressions: &[String], slot_count: usize,
+) -> Option<(String, Vec<String>)> {
+    lower(expressions, &(0..expressions.len()).collect::<Vec<_>>(), slot_count,
+        InputSyntax::ScalarBuffers, true)
 }
 
 fn lower(

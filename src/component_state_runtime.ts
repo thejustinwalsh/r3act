@@ -26,6 +26,7 @@ import {
   type NormalizedClosedStoreDataExecution,
   type OwnedClosedStoreOutputRow,
   evaluateClosedStoreDataExecution,
+  inspectClosedStoreDataExecution,
   normalizeClosedStoreDataExecution,
   prepareOwnedClosedStoreOutputs,
   createOwnedScalarStorePropDelta,
@@ -3553,7 +3554,12 @@ export class ComponentStateRoot<H, Parent = H> {
           ? enclosedRegion.props : dataExecution
           ? evaluateClosedStoreDataExecution(dataExecution, values!)
           : evaluateClosedStoreHostProgram(program, values!), enclosedRegion);
-        if (dataExecution && this.#activeCounters) this.#count("store.owned-data.rows");
+        if (dataExecution && this.#activeCounters) {
+          this.#count("store.owned-data.rows");
+          if (inspectClosedStoreDataExecution(dataExecution)?.mode === "verified-scalar") {
+            this.#count("store.owned-data.verified-rows");
+          }
+        }
       }
       flushNumericRun();
       const stagedCellWrites = [...owners.values()].flatMap(({ stateInputs }) =>

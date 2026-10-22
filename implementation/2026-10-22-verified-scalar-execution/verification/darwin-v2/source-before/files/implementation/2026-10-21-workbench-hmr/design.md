@@ -1,0 +1,21 @@
+# Workbench watcher selection and HMR delivery
+
+Base: df304360120e710187f5fdcb6a507bac37f08a30, local main, MIT. This closes the still-unverified workbench HMR seam in master-plan units 3 and 9. Realtime performance remains a separate unmet requirement. The preceding shared-expression slice passes correctness but loses its sole installed canvas comparison; that result and all historical evidence stay intact.
+
+## Source basis and replaced mechanism
+
+Installed Vite 8.3.1 bundles Chokidar 3.6.0. Its FSWatcher derives useFsEvents from the constructor usePolling option before applying CHOKIDAR_USEPOLLING. It then selects its backend from useFsEvents. On macOS with the optional FSEvents module available, an environment-only polling request can leave FSEvents selected. The earlier browser-v6 attempt used that environment-only request. It therefore did not prove polling active. This is a confirmed configuration-order defect, not proof of why the original watched update failed; no effective backend/event was recorded in that process.
+
+The repository Vite config currently passes PORT/HOST but no watch options. Replace reliance on that late environment override with explicit watch options at configuration construction when polling is requested. Keep default and explicit-false behavior. Existing CHOKIDAR_INTERVAL remains the interval authority. Exclude the checkout's frozen implementation/results evidence roots, .cache, .pnpm-store and compiler/oxc-spike/target artifacts in this explicit polling mode so the verifier does not poll huge historical source archives. No live workbench source imports these artifact roots. Read-only size inspection finds implementation at 11 GiB, Rust target at 2.8 GiB, .cache at 738 MiB and .pnpm-store at 160 MiB; Vite defaults only exclude .git/node_modules/test-results and its configured cache/output directories. Excluding observation is not deleting evidence. Preserve Vite's built-in ignored directories and all tracked evidence bytes.
+
+The module registry remains the sole revision authority; compiled code/plan registration, native invalidation, uncertain-site full reload/remount, old-task/subscription retirement and lifetime cleanup stay unchanged. Do not add a watcher/version registry or replace HMR with manual reload. No compiler/runtime physical mechanism or performance budget is changed.
+
+## Integrated proof and falsifiers
+
+Sol medium owns root config plus non-listening actual-resolved-config regression/gate registration; another Sol owns the unit-local Portless server/evidence harness. Primary reviews and freezes both before Luna executes one consolidated Darwin gate. Luna stays idle until release. Source changes required by failures receive fresh immutable directories.
+
+One bounded owned Portless HTTPS workbench proof after the gate must record effective polling/FSEvents options, watched source membership, the actual source-file change and native invalidation/full-reload frames, then pass the existing headless WebGL script's animation, edits, resources, page retirement/remount and final teardown checks. Restore exact original source bytes even on failure. Capture only owned routes/processes; do not alter hosts, trust, shared services, VM resources or historical evidence. No diagnostic carousel or favorable retry follows a completed behavioral attempt.
+
+Falsifiers include polling not actually selected, ignored live workbench source, source mutation without watcher delivery, invalidation without reload, stale module/owner/task/subscription survival, altered accepted-view semantics, source-restoration failure, leaked owned services or uncontrolled watcher crawl. The prior six failed attempts remain preserved and are not relabeled.
+
+There is no measured HMR latency saving or root-cause attribution for the old timeout. Polling adds periodic filesystem work; this is a deliberate opt-in development adaptation, not a runtime optimization. No application performance comparison is justified by an unchanged runtime/compiler; the latest exact-source canvas loss remains the relevant runtime evidence. No new speed, cold/memory, R3F, GPU, presentation or independent-device claim follows. Full-plan performance and broader batching/fusion requirements remain active.

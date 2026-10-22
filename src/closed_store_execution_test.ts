@@ -1,6 +1,7 @@
 import {
   createOwnedScalarStorePropDelta, evaluateClosedStoreDataExecution,
-  isOwnedScalarStorePropDelta, normalizeClosedStoreDataExecution,
+  inspectClosedStoreDataExecution, isOwnedScalarStorePropDelta,
+  normalizeClosedStoreDataExecution,
   prepareOwnedClosedStoreOutputs, type ClosedStoreDataExecution,
   type OwnedClosedStoreOutputRequest,
 } from "./closed_store_execution.ts";
@@ -18,6 +19,11 @@ const marker = (programId = "motion", revision = "rev"): ClosedStoreDataExecutio
   schemaVersion: 1, kind: "owned-data", componentProgramId: programId,
   moduleRevision: revision,
 });
+const scalarMarker = (
+  numericKernel?: (inputs: readonly number[], outputs: number[]) => void,
+  programId = "motion", revision = "rev",
+): ClosedStoreDataExecution => ({ schemaVersion: 2, kind: "owned-data",
+  componentProgramId: programId, moduleRevision: revision, numericKernel });
 const mixed = (): any => ({
   schemaVersion: 7, componentProgramId: "motion", moduleRevision: "rev",
   inputs: [{ storeUseSiteId: "frame", storeProp: "clock", paths: [["phase"], ["epoch"]] }],
@@ -44,6 +50,146 @@ Deno.test("data execution associates one normalized mixed host and preserves inp
   equal(evaluateClosedStoreDataExecution(execution, [2, 3]), null);
   equal(Object.isFrozen(output), true);
   equal(Object.isFrozen(output[0]), true);
+});
+
+Deno.test("verified scalar execution preserves ordered outputs and private selection", () => {
+  const host = normalizeClosedStoreHostProgram(mixed())!;
+  const numericKernel = (inputs: readonly number[], outputs: number[]) => {
+    outputs[0] = ((inputs[0] * 2) + inputs[2]);
+    outputs[1] = inputs[1];
+  };
+  const execution = normalizeClosedStoreDataExecution(scalarMarker(numericKernel), host)!;
+  equal(inspectClosedStoreDataExecution(execution)?.mode, "verified-scalar");
+  equal(Object.isFrozen(inspectClosedStoreDataExecution(execution)), true);
+  equal("kernel" in inspectClosedStoreDataExecution(execution)!, false);
+  Object.defineProperty(numericKernel, "apply", { value() {
+    throw new Error("candidate-owned apply must not run");
+  } });
+  const first = evaluateClosedStoreDataExecution(execution, [2, -0, 3])!;
+  equal(first[0][1], 7);
+  equal(Object.is(first[1][1], -0), true);
+  const next = evaluateClosedStoreDataExecution(execution, [5, 6, 4])!;
+  equal(next[0][1], 14);
+  equal(next[1][1], 6);
+  equal(first[0][1], 7);
+  equal(Object.is(first[1][1], -0), true);
+  equal(evaluateClosedStoreDataExecution(execution, [1, Infinity, 2]), null);
+  equal(evaluateClosedStoreDataExecution(execution, [1, 2]), null);
+});
+
+Deno.test("verified scratch construction uses its captured property intrinsic", () => {
+  const host = normalizeClosedStoreHostProgram(mixed())!;
+  const execution = normalizeClosedStoreDataExecution(scalarMarker((i, o) => {
+    o[0] = i[0] * 2 + i[2]; o[1] = i[1];
+  }), host)!;
+  equal(inspectClosedStoreDataExecution(execution)?.mode, "verified-scalar");
+  const original = Object.defineProperty;
+  let calls = 0;
+  Object.defineProperty = (() => { calls++; throw new Error("late property hook"); }) as typeof original;
+  try {
+    equal(evaluateClosedStoreDataExecution(execution, [2, 3, 4])![0][1], 8);
+    equal(calls, 0);
+  } finally { Object.defineProperty = original; }
+});
+
+Deno.test("compact renamed emitted kernel keeps the same association", () => {
+  const host = normalizeClosedStoreHostProgram({
+    schemaVersion: 6, componentProgramId: "compact", moduleRevision: "rev",
+    retainedChildProp: "children",
+    inputs: [{ storeUseSiteId: "clock", storeProp: "clock", paths: [[]] }],
+    host: { tag: "group", key: "compact", child: null, props: [
+      ["position-x", { kind: "binary", operator: "*",
+        left: { kind: "input", index: 0 }, right: { kind: "literal", value: 2 } }],
+    ] },
+  })!;
+  const execution = normalizeClosedStoreDataExecution(scalarMarker(
+    function(a,b){b[0]=a[0]*2;}, "compact"), host)!;
+  equal(inspectClosedStoreDataExecution(execution)?.mode, "verified-scalar");
+  equal(evaluateClosedStoreDataExecution(execution, [3])![0][1], 6);
+});
+
+Deno.test("optional v2 scalar kernels fall back and malformed descriptors decline", () => {
+  const host = normalizeClosedStoreHostProgram(mixed())!;
+  for (const candidate of [scalarMarker(),
+    { ...scalarMarker(), numericKernel: 17 },
+    scalarMarker((inputs, outputs) => { outputs[0] = inputs[0];
+      outputs[1] = inputs[1]; })]) {
+    const execution = normalizeClosedStoreDataExecution(candidate, host)!;
+    equal(inspectClosedStoreDataExecution(execution)?.mode, "interpreted");
+    equal(evaluateClosedStoreDataExecution(execution, [2, 3, 4])![0][1], 8);
+  }
+  let calls = 0;
+  const hostile = (inputs: readonly number[], outputs: number[]) => {
+    calls++;
+    outputs[0] = inputs[0];
+  };
+  const safe = normalizeClosedStoreDataExecution(scalarMarker(hostile), host)!;
+  equal(inspectClosedStoreDataExecution(safe)?.mode, "interpreted");
+  equal(calls, 0);
+  equal(normalizeClosedStoreDataExecution({ ...scalarMarker(), extra: true }, host), null);
+  equal(normalizeClosedStoreDataExecution(scalarMarker(undefined, "motion", "stale"), host), null);
+  const accessor = Object.defineProperty({ ...scalarMarker() }, "numericKernel", {
+    get() { throw new Error("metadata getter"); },
+  });
+  equal(normalizeClosedStoreDataExecution(accessor, host), null);
+});
+
+Deno.test("verified scalar keeps nonnumeric schema-five literals in one output", () => {
+  const host = normalizeClosedStoreHostProgram({
+    schemaVersion: 5, componentProgramId: "marker-v2", moduleRevision: "rev",
+    inputs: [{ storeUseSiteId: "clock", storeProp: "clock", paths: [["phase"]] }],
+    host: { tag: "group", key: "marker", children: [], props: [
+      ["name", { kind: "literal", value: "phase-anchor" }],
+      ["visible", { kind: "literal", value: true }],
+      ["position-x", { kind: "input", index: 0 }],
+    ] },
+  })!;
+  const execution = normalizeClosedStoreDataExecution(scalarMarker(
+    (inputs, outputs) => { outputs[0] = inputs[0]; }, "marker-v2"), host)!;
+  equal(inspectClosedStoreDataExecution(execution)?.mode, "verified-scalar");
+  const output = evaluateClosedStoreDataExecution(execution, [-0])!;
+  equal(output[0][1], "phase-anchor");
+  equal(output[1][1], true);
+  equal(Object.is(output[2][1], -0), true);
+  equal(Object.isFrozen(output), true);
+  equal(Object.isFrozen(output[2]), true);
+});
+
+Deno.test("verified scalar retains grouping, signed zero and nonfinite intermediates", () => {
+  const input = { kind: "input", index: 0 };
+  const literal = (value: number) => ({ kind: "literal", value });
+  const binary = (operator: string, left: unknown, right: unknown) =>
+    ({ kind: "binary", operator, left, right });
+  const host = normalizeClosedStoreHostProgram({
+    schemaVersion: 6, componentProgramId: "coercion", moduleRevision: "rev",
+    retainedChildProp: "children",
+    inputs: [{ storeUseSiteId: "clock", storeProp: "clock", paths: [[]] }],
+    host: { tag: "group", key: "coercion", child: null, props: [
+      ["position-x", binary("-", binary("-", input, literal(1)), literal(2))],
+      ["position-y", binary("|", binary("*", input, literal(2)), literal(0))],
+      ["position-z", binary("|", binary("/", literal(0), literal(0)), literal(0))],
+      ["rotation-x", { kind: "unary", operator: "-", argument: literal(0) }],
+    ] },
+  })!;
+  const execution = normalizeClosedStoreDataExecution(scalarMarker((inputs, outputs) => {
+    outputs[0] = ((inputs[0] - 1) - 2);
+    outputs[1] = ((inputs[0] * 2) | 0);
+    outputs[2] = ((0 / 0) | 0);
+    outputs[3] = (-0);
+  }, "coercion"), host)!;
+  equal(inspectClosedStoreDataExecution(execution)?.mode, "verified-scalar");
+  const output = evaluateClosedStoreDataExecution(execution, [Number.MAX_VALUE])!;
+  equal(output[0][1], Number.MAX_VALUE);
+  equal(output[1][1], 0);
+  equal(output[2][1], 0);
+  equal(Object.is(output[3][1], -0), true);
+  const groupedWrong = normalizeClosedStoreDataExecution(scalarMarker((inputs, outputs) => {
+    outputs[0] = (inputs[0] - (1 - 2));
+    outputs[1] = ((inputs[0] * 2) | 0);
+    outputs[2] = ((0 / 0) | 0);
+    outputs[3] = (-0);
+  }, "coercion"), host)!;
+  equal(inspectClosedStoreDataExecution(groupedWrong)?.mode, "interpreted");
 });
 
 Deno.test("data marker rejects mismatched, accessor and forged provenance", () => {
@@ -141,6 +287,89 @@ Deno.test("enclosed outputs preserve ordered projection, state and alternating p
   equal(result.rows[0].cells[0].value, 3);
   equal(result.rows[1].cells[0].value, 4);
   transaction.discard();
+});
+
+Deno.test("verified enclosed rows reuse scratch across alternating independent inputs", () => {
+  const world = new OwnerStateWorld();
+  const firstOwner = world.resolveOwner(null, "verified-first");
+  const secondOwner = world.resolveOwner(null, "verified-second");
+  world.useState(firstOwner, "offset", 3);
+  world.useState(secondOwner, "offset", 4);
+  const firstStore = createAsyncStore(storeRecord({ phase: 2, epoch: -0 }));
+  const secondStore = createAsyncStore(storeRecord({ phase: 5, epoch: 6 }));
+  const first = normalizeClosedStoreDataExecution(scalarMarker((inputs, outputs) => {
+    outputs[0] = ((inputs[0] * 2) + inputs[2]);
+    outputs[1] = inputs[1];
+  }), normalizeClosedStoreHostProgram(mixed())!)!;
+  const alternate = mixed();
+  alternate.host.props.reverse();
+  const second = normalizeClosedStoreDataExecution(scalarMarker((inputs, outputs) => {
+    outputs[0] = inputs[1];
+    outputs[1] = ((inputs[0] * 2) + inputs[2]);
+  }), normalizeClosedStoreHostProgram(alternate)!)!;
+  equal(inspectClosedStoreDataExecution(first)?.mode, "verified-scalar");
+  equal(inspectClosedStoreDataExecution(second)?.mode, "verified-scalar");
+  const transaction = new StoreRenderTransaction("verified-alternating");
+  const result = prepareOwnedClosedStoreOutputs(world, transaction, [
+    { execution: first, owner: firstOwner, hostKey: "first-key",
+      inputs: [{ store: firstStore, readerId: "first-reader" }] },
+    { execution: second, owner: secondOwner, hostKey: "second-key",
+      inputs: [{ store: secondStore, readerId: "second-reader" }] },
+  ]);
+  if (!result || result.kind !== "ready") throw new Error("verified batch declined");
+  equal(result.rows[0].region.props[0][1], 7);
+  equal(Object.is(result.rows[0].region.props[1][1], -0), true);
+  equal(result.rows[1].region.props[0][1], 6);
+  equal(result.rows[1].region.props[1][1], 14);
+  equal(result.rows[0].region.props[0][1], 7);
+  equal(transaction.readers.size, 2);
+  transaction.discard();
+});
+
+Deno.test("alternating verified row widths retain earlier outputs and reader cuts", () => {
+  const world = new OwnerStateWorld();
+  const firstOwner = world.resolveOwner(null, "short-first");
+  const wideOwner = world.resolveOwner(null, "wide-middle");
+  const lastOwner = world.resolveOwner(null, "short-last");
+  world.useState(wideOwner, "offset", 4);
+  const firstStore = createAsyncStore(-0);
+  const wideStore = createAsyncStore(storeRecord({ phase: 5, epoch: 6 }));
+  const lastStore = createAsyncStore(9);
+  const short = normalizeClosedStoreDataExecution(scalarMarker(
+    (inputs, outputs) => { outputs[0] = inputs[0]; }, "short"),
+  normalizeClosedStoreHostProgram({
+    schemaVersion: 6, componentProgramId: "short", moduleRevision: "rev",
+    retainedChildProp: "children",
+    inputs: [{ storeUseSiteId: "clock", storeProp: "clock", paths: [[]] }],
+    host: { tag: "group", key: "short", child: null, props: [
+      ["position-x", { kind: "input", index: 0 }],
+    ] },
+  })!)!;
+  const wide = normalizeClosedStoreDataExecution(scalarMarker((inputs, outputs) => {
+    outputs[0] = ((inputs[0] * 2) + inputs[2]);
+    outputs[1] = inputs[1];
+  }), normalizeClosedStoreHostProgram(mixed())!)!;
+  equal(inspectClosedStoreDataExecution(short)?.mode, "verified-scalar");
+  equal(inspectClosedStoreDataExecution(wide)?.mode, "verified-scalar");
+  const transaction = new StoreRenderTransaction("alternating-widths");
+  const result = prepareOwnedClosedStoreOutputs(world, transaction, [
+    { execution: short, owner: firstOwner, hostKey: "first",
+      inputs: [{ store: firstStore, readerId: "short-first-reader" }] },
+    { execution: wide, owner: wideOwner, hostKey: "wide",
+      inputs: [{ store: wideStore, readerId: "wide-reader" }] },
+    { execution: short, owner: lastOwner, hostKey: "last",
+      inputs: [{ store: lastStore, readerId: "short-last-reader" }] },
+  ]);
+  if (!result || result.kind !== "ready") throw new Error("alternating widths declined");
+  equal(Object.is(result.rows[0].region.props[0][1], -0), true);
+  equal(result.rows[1].region.props[0][1], 14);
+  equal(result.rows[1].region.props[1][1], 6);
+  equal(result.rows[2].region.props[0][1], 9);
+  equal(Object.is(result.rows[0].region.props[0][1], -0), true);
+  equal(result.rows[1].region.props[0][1], 14);
+  equal(transaction.readers.size, 3);
+  transaction.discard();
+  equal(result.rows[1].region.props[1][1], 6);
 });
 
 Deno.test("passive capture decline requests the untouched public route", () => {
