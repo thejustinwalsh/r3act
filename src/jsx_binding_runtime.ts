@@ -1,6 +1,9 @@
 import { type ClosedNumericExpression, evaluateClosedNumericExpression, normalizeClosedNumericExpression } from "./closed_numeric_expression.ts";
 import { type BindingEdge, CompiledBindings } from "./compiled_bindings.ts";
 import type { CompiledStateLayout } from "./compiled_state_layout.ts";
+import {
+  isOwnedScalarFrame, type OwnedScalarFrame, type OwnedScalarOutputCounts,
+} from "./closed_scalar_output.ts";
 
 export type RuntimeNode =
   | RuntimeElement
@@ -57,6 +60,29 @@ export const copyRuntimeElementFromEntries = (
     });
   }
   return ownRuntimeElement(Object.freeze({ type, props: Object.freeze(props) }));
+};
+
+/** @internal Materialize one accepted scalar image as an ordinary owned JSX element. */
+export const materializeOwnedScalarRuntimeElement = (
+  frame: OwnedScalarFrame,
+  template: Readonly<{ tag: string; key: string; owner: number;
+    children?: RuntimeNode }>,
+  counts?: OwnedScalarOutputCounts,
+): RuntimeElement => {
+  if (!isOwnedScalarFrame(frame) || !Number.isSafeInteger(template.owner)) {
+    throw new TypeError("Invalid owned scalar output");
+  }
+  const entries: (readonly [string, unknown])[] = [["key", template.key]];
+  for (let index = 0; index < frame.length; index++) {
+    entries.push([frame.layout.nameAt(index), frame.valueAt(index)]);
+  }
+  if (Object.hasOwn(template, "children")) entries.push(["children", template.children]);
+  const element = copyRuntimeElementFromEntries(template.tag, entries, template.owner);
+  if (counts) {
+    counts.rootMaterializations++;
+    counts.propMaterializations++;
+  }
+  return element;
 };
 
 /** @internal Copy an intrinsic with a runtime-generated host key. */

@@ -25,6 +25,10 @@ import type { StorePropDelta } from "./vdom_snapshot_runtime.ts";
 import {
   proveClosedScalarNumericKernel, type ClosedScalarKernelProof,
 } from "./closed_scalar_kernel_proof.ts";
+import {
+  OwnedScalarFrame, OwnedScalarLayout, materializeOwnedScalarPropEntries,
+  type OwnedScalarOutputCounts, type OwnedScalarValue,
+} from "./closed_scalar_output.ts";
 
 type ClosedStoreDataExecutionIdentity = Readonly<{
   kind: "owned-data";
@@ -47,6 +51,7 @@ type ExecutionFacts = Readonly<{
   inputCount: number;
   valueCount: number;
   retainedChildren: boolean;
+  layout: OwnedScalarLayout;
   scalarProof: ClosedScalarKernelProof | null;
   diagnostic: Readonly<{ mode: "verified-scalar" | "interpreted"; reason: string }>;
 }>;
@@ -116,8 +121,14 @@ export const normalizeClosedStoreDataExecution = (
       moduleRevision: host.moduleRevision,
     });
     const inputs = closedStoreHostInputs(host);
+    const layout = OwnedScalarLayout.create(
+      host.host.props.map(([name]) => name),
+      host.host.props.map(([, expression]) => expression.kind === "literal" &&
+          isClosedHostPrimitive(expression.value)
+        ? expression.value : undefined),
+    );
     associations.set(normalized, Object.freeze({
-      host,
+      host, layout,
       paths: Object.freeze(inputs.map((input) => closedStoreHostInputPaths(input))),
       stateSites: host.schemaVersion === 7 ? host.stateSites : Object.freeze([]),
       inputCount: inputs.length,
@@ -175,9 +186,10 @@ const growNumericScratch = (values: number[], length: number): void => {
   }
 };
 
-const evaluateOwnedProps = (
+const evaluateOwnedFrame = (
   facts: ExecutionFacts, values: readonly number[], outputScratch?: number[],
-): ClosedStoreHostOutput | null => {
+  counts?: OwnedScalarOutputCounts,
+): OwnedScalarFrame | null => {
   const proof = facts.scalarProof;
   const numericIndices = proof?.kind === "verified" ? proof.numericPropIndices : null;
   let outputs: number[] | null = null;
@@ -186,19 +198,28 @@ const evaluateOwnedProps = (
     for (let index = 0; index < numericIndices.length; index++) outputs[index] = NaN;
     intrinsicApply(proof.kernel, undefined, [values, outputs]);
   }
-  const props: (readonly [string, string | number | boolean | null])[] = [];
+  const props: OwnedScalarValue[] = [];
   let numericIndex = 0;
-  for (const [name, expression] of facts.host.host.props) {
+  for (const [, expression] of facts.host.host.props) {
     const value = outputs && numericIndices && numericIndex < numericIndices.length &&
         numericIndices[numericIndex] === props.length
       ? outputs[numericIndex++] : evaluateClosedHostValue(expression, values);
     if (!isClosedHostPrimitive(value)) return null;
-    props.push(Object.freeze([name, value] as const));
+    intrinsicDefineProperty(props, props.length, { value, writable: true,
+      enumerable: true, configurable: true });
   }
-  return Object.freeze(props);
+  return OwnedScalarFrame.create(facts.layout, props, counts);
+};
+
+const evaluateOwnedProps = (
+  facts: ExecutionFacts, values: readonly number[], outputScratch?: number[],
+): ClosedStoreHostOutput | null => {
+  const frame = evaluateOwnedFrame(facts, values, outputScratch);
+  return frame ? materializeOwnedScalarPropEntries(frame) : null;
 };
 
 const ownedScalarStorePropDeltas = new WeakSet<StorePropDelta>();
+const ownedClosedOutputRows = new WeakSet<object>();
 
 /** Identify a region constructed by the shared scalar output authority. */
 export const isOwnedScalarStorePropDelta = (region: StorePropDelta): boolean =>
@@ -302,16 +323,19 @@ const copyOwnedScalarRegion = (fields: Record<string, unknown>): StorePropDelta 
   return copy;
 };
 
-const createOwnedRegionFromExecution = (
-  facts: ExecutionFacts, owner: number, hostKey: string,
-  props: ClosedStoreHostOutput,
+export const materializeOwnedScalarStorePropDelta = (
+  row: OwnedClosedStoreOutputRow,
+  counts?: OwnedScalarOutputCounts,
 ): StorePropDelta => {
+  if (typeof row !== "object" || row === null || !ownedClosedOutputRows.has(row)) {
+    throw new TypeError("Unowned scalar output row");
+  }
   const region: StorePropDelta = Object.freeze({
-    key: facts.retainedChildren ? hostKey : facts.host.host.key,
-    tag: facts.host.host.tag,
-    props,
-    ...(facts.retainedChildren ? { retainedChildren: true as const,
-      componentOwner: owner } : {}),
+    key: row.key,
+    tag: row.tag,
+    props: materializeOwnedScalarPropEntries(row.frame, counts),
+    ...(row.retainedChildren ? { retainedChildren: true as const,
+      componentOwner: row.componentOwner } : {}),
   });
   ownedScalarStorePropDeltas.add(region);
   return region;
@@ -328,7 +352,11 @@ export type OwnedClosedStoreOutputRow = Readonly<{
   owner: number;
   lineage: readonly number[];
   cells: readonly OwnedClosedWorldInputCell[];
-  region: StorePropDelta;
+  frame: OwnedScalarFrame;
+  key: string;
+  tag: string;
+  retainedChildren?: true;
+  componentOwner?: number;
 }>;
 
 type NormalizedRequest = Readonly<{
@@ -412,6 +440,7 @@ export const prepareOwnedClosedStoreOutputs = (
   world: OwnerStateWorld,
   transaction: StoreRenderTransaction,
   orderedRequests: readonly (OwnedClosedStoreOutputRequest | BoundClosedStoreOutputRequest)[],
+  counts?: OwnedScalarOutputCounts,
 ): { kind: "ready"; rows: readonly OwnedClosedStoreOutputRow[] } |
   { kind: "public-required" } | null => {
   try {
@@ -464,12 +493,17 @@ export const prepareOwnedClosedStoreOutputs = (
         scratch[cursor++] = cell.value;
       }
       if (cursor !== request.facts.valueCount) return null;
-      const props = evaluateOwnedProps(request.facts, scratch, outputScratch);
-      if (!props) return null;
-      rows.push(Object.freeze({ owner: request.owner, lineage: worldRow.lineage,
-        cells: worldRow.cells,
-        region: createOwnedRegionFromExecution(request.facts, request.owner,
-          request.hostKey, props) }));
+      const frame = evaluateOwnedFrame(request.facts, scratch, outputScratch, counts);
+      if (!frame) return null;
+      const row = Object.freeze({ owner: request.owner, lineage: worldRow.lineage,
+        cells: worldRow.cells, frame,
+        key: request.facts.retainedChildren ? request.hostKey : request.facts.host.host.key,
+        tag: request.facts.host.host.tag,
+        ...(request.facts.retainedChildren ? { retainedChildren: true as const,
+          componentOwner: request.owner } : {}),
+      });
+      ownedClosedOutputRows.add(row);
+      rows.push(row);
     }
     return Object.freeze({ kind: "ready" as const, rows: Object.freeze(rows) });
   } catch {

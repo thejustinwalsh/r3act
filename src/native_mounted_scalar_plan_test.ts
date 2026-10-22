@@ -66,6 +66,8 @@ Deno.test("bound scalar Store updates retain the literal and accepted snapshots"
     const total = (name: string) => frames.reduce((sum, frame) => sum + (frame[name] ?? 0), 0);
     assertEquals(total("store.bound-input.new-rows"), 1);
     assertEquals(total("store.bound-input.reused-rows"), 1);
+    assertEquals(total("store.scalar-output.frames"), 3);
+    assertEquals(total("store.scalar-output.root-materializations"), 0);
     assertEquals(total("store.mounted-scalar.cold-rows"), 1);
     assertEquals(total("store.mounted-scalar.warm-rows"), 1);
     for (const name of ["bucket-builds", "member-visits", "owner-index-visits", "owner-lookups"])
@@ -83,8 +85,12 @@ Deno.test("independent roots keep separate bound Store histories", () => {
   const clock = createAsyncStore(0, (_old: number, next: number) => next);
   const site = `${sourceFile}#component:Motion`;
   const useSite = `${site}#store:0`;
-  const Motion = defineComponent(site, (props: { clock: typeof clock }) =>
-    jsx("group", { key: "motion", "position-x": useStoreAt(useSite, props.clock) }),
+  let renders = 0;
+  const Motion = defineComponent(site, (props: { clock: typeof clock }) => {
+    renders++;
+    return jsx("group", { key: "motion",
+      "position-x": useStoreAt(useSite, props.clock) });
+  },
   { propOnlySites: [], closedStoreHostProgram: {
     schemaVersion: 1, componentProgramId: site, moduleRevision: revision,
     storeUseSiteId: useSite, storeProp: "clock",
@@ -116,5 +122,6 @@ Deno.test("independent roots keep separate bound Store histories", () => {
     held.preparePublication(); held.publish(); held.runEffects();
     assertEquals(containerA.children[0].props["position-x"], 2);
     assertEquals(containerB.children[0].props["position-x"], 2);
+    assertEquals(renders, 2);
   } finally { rootA.dispose(); rootB.dispose(); }
 });

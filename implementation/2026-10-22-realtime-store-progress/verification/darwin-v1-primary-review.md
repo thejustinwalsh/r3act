@@ -1,0 +1,7 @@
+# Darwin-v1 primary receipt review
+
+The consolidated native-host Darwin arm64 gate failed: 74/75 phases pass. The only failed phase is deno-full (`--frozen`): 1230 runtime tests pass and three existing integration assertions fail. Rust passes 105 tests; all 55 compiled fixtures pass, including the new actual Rust/OXC realtime Store-progress fixture. Supervisor completes normally after 115.04 seconds, exit 1, without deadline or interruption. Source auditing records 2016 runner inputs matching before/after and ten archived context records.
+
+Primary inspected the raw assertions. The queued opaque-reader test observes newer closed value6 in the first scheduled callback, where its old-cut boundary requires4 followed by6 in the next flush. The two pending-health tests fail component render counts: mesh3 versus2 and outline3 versus2; their host values are correct. These failures prevent release to browser proof or timing. Existing assertions remain unchanged. Sol reviews a repair using current reentry generation and pending-resource/input authority, with no duplicate dirty/version registry. A pending boundary alone cannot justify ignoring a newer ready-resource replacement.
+
+The new runtime progress tests and actual compiled fixture pass, but cannot override the three failed integration contracts. This attempt is preserved without repair or rerun under its paths. A changed integrated source boundary requires renewed primary review and a fresh gate directory. No current-slice performance claim follows.

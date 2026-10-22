@@ -3,7 +3,7 @@ import {
   bindOwnedClosedStoreOutputRequest,
   inspectClosedStoreDataExecution, isOwnedScalarStorePropDelta,
   normalizeClosedStoreDataExecution,
-  prepareOwnedClosedStoreOutputs, type ClosedStoreDataExecution,
+  prepareOwnedClosedStoreOutputs, materializeOwnedScalarStorePropDelta, type ClosedStoreDataExecution,
   type OwnedClosedStoreOutputRequest,
 } from "./closed_store_execution.ts";
 import { normalizeClosedStoreHostProgram } from "./closed_store_host_program.ts";
@@ -273,17 +273,17 @@ Deno.test("enclosed outputs preserve ordered projection, state and alternating p
   const result = prepareOwnedClosedStoreOutputs(world, transaction, requests);
   if (!result || result.kind !== "ready") throw new Error("enclosed batch declined");
   equal(result.rows.length, 2);
-  equal(result.rows[0].region.key, "scope\u0000motion");
-  equal(result.rows[0].region.componentOwner, firstOwner);
-  equal(result.rows[0].region.retainedChildren, true);
-  equal(result.rows[0].region.props[0][1], 7);
-  equal(Object.is(result.rows[0].region.props[1][1], -0), true);
-  equal(result.rows[1].region.props[0][0], "position-x");
-  equal(result.rows[1].region.props[0][1], 6);
-  equal(result.rows[1].region.props[1][1], 14);
-  equal(result.rows[0].region.props[0][1], 7);
-  equal(isOwnedScalarStorePropDelta(result.rows[0].region), true);
-  equal(Object.isFrozen(result.rows[0].region.props[0]), true);
+  equal(materializeOwnedScalarStorePropDelta(result.rows[0]).key, "scope\u0000motion");
+  equal(materializeOwnedScalarStorePropDelta(result.rows[0]).componentOwner, firstOwner);
+  equal(materializeOwnedScalarStorePropDelta(result.rows[0]).retainedChildren, true);
+  equal(materializeOwnedScalarStorePropDelta(result.rows[0]).props[0][1], 7);
+  equal(Object.is(materializeOwnedScalarStorePropDelta(result.rows[0]).props[1][1], -0), true);
+  equal(materializeOwnedScalarStorePropDelta(result.rows[1]).props[0][0], "position-x");
+  equal(materializeOwnedScalarStorePropDelta(result.rows[1]).props[0][1], 6);
+  equal(materializeOwnedScalarStorePropDelta(result.rows[1]).props[1][1], 14);
+  equal(materializeOwnedScalarStorePropDelta(result.rows[0]).props[0][1], 7);
+  equal(isOwnedScalarStorePropDelta(materializeOwnedScalarStorePropDelta(result.rows[0])), true);
+  equal(Object.isFrozen(materializeOwnedScalarStorePropDelta(result.rows[0]).props[0]), true);
   equal(transaction.observations.size, 2);
   equal(result.rows[0].cells[0].value, 3);
   equal(result.rows[1].cells[0].value, 4);
@@ -306,9 +306,9 @@ Deno.test("bound scalar request reuses static inputs with fresh World and Store 
   const firstTransaction = new StoreRenderTransaction("bound-first");
   const first = prepareOwnedClosedStoreOutputs(world, firstTransaction, [bound]);
   if (!first || first.kind !== "ready") throw new Error("first bound output declined");
-  equal(first.rows[0].region.key, "original-key");
-  equal(first.rows[0].region.props[0][1], 7);
-  equal(Object.is(first.rows[0].region.props[1][1], -0), true);
+  equal(materializeOwnedScalarStorePropDelta(first.rows[0]).key, "original-key");
+  equal(materializeOwnedScalarStorePropDelta(first.rows[0]).props[0][1], 7);
+  equal(Object.is(materializeOwnedScalarStorePropDelta(first.rows[0]).props[1][1], -0), true);
   equal(firstTransaction.readers.has("original-reader"), true);
   firstTransaction.discard();
   dispatchOffset(4);
@@ -316,10 +316,10 @@ Deno.test("bound scalar request reuses static inputs with fresh World and Store 
   const secondTransaction = new StoreRenderTransaction("bound-second");
   const second = prepareOwnedClosedStoreOutputs(world, secondTransaction, [bound]);
   if (!second || second.kind !== "ready") throw new Error("reused bound output declined");
-  equal(second.rows[0].region.props[0][1], 14);
-  equal(second.rows[0].region.props[1][1], 6);
-  equal(first.rows[0].region.props[0][1], 7);
-  equal(Object.isFrozen(first.rows[0].region.props), true);
+  equal(materializeOwnedScalarStorePropDelta(second.rows[0]).props[0][1], 14);
+  equal(materializeOwnedScalarStorePropDelta(second.rows[0]).props[1][1], 6);
+  equal(materializeOwnedScalarStorePropDelta(first.rows[0]).props[0][1], 7);
+  equal(Object.isFrozen(materializeOwnedScalarStorePropDelta(first.rows[0]).props), true);
   equal(second.rows[0].cells[0].version, first.rows[0].cells[0].version + 1);
   secondTransaction.discard();
   const forged = Object.freeze({}) as unknown as typeof bound;
@@ -377,11 +377,11 @@ Deno.test("verified enclosed rows reuse scratch across alternating independent i
       inputs: [{ store: secondStore, readerId: "second-reader" }] },
   ]);
   if (!result || result.kind !== "ready") throw new Error("verified batch declined");
-  equal(result.rows[0].region.props[0][1], 7);
-  equal(Object.is(result.rows[0].region.props[1][1], -0), true);
-  equal(result.rows[1].region.props[0][1], 6);
-  equal(result.rows[1].region.props[1][1], 14);
-  equal(result.rows[0].region.props[0][1], 7);
+  equal(materializeOwnedScalarStorePropDelta(result.rows[0]).props[0][1], 7);
+  equal(Object.is(materializeOwnedScalarStorePropDelta(result.rows[0]).props[1][1], -0), true);
+  equal(materializeOwnedScalarStorePropDelta(result.rows[1]).props[0][1], 6);
+  equal(materializeOwnedScalarStorePropDelta(result.rows[1]).props[1][1], 14);
+  equal(materializeOwnedScalarStorePropDelta(result.rows[0]).props[0][1], 7);
   equal(transaction.readers.size, 2);
   transaction.discard();
 });
@@ -421,15 +421,15 @@ Deno.test("alternating verified row widths retain earlier outputs and reader cut
       inputs: [{ store: lastStore, readerId: "short-last-reader" }] },
   ]);
   if (!result || result.kind !== "ready") throw new Error("alternating widths declined");
-  equal(Object.is(result.rows[0].region.props[0][1], -0), true);
-  equal(result.rows[1].region.props[0][1], 14);
-  equal(result.rows[1].region.props[1][1], 6);
-  equal(result.rows[2].region.props[0][1], 9);
-  equal(Object.is(result.rows[0].region.props[0][1], -0), true);
-  equal(result.rows[1].region.props[0][1], 14);
+  equal(Object.is(materializeOwnedScalarStorePropDelta(result.rows[0]).props[0][1], -0), true);
+  equal(materializeOwnedScalarStorePropDelta(result.rows[1]).props[0][1], 14);
+  equal(materializeOwnedScalarStorePropDelta(result.rows[1]).props[1][1], 6);
+  equal(materializeOwnedScalarStorePropDelta(result.rows[2]).props[0][1], 9);
+  equal(Object.is(materializeOwnedScalarStorePropDelta(result.rows[0]).props[0][1], -0), true);
+  equal(materializeOwnedScalarStorePropDelta(result.rows[1]).props[0][1], 14);
   equal(transaction.readers.size, 3);
   transaction.discard();
-  equal(result.rows[1].region.props[1][1], 6);
+  equal(materializeOwnedScalarStorePropDelta(result.rows[1]).props[1][1], 6);
 });
 
 Deno.test("passive capture decline requests the untouched public route", () => {
@@ -488,8 +488,8 @@ Deno.test("enclosed outputs retain independent histories for one Store projectio
     ],
   }]);
   if (!result || result.kind !== "ready") throw new Error("shared batch declined");
-  equal(result.rows[0].region.props[0][1], 9);
-  equal(result.rows[0].region.props[1][1], 9);
+  equal(materializeOwnedScalarStorePropDelta(result.rows[0]).props[0][1], 9);
+  equal(materializeOwnedScalarStorePropDelta(result.rows[0]).props[1][1], 9);
   equal(transaction.readers.size, 2);
   equal(transaction.observations.size, 2);
   transaction.preparePublication();
@@ -528,12 +528,12 @@ Deno.test("empty schema five groups retain owner while legacy scalar regions kee
       inputs: [{ store: legacyStore, readerId: "legacy" }] },
   ]);
   if (!result || result.kind !== "ready") throw new Error("shape batch declined");
-  equal(result.rows[0].region.key, "scope\u0000marker");
-  equal(result.rows[0].region.componentOwner, fifthOwner);
-  equal(Object.is(result.rows[0].region.props[0][1], -0), true);
-  equal(result.rows[1].region.key, "original");
-  equal(result.rows[1].region.retainedChildren, undefined);
-  equal(result.rows[1].region.props[0][1], 7);
+  equal(materializeOwnedScalarStorePropDelta(result.rows[0]).key, "scope\u0000marker");
+  equal(materializeOwnedScalarStorePropDelta(result.rows[0]).componentOwner, fifthOwner);
+  equal(Object.is(materializeOwnedScalarStorePropDelta(result.rows[0]).props[0][1], -0), true);
+  equal(materializeOwnedScalarStorePropDelta(result.rows[1]).key, "original");
+  equal(materializeOwnedScalarStorePropDelta(result.rows[1]).retainedChildren, undefined);
+  equal(materializeOwnedScalarStorePropDelta(result.rows[1]).props[0][1], 7);
   transaction.discard();
 });
 
@@ -575,7 +575,7 @@ Deno.test("late request getters cannot alter copied earlier fields and failures 
   const copied = prepareOwnedClosedStoreOutputs(world, copiedTransaction,
     [first, later] as OwnedClosedStoreOutputRequest[]);
   if (!copied || copied.kind !== "ready") throw new Error("copied batch declined");
-  equal(copied.rows[0].region.key, "first");
+  equal(materializeOwnedScalarStorePropDelta(copied.rows[0]).key, "first");
   equal(first.hostKey, "mutated");
   copiedTransaction.discard();
   const forged = Object.freeze({ ...execution }) as typeof execution;
@@ -630,4 +630,49 @@ Deno.test("public scalar constructor still owns caller tuples and empty children
   equal(isOwnedScalarStorePropDelta(region), true);
   equal(createOwnedScalarStorePropDelta({ key: "bad", tag: "group",
     props: [["position-x", Infinity]] }), null);
+});
+
+Deno.test("owned producer keeps one and 32 output props compact until adapter observation", () => {
+  for (const width of [1, 32]) {
+    const world = new OwnerStateWorld();
+    const owner = world.resolveOwner(null, `width-${width}`);
+    const store = createAsyncStore(7);
+    const host = normalizeClosedStoreHostProgram({
+      schemaVersion: 6, componentProgramId: `width-${width}`,
+      moduleRevision: "rev", retainedChildProp: "children",
+      inputs: [{ storeUseSiteId: "clock", storeProp: "clock", paths: [[]] }],
+      host: { tag: "div", key: "wide", child: null,
+        props: Array.from({ length: width }, (_, index) => [
+          `data-p${index}`, { kind: "input", index: 0 },
+        ]) },
+    })!;
+    const execution = normalizeClosedStoreDataExecution(
+      marker(`width-${width}`), host)!;
+    const counts = { frames: 0, rootMaterializations: 0,
+      propMaterializations: 0 };
+    const transaction = new StoreRenderTransaction(`width-${width}`);
+    const prepared = prepareOwnedClosedStoreOutputs(world, transaction, [{
+      execution, owner, hostKey: "scoped", inputs: [{ store, readerId: "reader" }],
+    }], counts);
+    if (!prepared || prepared.kind !== "ready") throw new Error("width declined");
+    const row = prepared.rows[0];
+    equal(row.frame.length, width);
+    equal(row.frame.valueAt(width - 1), 7);
+    equal(counts.frames, 1);
+    equal(counts.propMaterializations, 0);
+    const legacy = materializeOwnedScalarStorePropDelta(row, counts);
+    equal(legacy.props.length, width);
+    equal(legacy.props[width - 1][0], `data-p${width - 1}`);
+    equal(legacy.props[width - 1][1], 7);
+    equal(Object.isFrozen(legacy), true);
+    equal(Object.isFrozen(legacy.props), true);
+    equal(isOwnedScalarStorePropDelta(legacy), true);
+    equal(counts.propMaterializations, 1);
+    let forgedAdapterRejected = false;
+    try {
+      materializeOwnedScalarStorePropDelta({ ...row, key: "forged" });
+    } catch { forgedAdapterRejected = true; }
+    equal(forgedAdapterRejected, true);
+    transaction.discard();
+  }
 });

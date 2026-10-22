@@ -1,0 +1,5 @@
+# Primary correctness receipt acceptance
+
+Primary inspected terminal v4 receipt, supervisor and raw Deno/compiled56 logs. PASS76/76; Deno1249pass0fail; Rust105; actual compiled56; packagebuild/consumer pass. Source auditMATCH, changed empty; errors empty; supervisor exit0 after115.096seconds with no stop/deadline. Earlier v1/v2/v3 failures remain preserved and are not green receipts.
+
+This accepts the consolidated correctness gate for its exact locked source, including the new valid accepted-setter regression. It does not certify installed delivery, actual HMR lifecycle, realtime parity, cold/memory or independent-device behavior. Product, tests, scripts, copied consumer and context documents remain frozen for the fresh installed proof. Primary releases preparation plus the six-context untimed synthetic-HTTPS proof only; no timing authorization exists. A frame-compiler decline requires primary review of the actual capture before that proof proceeds. No project server is required for this canvas proof.

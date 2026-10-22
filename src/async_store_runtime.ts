@@ -137,6 +137,37 @@ export type AcceptedStoreReaderReceipt = Readonly<{
   version: number;
   rootEpoch: object;
 }>;
+class CanonicalBlockedStoreReaderReceipt {
+  readonly #store: AnyAsyncStore;
+  readonly #rootId: string;
+  readonly #readerId: string;
+  readonly #version: number;
+  readonly #rootEpoch: object;
+
+  constructor(store: AnyAsyncStore, rootId: string, readerId: string,
+    version: number, rootEpoch: object) {
+    this.#store = store;
+    this.#rootId = rootId;
+    this.#readerId = readerId;
+    this.#version = version;
+    this.#rootEpoch = rootEpoch;
+    Object.freeze(this);
+  }
+
+  current(store: AnyAsyncStore, rootId: string, readerId: string,
+    phase: "prepared" | "after-host" = "prepared"): boolean {
+    return this.#store === store && this.#rootId === rootId &&
+      this.#readerId === readerId && canonicalClosedNumericStore.call(store) &&
+      (phase === "after-host"
+        ? canonicalValidateRenderLineage.call(store, rootId,
+          this.#version, this.#rootEpoch)
+        : canonicalValidateRenderStamp.call(store, rootId,
+          this.#version, this.#rootEpoch));
+  }
+}
+const canonicalBlockedReceiptCurrent =
+  CanonicalBlockedStoreReaderReceipt.prototype.current;
+export type BlockedStoreReaderReceipt = CanonicalBlockedStoreReaderReceipt;
 type PreparedReaderValues = {
   readonly rootReaders: Map<string, AcceptedReaderHistory>;
   readonly isNewRoot: boolean;
@@ -1267,6 +1298,35 @@ export function inspectCanonicalStoreReaderReceipt(
   }
 }
 
+export function captureCanonicalBlockedStoreReaderReceipt(
+  transaction: StoreRenderTransaction,
+  readerId: string,
+  store: AnyAsyncStore,
+): BlockedStoreReaderReceipt | null {
+  try {
+    return canonicalCaptureBlockedReaderReceipt.call(transaction, readerId, store);
+  } catch (error) {
+    if (error instanceof TypeError) return null;
+    throw error;
+  }
+}
+
+export function inspectCanonicalBlockedStoreReaderReceipt(
+  receipt: BlockedStoreReaderReceipt,
+  store: AnyAsyncStore,
+  rootId: string,
+  readerId: string,
+  phase: "prepared" | "after-host" = "prepared",
+): boolean {
+  try {
+    return canonicalBlockedReceiptCurrent.call(receipt, store, rootId,
+      readerId, phase);
+  } catch (error) {
+    if (error instanceof TypeError) return false;
+    throw error;
+  }
+}
+
 export function createAsyncStore<S>(initialState: S): AsyncStore<S>;
 export function createAsyncStore<S, A>(
   initialState: S,
@@ -1412,6 +1472,24 @@ export class StoreRenderTransaction {
   #checkpointSequence = 0;
   #startedEpoch = storeMutationClock;
   #discoveredAfterMutation = false;
+
+  _captureCanonicalBlockedReaderReceipt(
+    readerId: string, store: AnyAsyncStore,
+  ): BlockedStoreReaderReceipt | null {
+    if (this.#closed || this.#preparedPublication ||
+      this.#capturedTransitions.length !== 0 ||
+      Object.getPrototypeOf(this) !== StoreRenderTransaction.prototype ||
+      !transactionPhaseMethodsCanonical(this) ||
+      !this.#readers.get(readerId)?.has(store) ||
+      this.#pending.get(store)?.get(readerId) !== capturedReaderCut ||
+      !canonicalClosedNumericStore.call(store)) return null;
+    const snapshot = this.#snapshots.get(store);
+    if (!snapshot || !canonicalValidateSnapshotPrepared.call(snapshot)) return null;
+    const stamp = canonicalSnapshotRootStamp.call(snapshot);
+    return new CanonicalBlockedStoreReaderReceipt(
+      store, this.#capturedRootId, readerId, stamp.version, stamp.rootEpoch,
+    );
+  }
 
   _validateCanonicalClosedPhase(
     key: symbol, phase: "prepared" | "after-host",
@@ -2035,6 +2113,8 @@ export class StoreRenderTransaction {
 
 const canonicalReadOwnedClosedProjectionBatch =
   StoreRenderTransaction.prototype._readOwnedClosedProjectionBatch;
+const canonicalCaptureBlockedReaderReceipt =
+  StoreRenderTransaction.prototype._captureCanonicalBlockedReaderReceipt;
 const canonicalValidateStorePhase =
   StoreRenderTransaction.prototype._validateCanonicalClosedPhase;
 const canonicalTransactionClosedRead =

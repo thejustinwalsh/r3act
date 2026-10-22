@@ -1,0 +1,95 @@
+{
+  "name": "@react-three/fiber",
+  "version": "10.0.0-alpha.6",
+  "description": "A React renderer for Threejs",
+  "keywords": [
+    "react",
+    "renderer",
+    "fiber",
+    "three",
+    "threejs"
+  ],
+  "author": "Paul Henschel (https://github.com/drcmda)",
+  "license": "MIT",
+  "maintainers": [
+    "Josh Ellis (https://github.com/joshuaellis)",
+    "Cody Bennett (https://github.com/codyjasonbennett)",
+    "Kris Baumgarter (https://github.com/krispya)",
+    "Dennis Smolek (https://github.com/dennissmolek)"
+  ],
+  "bugs": {
+    "url": "https://github.com/pmndrs/react-three-fiber/issues"
+  },
+  "homepage": "https://github.com/pmndrs/react-three-fiber#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pmndrs/react-three-fiber.git"
+  },
+  "collective": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/react-three-fiber"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "readme.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./legacy": {
+      "types": "./dist/legacy.d.ts",
+      "import": "./dist/legacy.mjs",
+      "require": "./dist/legacy.cjs"
+    },
+    "./webgpu": {
+      "types": "./dist/webgpu/index.d.ts",
+      "import": "./dist/webgpu/index.mjs",
+      "require": "./dist/webgpu/index.cjs"
+    },
+    "./extension": {
+      "types": "./dist/extension.d.ts",
+      "import": "./dist/extension.mjs",
+      "require": "./dist/extension.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "prebuild": "node -e \"require('fs').copyFileSync('../../readme.md', 'readme.md')\"",
+    "build": "unbuild",
+    "stub": "unbuild --stub"
+  },
+  "dependencies": {
+    "@babel/runtime": "^7.28.6",
+    "@pmndrs/scheduler": "^0.3.0",
+    "dequal": "^2.0.3",
+    "its-fine": "^2.1.1",
+    "react-use-measure": "^2.1.7",
+    "scheduler": "^0.28.0",
+    "suspend-react": "^0.1.3",
+    "use-sync-external-store": "^1.6.0",
+    "zustand": "^5.0.10"
+  },
+  "devDependencies": {
+    "@types/react-reconciler": "^0.33.0",
+    "@types/three": "^0.185.0",
+    "@types/webxr": "*",
+    "react-reconciler": "^0.34.0"
+  },
+  "peerDependencies": {
+    "react": ">=19.0 <19.4",
+    "react-dom": ">=19.0 <19.4",
+    "three": ">=0.185.0"
+  },
+  "peerDependenciesMeta": {
+    "react-dom": {
+      "optional": true
+    }
+  }
+}

@@ -28,6 +28,13 @@ import {
 } from "./closed_store_execution.ts";
 import type { ClosedHostOutputValue } from "./closed_host_value.ts";
 import {
+  OwnedScalarFrame,
+  isOwnedScalarFrame,
+  materializeOwnedScalarPropRecord,
+  type OwnedScalarLayout,
+  type OwnedScalarValue,
+} from "./closed_scalar_output.ts";
+import {
   type CompiledOwnerUpdatePrimitive,
   type CompiledOwnerUpdateProgram,
   compiledOwnerUpdateProgramFor,
@@ -60,6 +67,80 @@ type VElement = {
   keyedRegionId: string | null;
 };
 type VNode = VText | VElement;
+
+const ownedScalarElementSecret = Symbol("owned-scalar-element");
+class OwnedScalarElement {
+  readonly kind = "element" as const;
+  readonly #frame: OwnedScalarFrame;
+  readonly tag: string;
+  readonly key: string | null;
+  readonly componentOwner?: number;
+  readonly keyedRegionId: string | null;
+  readonly children: readonly MountedVNode[];
+
+  private constructor(secret: symbol, old: VElement | OwnedScalarElement,
+    frame: OwnedScalarFrame, children: readonly MountedVNode[]) {
+    if (secret !== ownedScalarElementSecret || !isOwnedScalarFrame(frame)) {
+      throw new TypeError("Invalid owned scalar element");
+    }
+    this.#frame = frame;
+    this.tag = old.tag;
+    this.key = old.key;
+    this.componentOwner = old.componentOwner;
+    this.keyedRegionId = old.keyedRegionId;
+    this.children = Object.freeze([...children]);
+    Object.freeze(this);
+  }
+
+  static create(old: VElement | OwnedScalarElement, frame: OwnedScalarFrame,
+    children: readonly MountedVNode[]): OwnedScalarElement {
+    return new OwnedScalarElement(ownedScalarElementSecret, old, frame, children);
+  }
+  static frame(value: OwnedScalarElement): OwnedScalarFrame {
+    return value.#frame;
+  }
+  static owns(value: unknown): value is OwnedScalarElement {
+    try { return typeof value === "object" && value !== null && #frame in value; }
+    catch { return false; }
+  }
+}
+Object.freeze(OwnedScalarElement.prototype);
+Object.freeze(OwnedScalarElement);
+type MountedVNode = VText | VElement | OwnedScalarElement;
+type MountedElement = VElement | OwnedScalarElement;
+const ordinaryMountedElement = (node: MountedElement,
+  count?: RuntimeCounterCallback): VElement => {
+  if (!OwnedScalarElement.owns(node)) return node;
+  const copy: VElement = {
+    kind: "element", tag: node.tag, key: node.key,
+    ...(node.componentOwner === undefined ? {} :
+      { componentOwner: node.componentOwner }),
+    keyedRegionId: node.keyedRegionId,
+    props: materializeMountedScalarProps(OwnedScalarElement.frame(node), count),
+    children: node.children.map((child) => ordinaryMountedVNode(child, count)),
+  };
+  return copy;
+};
+const ordinaryMountedVNode = (node: MountedVNode,
+  count?: RuntimeCounterCallback): VNode =>
+  node.kind === "text" ? node : ordinaryMountedElement(node, count);
+const mountedAcceptedCopyProps = (node: MountedVNode) =>
+  node.kind === "element" && !OwnedScalarElement.owns(node)
+    ? node.acceptedCopyProps : undefined;
+const materializeMountedScalarProps = (
+  frame: OwnedScalarFrame,
+  count?: RuntimeCounterCallback,
+) => {
+  if (!count) return materializeOwnedScalarPropRecord(frame);
+  const counts = { frames: 0, rootMaterializations: 0, propMaterializations: 0 };
+  const props = materializeOwnedScalarPropRecord(frame, counts);
+  count({ "store.scalar-output.prop-materializations": counts.propMaterializations });
+  return props;
+};
+const mountedElementProps = (node: MountedElement,
+  count?: RuntimeCounterCallback) => OwnedScalarElement.owns(node)
+    ? materializeMountedScalarProps(OwnedScalarElement.frame(node), count)
+    : node.props;
 
 type AcceptedCopyValue = Readonly<{
   sourceValue: unknown;
@@ -109,7 +190,7 @@ const isCompiledOwnerUpdatePrimitive = (
   typeof value === "boolean" || typeof value === "number";
 
 type MountedNode<H> = {
-  vnode: VNode;
+  vnode: MountedVNode;
   handle: H;
   /** Set before invoking host.dispose so a failed terminal removal is not retried. */
   hostDisposed?: boolean;
@@ -183,6 +264,11 @@ export type StorePropDelta = Readonly<{
     Readonly<{ kind: "text"; text: string }>)[];
 }>;
 
+/** Internal compact row entering the existing Store delta lifecycle. */
+export type OwnedScalarStoreRegion = Readonly<Omit<StorePropDelta, "props"> & {
+  frame: OwnedScalarFrame;
+}>;
+
 /** Copy a scalar Store region into a privately owned, immutable data shape. */
 export { createOwnedScalarStorePropDelta };
 
@@ -200,17 +286,17 @@ export interface MountedScalarStorePlan {
 
 type StoreTargetBase<H> = {
   node: MountedNode<H>;
-  vnode: VElement;
+  vnode: MountedElement;
   handle: H;
   parent: MountedNode<H> | null;
   parentIndex: number;
   bucket: KeyedRegionBuckets<MountedNode<H>> | undefined;
-  next: VElement;
+  next: MountedElement;
   componentOwner?: number;
   children?: readonly MountedNode<H>[];
   retainedChildren?: readonly MountedNode<H>[];
-  childVNodes?: readonly VNode[];
-  nextChildVNodes?: readonly VNode[];
+  childVNodes?: readonly MountedVNode[];
+  nextChildVNodes?: readonly MountedVNode[];
 };
 
 type StoreTarget<H> = StoreTargetBase<H> & (
@@ -218,25 +304,30 @@ type StoreTarget<H> = StoreTargetBase<H> & (
     ClosedHostOutputValue])[] } |
   { kind: "scalar"; output: readonly (readonly [string, ClosedHostOutputValue])[];
     previousProps: Readonly<Record<string, unknown>>;
+    priorRecipe?: ScalarPlanFields<H> } |
+  { kind: "image"; oldFrame: OwnedScalarFrame; frame: OwnedScalarFrame;
     priorRecipe?: ScalarPlanFields<H> }
 );
 
-type ScalarPlanFields<H> = Readonly<{
+type ScalarPlanTargetFields<H> = Readonly<{
   root: object;
   node: MountedNode<H>;
-  vnode: VElement;
+  vnode: MountedElement;
   handle: H;
   key: string;
   tag: string;
   componentOwner: number | undefined;
-  scopedSourceProps: undefined;
-  propNames: readonly string[];
-  outputNames: readonly string[];
-  outputSlots: readonly number[];
-  constantValues: readonly ClosedHostOutputValue[];
   children: readonly MountedNode<H>[];
-  childVNodes: readonly VNode[];
+  childVNodes: readonly MountedVNode[];
 }>;
+type ScalarPlanFields<H> = ScalarPlanTargetFields<H> & Readonly<
+  { kind: "image"; layout: OwnedScalarLayout } |
+  { kind: "legacy"; scopedSourceProps: undefined;
+    propNames: readonly string[];
+    outputNames: readonly string[];
+    outputSlots: readonly number[];
+    constantValues: readonly ClosedHostOutputValue[] }
+>;
 
 class MountedScalarStoreRecipe<H> implements MountedScalarStorePlan {
   readonly [mountedScalarPlanBrand]!: never;
@@ -662,8 +753,9 @@ const isPrimitiveOnlyScopedHostProp = (name: string, value: unknown): boolean =>
     typeof value === "number" || typeof value === "boolean");
 
 const snapshotScopedHostTree = <H>(
-  node: VNode,
+  node: MountedVNode,
   mounted?: MountedNode<H>,
+  count?: RuntimeCounterCallback,
 ): VNode | null => {
   if (node.kind === "text") {
     const copy: VText = { kind: "text", text: node.text, key: node.key };
@@ -671,6 +763,17 @@ const snapshotScopedHostTree = <H>(
       copy.componentOwner = node.componentOwner;
     }
     return Object.freeze(copy);
+  }
+  if (OwnedScalarElement.owns(node)) {
+    const children: VNode[] = [];
+    const sources = mounted ? mountedChildren(mounted).map((child) =>
+      snapshotScopedHostTree(child.vnode, child, count)) : node.children.map((child) =>
+        snapshotScopedHostTree(child, undefined, count));
+    for (const source of sources) {
+      if (!source) return null;
+      children.push(source);
+    }
+    return Object.freeze(publicElementSnapshot(node, Object.freeze(children), count));
   }
   const props: Record<string, unknown> = {};
   const descriptors = Object.getOwnPropertyDescriptors(node.props);
@@ -696,8 +799,8 @@ const snapshotScopedHostTree = <H>(
   const children: VNode[] = [];
   const copies = mounted
     ? mountedChildren(mounted).map((child) =>
-      snapshotScopedHostTree(child.vnode, child))
-    : node.children.map((child) => snapshotScopedHostTree(child));
+      snapshotScopedHostTree(child.vnode, child, count))
+    : node.children.map((child) => snapshotScopedHostTree(child, undefined, count));
   for (const copy of copies) {
     if (!copy) return null;
     children.push(copy);
@@ -714,31 +817,60 @@ const snapshotScopedHostTree = <H>(
   return Object.freeze(copy);
 };
 
-const cloneMountedElementVNode = (
+function cloneMountedElementVNode(
   vnode: VElement,
-  changes: Pick<VElement, "children"> & Partial<Pick<VElement, "props">>,
-): VElement => {
-  const copy = { ...vnode, ...changes };
+  changes: { children: readonly MountedVNode[]; props?: VElement["props"] },
+  count?: RuntimeCounterCallback,
+): VElement;
+function cloneMountedElementVNode(
+  vnode: MountedElement,
+  changes: { children: readonly MountedVNode[]; props?: VElement["props"] },
+  count?: RuntimeCounterCallback,
+): MountedElement;
+function cloneMountedElementVNode(
+  vnode: MountedElement,
+  changes: { children: readonly MountedVNode[]; props?: VElement["props"] },
+  count?: RuntimeCounterCallback,
+): MountedElement {
+  if (OwnedScalarElement.owns(vnode)) {
+    if (changes.props !== undefined) return {
+      kind: "element", tag: vnode.tag, key: vnode.key,
+      ...(vnode.componentOwner === undefined ? {} :
+        { componentOwner: vnode.componentOwner }),
+      keyedRegionId: vnode.keyedRegionId,
+      props: changes.props,
+      children: changes.children.map((child) => ordinaryMountedVNode(child, count)),
+    };
+    return OwnedScalarElement.create(vnode, OwnedScalarElement.frame(vnode), changes.children);
+  }
+  const copy = { ...vnode, ...changes,
+    children: changes.children.map((child) => ordinaryMountedVNode(child, count)) };
   if (vnode.scopedSourceProps) {
     Object.defineProperty(copy, "scopedSourceProps", {
       value: vnode.scopedSourceProps,
     });
   }
   return copy;
+}
+
+const sameMountedElementHeader = (left: MountedVNode, right: MountedVNode): boolean => {
+  if (left.kind !== "element" || right.kind !== "element" ||
+    left.tag !== right.tag || left.key !== right.key ||
+    left.componentOwner !== right.componentOwner ||
+    left.keyedRegionId !== right.keyedRegionId) return false;
+  if (OwnedScalarElement.owns(left)) {
+    return OwnedScalarElement.owns(right) &&
+      OwnedScalarElement.frame(left) === OwnedScalarElement.frame(right);
+  }
+  if (OwnedScalarElement.owns(right)) return false;
+  return left.props === right.props &&
+    left.scopedSourceProps === right.scopedSourceProps &&
+    left.acceptedCopyProps === right.acceptedCopyProps;
 };
 
-const sameMountedElementHeader = (left: VNode, right: VNode): boolean =>
-  left.kind === "element" && right.kind === "element" &&
-  left.tag === right.tag && left.key === right.key &&
-  left.componentOwner === right.componentOwner &&
-  left.props === right.props &&
-  left.keyedRegionId === right.keyedRegionId &&
-  left.scopedSourceProps === right.scopedSourceProps &&
-  left.acceptedCopyProps === right.acceptedCopyProps;
-
-const matchesAcceptedCopyCandidate = (mounted: VNode, candidate: VNode) =>
+const matchesAcceptedCopyCandidate = (mounted: MountedVNode, candidate: VNode) =>
   mounted === candidate ||
-  (mounted.kind === "element" && candidate.kind === "element" &&
+  (!OwnedScalarElement.owns(mounted) && mounted.kind === "element" && candidate.kind === "element" &&
     mounted.acceptedCopyProps !== undefined &&
     candidate.acceptedCopyProps === undefined &&
     mounted.tag === candidate.tag && mounted.key === candidate.key &&
@@ -801,19 +933,30 @@ const keyedChildrenFor = <H>(
 };
 
 const publicElementSnapshot = (
-  vnode: VElement,
+  vnode: MountedElement,
   children: readonly VNode[],
+  count?: RuntimeCounterCallback,
 ): VElement => {
+  if (OwnedScalarElement.owns(vnode)) return {
+    kind: "element", tag: vnode.tag, key: vnode.key,
+    ...(vnode.componentOwner === undefined ? {} :
+      { componentOwner: vnode.componentOwner }),
+    keyedRegionId: vnode.keyedRegionId,
+    props: materializeMountedScalarProps(OwnedScalarElement.frame(vnode), count),
+    children,
+  };
   const snapshot = { ...vnode, children };
   delete snapshot.acceptedCopyProps;
   return snapshot;
 };
 
-const serializeMounted = <H>(node: MountedNode<H>): VNode => {
+const serializeMounted = <H>(node: MountedNode<H>,
+  count?: RuntimeCounterCallback): VNode => {
   if (node.vnode.kind === "text") return node.vnode;
   return publicElementSnapshot(
     node.vnode,
-    mountedChildren(node).map(serializeMounted),
+    mountedChildren(node).map((child) => serializeMounted(child, count)),
+    count,
   );
 };
 
@@ -830,7 +973,7 @@ type AcceptedBucketUndo<H> =
 
 class AcceptedMountedJournal<H> {
   readonly #before = new WeakMap<MountedNode<H>, {
-    vnode: VNode;
+    vnode: MountedVNode;
     children: MountedNode<H>[];
     keyedChildren?: KeyedRegionBuckets<MountedNode<H>>;
   }>();
@@ -839,11 +982,13 @@ class AcceptedMountedJournal<H> {
     AcceptedBucketUndo<H>[]
   >();
 
-  constructor(readonly roots: readonly MountedNode<H>[]) {}
+  constructor(readonly roots: readonly MountedNode<H>[],
+    readonly count?: RuntimeCounterCallback) {}
 
-  capture(node: MountedNode<H>, acceptedVNode: VNode = node.vnode) {
+  capture(node: MountedNode<H>, acceptedVNode: MountedVNode = node.vnode) {
     if (this.#before.has(node)) return;
-    const vnode = acceptedVNode.kind === "element"
+    const vnode = acceptedVNode.kind === "element" &&
+      !OwnedScalarElement.owns(acceptedVNode)
       ? { ...acceptedVNode, children: acceptedVNode.children }
       : acceptedVNode;
     this.#before.set(node, {
@@ -919,6 +1064,7 @@ class AcceptedMountedJournal<H> {
     return publicElementSnapshot(
       vnode,
       children.map((child) => this.#serializeNode(child)),
+      this.count,
     );
   }
 }
@@ -933,14 +1079,14 @@ const acceptedJournalForHost = <H, P>(host: VDOMHost<H, P>) =>
     | AcceptedMountedJournal<H>
     | undefined;
 
-const compatible = (left: VNode, right: VNode) =>
+const compatible = (left: MountedVNode, right: VNode) =>
   left.kind === right.kind && left.key === right.key &&
   left.componentOwner === right.componentOwner &&
   (left.kind === "text" ||
     (right.kind === "element" && left.tag === right.tag));
 
 const canAdoptSuspenseReveal = (
-  left: VNode,
+  left: MountedVNode,
   right: VNode,
   preparedOwner?: number,
 ): boolean =>
@@ -1107,7 +1253,7 @@ const releaseMountedSubtree = <H, P>(
   node: MountedNode<H>,
   errors: unknown[],
 ) => {
-  if (node.vnode.kind === "element") {
+  if (node.vnode.kind === "element" && !OwnedScalarElement.owns(node.vnode)) {
     if (node.vnode.props.ref != null) {
       try {
         host.setProp(node.handle, "ref", undefined, node.vnode.props.ref);
@@ -1330,6 +1476,7 @@ const updateMounted = <H, P>(
   next: VNode,
   keyIndex?: MountedKeyIndex<H>,
   preparedAdoptionOwner?: number,
+  count?: RuntimeCounterCallback,
 ): MountedNode<H> => {
   if (old && old.vnode === next) return old;
   if (old) acceptedJournalForHost(host)?.capture(old);
@@ -1372,18 +1519,24 @@ const updateMounted = <H, P>(
     return old;
   }
   if (next.kind === "element" && old.vnode.kind === "element") {
+    const oldElement = old.vnode;
+    const oldProps = mountedElementProps(oldElement, count);
+    const scoped = OwnedScalarElement.owns(oldElement)
+      ? undefined : oldElement.scopedSourceProps;
+    const oldAcceptedCopies = OwnedScalarElement.owns(oldElement)
+      ? undefined : oldElement.acceptedCopyProps;
     const { writtenStyle, acceptedCopies } = applyProps(
       host,
       old.handle,
-      old.vnode.scopedSourceProps ?? old.vnode.props,
+      scoped ?? oldProps,
       next.props,
       old.scalarBindingGroups,
       keyIndex?.refreshProp
         ? (name, value, acceptedCopy) =>
           keyIndex.refreshProp!(old, name, value, acceptedCopy)
         : undefined,
-      old.vnode.scopedSourceProps ? old.vnode.props : undefined,
-      old.vnode.acceptedCopyProps,
+      scoped ? oldProps : undefined,
+      oldAcceptedCopies,
     );
     const children = reconcileChildren(
       host,
@@ -1391,6 +1544,7 @@ const updateMounted = <H, P>(
       materializeMountedChildren(old),
       next.children,
       keyIndex,
+      count,
     );
     for (let index = 0; index < children.length; index++) {
       children[index].parent = old;
@@ -1417,6 +1571,7 @@ const reconcileChildren = <H, P>(
   previous: MountedNode<H>[],
   next: readonly VNode[],
   keyIndex?: MountedKeyIndex<H>,
+  count?: RuntimeCounterCallback,
 ): MountedNode<H>[] => {
   // Skip key maps when only props/text change and sibling identity/order are fixed.
   if (
@@ -1428,7 +1583,8 @@ const reconcileChildren = <H, P>(
     )
   ) {
     return next.map((vnode, index) =>
-      updateMounted(host, parent, previous[index], vnode, keyIndex)
+      updateMounted(host, parent, previous[index], vnode, keyIndex, undefined,
+        count)
     );
   }
 
@@ -1497,7 +1653,7 @@ const reconcileChildren = <H, P>(
     // New children are mounted detached and placed once at their final slot.
     // New children and prior indexes behind the forward cursor are placed.
     const child = old
-      ? updateMounted(host, parent, old, next[index], keyIndex)
+      ? updateMounted(host, parent, old, next[index], keyIndex, undefined, count)
       : createMounted(host, next[index], parent, keyIndex);
     if (needsPlacement[index] !== 0) {
       host.place(parent, child.handle, anchor);
@@ -1764,7 +1920,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     }
     this.#acceptedVersion = this.#version;
     this.#acceptedSnapshot = this.#snapshotDirty ? null : this.#snapshot;
-    this.#acceptedJournal = new AcceptedMountedJournal(this.#mounted);
+    this.#acceptedJournal = new AcceptedMountedJournal(this.#mounted,
+      this.#profileCounter);
     acceptedJournalByHost.set(
       this.#renderHost as object,
       this.#acceptedJournal,
@@ -1775,7 +1932,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
   #releaseKeyedVNodeAncestorChildren(parent: MountedNode<H>) {
     for (let ancestor = parent.parent; ancestor; ancestor = ancestor.parent) {
       if (ancestor.vnode.kind === "element" && ancestor.vnode.children.length) {
-        ancestor.vnode = cloneMountedElementVNode(ancestor.vnode, { children: [] });
+        ancestor.vnode = cloneMountedElementVNode(ancestor.vnode, { children: [] },
+          this.#profileCounter);
       }
     }
   }
@@ -1946,7 +2104,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         [];
     }
     if (this.#snapshotDirty) {
-      this.#snapshot = this.#mounted.map(serializeMounted);
+      this.#snapshot = this.#mounted.map((node) =>
+        serializeMounted(node, this.#profileCounter));
       this.#snapshotDirty = false;
     }
     return this.#snapshot;
@@ -2170,6 +2329,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
             this.#mounted,
             next,
             keyIndex,
+            this.#profileCounter,
           );
         } catch (error) {
           // Re-index reachable live records only: cleanup may dispose mounted records,
@@ -2289,7 +2449,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     const parent = target.parent
       ? target.parent.handle as unknown as Parent
       : this.container;
-    updateMounted(this.#renderHost, parent, target, next, keyIndex);
+    updateMounted(this.#renderHost, parent, target, next, keyIndex, undefined,
+      this.#profileCounter);
     if (this.keyIndexMaintenance === "rebuild") {
       const indexSubtree = (node: MountedNode<H>) => {
         if (countIndexVisits) newIndexVisits++;
@@ -2537,6 +2698,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           old,
           normalized.get(index)!,
           keyIndex,
+          undefined,
+          this.#profileCounter,
         );
         this.#attachScalarBindingSubtree(region.get(operation.key)!);
       }
@@ -2545,7 +2708,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     // ancestor child arrays after post-host validation.
     acceptedJournal?.capture(parent);
     const releasedChildVNodeCount = parent.vnode.children.length;
-    parent.vnode = cloneMountedElementVNode(parent.vnode, { children: [] });
+    parent.vnode = cloneMountedElementVNode(parent.vnode, { children: [] },
+      this.#profileCounter);
     if (this.#publicationToken) this.#keyedVNodeRetentionParents.add(parent);
     else this.#releaseKeyedVNodeAncestorChildren(parent);
     this.#snapshot = [];
@@ -2631,7 +2795,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       nodes: Map<KeyedRegionDeltaOperation, VNode>;
       bucket: KeyedRegionBuckets<MountedNode<H>>;
       bucketRevision: number;
-      parentVNode: VNode;
+      parentVNode: MountedVNode;
       keyedFootprint: Map<string, MountedNode<H> | null>;
     };
     const preparedDeltas: PreparedDelta[] = [];
@@ -2639,7 +2803,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     const regionIds = new Set<string>();
     const touchedKeys = new Map<string, string>();
     const replacedNodes = new Set<MountedNode<H>>();
-    const replacedVNodeFootprint = new Map<MountedNode<H>, VNode>();
+    const replacedVNodeFootprint = new Map<MountedNode<H>, MountedVNode>();
     let scopedTreeEdit = false;
     const candidateKeys = new Set<string>();
     const candidateRoots: Array<{ node: VNode; owner: string }> = [];
@@ -2664,7 +2828,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       if (node.scalarBindingGroups?.size ||
         node.scalarIncompatibleBindingProps?.size) return false;
       if (node.vnode.kind === "element") {
-        for (const [name, value] of Object.entries(node.vnode.props)) {
+        const props = mountedElementProps(node.vnode, this.#profileCounter);
+        for (const [name, value] of Object.entries(props)) {
           if (!isPrimitiveOnlyScopedHostProp(name, value)) return false;
         }
       }
@@ -2782,7 +2947,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
               return null;
             }
             const candidate = scoped
-              ? snapshotScopedHostTree(candidates[0])
+              ? snapshotScopedHostTree(candidates[0], undefined,
+                this.#profileCounter)
               : candidates[0];
             if (!candidate) return null;
             validateUniqueKeys([candidate]);
@@ -2893,13 +3059,13 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     let committedPublicationToken: object | null = null;
     let committedTargets: Array<{
       parent: MountedNode<H>;
-      vnode: VNode;
+      vnode: MountedVNode;
       handle: H;
       bucket: KeyedRegionBuckets<MountedNode<H>>;
       keys: Array<{
         key: string;
         node: MountedNode<H> | undefined;
-        vnode: VNode | undefined;
+        vnode: MountedVNode | undefined;
         handle: H | undefined;
         afterKey: string | null;
       }>;
@@ -3166,7 +3332,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     if (methods.slice(0, 5).some((method) => !method)) return null;
     type OldNode = {
       node: MountedNode<H>;
-      vnode: VNode;
+      vnode: MountedVNode;
       acceptedVNode: VNode;
       handle: H;
       parent: MountedNode<H> | null;
@@ -3185,7 +3351,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     };
     type NewNode = {
       node: MountedNode<H>;
-      vnode: VNode;
+      vnode: MountedVNode;
       handle: H;
       parent: MountedNode<H> | null;
       index: number;
@@ -3227,14 +3393,16 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         const matches = this.#nodesByKey.get(region.key);
         if (matches?.size !== 1) return null;
         const old = matches.values().next().value as MountedNode<H>;
-        const acceptedOld = snapshotScopedHostTree(old.vnode, old);
+        const acceptedOld = snapshotScopedHostTree(old.vnode, old,
+          this.#profileCounter);
         if (old.vnode.kind !== "element" || !acceptedOld ||
           !collectOld(old, acceptedOld)) return null;
         const normalized = normalizeMany(region.tree);
         if (normalized.length !== 1 || normalized[0].key !== region.key) return null;
         const adoptionOwner = canAdoptSuspenseReveal(old.vnode, normalized[0])
           ? normalized[0].componentOwner : undefined;
-        const next = snapshotScopedHostTree(normalized[0]);
+        const next = snapshotScopedHostTree(normalized[0], undefined,
+          this.#profileCounter);
         if (!next || next.kind !== "element" || !collectNext(next)) return null;
         const parent = old.parent;
         const bucket = parent?.keyedChildren;
@@ -3422,7 +3590,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
             if (compatible(old.vnode, next) ||
               canAdoptSuspenseReveal(old.vnode, next, adoptionOwner)) {
               applied = updateMounted(host, hostParent, old, next, keyIndex,
-                adoptionOwner);
+                adoptionOwner, this.#profileCounter);
             } else {
               this.#acceptedJournal?.capture(old);
               if (parent) this.#acceptedJournal?.capture(parent);
@@ -3449,7 +3617,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
                 if (parent.vnode.kind === "element") {
                   parent.vnode = cloneMountedElementVNode(parent.vnode, {
                     children: children.map((child) => child.vnode),
-                  });
+                  }, this.#profileCounter);
                 }
               } else {
                 const roots = this.#mounted.slice();
@@ -3530,7 +3698,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
   prepareScopedKeyedRetainedAndStoreDeltas(
     deltas: readonly KeyedRegionDeltaRequest[],
     updates: readonly (readonly [ScalarSource, number])[],
-    storeRegions: readonly StorePropDelta[],
+    storeRegions: readonly (StorePropDelta | OwnedScalarStoreRegion)[],
     replacements: readonly { key: string; tree: RuntimeNode }[] = [],
     scalarPlans?: readonly (MountedScalarStorePlan | null)[],
   ): PreparedScopedKeyedRetainedProgram | null {
@@ -3541,7 +3709,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     if (!hasDeltas && !hasUpdates && !hasStore && !hasReplacements) return null;
     const retained = hasUpdates ? this.prepareRetainedSourceDelta(updates) : null;
     if (hasUpdates && !retained) return null;
-    const store = hasStore ? this.prepareStorePropDelta(storeRegions,
+    const store = hasStore ? this.#prepareStorePropDelta(storeRegions,
       !hasDeltas && !hasUpdates && !hasReplacements ? scalarPlans : undefined) : null;
     if (hasStore && !store) return null;
     const ownedStoreOnly = !!store && !hasDeltas && !hasUpdates &&
@@ -3856,7 +4024,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
             const parent = target.parent
               ? target.parent.handle as unknown as Parent
               : this.container;
-            updateMounted(this.#renderHost, parent, target, next, keyIndex);
+            updateMounted(this.#renderHost, parent, target, next, keyIndex,
+              undefined, this.#profileCounter);
           }
         } catch (error) {
           this.#pendingRefs.clear();
@@ -4041,7 +4210,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       const parent = item.target.parent
         ? item.target.parent.handle as unknown as Parent
         : this.container;
-      updateMounted(this.#renderHost, parent, item.target, item.next, keyIndex);
+      updateMounted(this.#renderHost, parent, item.target, item.next, keyIndex,
+        undefined, this.#profileCounter);
     }
     if (this.keyIndexMaintenance === "rebuild") {
       const indexSubtree = (node: MountedNode<H>) => {
@@ -4093,6 +4263,21 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     regions: readonly StorePropDelta[],
     scalarPlans?: readonly (MountedScalarStorePlan | null)[],
   ): PreparedStorePropDelta | null {
+    return this.#prepareStorePropDelta(regions, scalarPlans);
+  }
+
+  /** Prepare authentic scalar images through the existing Store-delta lifecycle. */
+  prepareOwnedScalarStorePropDelta(
+    regions: readonly OwnedScalarStoreRegion[],
+    scalarPlans?: readonly (MountedScalarStorePlan | null)[],
+  ): PreparedStorePropDelta | null {
+    return this.#prepareStorePropDelta(regions, scalarPlans);
+  }
+
+  #prepareStorePropDelta(
+    regions: readonly (StorePropDelta | OwnedScalarStoreRegion)[],
+    scalarPlans?: readonly (MountedScalarStorePlan | null)[],
+  ): PreparedStorePropDelta | null {
     if (this.#publicationToken || this.#publicationFailed ||
       this.#compiledGraph !== null ||
       this.#numericWriteInProgress || regions.length === 0) return null;
@@ -4112,11 +4297,18 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     let memberVisits = 0;
     let ownerIndexVisits = 0;
     let ownerLookups = 0;
-    const warmEligible = scalarPlans?.length === regions.length &&
-      regions.every((region) => isOwnedScalarStorePropDelta(region));
+    const warmEligible = scalarPlans?.length === regions.length;
     for (let regionIndex = 0; regionIndex < regions.length; regionIndex++) {
       const region = regions[regionIndex];
-      const ownedScalar = isOwnedScalarStorePropDelta(region);
+      let frameDescriptor: PropertyDescriptor | undefined;
+      try { frameDescriptor = Object.getOwnPropertyDescriptor(region, "frame"); }
+      catch { return null; }
+      if (frameDescriptor && !("value" in frameDescriptor)) return null;
+      const frame = frameDescriptor?.value;
+      if (frameDescriptor && !isOwnedScalarFrame(frame)) return null;
+      const compact = !!frameDescriptor;
+      const output = compact ? null : (region as StorePropDelta).props;
+      const ownedScalar = compact || isOwnedScalarStorePropDelta(region as StorePropDelta);
       allOwnedScalar &&= ownedScalar;
       if (!region.key || !region.tag ||
         (region.componentOwner !== undefined &&
@@ -4124,7 +4316,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
             !Number.isSafeInteger(region.componentOwner))) ||
         (region.retainedChildren === true && region.componentOwner === undefined) ||
         (region.retainedChildren === true && region.children !== undefined) ||
-        (region.children === undefined && region.props.length === 0)) return null;
+        (region.children === undefined && !compact && output!.length === 0)) return null;
       let bucket = buckets.get(region.key);
       if (!bucket) {
         const matches = this.#nodesByKey.get(region.key);
@@ -4178,9 +4370,12 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           node.children[index] === child && !child.hostDisposed &&
           child.parent === node && child.parentIndex === index &&
           child.vnode === hinted.childVNodes[index]) &&
-        vnode.scopedSourceProps === hinted.scopedSourceProps &&
-        region.props.length === hinted.outputNames.length &&
-        region.props.every(([name], index) => name === hinted.outputNames[index]);
+        (compact
+          ? hinted.kind === "image" && frame.layout === hinted.layout
+          : hinted.kind === "legacy" && !OwnedScalarElement.owns(vnode) &&
+            vnode.scopedSourceProps === hinted.scopedSourceProps &&
+            output!.length === hinted.outputNames.length &&
+            output!.every(([name], index) => name === hinted.outputNames[index]));
       if (region.children !== undefined) {
         if (node.children.length !== region.children.length ||
           vnode.children.length !== region.children.length) return null;
@@ -4203,37 +4398,95 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           }
         }
       }
-      if (earlyWarm && hinted) {
-        const nextProps: Record<string, ClosedHostOutputValue> = {};
-        for (let index = 0; index < hinted.propNames.length; index++) {
-          const slot = hinted.outputSlots[index];
-          nextProps[hinted.propNames[index]] = slot < 0
-            ? hinted.constantValues[index] : region.props[slot][1];
+      if (compact) {
+        let oldFrame: OwnedScalarFrame;
+        if (OwnedScalarElement.owns(vnode)) {
+          oldFrame = OwnedScalarElement.frame(vnode);
+          if (oldFrame.layout !== frame.layout) return null;
+        } else {
+          if (vnode.scopedSourceProps || vnode.acceptedCopyProps) return null;
+          let descriptors: Record<string, PropertyDescriptor>;
+          try { descriptors = Object.getOwnPropertyDescriptors(vnode.props); }
+          catch { return null; }
+          if (Object.keys(descriptors).length !== frame.length) return null;
+          const prior: OwnedScalarValue[] = [];
+          for (let index = 0; index < frame.length; index++) {
+            const name = frame.layout.nameAt(index);
+            if (name === "ref" || /^on[A-Z]/.test(name) ||
+              name === "__proto__" || name === "prototype" ||
+              name === "constructor") return null;
+            const descriptor = descriptors[name];
+            if (!descriptor || !("value" in descriptor)) return null;
+            let snapshot;
+            try { snapshot = snapshotScopedHostProp(vnode.tag, name, descriptor.value); }
+            catch { return null; }
+            if (!snapshot.accepted || snapshot.value === undefined) return null;
+            prior.push(snapshot.value as OwnedScalarValue);
+          }
+          try {
+            const counts = this.#profileCounter
+              ? { frames: 0, rootMaterializations: 0, propMaterializations: 0 }
+              : undefined;
+            oldFrame = OwnedScalarFrame.create(frame.layout, prior, counts);
+            if (counts) this.#profileCounter?.({
+              "store.scalar-output.frames": counts.frames,
+            });
+          }
+          catch { return null; }
         }
-        const next = Object.freeze(cloneMountedElementVNode(vnode, {
-          props: Object.freeze(nextProps),
-          children: vnode.children,
-        }));
-        targets.push({ kind: "scalar", node, vnode, handle: node.handle,
+        const next = OwnedScalarElement.create(vnode, frame, vnode.children);
+        const priorChildren = earlyWarm ? hinted!.children : [...node.children];
+        const priorChildVNodes = earlyWarm ? hinted!.childVNodes :
+          node.children.map((child) => child.vnode);
+        targets.push({ kind: "image", node, vnode, handle: node.handle,
           parent: node.parent, parentIndex: node.parentIndex,
-          bucket: node.parent?.keyedChildren, output: region.props,
-          previousProps: vnode.props, priorRecipe: hinted, next,
+          bucket: node.parent?.keyedChildren, frame, oldFrame,
+          priorRecipe: earlyWarm ? hinted! : undefined, next,
           ...(region.componentOwner === undefined ? {} :
             { componentOwner: region.componentOwner }),
           ...(region.retainedChildren === true ? {
-            retainedChildren: hinted.children,
-            childVNodes: hinted.childVNodes,
+            retainedChildren: priorChildren, childVNodes: priorChildVNodes,
           } : {}),
           ...(region.children === undefined ? {} : {
-            children: hinted.children,
-            childVNodes: hinted.childVNodes,
+            children: priorChildren, childVNodes: priorChildVNodes,
+          }),
+        });
+        if (earlyWarm) warmRows++;
+        continue;
+      }
+      const ordinaryVNode = ordinaryMountedElement(vnode, this.#profileCounter);
+      const legacyHint = hinted?.kind === "legacy" ? hinted : null;
+      if (earlyWarm && legacyHint) {
+        const nextProps: Record<string, ClosedHostOutputValue> = {};
+        for (let index = 0; index < legacyHint.propNames.length; index++) {
+          const slot = legacyHint.outputSlots[index];
+          nextProps[legacyHint.propNames[index]] = slot < 0
+            ? legacyHint.constantValues[index] : output![slot][1];
+        }
+        const next = Object.freeze(cloneMountedElementVNode(ordinaryVNode, {
+          props: Object.freeze(nextProps),
+          children: ordinaryVNode.children,
+        }, this.#profileCounter));
+        targets.push({ kind: "scalar", node, vnode, handle: node.handle,
+          parent: node.parent, parentIndex: node.parentIndex,
+          bucket: node.parent?.keyedChildren, output: output!,
+          previousProps: ordinaryVNode.props, priorRecipe: legacyHint, next,
+          ...(region.componentOwner === undefined ? {} :
+            { componentOwner: region.componentOwner }),
+          ...(region.retainedChildren === true ? {
+            retainedChildren: legacyHint.children,
+            childVNodes: legacyHint.childVNodes,
+          } : {}),
+          ...(region.children === undefined ? {} : {
+            children: legacyHint.children,
+            childVNodes: legacyHint.childVNodes,
           }),
         });
         warmRows++;
         continue;
       }
       let descriptors: Record<string, PropertyDescriptor>;
-      try { descriptors = Object.getOwnPropertyDescriptors(vnode.props); }
+      try { descriptors = Object.getOwnPropertyDescriptors(ordinaryVNode.props); }
       catch { return null; }
       const capture = (name: string, value: unknown, previous: boolean) => {
         try {
@@ -4250,9 +4503,9 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         if (!("value" in descriptor)) return null;
         const captured = capture(name, descriptor.value, true);
         if (!captured?.accepted || captured.value === undefined) return null;
-        if (vnode.scopedSourceProps) {
+        if (ordinaryVNode.scopedSourceProps) {
           let authored: PropertyDescriptor | undefined;
-          try { authored = Object.getOwnPropertyDescriptor(vnode.scopedSourceProps, name); }
+          try { authored = Object.getOwnPropertyDescriptor(ordinaryVNode.scopedSourceProps, name); }
           catch { return null; }
           if (!authored || !("value" in authored) ||
             !capture(name, authored.value, false)?.accepted) return null;
@@ -4263,7 +4516,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       const writes: Array<readonly [string, ClosedHostOutputValue,
         ClosedHostOutputValue]> = [];
       const previousProps = ownedScalar ? Object.freeze({ ...nextProps }) : null;
-      for (const [name, proposed] of region.props) {
+      for (const [name, proposed] of output!) {
         const prior = descriptors[name];
         if (names.has(name) || !prior || !("value" in prior)) return null;
         names.add(name);
@@ -4279,14 +4532,14 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       const parent = node.parent;
       const frozenProps = Object.freeze(nextProps);
       const next = ownedScalar
-        ? Object.freeze(cloneMountedElementVNode(vnode, { props: frozenProps,
+        ? Object.freeze(cloneMountedElementVNode(ordinaryVNode, { props: frozenProps,
           children: region.retainedChildren === true
             ? Object.freeze(node.children.map((child) => child.vnode)) :
-              Object.freeze([...vnode.children]) }))
-        : { ...vnode, props: frozenProps };
+              Object.freeze([...ordinaryVNode.children]) }, this.#profileCounter))
+        : { ...ordinaryVNode, props: frozenProps };
       targets.push({
         ...(ownedScalar
-          ? { kind: "scalar" as const, output: region.props,
+          ? { kind: "scalar" as const, output: output!,
             previousProps: previousProps! }
           : { kind: "generic" as const, writes }),
         node, vnode, handle: node.handle, parent,
@@ -4315,18 +4568,18 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           if (child.vnode.kind === "element" && !byNode.has(child)) return null;
         }
       }
-      const completed = new Map<MountedNode<H>, VElement>();
-      const nextVNode = (target: StorePropDeltaRecord<H>["targets"][number]): VElement => {
+      const completed = new Map<MountedNode<H>, MountedElement>();
+      const nextVNode = (target: StorePropDeltaRecord<H>["targets"][number]): MountedElement => {
         const existing = completed.get(target.node);
         if (existing) return existing;
-        const next = target.kind === "scalar" ? target.next : target.retainedChildren
+        const next = target.kind !== "generic" ? target.next : target.retainedChildren
           ? cloneMountedElementVNode(target.next, {
             children: target.retainedChildren.map((child) => child.vnode),
-          })
+          }, this.#profileCounter)
           : !target.children ? target.next
           : cloneMountedElementVNode(target.next, { children: target.children.map((child) =>
             child.vnode.kind === "text" ? textByNode.get(child)!.next :
-              nextVNode(byNode.get(child)!)) });
+              nextVNode(byNode.get(child)!)) }, this.#profileCounter);
         completed.set(target.node, next);
         return next;
       };
@@ -4337,11 +4590,31 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       if (target.children) target.nextChildVNodes = target.next.children;
     }
     const successors: (MountedScalarStorePlan | null)[] = targets.map((target) => {
-      if (!allOwnedScalar || texts.length || target.kind !== "scalar" ||
-        target.next.scopedSourceProps !== undefined ||
-        !Object.isFrozen(target.next.props)) return null;
-      const prior = target.priorRecipe;
-      const names = prior?.propNames ?? Object.freeze(Object.keys(target.next.props));
+      if (!allOwnedScalar || texts.length || target.kind === "generic") return null;
+      if (target.kind === "image") {
+        const prior = target.priorRecipe?.kind === "image"
+          ? target.priorRecipe : undefined;
+        const frame = target.frame;
+        return mintMountedScalarRecipe<H>(Object.freeze({
+          kind: "image" as const,
+          root: this, node: target.node, vnode: target.next,
+          handle: target.handle, key: target.vnode.key!, tag: target.vnode.tag,
+          componentOwner: target.componentOwner,
+          layout: frame.layout,
+          children: prior?.children ??
+            Object.freeze([...(target.retainedChildren ?? target.children ?? [])]),
+          childVNodes: prior?.childVNodes ??
+            Object.freeze([...(target.childVNodes ?? [])]),
+        }));
+      }
+      if (target.kind !== "scalar") return null;
+      const next = target.next;
+      if (OwnedScalarElement.owns(next) ||
+        next.scopedSourceProps !== undefined ||
+        !Object.isFrozen(next.props)) return null;
+      const prior = target.priorRecipe?.kind === "legacy"
+        ? target.priorRecipe : undefined;
+      const names = prior?.propNames ?? Object.freeze(Object.keys(next.props));
       const outputNames = prior?.outputNames ??
         Object.freeze(target.output.map(([name]) => name));
       const slots = prior?.outputSlots ??
@@ -4350,20 +4623,21 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         names.some((name) => {
           if (name === "__proto__" || name === "prototype" ||
             name === "constructor") return true;
-          const value = target.next.props[name];
+          const value = next.props[name];
           return value !== null && value !== undefined &&
             typeof value !== "string" && typeof value !== "number" &&
             typeof value !== "boolean";
         }))) return null;
       return mintMountedScalarRecipe<H>(Object.freeze({
-        root: this, node: target.node, vnode: target.next,
+        kind: "legacy" as const,
+        root: this, node: target.node, vnode: next,
         handle: target.handle, key: target.vnode.key!, tag: target.vnode.tag,
         componentOwner: target.componentOwner, scopedSourceProps: undefined,
         propNames: names,
         outputNames,
         outputSlots: slots,
         constantValues: prior?.constantValues ?? Object.freeze(names.map((name) =>
-          target.next.props[name] as ClosedHostOutputValue)),
+          next.props[name] as ClosedHostOutputValue)),
         children: prior?.children ??
           Object.freeze([...(target.retainedChildren ?? target.children ?? [])]),
         childVNodes: prior?.childVNodes ??
@@ -4500,7 +4774,19 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     const publicationAtApply = this.#publicationToken;
     for (const target of record.targets) {
       this.#acceptedJournal?.capture(target.node);
-      if (target.kind === "scalar") {
+      if (target.kind === "image") {
+        for (let index = 0; index < target.frame.length; index++) {
+          const name = target.frame.layout.nameAt(index);
+          const next = target.frame.valueAt(index);
+          const previous = target.oldFrame.valueAt(index);
+          if (Object.is(previous, next)) continue;
+          if (!this.#isStoreTargetReady(target, record.writer, versionAtApply,
+            publicationAtApply)) {
+            throw new Error("Prepared Store prop delta changed during host application");
+          }
+          record.writer.call(this.host, target.handle, name, next, previous);
+        }
+      } else if (target.kind === "scalar") {
         for (const [name, next] of target.output) {
           const previous = target.previousProps[name] as ClosedHostOutputValue;
           if (Object.is(previous, next)) continue;
@@ -6752,12 +7038,12 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           rawValue: binding,
           lastValue: styleProperty === undefined
             ? (acceptedCopy === undefined && node.vnode.kind === "element"
-              ? node.vnode.acceptedCopyProps?.[name]
+              ? mountedAcceptedCopyProps(node.vnode)?.[name]
               : acceptedCopy) ?? readBoundValue(binding)
             : readBoundValue(binding),
           lastValueIsCopy: styleProperty === undefined &&
             !!(acceptedCopy === undefined && node.vnode.kind === "element"
-              ? node.vnode.acceptedCopyProps?.[name]
+              ? mountedAcceptedCopyProps(node.vnode)?.[name]
               : acceptedCopy),
           forceWrite: !!binding.read,
         });
@@ -6773,12 +7059,12 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         sources,
         rawValue,
         lastValue: (acceptedCopy === undefined && node.vnode.kind === "element"
-          ? node.vnode.acceptedCopyProps?.[name]
+          ? mountedAcceptedCopyProps(node.vnode)?.[name]
           : acceptedCopy) ??
           materializeProp(name, rawValue),
         lastValueIsCopy: !!(acceptedCopy === undefined &&
             node.vnode.kind === "element"
-          ? node.vnode.acceptedCopyProps?.[name]
+          ? mountedAcceptedCopyProps(node.vnode)?.[name]
           : acceptedCopy),
         forceWrite: hasStableDerivedBinding(rawValue),
       }],
@@ -7109,7 +7395,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
   }
 
   #attachScalarBindingNode(node: MountedNode<H>) {
-    if (node.vnode.kind !== "element") return;
+    if (node.vnode.kind !== "element" || OwnedScalarElement.owns(node.vnode)) return;
     const authored = node.vnode.scopedSourceProps ?? node.vnode.props;
     for (const [name, rawValue] of Object.entries(authored)) {
       this.#registerScalarBindingProp(node, name, rawValue);
@@ -7179,7 +7465,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       }
       node.scalarBindingGroups = undefined;
       node.scalarIncompatibleBindingProps = undefined;
-      if (node.vnode.kind === "element") {
+      if (node.vnode.kind === "element" && !OwnedScalarElement.owns(node.vnode)) {
         const authored = node.vnode.scopedSourceProps ?? node.vnode.props;
         for (const [name, rawValue] of Object.entries(authored)) {
           if (this.#compiledGraph) {
@@ -7244,10 +7530,10 @@ export class VDOMSnapshotRoot<H, Parent = H> {
                   : {}),
                 sources: [binding.source],
                 rawValue: binding.binding,
-                lastValue: node.vnode.acceptedCopyProps?.[name] ?? (column
+                lastValue: mountedAcceptedCopyProps(node.vnode)?.[name] ?? (column
                   ? binding.binding!.project(column.values[columnIndex!])
                   : binding.binding!.project(binding.source.value)),
-                lastValueIsCopy: !!node.vnode.acceptedCopyProps?.[name],
+                lastValueIsCopy: !!mountedAcceptedCopyProps(node.vnode)?.[name],
               };
               this.#activateBoundPropGroup(group);
               const bindingGroups = byBinding.get(binding.bindingId);
@@ -7290,11 +7576,11 @@ export class VDOMSnapshotRoot<H, Parent = H> {
                   rawValue: binding,
                   sources: binding.sources ?? [binding.source],
                   lastValue: styleProperty === undefined
-                    ? node.vnode.acceptedCopyProps?.[name] ??
+                    ? mountedAcceptedCopyProps(node.vnode)?.[name] ??
                       readBoundValue(binding)
                     : readBoundValue(binding),
                   lastValueIsCopy: styleProperty === undefined &&
-                    !!node.vnode.acceptedCopyProps?.[name],
+                    !!mountedAcceptedCopyProps(node.vnode)?.[name],
                   forceWrite: !!binding.read,
                 };
                 this.#activateBoundPropGroup(group);
@@ -7339,9 +7625,9 @@ export class VDOMSnapshotRoot<H, Parent = H> {
               name,
               sources,
               rawValue,
-              lastValue: node.vnode.acceptedCopyProps?.[name] ??
+              lastValue: mountedAcceptedCopyProps(node.vnode)?.[name] ??
                 materializeProp(name, rawValue),
-              lastValueIsCopy: !!node.vnode.acceptedCopyProps?.[name],
+              lastValueIsCopy: !!mountedAcceptedCopyProps(node.vnode)?.[name],
               forceWrite: hasStableDerivedBinding(rawValue),
             };
             (node.scalarBindingGroups ??= new Map()).set(name, [group]);
