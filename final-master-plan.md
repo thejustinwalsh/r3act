@@ -1,5 +1,13 @@
 # Final master plan: classify, measure, then choose
 
+## React mechanism investigation; implementation frozen — 22 October 2026
+
+The human explicitly stopped implementation until the timing and mechanisms behind React's advantage are understood, and requested research followed by an Astra solve. Current work is source tracing and one bounded diagnostic over unchanged installed v3 assets; production runtime/compiler/hosts and frozen consumers remain unchanged. Sol medium traces pinned React Compiler/reconciler/R3F and the Native public grouped-frame path; Luna owns diagnostic evidence; Astra high reviews the source and subsequent data before recommending a finite solve. [Research scope](implementation/2026-10-22-react-mechanism-research/scope.md). No research result is permission to resume implementation or relabel prior failed timings.
+
+Research and Astra handoff are complete. Pinned Compiler 1.0.0 passes/codegen, React 19.3/reconciler 0.34 and R3F 10 alpha source were traced. One eight-context CPU study localizes repeated canonical Store audits under public-frame notification acknowledgement; source entails 514 audits and 257 temporary receipts for 257 readers. One six-context disposable prototype-audit removal control supports a material contribution but remains far slower than React, with substantial control/JIT uncertainty. All product/source bindings and output/lifetime controls pass; neither study is qualification or a full speed-gap explanation.
+
+[Astra's reviewed solve](implementation/2026-10-22-react-mechanism-research/astra-solve.md) specifies a conditional Store-owned cohort acknowledgement repair with existing histories/versions and callback-free scope, defensive fallback and dormant Sol-medium packets. Timing benefit is unknown; no full-parity solution is demonstrated. No product code changed, no implementation is dispatched, and no further automatic diagnostic follows. [Research findings and raw evidence](implementation/2026-10-22-react-mechanism-research/results.md). Exact pre-summary context reviewed by Astra is archived and mapped in primary-research-acceptance.json; later checkpoint prose is not spliced into that frozen source basis.
+
 ## First-pass completion audit — 22 October 2026
 
 A current source/receipt audit at `9759a0b` finds no demonstrated missing capability within the documented native subset. Sol-medium audits cover async/coherence and structural/host/package contracts; Luna checks existing receipts without new workloads. README/authoring and research/handoff entry points now correct stale workbench-HMR status and route to the passing final full-reload/remount lifecycle. No product source, historical evidence or timing changes.
