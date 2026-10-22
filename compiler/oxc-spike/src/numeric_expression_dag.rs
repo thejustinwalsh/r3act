@@ -42,14 +42,17 @@ struct Scanner<'a> {
 }
 
 #[derive(Clone, Copy)]
-enum InputSyntax { OwnerRow, FlatRange, ScalarBuffers }
+enum InputSyntax { OwnerRow, FlatRange, BatchBuffers(usize, usize) }
 
 impl InputSyntax {
     fn reference(self, slot: usize) -> String {
         match self {
             Self::OwnerRow => format!("rowState.inputValues[{slot}]"),
             Self::FlatRange => format!("inputValues[$r3actInputBase + {slot}]"),
-            Self::ScalarBuffers => format!("inputs[{slot}]"),
+            Self::BatchBuffers(shared, _) if slot < shared =>
+                format!("sharedInputs[{slot}]"),
+            Self::BatchBuffers(shared, varying) =>
+                format!("varyingInputs[row * {varying} + {}]", slot - shared),
         }
     }
 }
@@ -81,10 +84,15 @@ impl Scanner<'_> {
                             if literal.value == slot as f64),
                     InputSyntax::FlatRange => matches!(&member.object,
                         Expression::Identifier(identifier) if identifier.name.as_str() == "inputValues"),
-                    InputSyntax::ScalarBuffers => matches!(&member.object,
-                        Expression::Identifier(identifier) if identifier.name.as_str() == "inputs")
-                        && matches!(&member.expression, Expression::NumericLiteral(literal)
-                            if literal.value == slot as f64),
+                    InputSyntax::BatchBuffers(shared, _) => {
+                        if slot < shared {
+                            matches!(&member.object, Expression::Identifier(identifier)
+                                if identifier.name.as_str() == "sharedInputs")
+                        } else {
+                            matches!(&member.object, Expression::Identifier(identifier)
+                                if identifier.name.as_str() == "varyingInputs")
+                        }
+                    }
                 };
                 if !valid {
                     return None;
@@ -153,35 +161,70 @@ impl Scanner<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::{MAX_SOURCE_BYTES, lower_all, lower_case, lower_scalar_buffers};
+    use super::{MAX_SOURCE_BYTES, lower_all, lower_batch_buffers, lower_case};
 
     #[test]
-    fn scalar_buffers_share_nested_subtrees_in_dependency_order() {
-        let sum = "inputs[0] + inputs[1]";
-        let product = format!("({sum}) * inputs[2]");
-        let expressions = vec![format!("({product}) + 1"),
-            format!("({product}) / 2"), format!("({sum}) - 3")];
-        let (declarations, rewritten) = lower_scalar_buffers(&expressions, 3).unwrap();
-        let first = declarations.find("const $r3actDag0").unwrap();
-        let second = declarations.find("const $r3actDag1").unwrap();
-        assert!(first < second);
-        assert!(declarations[second..].contains("$r3actDag0"));
-        assert!(rewritten[0].contains("$r3actDag1"));
-        assert!(rewritten[1].contains("$r3actDag1"));
-        assert!(rewritten[2].contains("$r3actDag0"));
-        assert!(!declarations.contains("seenMask"));
+    fn batch_hoists_store_only_trees_and_keeps_varying_work_in_row() {
+        let shared = "sharedInputs[0] + sharedInputs[1]";
+        let expressions = vec![
+            format!("({shared}) * varyingInputs[row * 1 + 0]"),
+            format!("({shared}) / varyingInputs[row * 1 + 0]"),
+        ];
+        let (before, within, rewritten) = lower_batch_buffers(&expressions, 2, 1).unwrap();
+        assert!(before.contains(shared));
+        assert!(!before.contains("varyingInputs"));
+        assert!(rewritten.iter().all(|source| source.contains("$r3actDag")));
+        assert!(within.is_empty());
     }
 
     #[test]
-    fn scalar_buffers_keep_structural_and_input_slot_boundaries() {
-        let expressions = vec!["inputs[0] - (inputs[1] - inputs[2])".to_owned(),
-            "(inputs[0] - inputs[1]) - inputs[2]".to_owned()];
-        let (declarations, rewritten) = lower_scalar_buffers(&expressions, 3).unwrap();
-        assert!(declarations.is_empty());
+    fn batch_reuses_varying_tree_and_preserves_grouping() {
+        let sum = "sharedInputs[0] + varyingInputs[row * 1 + 0]";
+        let expressions = vec![format!("({sum}) * 2"), format!("({sum}) / 3")];
+        let (before, within, rewritten) = lower_batch_buffers(&expressions, 1, 1).unwrap();
+        assert!(before.is_empty());
+        assert!(within.contains(sum));
+        assert!(rewritten.iter().all(|source| source.contains("$r3actDag")));
+        let grouped = vec!["sharedInputs[0] - (sharedInputs[1] - sharedInputs[2])".to_owned(),
+            "(sharedInputs[0] - sharedInputs[1]) - sharedInputs[2]".to_owned()];
+        let (before, _, _) = lower_batch_buffers(&grouped, 3, 0).unwrap();
+        assert!(before.contains("sharedInputs[1] - sharedInputs[2]"));
+        assert!(before.contains("sharedInputs[0] - sharedInputs[1]"));
+    }
+
+    #[test]
+    fn batch_buffers_share_nested_subtrees_in_dependency_order() {
+        let sum = "sharedInputs[0] + sharedInputs[1]";
+        let product = format!("({sum}) * varyingInputs[row * 1 + 0]");
+        let expressions = vec![format!("({product}) + 1"),
+            format!("({product}) / 2"), format!("({sum}) - 3")];
+        let (before, within, rewritten) = lower_batch_buffers(&expressions, 2, 1).unwrap();
+        assert!(before.contains("const $r3actDag0"));
+        assert!(before.contains(sum));
+        assert!(!before.contains("varyingInputs"));
+        assert!(within.contains("const $r3actDag"));
+        assert!(within.contains("$r3actDag0"));
+        let varying_name = within.split(" =").next().unwrap().trim_start_matches("const ");
+        assert!(rewritten[0].contains(varying_name));
+        assert!(rewritten[1].contains(varying_name));
+        assert!(rewritten[2].contains("$r3actDag"));
+        assert!(!within.contains("seenMask"));
+    }
+
+    #[test]
+    fn batch_buffers_keep_structural_and_input_slot_boundaries() {
+        let expressions = vec![
+            "sharedInputs[0] - (varyingInputs[row * 1 + 0] - sharedInputs[1])".to_owned(),
+            "(sharedInputs[0] - varyingInputs[row * 1 + 0]) - sharedInputs[1]".to_owned(),
+        ];
+        let (before, within, rewritten) = lower_batch_buffers(&expressions, 2, 1).unwrap();
+        assert!(before.is_empty());
+        assert!(within.is_empty());
         assert_eq!(rewritten, expressions);
-        let wrong = vec!["inputs[3] + 1".to_owned(); 2];
-        let (declarations, rewritten) = lower_scalar_buffers(&wrong, 3).unwrap();
-        assert!(declarations.is_empty());
+        let wrong = vec!["sharedInputs[2] + 1".to_owned(); 2];
+        let (before, within, rewritten) = lower_batch_buffers(&wrong, 2, 1).unwrap();
+        assert!(before.is_empty());
+        assert!(within.is_empty());
         assert_eq!(rewritten, wrong);
     }
 
@@ -276,6 +319,70 @@ fn record(node: &Node, sink: usize, entries: &mut BTreeMap<Key, Occurrence>) {
     for child in &node.children { record(child, sink, entries); }
 }
 
+fn shared_only(key: &Key, shared_count: usize) -> bool {
+    match key {
+        Key::Input(index) => *index < shared_count,
+        Key::Literal(_) => true,
+        Key::Unary(_, child) => shared_only(child, shared_count),
+        Key::Binary(_, left, right) =>
+            shared_only(left, shared_count) && shared_only(right, shared_count),
+    }
+}
+
+pub(super) fn lower_batch_buffers(
+    expressions: &[String], shared_count: usize, varying_count: usize,
+) -> Option<(String, String, Vec<String>)> {
+    let slot_count = shared_count.checked_add(varying_count)?;
+    if slot_count > 32 || expressions.iter().map(String::len).sum::<usize>() > MAX_SOURCE_BYTES {
+        return None;
+    }
+    let mut roots_by_sink = vec![Vec::new(); expressions.len()];
+    let mut node_count = 0;
+    for (sink, source) in expressions.iter().enumerate() {
+        let allocator = Allocator::default();
+        let expression = Parser::new(&allocator, source, SourceType::tsx()).parse_expression().ok()?;
+        let mut scanner = Scanner { source, slot_count,
+            input_syntax: InputSyntax::BatchBuffers(shared_count, varying_count),
+            nodes: 0, roots: Vec::new() };
+        if let Some(root) = scanner.visit(&expression, 0) { scanner.roots.push(root); }
+        node_count += scanner.nodes;
+        if node_count > MAX_NODES { return None; }
+        roots_by_sink[sink] = scanner.roots;
+    }
+    let mut entries = BTreeMap::new();
+    for (sink, roots) in roots_by_sink.iter().enumerate() {
+        for root in roots { record(root, sink, &mut entries); }
+    }
+    let mut selected_nodes = entries.into_iter().filter(|(key, occurrence)|
+        occurrence.representative.height > 0 &&
+            (occurrence.count > 1 || shared_only(key, shared_count)))
+        .collect::<Vec<_>>();
+    if selected_nodes.len() > MAX_SHARED_NODES { return None; }
+    selected_nodes.sort_by(|(left_key, left), (right_key, right)| {
+        shared_only(right_key, shared_count).cmp(&shared_only(left_key, shared_count))
+            .then_with(|| left.representative.height.cmp(&right.representative.height))
+            .then_with(|| left_key.cmp(right_key))
+    });
+    let selected = selected_nodes.iter().enumerate().map(|(index, (key, _))|
+        (key.clone(), index)).collect::<BTreeMap<_, _>>();
+    let mut shared = String::new();
+    let mut varying = String::new();
+    for (index, (key, occurrence)) in selected_nodes.iter().enumerate() {
+        let node = &occurrence.representative;
+        let source = expressions.get(occurrence.sink)?;
+        let expression = rewrite(source, node.start..node.end,
+            std::slice::from_ref(node), &selected, true)?;
+        let declaration = format!("const $r3actDag{index} = ({expression});");
+        if shared_only(key, shared_count) { shared.push_str(&declaration); }
+        else { varying.push_str(&declaration); }
+    }
+    let mut rewritten = Vec::with_capacity(expressions.len());
+    for (sink, source) in expressions.iter().enumerate() {
+        rewritten.push(rewrite(source, 0..source.len(), &roots_by_sink[sink], &selected, false)?);
+    }
+    Some((shared, varying, rewritten))
+}
+
 fn replacements(node: &Node, selected: &BTreeMap<Key, usize>,
     skip_root: bool, edits: &mut Vec<(usize, usize, usize)>) {
     if !skip_root && let Some(index) = selected.get(&node.key) {
@@ -313,13 +420,6 @@ pub(super) fn lower_all(
 ) -> Option<(String, Vec<String>)> {
     lower(expressions, &(0..expressions.len()).collect::<Vec<_>>(), slot_count,
         InputSyntax::FlatRange, true)
-}
-
-pub(super) fn lower_scalar_buffers(
-    expressions: &[String], slot_count: usize,
-) -> Option<(String, Vec<String>)> {
-    lower(expressions, &(0..expressions.len()).collect::<Vec<_>>(), slot_count,
-        InputSyntax::ScalarBuffers, true)
 }
 
 fn lower(

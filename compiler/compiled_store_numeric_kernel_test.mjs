@@ -120,10 +120,11 @@ try {
     const execution = property(registration.metadata, "closedStoreExecution");
     assert.equal(property(registration.metadata, "closedStoreNumericKernel"), null);
     assert.equal(literal(property(program, "schemaVersion")), 6);
-    assert.equal(literal(property(execution, "schemaVersion")), 2);
+    assert.equal(literal(property(execution, "schemaVersion")), 3);
     assert.equal(literal(property(execution, "kind")), "owned-data");
     assert.equal(execution.properties.length, 5);
-    assert.equal(property(execution, "numericKernel")?.type, "ArrowFunctionExpression");
+    assert.equal(property(execution, "batchKernel")?.type, "ArrowFunctionExpression");
+    assert.equal(property(execution, "numericKernel"), null);
     assert.equal(literal(property(program, "componentProgramId")), registration.id);
     assert.equal(literal(property(execution, "componentProgramId")), registration.id);
     assert.equal(literal(property(program, "moduleRevision")), revision);
@@ -140,7 +141,7 @@ try {
     const normalizedHost = normalizeClosedStoreHostProgram(programObject);
     assert.ok(normalizedHost);
     const owned = normalizeClosedStoreDataExecution(rawExecution, normalizedHost);
-    assert.equal(inspectClosedStoreDataExecution(owned)?.mode, "verified-scalar");
+    assert.equal(inspectClosedStoreDataExecution(owned)?.mode, "verified-batch");
     assert.ok(owned, `${name} actual compiler data marker normalizes`);
     const inputRows = [[0, 0], [2, 3], [-0, 0], [5, -2]];
     for (const row of inputRows) {

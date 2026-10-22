@@ -10,12 +10,14 @@ import {
 } from "./closed_store_host_program.ts";
 import {
   bindOwnedClosedProjectionRequest, readOwnedClosedProjectionBatch,
+  readOwnedClosedProjectionSchedule,
   type AnyAsyncStore, type BoundClosedProjectionRequest,
   type OwnedClosedProjectionRequest,
   type StoreRenderTransaction,
 } from "./async_store_runtime.ts";
 import {
   bindOwnedClosedWorldInputRequest, captureOwnedClosedWorldInputBatch,
+  captureOwnedClosedWorldInputSchedule,
   type ClosedWorldCellCut,
   type OwnedClosedWorldInputCell, type OwnedClosedWorldInputRequest,
   type OwnerStateWorld,
@@ -27,7 +29,17 @@ import {
   proveClosedScalarNumericKernel, type ClosedScalarKernelProof,
 } from "./closed_scalar_kernel_proof.ts";
 import {
+  proveClosedStoreBatchKernel,
+  CLOSED_STORE_BATCH_MAX_ROWS, type ClosedStoreBatchKernelProof,
+} from "./closed_store_batch_kernel_proof.ts";
+import {
+  createOwnedClosedFrameInput, createOwnedClosedFrameSchedule,
+  canonicalOwnedClosedFrameScheduleRowAt,
+  type OwnedClosedFrameInput,
+} from "./owned_closed_frame_input.ts";
+import {
   OwnedScalarFrame, OwnedScalarLayout, materializeOwnedScalarPropEntries,
+  captureVerifiedOwnedScalarBatch,
   type OwnedScalarOutputCounts, type OwnedScalarValue,
 } from "./closed_scalar_output.ts";
 
@@ -42,6 +54,10 @@ export type ClosedStoreDataExecution = ClosedStoreDataExecutionIdentity & (
   }> | Readonly<{
     schemaVersion: 2;
     numericKernel?: (inputs: readonly number[], outputs: number[]) => void;
+  }> | Readonly<{
+    schemaVersion: 3;
+    batchKernel?: (sharedInputs: readonly number[], varyingInputs: readonly number[],
+      outputs: number[][], rowCount: number) => void;
   }>
 );
 
@@ -54,17 +70,24 @@ type ExecutionFacts = Readonly<{
   retainedChildren: boolean;
   layout: OwnedScalarLayout;
   scalarProof: ClosedScalarKernelProof | null;
-  diagnostic: Readonly<{ mode: "verified-scalar" | "interpreted"; reason: string }>;
+  batchProof: ClosedStoreBatchKernelProof | null;
+  diagnostic: Readonly<{ mode: "verified-batch" | "verified-scalar" | "interpreted";
+    reason: string }>;
 }>;
 const associations = new WeakMap<object, ExecutionFacts>();
 
 declare const normalizedExecutionBrand: unique symbol;
 export type NormalizedClosedStoreDataExecution = ClosedStoreDataExecutionIdentity & Readonly<{
-  schemaVersion: 1 | 2;
+  schemaVersion: 1 | 2 | 3;
   [normalizedExecutionBrand]: true;
 }>;
 const intrinsicApply = Reflect.apply;
 const intrinsicDefineProperty = Object.defineProperty;
+const intrinsicPush = Array.prototype.push;
+const intrinsicFreeze = Object.freeze;
+const appendOwned = <T>(array: T[], value: T): void => {
+  intrinsicApply(intrinsicPush, array, [value]);
+};
 
 const numericExpression = (value: ClosedNumericExpression): boolean => {
   switch (value.kind) {
@@ -99,24 +122,32 @@ export const normalizeClosedStoreDataExecution = (
   try {
     if (!isNormalizedClosedStoreHostProgram(host) || !supportedHost(host)) return null;
     const data = closedDataRecord(raw);
-    if (!data || (data.schemaVersion !== 1 && data.schemaVersion !== 2) ||
+    if (!data || (data.schemaVersion !== 1 && data.schemaVersion !== 2 &&
+      data.schemaVersion !== 3) ||
       !exactClosedFields(data, data.schemaVersion === 1 ? [
         "schemaVersion", "kind", "componentProgramId", "moduleRevision",
-      ] : Object.hasOwn(data, "numericKernel") ? [
+      ] : data.schemaVersion === 2 && Object.hasOwn(data, "numericKernel") ? [
         "schemaVersion", "kind", "componentProgramId", "moduleRevision", "numericKernel",
+      ] : data.schemaVersion === 3 && Object.hasOwn(data, "batchKernel") ? [
+        "schemaVersion", "kind", "componentProgramId", "moduleRevision", "batchKernel",
       ] : ["schemaVersion", "kind", "componentProgramId", "moduleRevision"]) ||
       data.kind !== "owned-data" ||
       data.componentProgramId !== host.componentProgramId ||
       data.moduleRevision !== host.moduleRevision) return null;
     const scalarProof = data.schemaVersion === 2 && typeof data.numericKernel === "function"
       ? proveClosedScalarNumericKernel(data.numericKernel, host) : null;
-    const diagnostic = Object.freeze(scalarProof?.kind === "verified"
+    const batchProof = data.schemaVersion === 3 && typeof data.batchKernel === "function"
+      ? proveClosedStoreBatchKernel(data.batchKernel, host) : null;
+    const diagnostic = Object.freeze(batchProof?.kind === "verified"
+      ? { mode: "verified-batch" as const, reason: "verified" }
+      : scalarProof?.kind === "verified"
       ? { mode: "verified-scalar" as const, reason: "verified" }
       : { mode: "interpreted" as const,
-        reason: scalarProof?.reason ?? (data.schemaVersion === 1
-          ? "schema-1" : "numeric-kernel-unavailable") });
+        reason: batchProof?.reason ?? scalarProof?.reason ?? (data.schemaVersion === 1
+          ? "schema-1" : data.schemaVersion === 2
+          ? "numeric-kernel-unavailable" : "batch-kernel-unavailable") });
     const normalized = Object.freeze({
-      schemaVersion: data.schemaVersion as 1 | 2,
+      schemaVersion: data.schemaVersion as 1 | 2 | 3,
       kind: "owned-data" as const,
       componentProgramId: host.componentProgramId,
       moduleRevision: host.moduleRevision,
@@ -127,7 +158,8 @@ export const normalizeClosedStoreDataExecution = (
       host.host.props.map(([, expression]) => expression.kind === "literal" &&
           isClosedHostPrimitive(expression.value)
         ? expression.value : undefined),
-      scalarProof?.kind === "verified" ? scalarProof.numericPropIndices : undefined,
+      scalarProof?.kind === "verified" ? scalarProof.numericPropIndices :
+        batchProof?.kind === "verified" ? batchProof.numericPropIndices : undefined,
     );
     associations.set(normalized, Object.freeze({
       host, layout,
@@ -137,7 +169,7 @@ export const normalizeClosedStoreDataExecution = (
       valueCount: closedStoreHostValueCount(host),
       retainedChildren: host.schemaVersion === 5 || host.schemaVersion === 6 ||
         host.schemaVersion === 7,
-      scalarProof, diagnostic,
+      scalarProof, batchProof, diagnostic,
     }));
     return normalized as NormalizedClosedStoreDataExecution;
   } catch {
@@ -148,7 +180,8 @@ export const normalizeClosedStoreDataExecution = (
 /** Report registration-time selection without exposing executable state. */
 export const inspectClosedStoreDataExecution = (
   execution: NormalizedClosedStoreDataExecution,
-): Readonly<{ mode: "verified-scalar" | "interpreted"; reason: string }> | null =>
+): Readonly<{ mode: "verified-batch" | "verified-scalar" | "interpreted";
+  reason: string }> | null =>
   typeof execution === "object" && execution !== null
     ? associations.get(execution)?.diagnostic ?? null : null;
 
@@ -359,6 +392,7 @@ export type OwnedClosedStoreOutputRow = Readonly<{
 }>;
 
 type NormalizedRequest = Readonly<{
+  execution: NormalizedClosedStoreDataExecution;
   facts: ExecutionFacts;
   owner: number;
   hostKey: string;
@@ -385,7 +419,8 @@ const normalizeOwnedOutputRequest = (raw: unknown): NormalizedRequest | null => 
       typeof input.store !== "object" || input.store === null) return null;
     inputs.push({ store: input.store as AnyAsyncStore, readerId: input.readerId });
   }
-  return { facts, owner: request.owner as number,
+  return { execution: request.execution as NormalizedClosedStoreDataExecution,
+    facts, owner: request.owner as number,
     hostKey: request.hostKey, inputs };
 };
 
@@ -434,24 +469,213 @@ export type BoundClosedStoreOutputRequest = PrivateBoundClosedStoreOutputRequest
 export const bindOwnedClosedStoreOutputRequest = PrivateBoundClosedStoreOutputRequest.bind;
 const canonicalUnwrapClosedStoreOutputRequest = PrivateBoundClosedStoreOutputRequest.unwrap;
 
+const ownedFrameRequestsKey = Symbol("owned-frame-requests");
+export class OwnedClosedFrameRequests {
+  #requests: NormalizedRequest[] = [];
+  #sealed = false;
+  #consumed = false;
+  private constructor(key: symbol) {
+    if (key !== ownedFrameRequestsKey) throw new TypeError("Invalid frame request builder");
+    Object.freeze(this);
+  }
+  static create(): OwnedClosedFrameRequests {
+    return new OwnedClosedFrameRequests(ownedFrameRequestsKey);
+  }
+  append(bound: BoundClosedStoreOutputRequest): boolean {
+    if (this.#sealed || this.#consumed || this.#requests.length >= 65536) return false;
+    const request = canonicalUnwrapClosedStoreOutputRequest(closedOutputBindingKey, bound);
+    if (!request) return false;
+    appendOwned(this.#requests, request);
+    return true;
+  }
+  seal(): boolean {
+    if (this.#sealed || this.#consumed || this.#requests.length === 0) return false;
+    this.#sealed = true;
+    return true;
+  }
+  static consume(key: symbol, value: unknown): readonly NormalizedRequest[] | null {
+    if (key !== ownedFrameRequestsKey || typeof value !== "object" || value === null ||
+      !(#requests in value) || !value.#sealed || value.#consumed) return null;
+    value.#consumed = true;
+    return value.#requests;
+  }
+}
+export const createOwnedClosedFrameRequests = OwnedClosedFrameRequests.create;
+const canonicalConsumeOwnedFrameRequests = OwnedClosedFrameRequests.consume;
+Object.freeze(OwnedClosedFrameRequests.prototype);
+Object.freeze(OwnedClosedFrameRequests);
+
+type ScheduledFrameRow = {
+  request: NormalizedRequest;
+  group: BatchGroup | null;
+  groupRow: number;
+};
+type BatchGroup = {
+  execution: NormalizedClosedStoreDataExecution;
+  rows: number[];
+  input?: OwnedClosedFrameInput;
+};
+type GroupTrie = { children: Map<AnyAsyncStore, GroupTrie>; group?: BatchGroup };
+
+const prepareOwnedFrameSchedule = (
+  world: OwnerStateWorld, transaction: StoreRenderTransaction,
+  requests: readonly NormalizedRequest[], counts?: OwnedScalarOutputCounts,
+): { kind: "ready"; rows: readonly OwnedClosedStoreOutputRow[];
+  cellCut: ClosedWorldCellCut } | { kind: "public-required" } | null => {
+  if (requests.length === 0) return null;
+  const scheduled: ScheduledFrameRow[] = [];
+  const groups: BatchGroup[] = [];
+  const byExecution = new Map<NormalizedClosedStoreDataExecution, GroupTrie>();
+  for (let ordinal = 0; ordinal < requests.length; ordinal++) {
+    const request = requests[ordinal];
+    let group: BatchGroup | null = null;
+    let groupRow = -1;
+    if (request.facts.batchProof?.kind === "verified") {
+      const existingRoot = byExecution.get(request.execution);
+      let node: GroupTrie;
+      if (existingRoot) node = existingRoot;
+      else {
+        node = { children: new Map<AnyAsyncStore, GroupTrie>() };
+        byExecution.set(request.execution, node);
+      }
+      for (let index = 0; index < request.inputs.length; index++) {
+        const store = request.inputs[index].store;
+        const existingChild = node.children.get(store);
+        let child: GroupTrie;
+        if (existingChild) child = existingChild;
+        else {
+          child = { children: new Map<AnyAsyncStore, GroupTrie>() };
+          node.children.set(store, child);
+        }
+        node = child;
+      }
+      group = node.group ?? null;
+      if (!group || group.rows.length >= CLOSED_STORE_BATCH_MAX_ROWS) {
+        group = { execution: request.execution, rows: [] };
+        node.group = group;
+        appendOwned(groups, group);
+      }
+      groupRow = group.rows.length;
+      appendOwned(group.rows, ordinal);
+    }
+    appendOwned(scheduled, { request, group, groupRow });
+  }
+  for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+    const group = groups[groupIndex];
+    const proof = requests[group.rows[0]].facts.batchProof;
+    if (proof?.kind !== "verified") return null;
+    group.input = createOwnedClosedFrameInput(
+      proof.sharedInputCount, proof.varyingInputCount, group.rows.length,
+    );
+  }
+  const schedule = createOwnedClosedFrameSchedule();
+  for (let rowIndex = 0; rowIndex < scheduled.length; rowIndex++) {
+    const row = scheduled[rowIndex];
+    const request = row.request;
+    if (!request.worldRequest || !request.projectionRequests) return null;
+    if (!schedule.append(request.worldRequest, request.projectionRequests,
+      row.group?.input ?? null, row.groupRow, !row.group)) return null;
+  }
+  if (!schedule.seal()) return null;
+  const worldBatch = captureOwnedClosedWorldInputSchedule(world, schedule);
+  if (!worldBatch) return { kind: "public-required" };
+  if (!readOwnedClosedProjectionSchedule(transaction, schedule))
+    return { kind: "public-required" };
+  const rows: OwnedClosedStoreOutputRow[] = [];
+  const makeRow = (ordinal: number, frame: OwnedScalarFrame): void => {
+    const request = scheduled[ordinal].request;
+    const worldRow = worldBatch.rows[ordinal];
+    if (!worldRow || worldRow.owner !== request.owner ||
+      worldRow.cells.length !== request.facts.stateSites.length)
+      throw new TypeError("Invalid owned World row");
+    const row = intrinsicFreeze({ owner: request.owner, lineage: worldRow.lineage,
+      cells: worldRow.cells, frame,
+      key: request.facts.retainedChildren ? request.hostKey : request.facts.host.host.key,
+      tag: request.facts.host.host.tag,
+      ...(request.facts.retainedChildren ? { retainedChildren: true as const,
+        componentOwner: request.owner } : {}),
+    });
+    ownedClosedOutputRows.add(row);
+    intrinsicDefineProperty(rows, ordinal, { value: row, enumerable: true,
+      writable: true, configurable: true });
+  };
+  for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+    const group = groups[groupIndex];
+    const facts = scheduled[group.rows[0]].request.facts;
+    const proof = facts.batchProof;
+    if (proof?.kind !== "verified" || !group.input) return null;
+    const frames = captureVerifiedOwnedScalarBatch(facts.layout, proof,
+      group.input, group.rows.length, counts);
+    for (let index = 0; index < group.rows.length; index++)
+      makeRow(group.rows[index], frames[index]);
+  }
+  let scratch: number[] | null = null;
+  let outputScratch: number[] | null = null;
+  for (let ordinal = 0; ordinal < scheduled.length; ordinal++) {
+    const row = scheduled[ordinal];
+    if (row.group) continue;
+    const facts = row.request.facts;
+    const worldRow = worldBatch.rows[ordinal];
+    const fallbackValues = canonicalOwnedClosedFrameScheduleRowAt.call(
+      schedule, ordinal).fallbackValues;
+    if (!worldRow || !fallbackValues ||
+      fallbackValues.length !== row.request.inputs.length)
+      return null;
+    if (!scratch) scratch = denseNumericScratch(0);
+    if (!outputScratch) outputScratch = denseNumericScratch(0);
+    growNumericScratch(scratch, facts.valueCount);
+    if (facts.scalarProof?.kind === "verified") {
+      growNumericScratch(outputScratch, facts.scalarProof.numericPropIndices.length);
+      if (counts) counts.scalarKernelCalls = (counts.scalarKernelCalls ?? 0) + 1;
+    }
+    let cursor = 0;
+    for (let projection = 0; projection < fallbackValues.length; projection++) {
+      const values = fallbackValues[projection];
+      for (let valueIndex = 0; valueIndex < values.length; valueIndex++) {
+        const value = values[valueIndex];
+        if (typeof value !== "number" || !Number.isFinite(value)) return null;
+        scratch[cursor++] = value;
+      }
+    }
+    for (let cellIndex = 0; cellIndex < worldRow.cells.length; cellIndex++) {
+      const cell = worldRow.cells[cellIndex];
+      if (typeof cell.value !== "number" || !Number.isFinite(cell.value)) return null;
+      scratch[cursor++] = cell.value;
+    }
+    if (cursor !== facts.valueCount) return null;
+    const frame = evaluateOwnedFrame(facts, scratch, outputScratch, counts);
+    if (!frame) return null;
+    makeRow(ordinal, frame);
+  }
+  return intrinsicFreeze({ kind: "ready" as const, rows: intrinsicFreeze(rows),
+    cellCut: worldBatch.cellCut });
+};
+
 /** Enclose passive captures and finite evaluation for ordered owned scalar rows. */
 export const prepareOwnedClosedStoreOutputs = (
   world: OwnerStateWorld,
   transaction: StoreRenderTransaction,
-  orderedRequests: readonly (OwnedClosedStoreOutputRequest | BoundClosedStoreOutputRequest)[],
+  orderedRequests: readonly (OwnedClosedStoreOutputRequest | BoundClosedStoreOutputRequest)[] |
+    OwnedClosedFrameRequests,
   counts?: OwnedScalarOutputCounts,
 ): { kind: "ready"; rows: readonly OwnedClosedStoreOutputRow[];
   cellCut: ClosedWorldCellCut } |
   { kind: "public-required" } | null => {
   try {
-    const rawRequests = closedDataArray(orderedRequests, 65536);
-    if (!rawRequests || rawRequests.length === 0) return null;
-    const normalized: NormalizedRequest[] = [];
-    for (const raw of rawRequests) {
-      const request = canonicalUnwrapClosedStoreOutputRequest(closedOutputBindingKey, raw) ??
-        normalizeOwnedOutputRequest(raw);
-      if (!request) return null;
-      normalized.push(request);
+    const owned = canonicalConsumeOwnedFrameRequests(ownedFrameRequestsKey, orderedRequests);
+    let normalized: readonly NormalizedRequest[];
+    if (owned) return prepareOwnedFrameSchedule(world, transaction, owned, counts);
+    else {
+      const rawRequests = closedDataArray(orderedRequests, 65536);
+      if (!rawRequests || rawRequests.length === 0) return null;
+      const copied: NormalizedRequest[] = [];
+      for (const raw of rawRequests) {
+        const request = canonicalUnwrapClosedStoreOutputRequest(closedOutputBindingKey, raw) ??
+          normalizeOwnedOutputRequest(raw);
+        if (!request) return null;
+        copied.push(request);
+      }
+      normalized = copied;
     }
     const worldBatch = captureOwnedClosedWorldInputBatch(world,
       normalized.map(({ owner, facts, worldRequest }) =>
@@ -480,6 +704,8 @@ export const prepareOwnedClosedStoreOutputs = (
       const proof = request.facts.scalarProof;
       if (proof?.kind === "verified")
         growNumericScratch(outputScratch, proof.numericPropIndices.length);
+      if (proof?.kind === "verified" && counts)
+        counts.scalarKernelCalls = (counts.scalarKernelCalls ?? 0) + 1;
       let cursor = 0;
       for (let input = 0; input < request.inputs.length; input++) {
         const values = projections[projectionIndex++];

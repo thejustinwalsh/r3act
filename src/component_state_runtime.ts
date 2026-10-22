@@ -32,6 +32,7 @@ import {
   inspectClosedStoreDataExecution,
   normalizeClosedStoreDataExecution,
   prepareOwnedClosedStoreOutputs,
+  createOwnedClosedFrameRequests,
   materializeOwnedScalarStorePropDelta,
   createOwnedScalarStorePropDelta,
 } from "./closed_store_execution.ts";
@@ -3964,25 +3965,40 @@ export class ComponentStateRoot<H, Parent = H> {
     };
     try {
       if (passiveEligible) {
-        const requests = passiveRows.map((row): OwnedClosedStoreOutputRequest | BoundClosedStoreOutputRequest => {
+        const ownedRequests = createOwnedClosedFrameRequests();
+        let allBound = true;
+        for (const row of passiveRows) {
           const { owner, cache, program, dataExecution, inputs } = row;
           if (row.boundRequest) {
             if (this.#activeCounters) this.#count("store.bound-input.reused-rows");
-            return row.boundRequest;
+          } else {
+            const hostKey = cache.scopeExplicitHostKeys === true
+              ? `${String(cache.hostKeyScope)}\u0000${program.host.key}` : program.host.key;
+            const request: OwnedClosedStoreOutputRequest = {
+              execution: dataExecution, owner, hostKey,
+              inputs: inputs.map(({ store, id }) => ({ store, readerId: id })),
+            };
+            const bound = bindOwnedClosedStoreOutputRequest(request);
+            if (bound) {
+              row.boundRequest = bound;
+              if (this.#activeCounters) this.#count("store.bound-input.new-rows");
+            }
           }
-          const hostKey = cache.scopeExplicitHostKeys === true
-            ? `${String(cache.hostKeyScope)}\u0000${program.host.key}` : program.host.key;
-          const request: OwnedClosedStoreOutputRequest = {
-            execution: dataExecution, owner, hostKey,
-            inputs: inputs.map(({ store, id }) => ({ store, readerId: id })),
-          };
-          const bound = bindOwnedClosedStoreOutputRequest(request);
-          if (bound) {
-            row.boundRequest = bound;
-            if (this.#activeCounters) this.#count("store.bound-input.new-rows");
+          if (!row.boundRequest || !ownedRequests.append(row.boundRequest)) {
+            allBound = false;
+            break;
           }
-          return bound ?? request;
-        });
+        }
+        const requests: readonly (OwnedClosedStoreOutputRequest | BoundClosedStoreOutputRequest)[] |
+          ReturnType<typeof createOwnedClosedFrameRequests> = allBound && ownedRequests.seal()
+          ? ownedRequests : passiveRows.map((row) => {
+            if (row.boundRequest) return row.boundRequest;
+            const { owner, cache, program, dataExecution, inputs } = row;
+            const hostKey = cache.scopeExplicitHostKeys === true
+              ? `${String(cache.hostKeyScope)}\u0000${program.host.key}` : program.host.key;
+            return { execution: dataExecution, owner, hostKey,
+              inputs: inputs.map(({ store, id }) => ({ store, readerId: id })) };
+          });
         const scalarCounts: OwnedScalarOutputCounts | undefined = this.#activeCounters
           ? { frames: 0, rootMaterializations: 0, propMaterializations: 0,
             directCaptures: 0 }
@@ -3992,6 +4008,10 @@ export class ComponentStateRoot<H, Parent = H> {
         if (scalarCounts) this.#count("store.scalar-output.frames", scalarCounts.frames);
         if (scalarCounts?.directCaptures) this.#count(
           "store.scalar-output.direct-captures", scalarCounts.directCaptures);
+        if (scalarCounts?.batchCalls) this.#count("store.batch.calls", scalarCounts.batchCalls);
+        if (scalarCounts?.batchRows) this.#count("store.batch.rows", scalarCounts.batchRows);
+        if (scalarCounts?.scalarKernelCalls) this.#count(
+          "store.scalar-kernel.calls", scalarCounts.scalarKernelCalls);
         if (batch === null) throw new SparseCandidateIneligible();
         if (batch.kind !== "ready") seen.clear();
         if (batch.kind === "ready") {
@@ -4024,7 +4044,7 @@ export class ComponentStateRoot<H, Parent = H> {
             if (this.#activeCounters) {
               this.#count("store.owned-data.rows");
               if (inspectClosedStoreDataExecution(passiveRows[index].dataExecution)
-                ?.mode === "verified-scalar") {
+                ?.mode.startsWith("verified-")) {
                 this.#count("store.owned-data.verified-rows");
               }
             }
@@ -4192,7 +4212,7 @@ export class ComponentStateRoot<H, Parent = H> {
           : evaluateClosedStoreHostProgram(program, values));
         if (dataExecution && this.#activeCounters) {
           this.#count("store.owned-data.rows");
-          if (inspectClosedStoreDataExecution(dataExecution)?.mode === "verified-scalar") {
+          if (inspectClosedStoreDataExecution(dataExecution)?.mode.startsWith("verified-")) {
             this.#count("store.owned-data.verified-rows");
           }
         }

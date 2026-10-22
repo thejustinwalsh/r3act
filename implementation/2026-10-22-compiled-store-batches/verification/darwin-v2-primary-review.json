@@ -1,0 +1,23 @@
+{
+  "status": "PRIMARY_REVIEWED_PRESERVED_FAIL",
+  "phases": 79,
+  "passed": 78,
+  "failures": [
+    [
+      "deno-full",
+      "FAIL"
+    ]
+  ],
+  "denoPassed": 1285,
+  "denoFailed": 1,
+  "rustPassed": 107,
+  "actualCompiledPassed": 59,
+  "packageValidation": "PASS",
+  "archivedSourceInputs": 2253,
+  "sourceAudit": {
+    "status": "MATCH",
+    "changed": []
+  },
+  "finding": "New fixture incorrectly assumes one accepted boundary across independent Store candidates. With an opaque generic sibling, #tryFlushClosedStores falls back to separate selected-Store publications; the next candidate may observe the prior candidate accepted. Preserve within-Store coherence and per-candidate old accepted reads, not implicit whole-flush coherence.",
+  "repairPolicy": "Deno fixture only; Root production unchanged; full fresh gate after source review"
+}

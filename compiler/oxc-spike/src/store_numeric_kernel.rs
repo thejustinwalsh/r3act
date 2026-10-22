@@ -32,17 +32,25 @@ pub(super) fn numeric_expression(node: &Value, input_count: usize, depth: usize)
     }
 }
 
-fn emit_numeric_expression(node: &Value, input_count: usize, depth: usize) -> Option<String> {
+fn emit_numeric_expression(node: &Value, input_count: usize, shared_count: usize,
+    varying_count: usize, depth: usize) -> Option<String> {
     numeric_expression(node, input_count, depth)?;
     match node.get("kind")?.as_str()? {
-        "input" => Some(format!("inputs[{}]", node.get("index")?.as_u64()?)),
+        "input" => {
+            let index = usize::try_from(node.get("index")?.as_u64()?).ok()?;
+            if index < shared_count { Some(format!("sharedInputs[{index}]")) }
+            else { Some(format!("varyingInputs[row * {varying_count} + {}]", index - shared_count)) }
+        }
         "literal" => Some(node.get("value")?.to_string()),
         "unary" => Some(format!("({}{})", node.get("operator")?.as_str()?,
-            emit_numeric_expression(node.get("argument")?, input_count, depth + 1)?)),
+            emit_numeric_expression(node.get("argument")?, input_count,
+                shared_count, varying_count, depth + 1)?)),
         "binary" => Some(format!("({} {} {})",
-            emit_numeric_expression(node.get("left")?, input_count, depth + 1)?,
+            emit_numeric_expression(node.get("left")?, input_count,
+                shared_count, varying_count, depth + 1)?,
             node.get("operator")?.as_str()?,
-            emit_numeric_expression(node.get("right")?, input_count, depth + 1)?)),
+            emit_numeric_expression(node.get("right")?, input_count,
+                shared_count, varying_count, depth + 1)?)),
         _ => None,
     }
 }
@@ -58,53 +66,57 @@ pub(super) fn emit(program: &Value) -> Option<StoreDataExecution> {
         if host.get("tag")?.as_str()? != "group" ||
             !host.get("children")?.as_array()?.is_empty() { return None; }
     } else if !host.get("child")?.is_null() { return None; }
-    let input_count = if schema == 1 { 1 } else if matches!(schema, 5 | 6 | 7) {
-        let store_count = program.get("inputs")?.as_array()?.iter().try_fold(0usize, |count, input| {
+    let shared_count = if schema == 1 { 1 } else if matches!(schema, 5 | 6 | 7) {
+        program.get("inputs")?.as_array()?.iter().try_fold(0usize, |count, input| {
             count.checked_add(input.get("paths")?.as_array()?.len())
-        })?;
-        if schema == 7 {
-            store_count.checked_add(program.get("stateSites")?.as_array()?.len())?
-        } else { store_count }
+        })?
     } else { program.get("inputs")?.as_array()?.len() };
+    let varying_count = if schema == 7 { program.get("stateSites")?.as_array()?.len() } else { 0 };
+    let input_count = shared_count.checked_add(varying_count)?;
     if !(1..=32).contains(&input_count) { return None; }
     let props = host.get("props")?.as_array()?;
     if props.is_empty() || props.len() > 32 { return None; }
     let mut expressions = Vec::new();
-    for prop in props {
+    for (index, prop) in props.iter().enumerate() {
         let pair = prop.as_array()?;
         if pair.len() != 2 { return None; }
         pair[0].as_str()?;
-        if empty_primitive_group && pair[1].get("kind")?.as_str()? == "literal" {
+        if pair[1].get("kind")?.as_str()? == "literal" {
             let value = pair[1].get("value")?;
-            if !value.is_null() && !value.is_boolean() && !value.is_string() &&
+            if empty_primitive_group && !value.is_null() && !value.is_boolean() && !value.is_string() &&
                 !value.as_f64().is_some_and(|number| number.is_finite()) { return None; }
             if value.is_number() {
-                expressions.push(emit_numeric_expression(&pair[1], input_count, 0)?);
+                expressions.push((index, emit_numeric_expression(&pair[1], input_count,
+                    shared_count, varying_count, 0)?));
             }
         } else {
             numeric_expression(&pair[1], input_count, 0)?;
-            expressions.push(emit_numeric_expression(&pair[1], input_count, 0)?);
+            expressions.push((index, emit_numeric_expression(&pair[1], input_count,
+                shared_count, varying_count, 0)?));
         }
     }
     if expressions.is_empty() { return None; }
     let descriptor = serde_json::json!({
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "kind": "owned-data",
         "componentProgramId": component_id,
         "moduleRevision": revision,
     });
     let mut code = descriptor.to_string();
-    if let Some((declarations, rewritten)) =
-        numeric_expression_dag::lower_scalar_buffers(&expressions, input_count)
+    let expression_sources = expressions.iter().map(|(_, source)| source.clone()).collect::<Vec<_>>();
+    if let Some((shared_declarations, row_declarations, rewritten)) =
+        numeric_expression_dag::lower_batch_buffers(&expression_sources, shared_count, varying_count)
     {
-        let mut body = String::from("(inputs, outputs) => {");
-        body.push_str(&declarations);
-        for (index, expression) in rewritten.iter().enumerate() {
-            body.push_str(&format!("outputs[{index}] = {expression};"));
+        let mut body = String::from("(sharedInputs, varyingInputs, outputs, rowCount) => {");
+        body.push_str(&shared_declarations);
+        body.push_str("for (let row = 0; row < rowCount; row++) {const rowOutput = outputs[row];");
+        body.push_str(&row_declarations);
+        for ((index, _), expression) in expressions.iter().zip(rewritten.iter()) {
+            body.push_str(&format!("rowOutput[{index}] = {expression};"));
         }
-        body.push('}');
+        body.push_str("}}");
         if body.len() <= 32 * 1024 && code.pop() == Some('}') {
-            code.push_str(",\"numericKernel\":");
+            code.push_str(",\"batchKernel\":");
             code.push_str(&body);
             code.push('}');
         }
@@ -131,16 +143,17 @@ mod tests {
         });
         let execution = emit(&input).unwrap();
         assert_eq!(execution.descriptor["kind"], "owned-data");
-        assert_eq!(execution.descriptor["schemaVersion"], 2);
+        assert_eq!(execution.descriptor["schemaVersion"], 3);
         assert_eq!(execution.descriptor.as_object().unwrap().len(), 4);
         assert_eq!(execution.descriptor["componentProgramId"], "component");
         assert!(!execution.code.contains("executeRange"));
         assert!(!execution.code.contains("inputValues"));
-        assert!(execution.code.contains("\"numericKernel\":(inputs, outputs) => {"));
+        assert!(execution.code.contains("\"batchKernel\":(sharedInputs, varyingInputs, outputs, rowCount) => {"));
         assert!(execution.code.contains("const $r3actDag0 ="));
-        assert!(execution.code.contains("inputs[0] + inputs[1]"));
-        assert!(execution.code.contains("outputs[0] = ($r3actDag0 * 2);"));
-        assert!(execution.code.contains("outputs[1] = ($r3actDag0 / 3);"));
+        assert!(execution.code.contains("sharedInputs[0] + sharedInputs[1]"));
+        assert!(execution.code.contains("for (let row = 0; row < rowCount; row++)"));
+        assert!(execution.code.contains("rowOutput[0] = $r3actDag"));
+        assert!(execution.code.contains("rowOutput[1] = $r3actDag"));
     }
 
     #[test]
@@ -184,7 +197,9 @@ mod tests {
         let execution = emit(&input).unwrap();
         assert_eq!(execution.descriptor["kind"], "owned-data");
         assert!(!execution.code.contains("executeRange"));
-        assert!(execution.code.contains("outputs[0] = ((-0) * inputs[2]);"));
+        assert!(execution.code.contains("(-0)"));
+        assert!(execution.code.contains("sharedInputs[2]"));
+        assert!(execution.code.contains("rowOutput[0] = $r3actDag"));
     }
 
     #[test]
@@ -199,10 +214,10 @@ mod tests {
             ]}
         });
         let marker = emit(&input).unwrap();
-        assert_eq!(marker.descriptor["schemaVersion"], 2);
-        assert!(marker.code.contains("outputs[0] = inputs[0];"));
+        assert_eq!(marker.descriptor["schemaVersion"], 3);
+        assert!(marker.code.contains("rowOutput[2] = sharedInputs[0];"));
         assert!(!marker.code.contains("renamed-group"));
-        assert!(!marker.code.contains("outputs[1]"));
+        assert!(!marker.code.contains("rowOutput[1]"));
         input["host"]["children"] = serde_json::json!([{"kind":"text","expression":{
             "kind":"input","index":0}}]);
         assert!(emit(&input).is_none());
@@ -213,8 +228,8 @@ mod tests {
         assert!(emit(&input).is_none());
         input["host"]["props"][2][1] = serde_json::json!({"kind":"literal","value":4});
         let literal_marker = emit(&input).unwrap();
-        assert!(literal_marker.code.contains("outputs[0] = 4;"));
-        assert!(!literal_marker.code.contains("outputs[1]"));
+        assert!(literal_marker.code.contains("rowOutput[2] = 4;"));
+        assert!(!literal_marker.code.contains("rowOutput[1]"));
     }
 
     #[test]
@@ -242,11 +257,13 @@ mod tests {
         let execution = emit(&program).unwrap();
         for (index, operator) in binary.iter().enumerate() {
             assert!(execution.code.contains(&format!(
-                "outputs[{index}] = (inputs[1] {operator} inputs[0]);")), "{}", execution.code);
+                "(sharedInputs[1] {operator} sharedInputs[0])")), "{}", execution.code);
+            assert!(execution.code.contains(&format!("rowOutput[{index}] =")));
         }
         for (index, operator) in unary.iter().enumerate() {
             assert!(execution.code.contains(&format!(
-                "outputs[{}] = ({operator}inputs[1]);", index + binary.len())), "{}", execution.code);
+                "({operator}sharedInputs[1])")), "{}", execution.code);
+            assert!(execution.code.contains(&format!("rowOutput[{}] =", index + binary.len())));
         }
     }
 
@@ -266,12 +283,19 @@ mod tests {
         });
         let execution = emit(&program).unwrap();
         assert_eq!(execution.descriptor["moduleRevision"], "rev-b");
-        assert!(execution.code.contains("outputs[0] = (inputs[0] - (inputs[1] - inputs[2]));"));
-        assert!(execution.code.contains("outputs[1] = ((inputs[0] - inputs[1]) - inputs[2]);"));
-        assert!(execution.code.contains("outputs[2] = (-0);"));
-        assert!(execution.code.contains("outputs[3] = (+0);"));
-        assert!(execution.code.contains("outputs[4] = ((inputs[0] * "), "{}", execution.code);
-        assert!(execution.code.contains(") | 0);"), "{}", execution.code);
-        assert!(!execution.code.contains("const $r3actDag"));
+        assert!(execution.code.contains("sharedInputs[1] - sharedInputs[2]"));
+        assert!(execution.code.contains("sharedInputs[0] - sharedInputs[1]"));
+        assert!(execution.code.contains("rowOutput[0] = $r3actDag"));
+        assert!(execution.code.contains("rowOutput[1] = $r3actDag"));
+        assert!(execution.code.contains("(-0)"));
+        assert!(execution.code.contains("(+0)"));
+        assert!(execution.code.contains("(sharedInputs[0] * "), "{}", execution.code);
+        let coercion = execution.code.split(';').find(|part| part.contains(" | 0"))
+            .unwrap();
+        let coercion_slot = coercion.split(" = ").next().unwrap()
+            .split_whitespace().last().unwrap();
+        assert!(execution.code.contains(&format!("rowOutput[4] = {coercion_slot};")),
+            "{}", execution.code);
+        assert!(execution.code.contains("const $r3actDag"));
     }
 }

@@ -1,5 +1,9 @@
 import type { ClosedHostPrimitive } from "./closed_host_value.ts";
 import type { ClosedStoreHostOutput } from "./closed_store_host_program.ts";
+import {
+  executeVerifiedClosedStoreBatch, type ClosedStoreBatchKernelProof,
+} from "./closed_store_batch_kernel_proof.ts";
+import { OwnedClosedFrameInput } from "./owned_closed_frame_input.ts";
 
 export type OwnedScalarValue = ClosedHostPrimitive;
 export type OwnedScalarOutputCounts = {
@@ -7,6 +11,9 @@ export type OwnedScalarOutputCounts = {
   rootMaterializations: number;
   propMaterializations: number;
   directCaptures?: number;
+  batchCalls?: number;
+  batchRows?: number;
+  scalarKernelCalls?: number;
 };
 const layoutKey = Symbol("owned-scalar-layout");
 const frameKey = Symbol("owned-scalar-frame");
@@ -14,6 +21,10 @@ const intrinsicDefineProperty = Object.defineProperty;
 const intrinsicIsArray = Array.isArray;
 const intrinsicHasOwn = Object.hasOwn;
 const intrinsicIs = Object.is;
+const intrinsicFreeze = Object.freeze;
+const intrinsicIsSafeInteger = Number.isSafeInteger;
+const intrinsicIsFinite = Number.isFinite;
+const batchRowsKey = Symbol("owned-scalar-batch-rows");
 
 const copySlots = <T>(source: readonly T[]): T[] => {
   const copied: T[] = [];
@@ -109,8 +120,8 @@ export class OwnedScalarFrame {
     if (key !== frameKey || !isOwnedScalarLayout(layout) ||
       values.length !== layout.length) throw new TypeError("Invalid scalar frame");
     this.#layout = layout;
-    this.#values = Object.freeze(values);
-    Object.freeze(this);
+    this.#values = intrinsicFreeze(values);
+    intrinsicFreeze(this);
   }
 
   static create(layout: OwnedScalarLayout,
@@ -171,6 +182,18 @@ export class OwnedScalarFrame {
     return frame;
   }
 
+  static adoptVerifiedBatchRow(key: symbol, layout: OwnedScalarLayout,
+    values: OwnedScalarValue[], counts?: OwnedScalarOutputCounts): OwnedScalarFrame {
+    if (key !== batchRowsKey || !isOwnedScalarLayout(layout))
+      throw new TypeError("Invalid scalar batch adoption");
+    const frame = new OwnedScalarFrame(frameKey, layout, values);
+    if (counts) {
+      counts.frames++;
+      counts.directCaptures = (counts.directCaptures ?? 0) + 1;
+    }
+    return frame;
+  }
+
   static owns(value: unknown): value is OwnedScalarFrame {
     try { return typeof value === "object" && value !== null && #values in value; }
     catch { return false; }
@@ -181,6 +204,89 @@ export class OwnedScalarFrame {
   valueAt(index: number): OwnedScalarValue { return this.#values[index]; }
 }
 
+class OwnedScalarBatchRows {
+  readonly #layout: OwnedScalarLayout;
+  readonly #rows: OwnedScalarValue[][];
+  readonly #adopted: boolean[];
+
+  constructor(key: symbol, layout: OwnedScalarLayout, rowCount: number) {
+    if (key !== batchRowsKey) throw new TypeError("Invalid scalar batch rows");
+    this.#layout = layout;
+    this.#rows = [];
+    this.#adopted = [];
+    for (let row = 0; row < rowCount; row++) {
+      const values: OwnedScalarValue[] = [];
+      for (let prop = 0; prop < layout.length; prop++) {
+        intrinsicDefineProperty(values, prop, {
+          value: layout.slotAt(prop) >= 0 ? NaN : layout.constantAt(prop),
+          enumerable: true, writable: true, configurable: true,
+        });
+      }
+      intrinsicDefineProperty(this.#rows, row, { value: values,
+        enumerable: true, writable: false, configurable: false });
+      intrinsicDefineProperty(this.#adopted, row, { value: false,
+        enumerable: true, writable: true, configurable: true });
+    }
+    intrinsicFreeze(this);
+  }
+
+  get rowCount(): number { return this.#rows.length; }
+
+  /** The proof permits writes only at numeric prop positions. */
+  numericOutputs(): number[][] {
+    return this.#rows as unknown as number[][];
+  }
+
+  adopt(row: number, counts?: OwnedScalarOutputCounts): OwnedScalarFrame {
+    if (!intrinsicIsSafeInteger(row) || row < 0 || row >= this.#rows.length ||
+      this.#adopted[row]) throw new TypeError("Invalid scalar batch row");
+    const values = this.#rows[row];
+    if (values.length !== this.#layout.length)
+      throw new TypeError("Scalar batch width mismatch");
+    for (let index = 0; index < values.length; index++) {
+      const value = values[index];
+      if (this.#layout.slotAt(index) >= 0) {
+        if (typeof value !== "number" || !intrinsicIsFinite(value))
+          throw new TypeError("Invalid scalar batch numeric result");
+      } else if (value !== null && typeof value !== "string" &&
+        typeof value !== "boolean" &&
+        !(typeof value === "number" && intrinsicIsFinite(value))) {
+        throw new TypeError("Invalid scalar batch constant");
+      }
+      const constant = this.#layout.constantAt(index);
+      if (constant !== undefined && !intrinsicIs(value, constant))
+        throw new TypeError("Scalar batch constant mismatch");
+    }
+    this.#adopted[row] = true;
+    return canonicalAdoptVerifiedBatchRow(batchRowsKey, this.#layout, values, counts);
+  }
+}
+
+/** Execute only an authentic proof and owned inputs into private final frame arrays. */
+export const captureVerifiedOwnedScalarBatch = (
+  layout: OwnedScalarLayout, proof: ClosedStoreBatchKernelProof,
+  input: OwnedClosedFrameInput, rowCount: number,
+  counts?: OwnedScalarOutputCounts,
+): readonly OwnedScalarFrame[] => {
+  if (!isOwnedScalarLayout(layout) || !layout.verifiedNumericResults ||
+    !OwnedClosedFrameInput.owns(input) || !intrinsicIsSafeInteger(rowCount) ||
+    rowCount < 1 || rowCount > 4096)
+    throw new TypeError("Invalid verified scalar batch");
+  const output = new OwnedScalarBatchRows(batchRowsKey, layout, rowCount);
+  const buffers = input.buffers();
+  executeVerifiedClosedStoreBatch(proof, buffers.shared, buffers.varying,
+    output.numericOutputs(), rowCount);
+  if (counts) {
+    counts.batchCalls = (counts.batchCalls ?? 0) + 1;
+    counts.batchRows = (counts.batchRows ?? 0) + rowCount;
+  }
+  const frames: OwnedScalarFrame[] = [];
+  for (let index = 0; index < rowCount; index++)
+    intrinsicDefineProperty(frames, index, { value: output.adopt(index, counts),
+      enumerable: true, writable: false, configurable: false });
+  return intrinsicFreeze(frames);
+};
+
 export const isOwnedScalarLayout = (value: unknown): value is OwnedScalarLayout =>
   OwnedScalarLayout.owns(value);
 
@@ -189,8 +295,11 @@ export const isOwnedScalarFrame = (value: unknown): value is OwnedScalarFrame =>
 
 Object.freeze(OwnedScalarLayout.prototype);
 Object.freeze(OwnedScalarLayout);
+const canonicalAdoptVerifiedBatchRow = OwnedScalarFrame.adoptVerifiedBatchRow;
 Object.freeze(OwnedScalarFrame.prototype);
 Object.freeze(OwnedScalarFrame);
+Object.freeze(OwnedScalarBatchRows.prototype);
+Object.freeze(OwnedScalarBatchRows);
 
 /** Derive the former public tuple shape only when an ordinary caller observes it. */
 export const materializeOwnedScalarPropEntries = (

@@ -98,8 +98,9 @@ try {
       name === "Marker" ? "marker" : "motion");
     assert.equal(property(program, "schemaVersion")?.value,
       name === "Marker" ? 5 : 7);
-    assert.equal(property(execution, "schemaVersion")?.value, 2);
-    assert.equal(property(execution, "numericKernel")?.type, "ArrowFunctionExpression");
+    assert.equal(property(execution, "schemaVersion")?.value, 3);
+    assert.equal(property(execution, "batchKernel")?.type, "ArrowFunctionExpression");
+    assert.equal(property(execution, "numericKernel"), undefined);
     selected.push(name);
   });
   assert.deepEqual(selected.sort(), ["Alternate", "Marker", "Motion"]);

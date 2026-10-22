@@ -1,6 +1,10 @@
 import { ScalarSource, canonicalScalarSourceValue } from "./jsx_binding_runtime.ts";
 import { NumericColumn } from "./jsx_binding_runtime.ts";
 import {
+  OwnedClosedFrameInput, OwnedClosedFrameSchedule,
+  canonicalOwnedClosedFrameScheduleOwns, canonicalOwnedClosedFrameScheduleRowAt,
+} from "./owned_closed_frame_input.ts";
+import {
   compiledStateLayoutSlot,
   compiledStateLayoutSignature,
   normalizeCompiledStateLayout,
@@ -14,6 +18,8 @@ import {
 
 const ownedWorldCaptureKey = Symbol("owned-world-capture");
 const ownedWorldRetirementKey = Symbol("owned-world-retirement");
+const ownedCaptureArrayPush = Array.prototype.push;
+const ownedCaptureApply = Reflect.apply;
 
 /** A component instance in the owner graph. IDs are allocated once and never reused. */
 export type OwnerId = number;
@@ -604,7 +610,8 @@ export class OwnerStateWorld {
   static _captureOwnedClosedInputs(
     key: symbol,
     world: OwnerStateWorld,
-    requests: readonly { owner: OwnerId; sites: readonly StateSiteId[] }[],
+    requests: readonly { owner: OwnerId; sites: readonly StateSiteId[] }[] |
+      OwnedClosedFrameSchedule,
     includeCut = false,
   ): OwnedClosedWorldInputBatch | readonly OwnedClosedWorldInputRow[] | null {
     if (key !== ownedWorldCaptureKey) return null;
@@ -615,18 +622,34 @@ export class OwnerStateWorld {
       const capturedCells: ClosedWorldCell[] = [];
       const byOwner = includeCut
         ? new Map<OwnerId, Map<StateSiteId, ClosedWorldCell>>() : null;
-      for (const request of requests) {
+      const schedule = canonicalOwnedClosedFrameScheduleOwns(requests) &&
+        requests.sealed ? requests : null;
+      const requestCount = schedule ? schedule.rowCount :
+        (requests as readonly { owner: OwnerId; sites: readonly StateSiteId[] }[]).length;
+      for (let requestIndex = 0; requestIndex < requestCount; requestIndex++) {
+        const scheduled = schedule
+          ? canonicalOwnedClosedFrameScheduleRowAt.call(schedule, requestIndex) : null;
+        const request = scheduled
+          ? canonicalUnwrapOwnedWorldInputRequest(ownedWorldInputBindingKey,
+            scheduled.world)
+          : (requests as readonly { owner: OwnerId;
+            sites: readonly StateSiteId[] }[])[requestIndex];
+        if (!request) return null;
+        if (scheduled?.input && (!OwnedClosedFrameInput.owns(scheduled.input) ||
+          !Number.isSafeInteger(scheduled.groupRow) || scheduled.groupRow < 0 ||
+          scheduled.input.varyingCount !== request.sites.length)) return null;
         const owner = request.owner;
         if (!Number.isSafeInteger(owner) || !world.#owners.has(owner) ||
           world.#stagedOwners.has(owner)) return null;
         const lineage: OwnerId[] = [];
         let ancestor: OwnerId | null = owner;
         while (ancestor !== null) {
-          lineage.push(ancestor);
+          ownedCaptureApply(ownedCaptureArrayPush, lineage, [ancestor]);
           ancestor = world.#owners.get(ancestor)!.parent;
         }
         const cells: OwnedClosedWorldInputCell[] = [];
-        for (const site of request.sites) {
+        for (let siteIndex = 0; siteIndex < request.sites.length; siteIndex++) {
+          const site = request.sites[siteIndex];
           const cell = world.#stateByOwner.get(owner)?.get(site);
           if (!cell || cell.lane || !cell.source) return null;
           const descriptor = Object.getOwnPropertyDescriptor(cell, "value");
@@ -634,6 +657,9 @@ export class OwnerStateWorld {
           const sourceValue = canonicalScalarSourceValue(cell.source);
           if (typeof value !== "number" || !Number.isFinite(value) ||
             sourceValue === null || !Object.is(value, sourceValue)) return null;
+          if (scheduled?.input) scheduled.input.setVarying(
+            scheduled.groupRow * request.sites.length + siteIndex, value,
+          );
           const handle = world.#handleForCell(owner, site, cell);
           if (byOwner) {
             const captured = Object.freeze({
@@ -650,17 +676,18 @@ export class OwnerStateWorld {
                 !Object.is(previous.value, captured.value)) return null;
             } else {
               sites.set(site, captured);
-              capturedCells.push(captured);
+              ownedCaptureApply(ownedCaptureArrayPush, capturedCells, [captured]);
             }
           }
-          cells.push(Object.freeze({
+          ownedCaptureApply(ownedCaptureArrayPush, cells, [Object.freeze({
             handle,
             source: cell.source,
             version: cell.version,
             value,
-          }));
+          })]);
         }
-        rows.push(Object.freeze({ owner, lineage: Object.freeze(lineage), cells: Object.freeze(cells) }));
+        ownedCaptureApply(ownedCaptureArrayPush, rows, [Object.freeze({ owner,
+          lineage: Object.freeze(lineage), cells: Object.freeze(cells) })]);
       }
       const frozenRows = Object.freeze(rows);
       return includeCut ? Object.freeze({ rows: frozenRows, cellCut:
@@ -2709,10 +2736,15 @@ class PrivateOwnedClosedWorldInputRequest {
     return typeof value === "object" && value !== null &&
       #request in value ? value.#request : null;
   }
+  static owns(value: unknown): value is PrivateOwnedClosedWorldInputRequest {
+    try { return typeof value === "object" && value !== null && #request in value; }
+    catch { return false; }
+  }
 }
 
 export type OwnedClosedWorldInputRequest = PrivateOwnedClosedWorldInputRequest;
 export const bindOwnedClosedWorldInputRequest = PrivateOwnedClosedWorldInputRequest.bind;
+export const isOwnedClosedWorldInputRequest = PrivateOwnedClosedWorldInputRequest.owns;
 const canonicalUnwrapOwnedWorldInputRequest = PrivateOwnedClosedWorldInputRequest.unwrap;
 
 function normalizeOwnedClosedWorldInputRequests(
@@ -2757,6 +2789,23 @@ export function captureOwnedClosedWorldInputBatch(
     if (!copied) return null;
     return canonicalCaptureOwnedClosedInputs.call(
       OwnerStateWorld, ownedWorldCaptureKey, world, copied, true,
+    ) as OwnedClosedWorldInputBatch | null;
+  } catch (error) {
+    if (error instanceof TypeError) return null;
+    throw error;
+  }
+}
+
+/** Capture producer-owned rows and fill varying columns in the same World cut. */
+export function captureOwnedClosedWorldInputSchedule(
+  world: OwnerStateWorld,
+  schedule: OwnedClosedFrameSchedule,
+): OwnedClosedWorldInputBatch | null {
+  if (!canonicalOwnedClosedFrameScheduleOwns(schedule) || !schedule.sealed ||
+    schedule.rowCount > 65536) return null;
+  try {
+    return canonicalCaptureOwnedClosedInputs.call(
+      OwnerStateWorld, ownedWorldCaptureKey, world, schedule, true,
     ) as OwnedClosedWorldInputBatch | null;
   } catch (error) {
     if (error instanceof TypeError) return null;

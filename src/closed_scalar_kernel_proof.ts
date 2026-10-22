@@ -13,33 +13,36 @@ export type ClosedScalarKernelProof =
 
 const functionToString = Function.prototype.toString;
 const intrinsicApply = Reflect.apply;
-const MAX_SOURCE = 32768;
-const MAX_TOKENS = 16384;
-const MAX_NODES = 8192;
-const MAX_LOCALS = 128;
-const MAX_DEPTH = 128;
-const MAX_SLOTS = 32;
+export const MAX_SOURCE = 32768;
+export const MAX_TOKENS = 16384;
+export const MAX_NODES = 8192;
+export const MAX_LOCALS = 128;
+export const MAX_DEPTH = 128;
+export const MAX_SLOTS = 32;
 const identifier = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
+export const isClosedNumericIdentifier = (name: string): boolean => identifier.test(name);
 const numeric = /^(?:0[xX][0-9a-fA-F]+|0[bB][01]+|0[oO][0-7]+|(?:(?:0|[1-9]\d*)(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)$/;
 const operatorSet = new Set(["+", "-", "*", "/", "%", "**", "<<", ">>", ">>>", "|", "^", "&"]);
-const precedence: Record<string, number> = {
+const precedence: Readonly<Record<string, number>> = Object.freeze({
   "|": 1, "^": 2, "&": 3, "<<": 4, ">>": 4, ">>>": 4,
   "+": 5, "-": 5, "*": 6, "/": 6, "%": 6, "**": 7,
-};
+});
+export const isClosedNumericOperator = (operator: string): boolean => operatorSet.has(operator);
+export const closedNumericPrecedence = (operator: string): number => precedence[operator];
 const punctuators = [">>>", "=>", "**", "<<", ">>", "++", "--", "...", "==", "!=", "<=", ">=", "&&", "||", "??"];
 
-type Token = Readonly<{ text: string; category: "id" | "number" | "string" | "punct" }>;
-type Node = Readonly<{ kind: "input" | "literal" | "unary" | "binary";
+export type Token = Readonly<{ text: string; category: "id" | "number" | "string" | "punct" }>;
+export type Node = Readonly<{ kind: "input" | "literal" | "unary" | "binary";
   value: number | string; left?: number; right?: number }>;
 
-class Decline extends Error {
+export class Decline extends Error {
   constructor(readonly code: string) { super(code); }
 }
-function fail(code: string): never { throw new Decline(code); }
+export function fail(code: string): never { throw new Decline(code); }
 const lineTerminator = (ch: string): boolean =>
   ch === "\n" || ch === "\r" || ch === "\u2028" || ch === "\u2029";
 
-const lex = (source: string): Token[] => {
+export const lex = (source: string): Token[] => {
   const tokens: Token[] = [];
   let i = 0;
   const push = (text: string, category: Token["category"]) => {
@@ -98,7 +101,7 @@ const lex = (source: string): Token[] => {
   return tokens;
 };
 
-class Graph {
+export class Graph {
   readonly nodes: Node[] = [];
   readonly keys = new Map<string, number>();
   add(kind: Node["kind"], value: number | string, left?: number, right?: number): number {
@@ -117,6 +120,8 @@ class Graph {
     return this.add("literal", value);
   }
 }
+Object.freeze(Graph.prototype);
+Object.freeze(Graph);
 
 class Parser {
   private at = 0;
@@ -251,7 +256,7 @@ class Parser {
   }
 }
 
-const hostNode = (expression: ClosedNumericExpression, graph: Graph, depth = 0): number => {
+export const hostNode = (expression: ClosedNumericExpression, graph: Graph, depth = 0): number => {
   if (depth > MAX_DEPTH) fail("depth");
   switch (expression.kind) {
     case "input": return graph.add("input", expression.index);

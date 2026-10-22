@@ -72,9 +72,10 @@ try {
   assert.equal(typeof emittedSourceFile, "string");
   const programNode = property(registration, "closedStoreHostProgram");
   const executionNode = property(registration, "closedStoreExecution");
-  assert.equal(property(executionNode, "schemaVersion")?.value, 2);
+  assert.equal(property(executionNode, "schemaVersion")?.value, 3);
   assert.equal(executionNode.properties.length, 5);
-  assert.equal(property(executionNode, "numericKernel")?.type, "ArrowFunctionExpression");
+  assert.equal(property(executionNode, "batchKernel")?.type, "ArrowFunctionExpression");
+  assert.equal(property(executionNode, "numericKernel"), null);
   const emittedProgram = Function(`"use strict"; return (${transformed.code.slice(
     programNode.start, programNode.end)});`)();
   const emittedExecution = Function(`"use strict"; return (${transformed.code.slice(
@@ -83,7 +84,7 @@ try {
   assert.ok(normalizedHost);
   const selected = normalizeClosedStoreDataExecution(emittedExecution, normalizedHost);
   assert.ok(selected);
-  assert.equal(inspectClosedStoreDataExecution(selected)?.mode, "verified-scalar");
+  assert.equal(inspectClosedStoreDataExecution(selected)?.mode, "verified-batch");
   assert.deepEqual(evaluateClosedStoreDataExecution(selected, [2]), [
     ["name", "renamed-phase-anchor"], ["position-x", 4],
   ]);

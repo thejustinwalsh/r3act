@@ -11893,14 +11893,14 @@ export function Aggregate(props) {
             assert_eq!(execution["componentProgramId"], component.component_site_id);
             assert_eq!(execution["moduleRevision"], revision);
             assert_eq!(execution["kind"], "owned-data");
-            assert_eq!(execution["schemaVersion"], 2);
+            assert_eq!(execution["schemaVersion"], 3);
             assert_eq!(execution.as_object().unwrap().len(), 4);
         }
         assert!(components.iter().find(|component| component.name == "Aggregate")
             .unwrap().closed_store_execution.is_none());
         assert_eq!(code.matches("closedStoreExecution:").count(), 2);
-        assert_eq!(code.matches("\"numericKernel\":(inputs, outputs) => {").count(), 2);
-        assert!(code.contains("outputs[0] ="));
+        assert_eq!(code.matches("\"batchKernel\":(sharedInputs, varyingInputs, outputs, rowCount) => {").count(), 2);
+        assert!(code.contains("rowOutput[0] ="));
         assert!(!code.contains("executeRange"));
     }
 
@@ -11948,7 +11948,7 @@ export function StateMember(props) {
         assert_eq!(program["effectSites"], serde_json::json!([motion.effect_sites[0].site_id]));
         assert_eq!(execution["kind"], "owned-data");
         assert_eq!(execution["moduleRevision"], revision);
-        assert_eq!(execution["schemaVersion"], 2);
+        assert_eq!(execution["schemaVersion"], 3);
         let arrow = components.iter().find(|component| component.name == "Arrow").unwrap();
         assert_eq!(arrow.closed_store_host_program.as_ref().unwrap()["schemaVersion"], 7);
         assert_eq!(arrow.closed_store_host_program.as_ref().unwrap()["retainedChildProp"], serde_json::Value::Null);
@@ -11958,7 +11958,8 @@ export function StateMember(props) {
         assert!(components.iter().find(|component| component.name == "StateMember")
             .unwrap().closed_store_host_program.is_none());
         assert_eq!(code.matches("closedStoreExecution:").count(), 2);
-        assert_eq!(code.matches("\"numericKernel\":(inputs, outputs) => {").count(), 2);
+        assert_eq!(code.matches("\"batchKernel\":(sharedInputs, varyingInputs, outputs, rowCount) => {").count(), 2);
+        assert!(code.contains("varyingInputs[row * 1 + 0]"));
         assert!(!code.contains("executeRange"));
     }
 
@@ -11975,10 +11976,10 @@ export function FrameMarker(props) {
         let component = &plan.components.as_ref().unwrap()[0];
         assert_eq!(component.closed_store_host_program.as_ref().unwrap()["schemaVersion"], 5);
         assert_eq!(component.closed_store_execution.as_ref().unwrap()["kind"], "owned-data");
-        assert_eq!(component.closed_store_execution.as_ref().unwrap()["schemaVersion"], 2);
+        assert_eq!(component.closed_store_execution.as_ref().unwrap()["schemaVersion"], 3);
         let code = plan.component_module.unwrap();
         assert!(code.contains("closedStoreExecution:"));
-        assert!(code.contains("\"numericKernel\":(inputs, outputs) => {outputs[0] = inputs[0];}"));
+        assert!(code.contains("\"batchKernel\":(sharedInputs, varyingInputs, outputs, rowCount) => {for (let row = 0; row < rowCount; row++) {const rowOutput = outputs[row];rowOutput[2] = sharedInputs[0];}}"));
         assert!(!code.contains("closedStoreNumericKernel:"));
         assert!(!code.contains("executeRange"));
     }

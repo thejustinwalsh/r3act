@@ -1,0 +1,11 @@
+# Verified scalar runtime handoff
+
+Owned files: `src/closed_store_execution.ts`, `src/closed_store_execution_test.ts`, `src/closed_store_numeric_kernel_test.ts`, and `compiler/compiled_owned_store_execution_test.mjs`.
+
+The schema-1 data marker is unchanged. Schema 2 retains its four identity fields and permits one optional `numericKernel`. Association copies descriptor data, checks exact fields and host identity, then calls `proveClosedScalarNumericKernel` once. An absent, nonfunction or rejected kernel leaves the existing interpreted data route active; malformed metadata still declines. The existing association retains proof and a frozen diagnostic. `inspectClosedStoreDataExecution` exposes only mode and static reason.
+
+Verified rows call the retained function through captured `Reflect.apply` on private dense arrays whose numeric elements are own writable data properties before invocation. One candidate-local input array and one output array grow to the maximum row width and never shrink. Current input slots are refilled for every row, current output slots are reset to `NaN`, and only finite primitive final values enter the original frozen tuple producer. The same producer inserts schema-5 literal props in order. Public evaluation first copies arbitrary caller arrays, then uses private dense inputs. The existing outer catch discards failed preparation without retry.
+
+Source regressions cover v1 compatibility, schema-2 selection/fallback, rejected side-effect functions, unknown fields/accessors/stale revision, signed zero, grouping, overflow and NaN followed by bitwise coercion, literal slots, alternating different-width rows, independent reader histories, retained host identity, and actual compiled module selection. The compiled fixture extracts actual emitted metadata, normalizes it and checks the verified diagnostic and result.
+
+No tests, builds or benchmarks were run in this assignment. Luna should run the consolidated frozen Deno gate including `src/closed_store_execution_test.ts` and `src/closed_store_numeric_kernel_test.ts`, plus `compiler/compiled_owned_store_execution_test.mjs` after the compiler and proof changes land. The primary should inspect the selected route in installed unminified, production-minified and consumer-rebundled output before the one bounded performance comparison.

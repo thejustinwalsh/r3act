@@ -1,0 +1,47 @@
+{
+  "status": "PRIMARY_REVIEWED_PRESERVED_FAIL",
+  "phases": 79,
+  "passed": 73,
+  "failures": [
+    [
+      "cargo-test",
+      "FAIL"
+    ],
+    [
+      "deno-full",
+      "FAIL"
+    ],
+    [
+      "native-tooling",
+      "FAIL"
+    ],
+    [
+      "compiled-59",
+      "FAIL"
+    ],
+    [
+      "package-build",
+      "FAIL"
+    ],
+    [
+      "package-consumer",
+      "SKIPPED_DEPENDENCY_FAILED"
+    ]
+  ],
+  "rustPassed": 106,
+  "rustFailed": 1,
+  "denoRuntime": "NOT_EXECUTED_TYPECHECK_FAILED",
+  "actualCompiledPassed": 58,
+  "actualCompiledFailed": 1,
+  "archivedSourceInputs": 2249,
+  "sourceAudit": {
+    "status": "MATCH",
+    "changed": []
+  },
+  "findings": [
+    "Five group-trie TypeScript narrowing diagnostics repeated by Deno/native-tooling/package-build; package-consumer skipped.",
+    "Rust string assertion expects one closing parenthesis; emitted preserved tree has two.",
+    "New ObservingHost positionWrites trace strongly retains removed mounted nodes; scope recording to host-order scenario while preserving GC oracle."
+  ],
+  "repairPolicy": "Source review then complete fresh gate; no selective rerun or benchmark"
+}

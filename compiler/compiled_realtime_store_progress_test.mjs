@@ -94,8 +94,9 @@ try {
     assert.ok(program && execution, `${name} must be actual compiler-selected closed output`);
     assert.equal(property(property(program, "host"), "key")?.value,
       name === "Marker" ? "frame-marker" : "motion");
-    assert.equal(property(execution, "schemaVersion")?.value, 2);
-    assert.equal(property(execution, "numericKernel")?.type, "ArrowFunctionExpression");
+    assert.equal(property(execution, "schemaVersion")?.value, 3);
+    assert.equal(property(execution, "batchKernel")?.type, "ArrowFunctionExpression");
+    assert.equal(property(execution, "numericKernel"), undefined);
   }
   assert.equal(property(property(registrations.get("Marker"), "closedStoreHostProgram"),
     "schemaVersion")?.value, 5);

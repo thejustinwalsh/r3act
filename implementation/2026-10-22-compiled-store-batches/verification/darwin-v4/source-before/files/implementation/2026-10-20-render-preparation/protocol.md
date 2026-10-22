@@ -1,0 +1,9 @@
+# Repeatable render installed comparison
+
+This unit reuses the 20 October installed async application protocol and bounded collectors with a new proof identity. The application and scene bodies and React comparator remain byte-identical to that unit. The Native controller changes only explicit repeatable capability declarations at publication/task boundaries. Current runtime, examples and fresh installed packages are independently bound; no earlier timing is inherited.
+
+Run `prepare.mjs --proof-dir NEW_CHILD` after the consolidated gate. Then run `verify-browser.mjs --proof-dir CHILD --phase proof` once. Primary reviews the untimed receipt before writing `timing-authorization.json` with status `APPROVED_FOR_ONE_INSTALLED_ASYNC_UX_TIMING_PAIR`, kind `timing` and exact buildProofSha256/inputLockSha256/proofPairSha256. Run phase timing once, preserving failure and all raw intervals. The collector keeps its prior schema names for comparability.
+
+The unchanged interaction has A/B/C provider work, a divergent fork, coordinated DOM/Three reveal, twenty real urgent button clicks, late-result rejection, cancellation and immediate disposal. Identity, accepted state and cleanup assertions remain. Each arm uses a separate installed static graph. Headless Chromium is GPU-disabled, interruptible and bounded to ninety seconds; exact offline synthetic HTTPS replay needs no server or VM. No extra diagnostic or favorable retry is authorized.
+
+Timing is descriptive click dispatch to matching MutationObserver entry and C settlement to matching entry, with timer quantum recorded. It includes delivery and observer/harness costs and excludes paint. It is no CPU, physical-input/presentation, population-tail, cold/memory, network frontier, independent-device or release-budget qualification. Existing historical wins/losses and physical HOLD remain.
