@@ -328,6 +328,8 @@ Deno.test("owned Store data evaluates in one passive batch and retains host iden
     candidate.commitHost();
     assert(candidate.validatePostHost());
     candidate.preparePublication(); candidate.publish(); candidate.runEffects();
+    assertEquals(candidate.validate(), false);
+    assertEquals(candidate.baseVersion + 1, candidate.targetVersion);
     assertStrictEquals(container.children[0], retained);
     assertEquals(retained.props["position-x"], 3);
     assertEquals(renders, 1);
@@ -336,6 +338,8 @@ Deno.test("owned Store data evaluates in one passive batch and retains host iden
     assertEquals(retained.props["position-x"], 5);
     assertEquals(observed["store.owned-data.rows"], 1);
     assertEquals(observed["store.owned-data.batches"], 1);
+    assertEquals(observed["publication.immediate.runs"], 1);
+    assertEquals(observed["publication.deferred-adapters"] ?? 0, 0);
   } finally { root.dispose(); }
 });
 
@@ -378,6 +382,54 @@ Deno.test("empty schema-5 data groups with one host key retain distinct owners",
       assertEquals(node.props["position-x"], 6);
       assertEquals(node.children.length, 0);
     }
+  } finally { root.dispose(); }
+});
+
+Deno.test("ordinary owned-data flush preserves preflight owner order and accepted history", () => {
+  const sourceFile = "owned-store-data/ordered.tsx", revision = "ordered-v1";
+  registerPlan(sourceFile, revision);
+  const clock = createAsyncStore(1, (_old: number, next: number) => next);
+  const make = (name: string) => {
+    const site = `${sourceFile}#component:${name}`;
+    const useSite = `${site}#store:0`;
+    return defineComponent(site, (props: { clock: typeof clock }) =>
+      jsx("output", { key: name, "data-value": useStoreAt(useSite, props.clock) }),
+    { propOnlySites: [], closedStoreHostProgram: {
+      schemaVersion: 1, componentProgramId: site, moduleRevision: revision,
+      storeUseSiteId: useSite, storeProp: "clock",
+      host: { tag: "output", key: name, child: null,
+        props: [["data-value", { kind: "input", index: 0 }]] },
+    }, closedStoreExecution: { schemaVersion: 1, kind: "owned-data",
+      componentProgramId: site, moduleRevision: revision } });
+  };
+  const First = make("First"), Last = make("Last");
+  class OrderedHost extends MemoryVDOMHost {
+    writes: number[] = [];
+    override setProp(node: MemoryNode, name: string, value: unknown,
+      previous?: unknown) {
+      super.setProp(node, name, value, previous);
+      if (name === "data-value") this.writes.push(node.id);
+    }
+  }
+  const host = new OrderedHost(), container = host.createContainer();
+  const counters: Record<string, number> = {};
+  const root = new ComponentStateRoot(host, container, { rootId: "owned-ordered",
+    scheduleCommit() {}, profileCounter: (frame) => Object.assign(counters, frame) });
+  try {
+    root.mount(jsx("section", {}, [jsx(First, { clock }), jsx(Last, { clock })]));
+    const retained = [...container.children[0].children];
+    host.writes.length = 0;
+    clock.dispatch(4);
+    assertEquals(root.flush(), true);
+    assertEquals(host.writes, retained.map((node) => node.id));
+    assertEquals(container.children[0].children.map((node) => node.props["data-value"]),
+      [4, 4]);
+    assertStrictEquals(container.children[0].children[0], retained[0]);
+    assertStrictEquals(container.children[0].children[1], retained[1]);
+    assertEquals(counters["store.owned-data.rows"], 2);
+    assertEquals(counters["store.owned-data.batches"], 1);
+    assertEquals(counters["publication.immediate.runs"], 1);
+    assertEquals(counters["publication.deferred-adapters"] ?? 0, 0);
   } finally { root.dispose(); }
 });
 

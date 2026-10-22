@@ -2,6 +2,8 @@ import { copyRuntimeElement, jsx } from "./jsx_binding_runtime.ts";
 import {
   MemoryVDOMHost,
   VDOMSnapshotRoot,
+  createOwnedScalarStorePropDelta,
+  type MemoryNode,
   type PreparedStorePropDelta,
 } from "./vdom_snapshot_runtime.ts";
 
@@ -25,6 +27,168 @@ const accept = (
     "applied cut lost its host footprint");
   root.publishAccepted();
 };
+
+const owned = (key: string, value: number, owner?: number) => {
+  const region = createOwnedScalarStorePropDelta(owner === undefined
+    ? { key, tag: "mesh", props: [["x", value]], children: [] }
+    : { key, tag: "group", props: [["rotation-y", value]],
+      retainedChildren: true, componentOwner: owner });
+  assert(region, "owned scalar region declined");
+  return region;
+};
+
+Deno.test("owned scalar cut keeps alternating owner order and repeated-key identity", () => {
+  class OrderedHost extends MemoryVDOMHost {
+    writes: string[] = [];
+    override setProp(node: MemoryNode, name: string, value: unknown, previous?: unknown) {
+      if (name === "rotation-y" && value !== 0) {
+        this.writes.push(`${node.id}:${name}:${previous}->${value}`);
+      }
+      super.setProp(node, name, value, previous);
+    }
+  }
+  const host = new OrderedHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  root.commit(jsx("main", {}, [1, 2].map((owner) =>
+    jsx("section", { key: `slot-${owner}` },
+      copyRuntimeElement("group", { key: "motion", "rotation-y": 0,
+        children: jsx("mesh", { key: `child-${owner}`, x: owner }) }, owner)))));
+  const [first, second] = container.children[0].children.map((slot) => slot.children[0]);
+  const children = [first.children[0], second.children[0]];
+  const cut = root.prepareStorePropDelta([
+    owned("motion", 1, 2), owned("motion", 2, 1), owned("motion", 3, 2),
+  ]);
+  assert(cut === null, "duplicate mounted owner was admitted");
+  const ordered = root.prepareStorePropDelta([
+    owned("motion", 2, 2), owned("motion", 1, 1),
+  ]);
+  assert(ordered, "owner-qualified scalar cut declined");
+  const before = JSON.stringify(root.snapshot);
+  root.beginPublication();
+  root.applyStorePropDelta(ordered);
+  assert(JSON.stringify(root.snapshot) === before, "host phase exposed accepted values");
+  assert(root.isStorePropDeltaCurrent(ordered, { afterHost: true }),
+    "owned scalar child or bucket footprint was lost");
+  root.publishAccepted();
+  assert(host.writes.join(",") === [
+    `${second.id}:rotation-y:0->2`, `${first.id}:rotation-y:0->1`,
+  ].join(","), "owner-qualified writes changed order or previous values");
+  assert(first.children[0] === children[0] && second.children[0] === children[1],
+    "owned scalar write replaced a retained child");
+  root.dispose();
+});
+
+Deno.test("owned scalar no-op writes preserve retained resource disposal", () => {
+  class ResourceHost extends MemoryVDOMHost {
+    disposed: MemoryNode[] = [];
+    dispose(node: MemoryNode) { this.disposed.push(node); }
+  }
+  const host = new ResourceHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  root.commit(jsx("main", {}, copyRuntimeElement("group", {
+    key: "motion", "rotation-y": 0,
+    children: jsx("mesh", { key: "resource", x: 1 }),
+  }, 1)));
+  const group = container.children[0].children[0];
+  const resource = group.children[0];
+  const writes = host.writeCount;
+  const cut = root.prepareStorePropDelta([owned("motion", 0, 1)]);
+  assert(cut, "no-op scalar cut declined");
+  accept(root, cut);
+  assert(host.writeCount === writes && group.children[0] === resource,
+    "no-op scalar cut wrote or replaced a resource");
+  assert(host.disposed.length === 0, "retained resource disposed during scalar update");
+  root.dispose();
+  assert(host.disposed.filter((node) => node === resource).length === 1,
+    "retained resource was not disposed exactly once");
+});
+
+Deno.test("mixed owned scalar and text subtree uses general completion", () => {
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  root.commit(jsx("main", {}, [
+    jsx("mesh", { key: "scalar", x: 1 }),
+    jsx("div", { key: "tree" }, jsx("span", { key: "leaf" }, "old")),
+  ]));
+  const scalar = container.children[0].children[0];
+  const text = container.children[0].children[1].children[0].children[0];
+  const cut = root.prepareStorePropDelta([
+    owned("scalar", 2),
+    { key: "tree", tag: "div", props: [],
+      children: [{ kind: "host", key: "leaf", tag: "span" }] },
+    { key: "leaf", tag: "span", props: [],
+      children: [{ kind: "text", text: "new" }] },
+  ]);
+  assert(cut, "mixed scalar/tree cut declined");
+  accept(root, cut);
+  assert(scalar.props.x === 2 && text.text === "new" &&
+    container.children[0].children[0] === scalar,
+  "mixed scalar/tree completion lost a value or host identity");
+  root.dispose();
+});
+
+Deno.test("owned scalar earlier writer retirement prevents the later host write", () => {
+  let root!: VDOMSnapshotRoot<MemoryNode>;
+  class RetiringHost extends MemoryVDOMHost {
+    retire = false;
+    writes: number[] = [];
+    override setProp(node: MemoryNode, name: string, value: unknown, previous?: unknown) {
+      super.setProp(node, name, value, previous);
+      if (this.retire && name === "x") {
+        this.writes.push(node.id);
+        if (this.writes.length === 1) root.dispose();
+      }
+    }
+  }
+  const host = new RetiringHost();
+  const container = host.createContainer();
+  root = new VDOMSnapshotRoot(host, container);
+  root.commit(tree());
+  const cut = root.prepareStorePropDelta([owned("mesh", 2), owned("outline", 2)]);
+  assert(cut, "retirement cut declined");
+  host.retire = true;
+  root.beginPublication();
+  let caught: unknown;
+  try { root.applyStorePropDelta(cut); } catch (error) { caught = error; }
+  assert(caught instanceof Error && host.writes.length === 1,
+    "retirement failed to stop the second owned writer");
+  assert(!root.isStorePropDeltaCurrent(cut), "disposed scalar target stayed current");
+});
+
+Deno.test("owned scalar second writer failure preserves the old accepted image", () => {
+  class FailingHost extends MemoryVDOMHost {
+    fail = false;
+    writes = 0;
+    readonly error = new Error("second owned writer failed");
+    override setProp(node: MemoryNode, name: string, value: unknown, previous?: unknown) {
+      super.setProp(node, name, value, previous);
+      if (this.fail && name === "x" && ++this.writes === 2) throw this.error;
+    }
+  }
+  const host = new FailingHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  root.commit(tree());
+  const before = JSON.stringify(root.snapshot);
+  const cut = root.prepareStorePropDelta([owned("mesh", 2), owned("outline", 2)]);
+  assert(cut, "failing owned scalar cut declined");
+  host.fail = true;
+  root.beginPublication();
+  let caught: unknown;
+  try { root.applyStorePropDelta(cut); } catch (error) { caught = error; }
+  assert(caught === host.error && host.writes === 2,
+    "second owned writer error was masked or reordered");
+  assert(JSON.stringify(root.snapshot) === before,
+    "partial owned scalar writes advanced accepted history");
+  root.failPublication();
+  assert(root.prepareStorePropDelta([owned("mesh", 3)]) === null,
+    "partial owned scalar failure admitted another cut");
+  host.fail = false;
+  root.dispose();
+});
 
 Deno.test("Store prop cut preserves accepted snapshot until publication and patches only keyed leaves", () => {
   const host = new MemoryVDOMHost();

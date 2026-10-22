@@ -4250,31 +4250,35 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         } : {}),
       });
     }
-    const byNode = new Map(targets.map((target) => [target.node, target] as const));
-    const textByNode = new Map(texts.map((target) => [target.node, target] as const));
-    for (const target of targets) {
-      if (!target.children) continue;
-      for (const child of target.children) {
-        if (child.vnode.kind === "element" && !byNode.has(child)) return null;
+    const scalarOnly = allOwnedScalar && texts.length === 0 &&
+      targets.every((target) => !target.children?.length);
+    if (!scalarOnly) {
+      const byNode = new Map(targets.map((target) => [target.node, target] as const));
+      const textByNode = new Map(texts.map((target) => [target.node, target] as const));
+      for (const target of targets) {
+        if (!target.children) continue;
+        for (const child of target.children) {
+          if (child.vnode.kind === "element" && !byNode.has(child)) return null;
+        }
       }
+      const completed = new Map<MountedNode<H>, VElement>();
+      const nextVNode = (target: StorePropDeltaRecord<H>["targets"][number]): VElement => {
+        const existing = completed.get(target.node);
+        if (existing) return existing;
+        const next = target.ownedScalar ? target.next : target.retainedChildren
+          ? cloneMountedElementVNode(target.next, {
+            children: target.retainedChildren.map((child) => child.vnode),
+          })
+          : !target.children ? target.next
+          : cloneMountedElementVNode(target.next, { children: target.children.map((child) =>
+            child.vnode.kind === "text" ? textByNode.get(child)!.next :
+              nextVNode(byNode.get(child)!)) });
+        completed.set(target.node, next);
+        return next;
+      };
+      for (const target of targets) nextVNode(target);
+      for (const target of targets) target.next = completed.get(target.node)!;
     }
-    const completed = new Map<MountedNode<H>, VElement>();
-    const nextVNode = (target: StorePropDeltaRecord<H>["targets"][number]): VElement => {
-      const existing = completed.get(target.node);
-      if (existing) return existing;
-      const next = target.ownedScalar ? target.next : target.retainedChildren
-        ? cloneMountedElementVNode(target.next, {
-          children: target.retainedChildren.map((child) => child.vnode),
-        })
-        : !target.children ? target.next
-        : cloneMountedElementVNode(target.next, { children: target.children.map((child) =>
-          child.vnode.kind === "text" ? textByNode.get(child)!.next :
-            nextVNode(byNode.get(child)!)) });
-      completed.set(target.node, next);
-      return next;
-    };
-    for (const target of targets) nextVNode(target);
-    for (const target of targets) target.next = completed.get(target.node)!;
     for (const target of targets) {
       if (target.children) target.nextChildVNodes = target.next.children;
     }

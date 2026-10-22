@@ -91,6 +91,8 @@ try {
   app.clock.dispatch(() => storeRecord({ phase: 2 }));
   assert.equal(pure.root.flush(), true);
   assert.equal(counters["store.owned-data.rows"], 2);
+  assert.equal(counters["publication.immediate.runs"], 1);
+  assert.equal(counters["publication.deferred-adapters"] ?? 0, 0);
   assert.equal(counters["store.owned-data.batches"], 1);
   assert.equal(counters["store.numeric-kernel.runs"] ?? 0, 0);
   pure.container.children[0].children.forEach((node, index) => assert.equal(node, original[index]));
@@ -115,6 +117,23 @@ try {
   assert.deepEqual(calls, [{ inputStart: 0, rowCount: 1, outputStart: 0, inputs: [3] }]);
   assert.deepEqual(nodes.map(node => node.props["position-x"]), [6, 9, 6]);
   assert.equal(nodes[1].children[0], child);
+  const publicBase = pure.root.publicationVersion;
+  const deferred = pure.root.prepareStores([app.clock]);
+  assert.ok(deferred, "public preparation must still return its deferred adapter");
+  assert.equal(deferred.baseVersion, publicBase);
+  assert.equal(deferred.targetVersion, publicBase + 1);
+  assert.equal(pure.container.children[0].children[0].props["position-x"], 4);
+  assert.equal(deferred.validate(), true);
+  deferred.commitHost();
+  assert.equal(pure.root.publicationVersion, publicBase,
+    "host application must not advance accepted publication early");
+  deferred.publish(); deferred.runEffects();
+  assert.equal(pure.root.publicationVersion, publicBase + 1);
+  assert.equal(pure.container.children[0].children[0], original[0]);
+  assert.equal(original[0].props["position-x"], 6);
+  assert.equal(deferred.validate(), false, "released public facade must stay closed");
+  assert.throws(() => deferred.commitHost());
+  deferred.discard();
   const accepted = mixed.root.publicationVersion;
   fail = true;
   app.clock.dispatch(() => storeRecord({ phase: 4 }));

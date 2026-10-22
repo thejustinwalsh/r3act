@@ -1,9 +1,129 @@
 import {
   canRetireOwnedWorldOwner,
   captureOwnedClosedWorldInputs,
+  createClosedWorldCellCut,
+  validateClosedWorldCellCut,
   OwnerStateWorld,
   retireOwnedWorldOwner,
+  type OwnedClosedWorldInputCell,
 } from "./owner_state_world.ts";
+
+const capturedCell = (
+  world: OwnerStateWorld, owner: number, site: string,
+): OwnedClosedWorldInputCell => {
+  const handle = world.cellHandle(owner, site);
+  if (!handle) throw new Error("Missing cell handle");
+  const source = world.scalarSourceForCell(handle);
+  const version = world.versionForCell(handle);
+  if (!source || version === null) throw new Error("Missing numeric cell");
+  return { handle, source, version, value: source.value };
+};
+
+Deno.test("closed World cut owns handles and rejects forged receivers before callbacks", () => {
+  const world = new OwnerStateWorld();
+  const owner = world.resolveOwner(null, "cut");
+  world.useState(owner, "value", 1);
+  const captured = capturedCell(world, owner, "value");
+  const originalHandle = { ...captured.handle };
+  const row = { ...captured, handle: originalHandle };
+  const cut = createClosedWorldCellCut([row]);
+  if (!cut) throw new Error("World cut declined");
+  Object.defineProperty(originalHandle, "owner", { get() { throw new Error("handle getter"); } });
+  Object.defineProperty(row, "source", { get() { throw new Error("row getter"); } });
+  world.scalarSourceForCell = (() => { throw new Error("public source called"); }) as typeof world.scalarSourceForCell;
+  world.versionForCell = (() => { throw new Error("public version called"); }) as typeof world.versionForCell;
+  assertEquals(validateClosedWorldCellCut(world, cut, "prepared"), true);
+  assertEquals(validateClosedWorldCellCut(world, cut, "after-host"), true);
+  assertEquals(validateClosedWorldCellCut(world, {} as typeof cut, "prepared"), false);
+  let receiverTraps = 0;
+  const proxy = new Proxy(world, { getPrototypeOf() { receiverTraps++; throw new Error("receiver trap"); } });
+  assertEquals(validateClosedWorldCellCut(proxy, cut, "prepared"), false);
+  assertEquals(receiverTraps, 0);
+  let handleTraps = 0;
+  const hostileHandle = new Proxy(captured.handle, {
+    getOwnPropertyDescriptor() { handleTraps++; throw new Error("handle descriptor"); },
+  });
+  assertEquals(createClosedWorldCellCut([{ ...captured, handle: hostileHandle }]), null);
+  assertEquals(handleTraps, 1);
+});
+
+Deno.test("closed World cut rechecks cells after all caller normalization", () => {
+  const world = new OwnerStateWorld();
+  const firstOwner = world.resolveOwner(null, "first");
+  const secondOwner = world.resolveOwner(null, "second");
+  world.useState(firstOwner, "value", 1);
+  world.useState(secondOwner, "value", 2);
+  const first = capturedCell(world, firstOwner, "value");
+  const second = capturedCell(world, secondOwner, "value");
+  let trapCount = 0;
+  const later = new Proxy(second, {
+    getOwnPropertyDescriptor(target, property) {
+      if (property === "handle" && trapCount++ === 0) world.destroyOwner(firstOwner);
+      return Reflect.getOwnPropertyDescriptor(target, property);
+    },
+  });
+  const cut = createClosedWorldCellCut([first, later]);
+  if (!cut) throw new Error("Normalization declined before validation");
+  assertEquals(trapCount, 1);
+  assertEquals(validateClosedWorldCellCut(world, cut, "prepared"), false);
+  const replacement = world.resolveOwner(null, "first");
+  world.useState(replacement, "value", 1);
+  assertEquals(validateClosedWorldCellCut(world, cut, "after-host"), false);
+});
+
+Deno.test("closed World cut observes source, same-version value and newer action rules", () => {
+  const world = new OwnerStateWorld();
+  const owner = world.resolveOwner(null, "value");
+  const [, dispatch] = world.useState(owner, "value", -0);
+  const captured = capturedCell(world, owner, "value");
+  const cut = createClosedWorldCellCut([captured]);
+  if (!cut) throw new Error("World cut declined");
+  assertEquals(validateClosedWorldCellCut(world, cut, "prepared"), true);
+  captured.source.value = 0;
+  assertEquals(validateClosedWorldCellCut(world, cut, "prepared"), false);
+  assertEquals(validateClosedWorldCellCut(world, cut, "after-host"), false);
+  captured.source.value = -0;
+  assertEquals(dispatch(2), true);
+  assertEquals(validateClosedWorldCellCut(world, cut, "prepared"), false);
+  assertEquals(validateClosedWorldCellCut(world, cut, "after-host"), true);
+  const newer = capturedCell(world, owner, "value");
+  const newerCut = createClosedWorldCellCut([newer]);
+  if (!newerCut) throw new Error("Newer World cut declined");
+  Object.defineProperty(newer.source, "value", {
+    configurable: true, get() { throw new Error("source getter"); },
+  });
+  assertEquals(validateClosedWorldCellCut(world, newerCut, "prepared"), false);
+  assertEquals(validateClosedWorldCellCut(world, newerCut, "after-host"), false);
+});
+
+Deno.test("closed World cut declines conflicting duplicate captures", () => {
+  const world = new OwnerStateWorld();
+  const owner = world.resolveOwner(null, "duplicate");
+  world.useState(owner, "value", 3);
+  const cell = capturedCell(world, owner, "value");
+  assertEquals(createClosedWorldCellCut([cell, { ...cell, version: cell.version + 1 }]), null);
+  assertEquals(createClosedWorldCellCut([cell, { ...cell, value: 4 }]), null);
+  const cut = createClosedWorldCellCut([cell, { ...cell }]);
+  if (!cut) throw new Error("Identical duplicate declined");
+  assertEquals(validateClosedWorldCellCut(world, cut, "prepared"), true);
+});
+
+Deno.test("closed World cut preserves NaN and declines lane-backed uncertainty", () => {
+  const world = new OwnerStateWorld();
+  const owner = world.resolveOwner(null, "nan");
+  world.useState(owner, "value", NaN);
+  const nanCut = createClosedWorldCellCut([capturedCell(world, owner, "value")]);
+  if (!nanCut) throw new Error("NaN World cut declined");
+  assertEquals(validateClosedWorldCellCut(world, nanCut, "prepared"), true);
+
+  const laneOwner = world.resolveOwner(null, "lane");
+  const layout = { schemaVersion: 1 as const, slots: [{ siteId: "value", slot: 0 }] };
+  world.useState(laneOwner, "value", 1, layout);
+  const laneCut = createClosedWorldCellCut([capturedCell(world, laneOwner, "value")]);
+  if (!laneCut) throw new Error("Lane cut normalization declined");
+  assertEquals(validateClosedWorldCellCut(world, laneCut, "prepared"), false);
+  assertEquals(validateClosedWorldCellCut(world, laneCut, "after-host"), false);
+});
 
 Deno.test("owned World retirement bypasses subclass recursion while public destruction observes it", () => {
   const observed: number[] = [];

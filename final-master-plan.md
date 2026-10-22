@@ -1,5 +1,15 @@
 # Final master plan: classify, measure, then choose
 
+## Ordinary scalar execution — 22 October 2026
+
+Root reuses ordered passive Store rows, World validates one copied scalar cut, VDOM skips generic completion for owned scalar deltas, and immediate flushes drive one publication core without a deferred facade. Conservative local/lane, mixed and legacy routes preserve their earlier checks. No new evaluator, registry, host writer or physical layout is added; cold/memory costs remain unmeasured.
+
+Corrected Darwin-v3 passes73/73 phases,1176 runtime tests,101 Rust tests and all53 compiled fixtures, with1784 exact runner input hashes. The launcher failure and v2 syntax/three compiled scope failures remain preserved. Fresh installed four-arm proof verifies matching values/pixels/identities,257 data rows/one batch/one immediate run per frame, zero deferred adapters and owner renders, and512 exactly-once resource disposals per arm. Both browser phases match all12378 source checks and close cleanly.
+
+The sole fixed-order12/60 comparison still loses: Native update median/p95 **3.40/3.80ms** versus declarative React Compiler/R3F **0.90/1.00ms**; through-draw **5.90/6.60ms** versus **4.00/4.70ms**. R3F useFrame observes3.10/3.30 and5.80/6.10ms; imperative0.10/0.20 and3.85/5.40ms. This descriptive episode gives no causal old/new saving, phase attribution, presentation, matched cold/memory or independent-device qualification. No favorable repeat occurs.
+
+Correctness is PASS; realtime parity remains **FAIL**. [Results and failures](implementation/2026-10-22-ordinary-scalar-execution/results.md), [primary review](implementation/2026-10-22-ordinary-scalar-execution/source-review.md) and [Astra's exact follow-up orchestration](implementation/2026-10-22-astra-gap-followup/orchestration.md) define the boundary. The next candidate encloses passive capture, existing evaluation and one owned scalar output producer; canonical phase batching needs a completely passive interval. Compiler DAG prelowering/CSE is a separate capability. Full-plan HMR, broader structural/reveal, lifecycle/cold/memory and independent-device obligations remain open. Historical narrow wins, dense FAIL, exhausted RecordingA/physical HOLD and zero-participant/no-maintenance-advantage limits remain.
+
 ## Data-owned Store execution — 22 October 2026
 
 Compiler-selected closed Store owners now emit normalized data execution instead of callback kernels. One passive operation captures canonical World inputs and distinct Store/path projections while retaining independent reader history. Legacy callbacks and conservative fallback remain. Specialized final publication uses canonical internal bookkeeping, exact old-cut acknowledgement and newer-action preservation; resource retirement shares existing destruction with a finite zero-lane eligibility check. No identity/version registry or physical redesign is added. Recursive evaluation loses generated CSE/inlining and its cold/memory costs remain unmeasured.

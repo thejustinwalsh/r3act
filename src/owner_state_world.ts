@@ -413,6 +413,37 @@ export type OwnedClosedWorldInputRow = Readonly<{
   cells: readonly OwnedClosedWorldInputCell[];
 }>;
 
+type ClosedWorldCell = Readonly<{
+  owner: OwnerId;
+  site: StateSiteId;
+  identity: object;
+  source: ScalarSource;
+  version: number;
+  value: number;
+}>;
+
+const closedWorldCellCutKey = Symbol("closed-world-cell-cut");
+class PrivateClosedWorldCellCut {
+  readonly #cells: readonly ClosedWorldCell[];
+
+  constructor(key: symbol, cells: readonly ClosedWorldCell[]) {
+    if (key !== closedWorldCellCutKey) throw new TypeError("Invalid World cell cut");
+    this.#cells = cells;
+    Object.setPrototypeOf(this, null);
+    Object.freeze(this);
+  }
+
+  static cells(candidate: unknown): readonly ClosedWorldCell[] | null {
+    return typeof candidate === "object" && candidate !== null &&
+        #cells in candidate
+      ? candidate.#cells
+      : null;
+  }
+}
+
+/** Candidate-local captured cells, privately copied for one publication cut. */
+export type ClosedWorldCellCut = PrivateClosedWorldCellCut;
+
 type OwnerRecord = {
   id: OwnerId;
   parent: OwnerId | null;
@@ -617,6 +648,35 @@ export class OwnerStateWorld {
       if (error instanceof TypeError) return null;
       throw error;
     }
+  }
+
+  static _validateClosedCellCut(
+    key: symbol,
+    world: OwnerStateWorld,
+    cut: ClosedWorldCellCut,
+    phase: "prepared" | "after-host",
+  ): boolean {
+    if (key !== closedWorldCellCutKey ||
+      (phase !== "prepared" && phase !== "after-host") ||
+      typeof world !== "object" || world === null || !(#owners in world)) return false;
+    const rows = PrivateClosedWorldCellCut.cells(cut);
+    if (!rows) return false;
+    for (const row of rows) {
+      if (!world.#owners.has(row.owner) || world.#stagedOwners.has(row.owner)) return false;
+      const cell = world.#resolveCellIdentity(row.identity, row.owner, row.site);
+      if (!cell || world.#stateByOwner.get(row.owner)?.get(row.site) !== cell ||
+        cell.source !== row.source || cell.lane) return false;
+      const valueDescriptor = Object.getOwnPropertyDescriptor(cell, "value");
+      const value = valueDescriptor && "value" in valueDescriptor
+        ? valueDescriptor.value
+        : undefined;
+      const sourceValue = canonicalScalarSourceValue(row.source);
+      if (typeof value !== "number" || sourceValue === null ||
+        !Object.is(value, sourceValue) || cell.version < row.version ||
+        (phase === "prepared" && cell.version !== row.version) ||
+        (cell.version === row.version && !Object.is(value, row.value))) return false;
+    }
+    return true;
   }
 
   #layoutRecord(owner: OwnerId, layout: CompiledStateLayout) {
@@ -2530,6 +2590,7 @@ const closedWorldCaptureDescriptors = new Map(
   ]),
 );
 const canonicalCaptureOwnedClosedInputs = OwnerStateWorld._captureOwnedClosedInputs;
+const canonicalValidateClosedCellCut = OwnerStateWorld._validateClosedCellCut;
 const canonicalCanRetireOwnedOwner = OwnerStateWorld._canRetireOwnedOwner;
 const canonicalRetireOwnedOwner = OwnerStateWorld._retireOwnedOwner;
 
@@ -2576,4 +2637,75 @@ export function captureOwnedClosedWorldInputs(
     if (error instanceof TypeError) return null;
     throw error;
   }
+}
+
+/** Copy runtime captures into one opaque cut before any private validation. */
+export function createClosedWorldCellCut(
+  rows: readonly OwnedClosedWorldInputCell[],
+): ClosedWorldCellCut | null {
+  try {
+    const length = Object.getOwnPropertyDescriptor(rows, "length")?.value;
+    if (!Number.isSafeInteger(length) || length < 0 || length > 65536) return null;
+    const copied: ClosedWorldCell[] = [];
+    const byOwner = new Map<OwnerId, Map<StateSiteId, ClosedWorldCell>>();
+    for (let index = 0; index < length; index++) {
+      const rowDescriptor = Object.getOwnPropertyDescriptor(rows, String(index));
+      if (!rowDescriptor || !("value" in rowDescriptor) || !rowDescriptor.value) return null;
+      const row = rowDescriptor.value;
+      const handleDescriptor = Object.getOwnPropertyDescriptor(row, "handle");
+      const sourceDescriptor = Object.getOwnPropertyDescriptor(row, "source");
+      const versionDescriptor = Object.getOwnPropertyDescriptor(row, "version");
+      const valueDescriptor = Object.getOwnPropertyDescriptor(row, "value");
+      if (!handleDescriptor || !("value" in handleDescriptor) ||
+        !sourceDescriptor || !("value" in sourceDescriptor) ||
+        !versionDescriptor || !("value" in versionDescriptor) ||
+        !valueDescriptor || !("value" in valueDescriptor)) return null;
+      const handle = handleDescriptor.value;
+      if ((typeof handle !== "object" && typeof handle !== "function") ||
+        handle === null) return null;
+      const ownerDescriptor = Object.getOwnPropertyDescriptor(handle, "owner");
+      const siteDescriptor = Object.getOwnPropertyDescriptor(handle, "site");
+      const identityDescriptor = Object.getOwnPropertyDescriptor(handle, "cellIdentity");
+      if (!ownerDescriptor || !("value" in ownerDescriptor) ||
+        !siteDescriptor || !("value" in siteDescriptor) ||
+        !identityDescriptor || !("value" in identityDescriptor)) return null;
+      const owner = ownerDescriptor.value;
+      const site = siteDescriptor.value;
+      const identity = identityDescriptor.value;
+      const source = sourceDescriptor.value;
+      const version = versionDescriptor.value;
+      const value = valueDescriptor.value;
+      if (!Number.isSafeInteger(owner) || typeof site !== "string" || !site ||
+        (typeof identity !== "object" && typeof identity !== "function") ||
+        identity === null || typeof source !== "object" || source === null ||
+        !Number.isSafeInteger(version) || version < 0 || typeof value !== "number") return null;
+      const normalized: ClosedWorldCell = Object.freeze({
+        owner, site, identity, source, version, value,
+      });
+      let sites = byOwner.get(owner);
+      if (!sites) byOwner.set(owner, sites = new Map());
+      const previous = sites.get(site);
+      if (previous) {
+        if (previous.identity !== identity || previous.source !== source ||
+          previous.version !== version || !Object.is(previous.value, value)) return null;
+      } else {
+        sites.set(site, normalized);
+        copied.push(normalized);
+      }
+    }
+    return new PrivateClosedWorldCellCut(closedWorldCellCutKey, Object.freeze(copied));
+  } catch {
+    return null;
+  }
+}
+
+/** Validate one captured World cut without consulting public World methods. */
+export function validateClosedWorldCellCut(
+  world: OwnerStateWorld,
+  cut: ClosedWorldCellCut,
+  phase: "prepared" | "after-host",
+): boolean {
+  return canonicalValidateClosedCellCut.call(
+    OwnerStateWorld, closedWorldCellCutKey, world, cut, phase,
+  );
 }
