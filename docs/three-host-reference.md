@@ -72,9 +72,25 @@ For grouped DOM/Three work, all members finish public validation before the grou
 
 ## Frame ownership
 
-The application owns RAF and draw ordering. The root batches through a microtask by default; `rootOptions.scheduleCommit` can defer scene publication to the application's frame callback. A synchronous `root.flush()` can still defer under a publication barrier, reentry or a busy host domain. Its boolean reports whether work published, not whether every requested frame input was consumed.
+`createNativeFrameLoop` from `@r3act/core` owns one RAF callback and coordinates explicitly selected root/Store participants through the existing publication queue. Components still declare their scene props with JSX and `use(clock)`. The controller starts paused:
 
-The [Three workbench](../src/browser/native_three_host.tsx) registers motion setters with owner lifetimes and uses one callback to advance elapsed-time motion, flush the scene and draw. A declarative empty Group carries the requested frame epoch through a scalar prop; the application checks the host epoch before drawing that update. Deferred work skips the draw and retries on the next callback. DOM roots keep their own cadence. This finite example has no pending resource transaction or arbitrary reentrant writer; an epoch alone does not certify completion of unrelated pending work.
+```ts
+const loop = createNativeFrameLoop({
+  roots: [{ root: sceneRoot, stores: [clock] }],
+  update({ deltaMs }) {
+    clock.dispatch(frame => storeRecord({ phase: frame.phase + deltaMs * .001 }));
+  },
+  draw() { renderer.render(scene, camera); },
+});
+loop.start();
+// On application teardown, dispose the loop before its roots and renderer.
+```
+
+`update` runs once for a new frame. The selected Store readers must qualify for scoped publication; opaque readers decline instead of replaying unknown component bodies. `draw` runs after every declared group member accepts. An unrelated pending health resource need not block an eligible clock group. A delayed group waits without accumulating updates; its completion is checked against participating roots' current publication versions before a later draw. Frame timing describes the requested update, not a guarantee that external Store dispatch stopped or that all pending root work was consumed. An intervening commit can require fresh preparation of the selected group.
+
+`stop()` cancels the owned callback and pending work. `dispose()` additionally detaches the controller; it does not dispose caller-owned roots, Stores, renderers or GPU resources. Participant retirement disposes the controller. Update, scheduler, publication and draw errors stop automatic scheduling; a draw error occurs after publication and cannot roll accepted state back. Failed publications stay latched: later `advance()` returns the failure and `start()` throws its error. Failed partial host writes retain the existing quarantine rule; recover by remounting the damaged root and creating a new controller. Reentrant advancement is rejected. `start()` resets elapsed timing; the first update has zero delta, later deltas are clamped to 50 ms by default. Manual `advance(timeMs)` uses the same publication/draw path without browser globals; custom RAF request/cancel functions must be supplied together.
+
+The [Three workbench](../src/browser/native_three_host.tsx) uses this controller, with ordinary scene scheduling for Studio controls and one explicit scene-clock group for motion. Its declarative epoch marker is observable diagnostics, not draw readiness authority. Existing `rootOptions.scheduleCommit` and `root.flush()` remain available for application scheduling; flush's boolean reports whether work published, not whether a particular frame input was consumed. A frame controller promises managed publication order, not a hard deadline, GPU presentation or cross-renderer visual atomicity.
 
 DOM and canvas may consume shared state on different schedules. Use a declared publication group when the application requires outputs to advance together; sharing a Store does not automatically impose a draw barrier. Cancellation and disposal must release frame callbacks and registered setters as well as host resources.
 

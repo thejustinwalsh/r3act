@@ -1,0 +1,52 @@
+(node:96951) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: grouped host-time publication failed: {
+  error: Error: Native root candidate is stale
+      at commitHostInternal (/Volumes/Depot/Developer/r3act/src/component_state_runtime.ts:4996:15)
+      at Object.commitAdmitted (/Volumes/Depot/Developer/r3act/src/component_state_runtime.ts:5031:29)
+      at commitAdmittedNativeCandidate (/Volumes/Depot/Developer/r3act/src/component_state_runtime.ts:297:11)
+      at Object.commit (/Volumes/Depot/Developer/r3act/src/native_root_work_queue.ts:526:49)
+      at RootWorkQueue.#commitReady (/Volumes/Depot/Developer/r3act/src/root_work_queue.ts:645:22)
+      at RootWorkQueue.#drain (/Volumes/Depot/Developer/r3act/src/root_work_queue.ts:470:59)
+      at RootWorkQueue.enqueue (/Volumes/Depot/Developer/r3act/src/root_work_queue.ts:289:16)
+      at <anonymous> (/Volumes/Depot/Developer/r3act/src/native_root_work_queue.ts:326:34)
+      at NativeRootWorkQueue.#invoke (/Volumes/Depot/Developer/r3act/src/native_root_work_queue.ts:763:14)
+      at NativeRootWorkQueue.#enqueuePrepared (/Volumes/Depot/Developer/r3act/src/native_root_work_queue.ts:323:30),
+  publication: {
+    status: 'failed',
+    transitionId: 'native-frame:2',
+    roots: [
+      'frame-dom-069c6b75-5020-49a5-ab20-28bf96006905',
+      'frame-three-35199640-5bf3-4963-ba41-fda510df1ce3'
+    ],
+    reason: 'Grouped host commit failed; roots require remount',
+    error: Error: Native root candidate is stale
+        at commitHostInternal (/Volumes/Depot/Developer/r3act/src/component_state_runtime.ts:4996:15)
+        at Object.commitAdmitted (/Volumes/Depot/Developer/r3act/src/component_state_runtime.ts:5031:29)
+        at commitAdmittedNativeCandidate (/Volumes/Depot/Developer/r3act/src/component_state_runtime.ts:297:11)
+        at Object.commit (/Volumes/Depot/Developer/r3act/src/native_root_work_queue.ts:526:49)
+        at RootWorkQueue.#commitReady (/Volumes/Depot/Developer/r3act/src/root_work_queue.ts:645:22)
+        at RootWorkQueue.#drain (/Volumes/Depot/Developer/r3act/src/root_work_queue.ts:470:59)
+        at RootWorkQueue.enqueue (/Volumes/Depot/Developer/r3act/src/root_work_queue.ts:289:16)
+        at <anonymous> (/Volumes/Depot/Developer/r3act/src/native_root_work_queue.ts:326:34)
+        at NativeRootWorkQueue.#invoke (/Volumes/Depot/Developer/r3act/src/native_root_work_queue.ts:763:14)
+        at NativeRootWorkQueue.#enqueuePrepared (/Volumes/Depot/Developer/r3act/src/native_root_work_queue.ts:323:30)
+  }
+}
+
+'failed' !== 'drawn'
+
+    at file:///Volumes/Depot/Developer/r3act/compiler/compiled_native_frame_publication_test.mjs:240:10 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 'failed',
+  expected: 'drawn',
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.18.0

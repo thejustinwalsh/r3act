@@ -1,0 +1,5 @@
+# Packet A Darwin-v1 fixture repair
+
+The preserved first full Darwin gate failed one of 107 Rust tests: `store_numeric_kernel::tests::keeps_grouping_signed_zero_overflow_and_nonshared_expressions` at `src/store_numeric_kernel.rs:293`. The [raw cargo log](verification/darwin-v1/logs/cargo-test.log) shows the emitted declaration `$r3actDag7 = (($r3actDag2 | 0));` and `rowOutput[4] = $r3actDag7;`. The old assertion required `" | 0);"`, which assumes one closing parenthesis before the semicolon; the compiler preserves two grouping parentheses. All other 106 Rust tests passed in that gate. Other Darwin-v1 failures belong to separate B/C repairs.
+
+The fixture now locates the declaration containing the bitwise `| 0` coercion and asserts that numeric output slot 4 is assigned from that same declaration. It retains the separate multiplication, signed-zero and subtraction-grouping checks. No emitter, verifier or runtime source changed. This is a fixture-only assertion repair; it does not turn Darwin-v1 into a pass or qualify performance. No tests/builds/benchmarks were run for this repair; Luna's next complete reviewed-source gate is authoritative.

@@ -46,6 +46,10 @@ export type {
   NativeRootWorkHandle,
   NativeStoreDependencyLease,
 } from "./native_root_work_queue.ts";
+export { createNativeFrameLoop } from "./native_frame_loop.ts";
+export type {
+  NativeFrameTime, NativeFrameResult, NativeFrameLoopOptions, NativeFrameLoop,
+} from "./native_frame_loop.ts";
 export { createTaskExecution } from "./native_task_execution.ts";
 export { NativeTaskTransitionQueue } from "./native_task_transition.ts";
 export type {

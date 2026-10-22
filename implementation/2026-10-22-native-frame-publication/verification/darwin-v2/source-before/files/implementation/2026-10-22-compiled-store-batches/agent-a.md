@@ -1,0 +1,13 @@
+# Packet A: compiler and finite batch proof
+
+Replaced mechanism: emitted schema-2 scalar `numericKernel` and its per-owner input/output calling convention for newly compiled closed Store leaves. Legacy execution-schema 1/2 and range-schema 1 remain supported by the runtime. The new emitter produces execution-schema 3 with one `batchKernel`, a Store-only pre-loop DAG section, a bounded row loop and full numeric prop indices. Host schema 3/5/7 remains a separate namespace.
+
+The compiler-only `lower_scalar_buffers` entry and `ScalarBuffers` scanner variant had no production caller after this emitter change, so they were removed. Their nested CSE and structural/input-boundary regressions now exercise active batch lowering. Runtime schema-2 scalar proof and hand-authored compatibility stay in place.
+
+Invariant authority: normalized `ClosedStoreHostProgram` supplies exact arithmetic trees, flattened Store paths, local state sites and prop positions. The batch proof is a frozen, key-gated private-class capability. The callable is held in a private field and reached through the captured canonical executor. Forged structural objects, prototype lookalikes and Proxy wrappers cannot execute it. Producer-owned input and final output arrays remain Packet B's authority.
+
+Required semantics: exact numeric expression grouping, signed zero, bitwise coercion, finite final outputs after possibly nonfinite intermediates, complete exactly-once writes, row start/bound/step, no outside reads/calls/mutation/output reads or control-flow exits. Source, token, node, depth, local, slot and runtime-row bounds apply. Unsupported source declines to existing interpretation before host publication. Runtime batch cap is 4096 rows per call.
+
+Measured budget: unknown. This packet alone does not remove the producer's per-owner gather or scratch transfer; the integrated A/B/C slice must delete those together before evaluation. Falsifiers: forged proof executes, arithmetic tree differs, required numeric slot is skipped or reordered, a batch source with side effects passes, a finite final expression is declined solely for nonfinite intermediate arithmetic, or minified/rebundled actual delivery fails proof.
+
+Source review complete for Packet A; tests and builds have not been run. Luna handoff after primary integration: the consolidated `scripts/verify_native_platform.mjs` Darwin gate must include `src/closed_store_batch_kernel_proof_test.ts`, Rust tests in `compiler/oxc-spike/src/store_numeric_kernel.rs` and `numeric_expression_dag.rs`, and the actual compiled schema-3 fixture. The installed baseline/minified/rebundled CSP proof must confirm verified invocation rather than only emitted syntax.

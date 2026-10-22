@@ -1,0 +1,27 @@
+# Explicit compiled-source watch ownership and HMR delivery
+
+Base main3dd95711, MIT. Previous goal turn was progress: integrated bound scalar source, correctness/installed proof and sole negative parity result are checkpointed. This unit addresses master units3/9 HMR delivery. Primary reread AGENTS/current checkpoint, semantic contracts/backlog/source basis and historical HMR failure; the complete master guide was read earlier in this conversation. RecordingA remains exhausted/physical HOLD. No further cache/interpreter or renderer performance change is selected.
+
+## Contract and source basis
+
+Replace implicit reliance on project-root crawling for native source HMR with explicit input-file registration at the compiler transform boundary, using Vite's existing addWatchFile authority. Existing transform registers relative helper/runtime dependencies but not its accepted native source itself. Vite8.3.1 normally watches root but omits it in bundled dev; module/watch association is also request-dependent. This is an explicit compiler dependency contract, not attribution for the old three-directory omission. Do not add a speculative watch root, a custom filesystem watcher or a parallel revision registry.
+
+Only in-project actual native candidates register their own clean absolute source path, before compile so failed edits can recover. Non-native and rejected/out-of-root sources retain their existing behavior. Keep exact module revision/instance authority, syntax-error old-view retention, imported-helper invalidation, superseded-edit protection, native/React boundaries, old owner/task/subscription/resource retirement and conservative full reload. Runtime/store/VDOM/Three execution and arithmetic are unchanged.
+
+HMR readiness means an actual native input has been requested and compiled, then its exact file belongs to Vite's live watcher before any browser/source mutation. The test launcher primes that real transform through server.transformRequest, not watcher.add or a fake compilation. Capture effective root/bundledDev/watch options, bounded watched-directory names/errors and transformation outcome; enforce polling/FSEvents/archive exclusions and exact source membership with a bounded settling wait. A ready event alone does not prove loaded-source membership. This sequencing is not a claim that the old failure was understood or repaired.
+
+## Ownership and implementation
+
+Sol A medium owns only compiler/vite_native_module.ts and compiler/native_hmr_revision_test.mjs, plus agent-a.md. Register explicit own input at the native compiler boundary, author actual transform coverage for native/query/ordinary/outside/error-repair cases without weakening existing tests. No new subscription/index/registry, no Vite internals monkeypatch or runtime changes. No tests/builds/browser/server/bench/git.
+
+Sol B medium owns only this unit's serve-workbench.mjs, verify-three.mjs, run-proof.mjs and agent-b.md. Copy/adapt historical server launcher and full scripts/verify_native_three_host.mjs into the new unit, preserve prior evidence/original source, all assertions and cleanup. Add real transform priming then live source membership and bounded state capture. Browser explicitly headless/GPU/bounded/interruptible, no focus, captures lifecycle frame/interaction/keyed/resources/HMR/page retirement/new realm/remount/reduced-motion/disposal. Source patch is restored byte-exactly in all exits. Owned isolated Portless HTTPS proxy/alias/server, task-local TLS, no hosts/trust/services/global proxy modification, no VM. Automation must own PIDs/routes, capture cleanup and free listeners, signal/timeout kills only owned groups. Do not run it; hand exact commands to Luna after primary review. No source change during a frozen proof except the controlled source edit with archived/restored bytes.
+
+Primary owns this design/source-review/protocol, gate inclusion if needed, reviewed integration and maintained docs/checkpoint/evidence. Agents run no tests. Luna remains idle until combined source review. No changes to original workload or historic launchers/manifests. New copies preserve their source hashes.
+
+## Boundary and falsifiers
+
+One consolidated frozen Darwin correctness gate (same Node24.18.0/Rust1.97.1/pnpm11.25/Deno2.9.7; frozen Deno;1200sec) includes the existing actual native HMR plugin test and all runtime/compiled/package/lifetime checks. Then one bounded actual workbench lifecycle proof through task-owned Portless HTTPS, using process escalation necessary on this Mac. Preserve failures; repair/retry only after a concrete reviewed source change, no server/diagnostic carousel.
+
+Require exact source membership after actual transform, source-change event, matching old revision/instance invalidation then full reload, old managed lifetime teardown and new realm/resource remount, final source restoration and zero owned process/route/listener leaks. Missing readiness/events, stale owners/plans/tasks/subscriptions/resources, fake manual reload, lost syntax-error protection or leaked shared services fail delivery. No loosening a guard to obtain PASS.
+
+No application timing follows: only compiler development input-watch registration and test harness change, so the previous exact runtime comparison remains7.35/8.10ms Native update versus React0.80/0.90. No HMR latency/speed/cold/memory/platform population claim is selected. Full realtime, broader structure/reveal, lifecycle/independent-device and maintenance obligations remain open.

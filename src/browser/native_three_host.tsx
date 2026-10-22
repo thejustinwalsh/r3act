@@ -16,6 +16,7 @@ import {
 } from "../three_host.ts";
 import type { ThreeHandle, ThreeParent } from "../three_host.ts";
 import type { StoreSource } from "../native_runtime_api.ts";
+import { createNativeFrameLoop, type NativeFrameLoop } from "../native_frame_loop.ts";
 
 declare global {
   interface ImportMeta {
@@ -113,11 +114,9 @@ let phasePropWrites = 0;
 let allHostPropWrites = 0;
 let pointerEvents = 0;
 let nearestPointerDistance = Number.POSITIVE_INFINITY;
-let frameId = 0;
-let lastFrameTime: number | null = null;
+let frameLoop: NativeFrameLoop | null = null;
 let requestedFrameEpoch = 0;
 let drawnFrameEpoch = 0;
-let deferredFrameCount = 0;
 const frameMarkerName = "accepted-frame";
 let resizeObserver: ResizeObserver | null = null;
 let pointerListener: ((event: PointerEvent) => void) | null = null;
@@ -527,8 +526,12 @@ const updateCanvasSize = (element: HTMLElement) => {
 const dispose = () => {
   if (appDisposed) return;
   appDisposed = true;
-  cancelAnimationFrame(frameId);
-  frameId = 0;
+  try {
+    frameLoop?.dispose();
+  } catch (error) {
+    console.error("Native frame loop cleanup failed", error);
+  }
+  frameLoop = null;
   resizeObserver?.disconnect();
   resizeObserver = null;
   if (pointerListener) {
@@ -636,12 +639,12 @@ const start = () => {
   const sharedWorld = world;
   const host = createInstrumentedHost();
   threeHost = host;
-  sceneRoot = createNativeRoot<ThreeHandle, ThreeParent>(host, scene, {
+  const frameSceneRoot = createNativeRoot<ThreeHandle, ThreeParent>(host, scene, {
     world: sharedWorld,
     rootId: rootNames[0],
-    scheduleCommit() {},
   });
-  sceneRoot.mount(<SceneRoot store={studio} clock={frameClock} />);
+  sceneRoot = frameSceneRoot;
+  frameSceneRoot.mount(<SceneRoot store={studio} clock={frameClock} />);
   hudRoot = createDOMRoot(hudMount, {
     world: sharedWorld,
     rootId: rootNames[1],
@@ -704,15 +707,13 @@ const start = () => {
   window.addEventListener("pagehide", pagehideListener, { once: true });
 
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-  const draw = (time: number) => {
-    frameId = 0;
-    if (appDisposed || !renderer || !scene || !camera) return;
-    try {
-      const elapsed = lastFrameTime === null ? 0 :
-        Math.min(50, Math.max(0, time - lastFrameTime));
-      lastFrameTime = time;
-      if (studio.getState().playing && !reducedMotion.matches && elapsed > 0) {
-        const delta = elapsed * 0.00072;
+  frameLoop = createNativeFrameLoop({
+    roots: [{ root: frameSceneRoot, stores: [frameClock] }],
+    update: ({ deltaMs }) => {
+      if (appDisposed) return;
+      frameSceneRoot.flush();
+      if (studio.getState().playing && !reducedMotion.matches && deltaMs > 0) {
+        const delta = deltaMs * 0.00072;
         const epoch = requestedFrameEpoch + 1;
         frameClock.dispatch((frame) => storeRecord({
           phase: (frame.phase + delta) % (Math.PI * 200),
@@ -720,23 +721,19 @@ const start = () => {
         }));
         requestedFrameEpoch = epoch;
       }
-      sceneRoot?.flush();
-      const accepted = scene.getObjectByName(frameMarkerName)?.position.x;
-      if (accepted === requestedFrameEpoch) {
-        renderer.render(scene, camera);
-        rendererFrames++;
-        drawnFrameEpoch = requestedFrameEpoch;
-      } else {
-        deferredFrameCount++;
-      }
-    } catch (error) {
+    },
+    draw: () => {
+      if (appDisposed || !renderer || !scene || !camera) return;
+      renderer.render(scene, camera);
+      rendererFrames++;
+      drawnFrameEpoch = requestedFrameEpoch;
+    },
+    onError: (error) => {
       console.error("Native Three frame failed", error);
       dispose();
-      return;
-    }
-    if (!appDisposed) frameId = requestAnimationFrame(draw);
-  };
-  frameId = requestAnimationFrame(draw);
+    },
+  });
+  frameLoop.start();
   const mountedMotionGroups = () => scene?.getObjectByName("kinetic-study")
     ?.children.filter((object) => object.name.startsWith("motion:")) ?? [];
   window.__nativeThreeDiagnostics = {
@@ -780,7 +777,6 @@ const start = () => {
       requestedFrameEpoch,
       drawnFrameEpoch,
       hostFrameEpoch: scene?.getObjectByName(frameMarkerName)?.position.x ?? null,
-      deferredFrameCount,
       activePhaseSetters: 0,
       frameClock: frameClock.diagnostics(),
       phasePropWrites,

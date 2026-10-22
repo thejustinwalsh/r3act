@@ -288,7 +288,7 @@ export const admitPreparedNativeGroup = <H, Parent>(
   groupPublicationReceipts.get(candidate)?.preHostCurrent() === true
 );
 
-/** Apply one already-admitted group member without repeating public preflight. */
+/** Apply one already-admitted group member with live continuation checks. */
 export const commitAdmittedNativeCandidate = <H, Parent>(
   candidate: NativeRootCandidate<H, Parent>,
 ): void => {
@@ -644,6 +644,7 @@ type CandidateLifecycleSpec<H, Parent> = {
   referencesCompiledSource?: (sourceFile: string) => boolean;
   validatePrepared(): boolean;
   validatePreparedPrivate(): boolean;
+  validateAdmittedContinuation?(): boolean;
   validatePostHost(): boolean;
   finalGroupCurrent(): boolean;
   commitHost(): void;
@@ -2453,7 +2454,7 @@ export class ComponentStateRoot<H, Parent = H> {
   prepareStores(
     selected: readonly AnyAsyncStore[], publicationLease?: () => void,
   ): NativeRootCandidate<H, Parent> | null {
-    return this.#prepareClosedStoreCandidate(selected, false, publicationLease);
+    return this.#prepareClosedStoreCandidate(selected, false, publicationLease, true);
   }
 
   /** Prepare the selected closed resource consumers as one root publication. */
@@ -4369,9 +4370,10 @@ export class ComponentStateRoot<H, Parent = H> {
   #prepareClosedStoreCandidate(
     selected: readonly AnyAsyncStore[], requireOutputChange: boolean,
     publicationLease?: () => void,
+    groupContinuation = false,
   ): NativeRootCandidate<H, Parent> | null {
     return this.#prepareClosedInputCandidate([], selected, requireOutputChange,
-      () => true, publicationLease);
+      () => true, publicationLease, [], new Set(), [], false, groupContinuation);
   }
 
   #prepareInternalClosedInputs(
@@ -4397,6 +4399,7 @@ export class ComponentStateRoot<H, Parent = H> {
     acceptedResources?: ReadonlySet<AsyncResource<any>>,
     acceptedCollectionFootprint?: readonly KeyedCollection<any>[],
     internalCellCapture?: false,
+    groupContinuation?: boolean,
   ): NativeRootCandidate<H, Parent> | null;
   #prepareClosedInputCandidate(
     cells: readonly StateCellHandle[], selected: readonly AnyAsyncStore[],
@@ -4406,6 +4409,7 @@ export class ComponentStateRoot<H, Parent = H> {
     acceptedResources: ReadonlySet<AsyncResource<any>>,
     acceptedCollectionFootprint: readonly KeyedCollection<any>[],
     internalCellCapture: true,
+    groupContinuation?: false,
   ): NativeRootCandidate<H, Parent> | CandidateLifecycleCore | null;
   #prepareClosedInputCandidate(
     cells: readonly StateCellHandle[], selected: readonly AnyAsyncStore[],
@@ -4416,6 +4420,7 @@ export class ComponentStateRoot<H, Parent = H> {
     acceptedResources: ReadonlySet<AsyncResource<any>> = new Set(),
     acceptedCollectionFootprint: readonly KeyedCollection<any>[] = [],
     internalCellCapture = false,
+    groupContinuation = false,
   ): NativeRootCandidate<H, Parent> | CandidateLifecycleCore | null {
     this.#assertActive();
     this.#assertNoPublicationBarrier("prepare closed inputs");
@@ -4445,6 +4450,7 @@ export class ComponentStateRoot<H, Parent = H> {
     let privateCellCut: ClosedWorldCellCut | null = null;
     let cellFootprint: RetainedCellWrite[] = [];
     let ownedCellCut = false;
+    let ownedStoreOnly = false;
     let ownedScalarPhases: import("./vdom_snapshot_runtime.ts").OwnedScalarPhases | null = null;
     try {
       if (selected.length || mixedWrites.length) {
@@ -4489,11 +4495,13 @@ export class ComponentStateRoot<H, Parent = H> {
         import("./vdom_snapshot_runtime.ts").OwnedScalarStoreRegion):
         region is import("./vdom_snapshot_runtime.ts").OwnedScalarStoreRegion =>
         "frame" in region;
-      const narrowOwnedScalar = internalCellCapture && selected.length > 0 &&
+      ownedStoreOnly = selected.length > 0 &&
         ownedCellCut && remainingWrites.length === 0 &&
         closed?.ordinaryScalar === true && closed.inputResources.size === 0 &&
         acceptedCollections.length === 0 && acceptedResources.size === 0 &&
-        acceptedCollectionFootprint.length === 0 &&
+        acceptedCollectionFootprint.length === 0;
+      const narrowOwnedScalar = (internalCellCapture || groupContinuation) &&
+        ownedStoreOnly &&
         ownedRegions?.every(isOwnedRegion) === true;
       const ownedProgram = narrowOwnedScalar && ownedRegions &&
         ownedRegions.every(isOwnedRegion)
@@ -4542,8 +4550,8 @@ export class ComponentStateRoot<H, Parent = H> {
         ? !privateCellCut || validateClosedWorldCellCut(this.world, privateCellCut,
           afterHost ? "after-host" : "prepared")
         : this.#validateRetainedCellsPrivate(writes, afterHost);
-    let conservativeOwnedPrepared = false;
-    let conservativeOwnedPostHost = false;
+    let conservativeOwnedPrepared = !internalCellCapture;
+    let conservativeOwnedPostHost = !internalCellCapture;
     const lifecycleSpec: CandidateLifecycleSpec<H, Parent> = {
       baseVersion: this.#publicationVersion, baseVDOMVersion: this.#vdom.version,
       scope: { kind: "retained" }, stores, transitions: [], pendingResources: [], blocked: false,
@@ -4559,7 +4567,7 @@ export class ComponentStateRoot<H, Parent = H> {
           holdResources, resourceLease)) &&
         (!resourceLease || this.#publicationIntents.has(resourceLease)),
       codeCurrent,
-      ...(ownedScalarPhases ? { validationStrategy: {
+      ...(internalCellCapture && ownedScalarPhases ? { validationStrategy: {
         kind: "owned-scalar-immediate" as const,
         preflightPrepared: () => {
           conservativeOwnedPrepared = !ownedScalarPhases!.preflightPrepared();
@@ -4597,6 +4605,29 @@ export class ComponentStateRoot<H, Parent = H> {
           return this.#liveOwners.has(handle.owner) && cache !== undefined &&
             componentCodeCurrentPrivate(cache.type);
         }),
+      ...(groupContinuation && ownedStoreOnly ? { validateAdmittedContinuation: () =>
+        (ownedScalarPhases ? ownedScalarPhases.preflightPrepared() : program!.validate()) &&
+        program!.validatePreparedPrivate() &&
+        (!resourceLease || this.#publicationIntents.has(resourceLease)) &&
+        !this.#resourceHoldWait(
+          acceptedResources, resourceLease, {
+            cells: holdCells, stores: holdStores,
+            collections: heldCollections,
+          },
+        ) &&
+        privateCellsCurrent(true) &&
+        (closed?.postHostPrivateCurrent() ?? true) &&
+        stores.validatePublicationInputsCanonical() && acceptedCurrent() &&
+        acceptedCollectionVersions.every(([collection, version]) =>
+          canonicalCollectionCutCurrent(collection, version)
+        ) && acceptedResourceVersions.every(([resource, version]) =>
+          canonicalResourceVersionCurrent(resource, version)
+        ) && writes.every(({ handle }) => {
+          const cache = this.#componentCache.get(handle.owner);
+          return this.#liveOwners.has(handle.owner) && cache !== undefined &&
+            componentCodeCurrentPrivate(cache.type);
+        }),
+      } : {}),
       validatePostHost: () =>
         (ownedScalarPhases && !conservativeOwnedPostHost ||
           program!.validatePostHost()) &&
@@ -4639,7 +4670,11 @@ export class ComponentStateRoot<H, Parent = H> {
         this.#publicationVersion++;
       },
       installSubscriptions: () => [],
-      runEffects: () => { stores.notifyPublished(); return []; },
+      runEffects: () => {
+        stores.notifyPublished();
+        if (groupContinuation) this.#acknowledgeCurrentStoreNotifications();
+        return [];
+      },
       discard: () => stores.discard(),
       releaseArtifacts: () => {
         if (this.#activeCounters && ownedScalarPhases) {
@@ -4956,8 +4991,14 @@ export class ComponentStateRoot<H, Parent = H> {
     const commitHostInternal = (admitted: boolean) => {
       if (phase !== "prepared") throw new Error(`Candidate is ${phase}`);
       this.#assertNoPublicationBarrier("commit another candidate");
+      const groupContinuation = admitted && groupClaim !== null &&
+        groupClaim !== undefined && groupWasPartial?.() === true &&
+        spec.validateAdmittedContinuation !== undefined;
       if ((!admitted && !operationHandle().validate()) ||
-        !(admitted ? preHostPrivateCurrent() : preHostLifecycleCurrent())) {
+        !(admitted ? groupContinuation
+          ? preHostLifecycleCurrent() && spec.validateAdmittedContinuation!() &&
+            preHostLifecycleCurrent()
+          : preHostPrivateCurrent() : preHostLifecycleCurrent())) {
         if (phase === "prepared" && !released) finishUnpublished("discarded");
         throw new Error("Native root candidate is stale");
       }
@@ -11311,6 +11352,42 @@ export class ComponentStateRoot<H, Parent = H> {
     }
     this.#liveStoreReaders = nextReaders;
     this.#reconcileStoreSubscriptions(sparseStoreCandidate);
+  }
+
+  #acknowledgeCurrentStoreNotifications(): void {
+    const generation = this.#storeNotificationGeneration;
+    if (this.#disposed || this.#terminalHostFailed || this.#codeInvalidated ||
+      generation === this.#committedStoreNotificationGeneration ||
+      [...this.#liveResourceSubscriptions.values()].some((subscription) =>
+        subscription.blockedReaders?.length)) return;
+    const subscriptions = [...this.#liveStoreSubscriptions.keys()];
+    if (subscriptions.length === 0) return;
+    const readers = [...this.#liveStoreReaders].map(([id, membership]) =>
+      ({ id, membership, stores: [...membership] }));
+    const seen = new Set<AnyAsyncStore>();
+    for (const { id, membership, stores } of readers) {
+      if (id.startsWith("\u0000suspense-pending:") ||
+        this.#liveStoreReaders.get(id) !== membership ||
+        membership.size !== stores.length || stores.length === 0) return;
+      for (const store of stores) {
+        if (!this.#liveStoreSubscriptions.has(store)) return;
+        const receipt = captureCanonicalStoreReaderReceipt(store, this.#rootId, id);
+        if (!receipt || inspectCanonicalStoreReaderReceipt(
+          store, this.#rootId, id, receipt,
+        ) !== "current") return;
+        seen.add(store);
+      }
+    }
+    if (this.#storeNotificationGeneration !== generation ||
+      this.#liveStoreReaders.size !== readers.length ||
+      readers.some(({ id, membership, stores }) =>
+        this.#liveStoreReaders.get(id) !== membership ||
+        membership.size !== stores.length ||
+        stores.some((store) => !membership.has(store))) ||
+      this.#liveStoreSubscriptions.size !== subscriptions.length ||
+      subscriptions.some((store) =>
+        !this.#liveStoreSubscriptions.has(store) || !seen.has(store))) return;
+    this.#committedStoreNotificationGeneration = generation;
   }
 
   #reconcileStoreSubscriptions(sparseStoreCandidate = false) {
