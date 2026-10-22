@@ -25,6 +25,7 @@ use oxc_span::{GetSpan, SourceType};
 mod numeric_expression_dag;
 mod owner_update_program;
 mod semantic_plan;
+mod store_numeric_kernel;
 use semantic_plan::{SemanticPlan, build_semantic_plan, module_revision};
 use owner_update_program::{Sink, StateReference, emit_owner_update_program, primitive_output_expression};
 use serde::{Deserialize, Serialize};
@@ -238,6 +239,8 @@ struct NativeComponentMetadata {
     closed_resource_host_program: Option<serde_json::Value>,
     #[serde(rename = "closedStoreHostProgram", skip_serializing_if = "Option::is_none")]
     closed_store_host_program: Option<serde_json::Value>,
+    #[serde(rename = "closedStoreNumericKernel", skip_serializing_if = "Option::is_none")]
+    closed_store_numeric_kernel: Option<serde_json::Value>,
     #[serde(rename = "closedComponentForwardProgram", skip_serializing_if = "Option::is_none")]
     closed_component_forward_program: Option<serde_json::Value>,
     #[serde(default)]
@@ -3249,6 +3252,7 @@ fn compile_native_module(request: NativeModuleRequest) -> NativeModuleResponse {
         "source": &request.source,
         "component": request.component_module.as_deref().unwrap_or(&request.source),
         "trustedRuntimeModules": &trusted_runtime_modules,
+        "compilerSemanticAbi": "store-numeric-kernel-v1",
     }).to_string();
     let revision = module_revision(
         &request.path,
@@ -3859,6 +3863,10 @@ fn compile_native_component_module(
     closed_store_collector.visit_program(&parsed.program);
     let closed_store_programs = closed_store_collector.programs;
     let closed_store_tuple_spans = closed_store_collector.tuple_spans;
+    let closed_store_numeric_kernels = closed_store_programs.iter()
+        .filter_map(|(site, program)| store_numeric_kernel::emit(program)
+            .map(|kernel| (site.clone(), kernel)))
+        .collect::<BTreeMap<_, _>>();
     let closed_forward_programs = closed_component_forward_programs(
         &parsed.program, &state_plan.components, &semantic, source, revision,
         &closed_resource_programs, &closed_store_programs);
@@ -4380,6 +4388,7 @@ fn compile_native_component_module(
         &component_state_layouts,
         &closed_resource_programs,
         &closed_store_programs,
+        &closed_store_numeric_kernels,
         &closed_forward_programs,
         &closed_row_programs,
         &closed_store_tuple_spans,
@@ -4443,6 +4452,9 @@ fn compile_native_component_module(
             closed_store_host_program: closed_store_programs
                 .get(&component.component_site_id)
                 .cloned(),
+            closed_store_numeric_kernel: closed_store_numeric_kernels
+                .get(&component.component_site_id)
+                .map(|kernel| kernel.descriptor.clone()),
             closed_component_forward_program: closed_forward_programs
                 .get(&component.component_site_id)
                 .map(|edge| edge.program.clone()),
@@ -6451,6 +6463,7 @@ fn transform_native_component_source(
     state_layouts: &BTreeMap<String, Vec<NativeStateLayoutSlotMetadata>>,
     closed_resource_programs: &BTreeMap<String, serde_json::Value>,
     closed_store_programs: &BTreeMap<String, serde_json::Value>,
+    closed_store_numeric_kernels: &BTreeMap<String, store_numeric_kernel::StoreNumericKernel>,
     closed_forward_programs: &BTreeMap<String, ClosedForwardEdge>,
     closed_row_programs: &BTreeMap<String, Vec<ClosedCollectionRowEdge>>,
     closed_store_tuple_spans: &BTreeMap<String, Vec<SourceSpan>>,
@@ -6595,6 +6608,10 @@ fn transform_native_component_source(
             .get(&component.component_site_id)
             .map(|program| format!(", closedStoreHostProgram: {program}"))
             .unwrap_or_default();
+        let closed_store_numeric_option = closed_store_numeric_kernels
+            .get(&component.component_site_id)
+            .map(|kernel| format!(", closedStoreNumericKernel: {}", kernel.code))
+            .unwrap_or_default();
         let closed_forward_option = closed_forward_programs
             .get(&component.component_site_id)
             .map(|edge| {
@@ -6630,7 +6647,7 @@ fn transform_native_component_source(
                 format!(", closedCollectionRowPrograms: [{programs}]")
             }).unwrap_or_default();
         let options = format!(
-            "{{ propOnlySites: [{}]{}{}{}{}{}{}{}{}{}{} }}",
+            "{{ propOnlySites: [{}]{}{}{}{}{}{}{}{}{}{}{} }}",
             sites,
             primitive_props_option,
             retained_props_option,
@@ -6643,6 +6660,7 @@ fn transform_native_component_source(
             owner_kernel_option,
             closed_resource_option,
             closed_store_option,
+            closed_store_numeric_option,
             closed_forward_option,
             closed_collection_option,
             closed_row_option,
@@ -11809,5 +11827,45 @@ export function Row() {
             "{vector_code}"
         );
         assert!(vector_code.contains("position={__nativeBindStatePropsAt([\"primitive-kernel-vector-fallback.tsx#component:Vector#state:0\", \"primitive-kernel-vector-fallback.tsx#component:Vector#state:1\"], ([x, y]) => ([x, y]), __nativeNumericPrograms[0])}"), "{vector_code}");
+    }
+
+    #[test]
+    fn emits_optional_store_numeric_ranges_for_function_and_arrow_leaves() {
+        let source = r#"import { use } from "native_runtime_api.ts";
+export function Pair(props) {
+  const x = use(props.a); const y = use(props.b);
+  return <div key="pair" data-a={(x + y) * 2} data-b={(x + y) / 3}/>;
+}
+export const Arrow = (props) => {
+  const x = use(props.a);
+  return <div key="arrow" data-a={x * 2}/>;
+};
+export function Aggregate(props) {
+  const x = use(props.a);
+  return <mesh key="aggregate" position={[x, 0, 1]} position-x={x + 1}/>;
+}"#;
+        let response = compile_state("store-numeric-range.tsx", source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let plan = response.plan.unwrap();
+        let revision = plan.module_revision.clone();
+        let code = plan.component_module.unwrap();
+        let components = plan.components.unwrap();
+        for (name, count, props) in [
+            ("Pair", 2, serde_json::json!(["data-a", "data-b"])),
+            ("Arrow", 1, serde_json::json!(["data-a"])),
+        ] {
+            let component = components.iter().find(|component| component.name == name).unwrap();
+            let kernel = component.closed_store_numeric_kernel.as_ref().unwrap();
+            assert_eq!(kernel["componentProgramId"], component.component_site_id);
+            assert_eq!(kernel["moduleRevision"], revision);
+            assert_eq!(kernel["inputCount"], count);
+            assert_eq!(kernel["propNames"], props);
+        }
+        assert!(components.iter().find(|component| component.name == "Aggregate")
+            .unwrap().closed_store_numeric_kernel.is_none());
+        assert_eq!(code.matches("closedStoreNumericKernel:").count(), 2);
+        assert!(code.contains("const $r3actDag0"));
+        assert!(code.contains("inputStart + $r3actRow * 2"));
+        assert!(code.contains("outputStart + $r3actRow * 2"));
     }
 }

@@ -360,7 +360,7 @@ try {
     "compiled_group_host_admission_test", "compiled_closed_collection_rows_test",
     "native_namespace_three_execution_test", "compiled_numeric_expression_dag_test",
     "compiled_ranged_owner_kernel_test", "compiled_retained_store_clock_test",
-    "compiled_structural_owner_scope_test"];
+    "compiled_structural_owner_scope_test", "compiled_store_numeric_kernel_test"];
   for (const [index, fixture] of fixtures.entries()) {
     const name = `compiled-${String(index + 1).padStart(2, "0")}`;
     const before = await compilerHash();

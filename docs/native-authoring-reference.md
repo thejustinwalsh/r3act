@@ -186,6 +186,12 @@ Repeated wrappers may return the same literal host key because scoped deltas als
 
 Compiler/runtime component and collection registration sites reserve NUL for internal derived identities. Low-level `defineComponent` and `renderCollectionAt` registration reject authored site IDs containing NUL; ordinary compiler-generated sites are unaffected. Flattened component outputs with equal raw host keys use their existing owner identity for sibling matching. Duplicate host keys within one owner, or among unowned siblings, remain errors. Ambiguous raw-key-only optimized paths use generic reconciliation. [Structural scope contract and verification](../implementation/2026-10-21-structural-owner-scope/results.md).
 
+### Compiled numeric Store props
+
+Matching compiler/core versions automatically execute eligible numeric Store leaf props through generated arithmetic kernels, including retained wrappers. No new authoring API or opt-in is needed. Numeric arithmetic and bitwise expressions qualify; logical/conditional expressions, aggregates, subtrees and resource/opaque inputs retain their existing evaluator or generic behavior. Missing older kernel metadata retains the evaluator; malformed supplied metadata is rejected at registration.
+
+Consecutive owners using the same kernel can share a range without changing host order. Different programs split ranges; the current alternating 256-row canvas workload produces 256 runs and remains slower than React Compiler. Expressions combining a local state hook with a Store value still render generically. [Contract and measured limits](../implementation/2026-10-21-store-numeric-kernels/results.md).
+
 ### Fixed Store host subtrees
 
 Schema 4 supports a fixed keyed tree of DOM `div`/`span`/`output` or Three `group`/`mesh` nodes, including zero-prop containers. Every host needs a unique literal key, and mounted keys must resolve unambiguously within the root. Props use the same primitive, style-record and tuple forms; Three trees also permit closed `name` expressions. Text children use expression containers and must evaluate to string or finite number values. Use `{value}` or `{"label"}`; raw JSX text and whitespace children remain generic. The tree is bounded to depth 32 and 256 total host/text nodes, with at most 32 props or style fields per host/value.

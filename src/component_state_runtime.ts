@@ -11,12 +11,16 @@ import {
 } from "./closed_component_forward_program.ts";
 import {
   type ClosedStoreHostProgram,
+  type ClosedStoreHostOutput,
   closedStoreHostInputs,
   closedStoreHostInputPaths,
   evaluateClosedStoreHostProgram,
   evaluateClosedStoreHostTree,
   normalizeClosedStoreHostProgram,
 } from "./closed_store_host_program.ts";
+import {
+  type ClosedStoreNumericKernel, normalizeClosedStoreNumericKernel,
+} from "./closed_store_numeric_kernel.ts";
 import type { ClosedHostTreeNode } from "./closed_host_tree.ts";
 import type { ClosedHostOutputValue } from "./closed_host_value.ts";
 import {
@@ -141,6 +145,7 @@ import {
   type KeyedCollectionOperation,
 } from "./keyed_collection.ts";
 
+const canonicalStoreForNumericKernel = AsyncStore.prototype._isClosedNumericCanonical;
 const collectCleanupErrors = (actions: readonly (() => void)[]): unknown[] => {
   const errors: unknown[] = [];
   for (const action of actions) {
@@ -659,6 +664,7 @@ export const defineComponent = <P extends Record<string, unknown>>(
     readonly ownerUpdateProgram?: CompiledOwnerUpdateProgram;
     readonly closedResourceHostProgram?: ClosedResourceHostProgram;
     readonly closedStoreHostProgram?: ClosedStoreHostProgram;
+    readonly closedStoreNumericKernel?: ClosedStoreNumericKernel;
     readonly closedComponentForwardProgram?: ClosedComponentForwardProgram;
   },
 ): ComponentType<P> => {
@@ -781,6 +787,15 @@ export const defineComponent = <P extends Record<string, unknown>>(
       (!closedStoreHostProgram || closedStoreHostProgram.componentProgramId !== siteId)) {
       throw new Error("Closed Store host program must match its component revision");
     }
+    const closedStoreNumericKernel = metadata?.closedStoreNumericKernel === undefined
+      ? undefined : closedStoreHostProgram
+      ? normalizeClosedStoreNumericKernel(metadata.closedStoreNumericKernel,
+        closedStoreHostProgram)
+      : null;
+    if (metadata?.closedStoreNumericKernel !== undefined &&
+      !closedStoreNumericKernel) {
+      throw new Error("Closed Store numeric kernel must match its host program and revision");
+    }
     const closedComponentForwardProgram = metadata?.closedComponentForwardProgram === undefined
       ? undefined : normalizeClosedComponentForwardProgram(metadata.closedComponentForwardProgram);
     if (metadata?.closedComponentForwardProgram !== undefined &&
@@ -821,6 +836,7 @@ export const defineComponent = <P extends Record<string, unknown>>(
         ...(stateLayout ? { stateLayout } : {}),
         ...(closedResourceHostProgram ? { closedResourceHostProgram } : {}),
         ...(closedStoreHostProgram ? { closedStoreHostProgram } : {}),
+        ...(closedStoreNumericKernel ? { closedStoreNumericKernel } : {}),
         ...(closedComponentForwardProgram ? { closedComponentForwardProgram } : {}),
       });
   }
@@ -842,6 +858,7 @@ type ComponentMetadata = {
   readonly stateLayout?: CompiledStateLayout;
   readonly closedResourceHostProgram?: ClosedResourceHostProgram;
   readonly closedStoreHostProgram?: ClosedStoreHostProgram;
+  readonly closedStoreNumericKernel?: ClosedStoreNumericKernel;
   readonly closedComponentForwardProgram?: ClosedComponentForwardProgram;
 };
 
@@ -2837,6 +2854,15 @@ export class ComponentStateRoot<H, Parent = H> {
     const regions: StorePropDelta[] = [];
     const resources = new ResourceReadSet(this.#resourceTable);
     let outputChanged = false;
+    const kernelInputs: number[] = [];
+    const kernelOutputs: number[] = [];
+    type NumericRow = {
+      owner: OwnerId; cache: ComponentCache; inputs: Input[];
+      program: Exclude<ClosedStoreHostProgram, { schemaVersion: 4 | 5 }>;
+    };
+    let numericRun: {
+      kernel: ClosedStoreNumericKernel; inputStart: number; rows: NumericRow[];
+    } | null = null;
     const ownValue = (object: object, name: string) => {
       const descriptor = Object.getOwnPropertyDescriptor(object, name);
       return descriptor && "value" in descriptor ? descriptor.value : undefined;
@@ -2931,6 +2957,104 @@ export class ComponentStateRoot<H, Parent = H> {
       };
       return visit(host, previous, next) ? { regions: staged, changed } : null;
     };
+    const stageLeaf = (
+      { owner, cache, inputs, program }: NumericRow,
+      output: ClosedStoreHostOutput | null,
+    ) => {
+      if (program.schemaVersion === 6) {
+        const authored = cache.result;
+        const expanded = cache.expandedResult;
+        const hostKey = cache.scopeExplicitHostKeys === true
+          ? `${String(cache.hostKeyScope)}\u0000${program.host.key}`
+          : program.host.key;
+        const child = Object.getOwnPropertyDescriptor(cache.props, "children");
+        if (!cache.retainedStoreChildAdmitted || !Object.isFrozen(cache.props) ||
+          !child || !("value" in child) ||
+          !isRuntimeOwnedElement(child.value) || !Object.isFrozen(child.value) ||
+          !output || !isRuntimeOwnedElement(authored) ||
+          !isRuntimeOwnedElement(expanded) ||
+          getComponentOutputOwner(authored) !== owner ||
+          getComponentOutputOwner(expanded) !== owner ||
+          authored.type !== program.host.tag ||
+          expanded.type !== program.host.tag) throw new SparseCandidateIneligible();
+        const authoredProps = Object.getOwnPropertyDescriptors(authored.props);
+        const expandedProps = Object.getOwnPropertyDescriptors(expanded.props);
+        const expected = new Set(["key", "children", ...program.host.props.map(([name]) => name)]);
+        if (Object.keys(authoredProps).some((name) => !expected.has(name)) ||
+          Object.keys(expandedProps).some((name) => !expected.has(name)) ||
+          Object.getOwnPropertySymbols(authored.props).length !== 1 ||
+          Object.getOwnPropertySymbols(expanded.props).length !== 1 ||
+          authoredProps.key?.value !== hostKey ||
+          expandedProps.key?.value !== hostKey ||
+          authoredProps.children?.value !== child.value ||
+          !expandedProps.children || !("value" in expandedProps.children) ||
+          !isRuntimeOwnedElement(expandedProps.children.value)) {
+          throw new SparseCandidateIneligible();
+        }
+        for (const [name] of program.host.props) {
+          if (!("value" in (authoredProps[name] ?? {})) ||
+            !("value" in (expandedProps[name] ?? {}))) {
+            throw new SparseCandidateIneligible();
+          }
+        }
+        outputChanged ||= output.some(([name, value]) =>
+          !sameClosedHostOutput(program.host.tag, name, expandedProps[name].value, value));
+        const nextResult = copyRuntimeElement(program.host.tag,
+          Object.fromEntries([["key", hostKey], ...output,
+            ["children", child.value]]), owner);
+        const next = copyRuntimeElement(program.host.tag,
+          Object.fromEntries([["key", hostKey], ...output,
+            ["children", expandedProps.children.value]]), owner);
+        owners.set(owner, { cache, inputs, next, nextResult });
+        regions.push({ key: hostKey, tag: program.host.tag,
+          props: output, retainedChildren: true, componentOwner: owner });
+        return;
+      }
+      const previous = cache.expandedResult;
+      if (!output || !previous || Array.isArray(previous) || typeof previous !== "object" ||
+        previous.type !== program.host.tag || previous.props.key !== program.host.key ||
+        (previous.props.children !== undefined && previous.props.children !== null && previous.props.children !== false)) {
+        throw new SparseCandidateIneligible();
+      }
+      outputChanged ||= output.some(([name, value]) =>
+        !sameClosedHostOutput(program.host.tag, name, previous.props[name], value));
+      const next = copyRuntimeElement(program.host.tag,
+        Object.fromEntries([["key", program.host.key], ...output]), owner);
+      owners.set(owner, { cache, inputs, next });
+      regions.push({ key: program.host.key, tag: program.host.tag, props: output });
+    };
+    const flushNumericRun = () => {
+      const run = numericRun;
+      if (!run) return;
+      numericRun = null;
+      const stride = run.kernel.propNames.length;
+      const outputStart = kernelOutputs.length;
+      const expected = run.rows.length * stride;
+      for (let index = 0; index < expected; index++) kernelOutputs.push(NaN);
+      const written = run.kernel.executeRange(
+        kernelInputs, run.inputStart, run.rows.length, kernelOutputs, outputStart,
+      );
+      if (written !== expected || kernelOutputs.length !== outputStart + expected) {
+        throw new SparseCandidateIneligible();
+      }
+      for (let rowIndex = 0; rowIndex < run.rows.length; rowIndex++) {
+        const props: Array<readonly [string, number]> = [];
+        for (let propIndex = 0; propIndex < stride; propIndex++) {
+          const offset = outputStart + rowIndex * stride + propIndex;
+          const value = kernelOutputs[offset];
+          if (!Object.hasOwn(kernelOutputs, offset) || !Number.isFinite(value)) {
+            throw new SparseCandidateIneligible();
+          }
+          props.push(Object.freeze([run.kernel.propNames[propIndex], value] as const));
+        }
+        stageLeaf(run.rows[rowIndex], Object.freeze(props));
+      }
+      if (this.#activeCounters) {
+        this.#count("store.numeric-kernel.runs");
+        this.#count("store.numeric-kernel.rows", run.rows.length);
+      }
+      run.rows.length = 0;
+    };
     const current = (privateOnly = false) => {
       const ownerPrefixes = new Set<string>();
       for (const [owner, { cache, inputs }] of owners) {
@@ -2959,6 +3083,7 @@ export class ComponentStateRoot<H, Parent = H> {
     try {
       for (const [id, membership] of this.#liveStoreReaders) {
         if (![...membership].some((store) => selectedStores.has(store))) continue;
+        if (covered.has(id)) continue;
         const split = id.indexOf("\u0000");
         const owner = Number(id.slice(0, split));
         if (split <= 0 || !Number.isSafeInteger(owner)) throw new SparseCandidateIneligible();
@@ -2973,6 +3098,22 @@ export class ComponentStateRoot<H, Parent = H> {
           cache.keyedRegion || cache.nativeBoundary || !componentCodeCurrent(cache.type)) {
           throw new SparseCandidateIneligible();
         }
+        const kernel = definedComponents.get(cache.type as Function)?.metadata
+          ?.closedStoreNumericKernel;
+        const output = cache.expandedResult;
+        const numericKernel = kernel && isRuntimeOwnedElement(output) &&
+          Object.isFrozen(output.props) &&
+          closedStoreHostInputs(program).every((input) => {
+          const source = ownValue(cache.props, input.storeProp);
+          const membership = this.#liveStoreReaders.get(
+            `${owner}\u0000${input.storeUseSiteId}`,
+          );
+          return typeof source === "object" && source !== null &&
+            !!membership && membership.size === 1 &&
+            membership.has(source as AnyAsyncStore) &&
+            canonicalStoreForNumericKernel.call(source as AnyAsyncStore);
+        }) ? kernel : undefined;
+        if (numericRun && numericRun.kernel !== numericKernel) flushNumericRun();
         const inputs: Input[] = [];
         const values: number[] = [];
         for (const input of closedStoreHostInputs(program)) {
@@ -3007,8 +3148,6 @@ export class ComponentStateRoot<H, Parent = H> {
           values.push(...projections);
           if (inputMembership) covered.add(inputId);
         }
-        const output = program.schemaVersion === 4 || program.schemaVersion === 5
-          ? null : evaluateClosedStoreHostProgram(program, values);
         if (program.schemaVersion === 4 || program.schemaVersion === 5) {
           const tree = evaluateClosedStoreHostTree(program, values);
           if (!tree) throw new SparseCandidateIneligible();
@@ -3021,68 +3160,18 @@ export class ComponentStateRoot<H, Parent = H> {
           regions.push(...staged.regions);
           continue;
         }
-        if (program.schemaVersion === 6) {
-          const authored = cache.result;
-          const expanded = cache.expandedResult;
-          const hostKey = cache.scopeExplicitHostKeys === true
-            ? `${String(cache.hostKeyScope)}\u0000${program.host.key}`
-            : program.host.key;
-          const child = Object.getOwnPropertyDescriptor(cache.props, "children");
-          if (!cache.retainedStoreChildAdmitted || !Object.isFrozen(cache.props) ||
-            !child || !("value" in child) ||
-            !isRuntimeOwnedElement(child.value) || !Object.isFrozen(child.value) ||
-            !output || !isRuntimeOwnedElement(authored) ||
-            !isRuntimeOwnedElement(expanded) ||
-            getComponentOutputOwner(authored) !== owner ||
-            getComponentOutputOwner(expanded) !== owner ||
-            authored.type !== program.host.tag ||
-            expanded.type !== program.host.tag) throw new SparseCandidateIneligible();
-          const authoredProps = Object.getOwnPropertyDescriptors(authored.props);
-          const expandedProps = Object.getOwnPropertyDescriptors(expanded.props);
-          const expected = new Set(["key", "children", ...program.host.props.map(([name]) => name)]);
-          if (Object.keys(authoredProps).some((name) => !expected.has(name)) ||
-            Object.keys(expandedProps).some((name) => !expected.has(name)) ||
-            Object.getOwnPropertySymbols(authored.props).length !== 1 ||
-            Object.getOwnPropertySymbols(expanded.props).length !== 1 ||
-            authoredProps.key?.value !== hostKey ||
-            expandedProps.key?.value !== hostKey ||
-            authoredProps.children?.value !== child.value ||
-            !expandedProps.children || !("value" in expandedProps.children) ||
-            !isRuntimeOwnedElement(expandedProps.children.value)) {
-            throw new SparseCandidateIneligible();
-          }
-          for (const [name] of program.host.props) {
-            if (!("value" in (authoredProps[name] ?? {})) ||
-              !("value" in (expandedProps[name] ?? {}))) {
-              throw new SparseCandidateIneligible();
-            }
-          }
-          outputChanged ||= output.some(([name, value]) =>
-            !sameClosedHostOutput(program.host.tag, name, expandedProps[name].value, value));
-          const nextResult = copyRuntimeElement(program.host.tag,
-            Object.fromEntries([["key", hostKey], ...output,
-              ["children", child.value]]), owner);
-          const next = copyRuntimeElement(program.host.tag,
-            Object.fromEntries([["key", hostKey], ...output,
-              ["children", expandedProps.children.value]]), owner);
-          owners.set(owner, { cache, inputs, next, nextResult });
-          regions.push({ key: hostKey, tag: program.host.tag,
-            props: output, retainedChildren: true, componentOwner: owner });
+        if (numericKernel) {
+          if (!numericRun) numericRun = {
+            kernel: numericKernel, inputStart: kernelInputs.length, rows: [],
+          };
+          kernelInputs.push(...values);
+          numericRun.rows.push({ owner, cache, inputs, program });
           continue;
         }
-        const previous = cache.expandedResult;
-        if (!output || !previous || Array.isArray(previous) || typeof previous !== "object" ||
-          previous.type !== program.host.tag || previous.props.key !== program.host.key ||
-          (previous.props.children !== undefined && previous.props.children !== null && previous.props.children !== false)) {
-          throw new SparseCandidateIneligible();
-        }
-        outputChanged ||= output.some(([name, value]) =>
-          !sameClosedHostOutput(program.host.tag, name, previous.props[name], value));
-        const next = copyRuntimeElement(program.host.tag,
-          Object.fromEntries([["key", program.host.key], ...output]), owner);
-        owners.set(owner, { cache, inputs, next });
-        regions.push({ key: program.host.key, tag: program.host.tag, props: output });
+        stageLeaf({ owner, cache, inputs, program },
+          evaluateClosedStoreHostProgram(program, values));
       }
+      flushNumericRun();
       const ownerIds = new Set(owners.keys());
       if ([...ownerIds].some((owner) =>
         this.world.ownerLineage(owner).slice(1).some((ancestor) =>
@@ -3112,10 +3201,12 @@ export class ComponentStateRoot<H, Parent = H> {
         },
         release: () => {
           resources.discard(); owners.clear(); ownerIds.clear(); covered.clear(); regions.length = 0;
+          kernelInputs.length = 0; kernelOutputs.length = 0;
         },
       };
     } catch (error) {
       resources.discard();
+      kernelInputs.length = 0; kernelOutputs.length = 0;
       throw error;
     }
   }
@@ -4721,6 +4812,9 @@ export class ComponentStateRoot<H, Parent = H> {
     if (canTryClosedStores && this.#publicationIntents.size > 0) {
       this.#partialStoreAttemptGeneration = storeGenerationAtStart;
     }
+    if (canTryClosedStores) {
+      this.#activeCounters = this.#profileCounter ? new Map() : undefined;
+    }
     if (canTryClosedStores && this.#tryFlushClosedStores()) {
       const fresh = this.#storeNotificationGeneration !== storeGenerationAtStart ||
         (this.#publicationIntents.size === 0 &&
@@ -4880,7 +4974,9 @@ export class ComponentStateRoot<H, Parent = H> {
       reportFlush();
       return true;
     }
-    this.#activeCounters = this.#profileCounter ? new Map() : undefined;
+    if (!canTryClosedStores) {
+      this.#activeCounters = this.#profileCounter ? new Map() : undefined;
+    }
     if (
       !retryWholeTree && !storeChangePending &&
       this.#pendingCollectionRegionKeys.size === 0 &&

@@ -36,8 +36,21 @@ struct Occurrence {
 struct Scanner<'a> {
     source: &'a str,
     slot_count: usize,
+    input_syntax: InputSyntax,
     nodes: usize,
     roots: Vec<Node>,
+}
+
+#[derive(Clone, Copy)]
+enum InputSyntax { OwnerRow, FlatRange }
+
+impl InputSyntax {
+    fn reference(self, slot: usize) -> String {
+        match self {
+            Self::OwnerRow => format!("rowState.inputValues[{slot}]"),
+            Self::FlatRange => format!("inputValues[$r3actInputBase + {slot}]"),
+        }
+    }
 }
 
 impl Scanner<'_> {
@@ -55,15 +68,20 @@ impl Scanner<'_> {
             }),
             Expression::ComputedMemberExpression(member) if !member.optional => {
                 let slot = (0..self.slot_count).find(|slot| {
-                    self.source.get(start..end) == Some(format!("rowState.inputValues[{slot}]").as_str())
+                    self.source.get(start..end) == Some(self.input_syntax.reference(*slot).as_str())
                 })?;
-                if !matches!(&member.object, Expression::StaticMemberExpression(static_member)
-                    if !static_member.optional && static_member.property.name.as_str() == "inputValues"
-                    && matches!(&static_member.object, Expression::Identifier(identifier)
-                        if identifier.name.as_str() == "rowState"))
-                    || !matches!(&member.expression, Expression::NumericLiteral(literal)
-                        if literal.value == slot as f64)
-                {
+                let valid = match self.input_syntax {
+                    InputSyntax::OwnerRow => matches!(&member.object,
+                        Expression::StaticMemberExpression(static_member)
+                        if !static_member.optional && static_member.property.name.as_str() == "inputValues"
+                        && matches!(&static_member.object, Expression::Identifier(identifier)
+                            if identifier.name.as_str() == "rowState"))
+                        && matches!(&member.expression, Expression::NumericLiteral(literal)
+                            if literal.value == slot as f64),
+                    InputSyntax::FlatRange => matches!(&member.object,
+                        Expression::Identifier(identifier) if identifier.name.as_str() == "inputValues"),
+                };
+                if !valid {
                     return None;
                 }
                 Some(Node { key: Key::Input(slot), start, end,
@@ -130,7 +148,17 @@ impl Scanner<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::{MAX_SOURCE_BYTES, lower_case};
+    use super::{MAX_SOURCE_BYTES, lower_all, lower_case};
+
+    #[test]
+    fn shares_flat_range_expression_without_owner_masks() {
+        let sum = "inputValues[$r3actInputBase + 0] + inputValues[$r3actInputBase + 1]";
+        let expressions = vec![format!("({sum}) * 2"), format!("({sum}) / 3")];
+        let (declarations, rewritten) = lower_all(&expressions, 2).unwrap();
+        assert!(declarations.contains("const $r3actDag0"));
+        assert!(!declarations.contains("rowState.seenMask"));
+        assert!(rewritten.iter().all(|expression| expression.contains("$r3actDag0")));
+    }
 
     #[test]
     fn shares_exact_numeric_tree_with_consumer_mask() {
@@ -242,6 +270,20 @@ fn rewrite(source: &str, range: Range<usize>, roots: &[Node],
 pub(super) fn lower_case(
     expressions: &[String], affected_sinks: &[usize], slot_count: usize,
 ) -> Option<(String, Vec<String>)> {
+    lower(expressions, affected_sinks, slot_count, InputSyntax::OwnerRow, false)
+}
+
+pub(super) fn lower_all(
+    expressions: &[String], slot_count: usize,
+) -> Option<(String, Vec<String>)> {
+    lower(expressions, &(0..expressions.len()).collect::<Vec<_>>(), slot_count,
+        InputSyntax::FlatRange, true)
+}
+
+fn lower(
+    expressions: &[String], affected_sinks: &[usize], slot_count: usize,
+    input_syntax: InputSyntax, all_outputs: bool,
+) -> Option<(String, Vec<String>)> {
     if expressions.iter().map(String::len).sum::<usize>() > MAX_SOURCE_BYTES {
         return None;
     }
@@ -251,7 +293,7 @@ pub(super) fn lower_case(
         let source = expressions.get(sink)?;
         let allocator = Allocator::default();
         let expression = Parser::new(&allocator, source, SourceType::tsx()).parse_expression().ok()?;
-        let mut scanner = Scanner { source, slot_count, nodes: 0, roots: Vec::new() };
+        let mut scanner = Scanner { source, slot_count, input_syntax, nodes: 0, roots: Vec::new() };
         if let Some(root) = scanner.visit(&expression, 0) { scanner.roots.push(root); }
         node_count += scanner.nodes;
         if node_count > MAX_NODES { return None; }
@@ -278,9 +320,13 @@ pub(super) fn lower_case(
         let expression = rewrite(source, node.start..node.end,
             std::slice::from_ref(node), &selected, true)?;
         let mask = occurrence.consumer_mask;
-        declarations.push_str(&format!(
-            "const $r3actDag{index} = ((rowState.seenMask & {mask}) !== {mask}) ? ({expression}) : 0;"
-        ));
+        if all_outputs {
+            declarations.push_str(&format!("const $r3actDag{index} = ({expression});"));
+        } else {
+            declarations.push_str(&format!(
+                "const $r3actDag{index} = ((rowState.seenMask & {mask}) !== {mask}) ? ({expression}) : 0;"
+            ));
+        }
     }
     let mut rewritten = expressions.to_vec();
     for &sink in affected_sinks {

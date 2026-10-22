@@ -1,3 +1,13 @@
+## Compiled numeric Store kernels — 21 October 2026
+
+Rust now emits revision-associated numeric Store range kernels using the shared expression DAG. Root executes contiguous same-program rows over cut buffers and stages existing Store prop deltas; retained children, reader history, exact acknowledgement and generic fallback remain. Arithmetic/bitwise numeric leaf expressions qualify; logical/conditional, aggregate, subtree, resource and opaque forms keep their existing routes. No parallel identity/version registry or storage layout is added.
+
+Darwin-v2 passes all 70 phases: 1133 runtime tests, 98 Rust tests, all 50 compiled fixtures and package/Three/retention checks, with 1581 input hashes matched. The first failed gate remains preserved. Fresh installed proof verifies emitted kernels, equal outputs, retained identity and cleanup. Both browser phases match 11460 hashes before and after, with all contexts closed and no errors.
+
+The sole canvas comparison still loses: Native publication median/p95 4.90/6.00 ms versus React Compiler 0.55/0.90 ms, imperative 0.10/0.20 ms. The proof observes 256 kernel runs for 256 alternating-program rows: this workload does not amortize dispatch across multiple owners. There is no component rerender on the closed route, so absent memoization is not the demonstrated gap. The result does not isolate Store dispatch or attribute costs to validation, staging or host writes. No causal old/new saving, R3F/GPU/presentation, matched cold/memory or independent-device qualification follows.
+
+The semantic slice is complete; the full-plan goal remains active. Mixed local-state + Store expressions still fall back to generic rendering because each existing proof excludes the other input kind. This is the next source-backed capability candidate, not an implemented or measured improvement. Realtime speed, broader computation fusion, HMR delivery and lifecycle/independent-device requirements remain open; historical wins, qualified dense FAIL and physical HOLD retain scope. [Results and failures](implementation/2026-10-21-store-numeric-kernels/results.md); [primary review](implementation/2026-10-21-store-numeric-kernels/source-review.md).
+
 ## Structural owner scope and shared-clock validation — 21 October 2026
 
 Native component identity now includes structural host/container scope in the existing World tuple. Keyed host moves retain state; replacement retires descendants. Flattened VDOM sibling matching uses the same componentOwner identity, cached collection regions keep their subscriptions, and accepted snapshot serialization keeps the captured child representation. Closed Store coverage now makes one fresh reader pass per validation; no persistent owner/version registry or cached admission is added.
