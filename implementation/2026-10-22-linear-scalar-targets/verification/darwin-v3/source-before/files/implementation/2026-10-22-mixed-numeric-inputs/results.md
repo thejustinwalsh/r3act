@@ -1,0 +1,26 @@
+# Mixed numeric input integration
+
+The first consolidated Darwin arm64 gate fails: 68/71 phases pass. Rust passes 99/99, runtime passes 1134 with three failures, and 49/51 numbered compiler fixtures pass, including the new mixed-input fixture 51. Package build/consumers and the source equality audit pass. The supervisor exits 1 after 146.1 seconds with no stop reason. [Raw receipt](verification/darwin-v1/receipt.json).
+
+All failures expose an unconditional generic pending-state capture added to ordinary mixed-input admission. Existing numeric paths require zero generic snapshots: two runtime assertions observe one capture, another throws on capture, compiled fixture 10 observes two and fixture 11 observes 240. These are regressions in the integrated source, not an environment failure or a favorable test result. The failed source and logs remain archived. The correction retires that capture, reuses existing native scratch for mixed classification and preserves the original native fast path. The fresh [Darwin-v2 receipt](verification/darwin-v2/receipt.json) passes all 71 phases: 1137/1137 runtime tests, 99/99 Rust tests and 51/51 numbered compiled fixtures. All 1614 runner input hashes match. Its supervisor exits 0 after 111.98 seconds with no stop reason. Installed preparation v1 then fails after install, typecheck and Native build pass: the authored-source assignment guard also matches an equality comparison (`position.x === epoch`). Its React bundle was emitted but the guard failure prevents accepting the build. The exact build logs, inputs and partial captures remain under `proof-canvas-v1`; the supervisor exits 1 after 11.21 seconds with no stop reason. This is a harness guard failure, not a completed React proof. A source-only guard correction precedes fresh preparation; browser proof and timing remain pending.
+
+The planned primary comparison is declarative Native versus declarative React Compiler + R3F with equivalent renderer ownership and real WebGL output. Prior layout-effect adapter measurements remain preserved with their narrower scope. No new-source performance claim follows from source completion or the passing new fixture. [Contract](design.md); [primary source review](source-review.md).
+
+
+## Installed proof and sole comparison
+
+Fresh preparation v2 passes install, typecheck and all three builds. The input lock covers 12 consumer files, 53 package sources, 6092 installed records, three tarballs and 13 renderer-source-basis files. Actual Native Position/Rotation metadata is schema 7 with one Store projection, one local state site, one native activation site and retained children; schema-1 kernels read Store phase then local offset and write three numeric props. React Compiler reports CompileSuccess for Position, Rotation, FrameMarker and App. The primary comparator is actual declarative R3F 10.0.0-alpha.6, not the old layout-effect adapter.
+
+The untimed proof passes. All arms create equivalent retained graphs and produce equal state/pixel checksums with nonempty WebGL output. Native first update records 256 kernel rows and 256 alternating-program runs, with zero component renders. Every arm disposes all 512 geometry/material resources exactly once; Native ends with zero owners, pending work, controls and scene children, and React with zero subscriptions/controls and scene children. Both browser phases match 12340 hashes before/after, close every context/browser and report zero errors or failed/blocked requests.
+
+The one fixed Native → React → imperative comparison uses 12 warmup and 60 measured frames per arm. Conventional median averages the two central observations; p95 uses nearest rank. Milliseconds:
+
+| Arm | Publication median/p95 | Update through draw | State age at draw | Callback | RAF interval |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Native | 4.10 / 5.30 | 6.45 / 8.00 | 4.20 / 5.30 | 6.45 / 8.00 | 16.70 / 16.70 |
+| React Compiler + R3F | 0.60 / 0.80 | 2.80 / 3.20 | 0.70 / 0.90 | 2.80 / 3.20 | 16.70 / 16.70 |
+| Imperative floor | 0.10 / 0.20 | 2.30 / 2.70 | 0.20 / 0.30 | 2.30 / 2.70 | 16.70 / 16.70 |
+
+Native loses this matched declarative observation. Real WebGL2 uses Chromium 153.0.8010.12 / ANGLE Metal Apple M4, 640×480, manual orthographic camera, DPR 1, no antialiasing, sRGB and NoToneMapping. The common draw includes synchronous pixel readback and is not a presentation measurement. Timed counters are null. Setup intervals exclude different construction work and are incomparable. Cleanup includes scheduled R3F disposal. No favorable repeat, causal old/new saving, phase attribution, pure Store bottleneck, useFrame advantage, population-tail, matched cold/memory or independent-device qualification follows.
+
+[Untimed proof](proof-canvas-v2/canvas-proof-one-shot.json), [timing authorization](proof-canvas-v2/canvas-timing-authorization.json), [sole timing](proof-canvas-v2/canvas-timing-one-shot.json). The full-plan goal remains active: realtime performance, broader computation fusion, HMR delivery, lifecycle budgets and independent-device requirements remain open. Historic narrow wins, qualified dense DOM loss, exhausted Recording A and physical HOLD retain scope. The mixed-input semantic capability is verified; it is not a performance win.

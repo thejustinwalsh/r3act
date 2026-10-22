@@ -68,6 +68,8 @@ Deno.test("bound scalar Store updates retain the literal and accepted snapshots"
     assertEquals(total("store.bound-input.reused-rows"), 1);
     assertEquals(total("store.mounted-scalar.cold-rows"), 1);
     assertEquals(total("store.mounted-scalar.warm-rows"), 1);
+    for (const name of ["bucket-builds", "member-visits", "owner-index-visits", "owner-lookups"])
+      assertEquals(total(`store.scalar-target.${name}`), 2);
     assert(invalidateCompiledSemanticPlan(sourceFile, revision));
     assertEquals((root.snapshot[0] as { props: Record<string, unknown> })
       .props["position-x"], 4);

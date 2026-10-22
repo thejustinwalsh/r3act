@@ -36,6 +36,67 @@ const accept = (root: VDOMSnapshotRoot<MemoryNode>,
   root.publishAccepted();
 };
 
+const scalarTargetCounters = [
+  "store.scalar-target.bucket-builds",
+  "store.scalar-target.member-visits",
+  "store.scalar-target.owner-index-visits",
+  "store.scalar-target.owner-lookups",
+] as const;
+
+for (const count of [1, 32, 256, 1024]) {
+  Deno.test(`mounted scalar target selection visits ${count} same-key owners once`, () => {
+    const counters = new Map<string, number>();
+    const host = new MemoryVDOMHost();
+    const container = host.createContainer();
+    const root = new VDOMSnapshotRoot(host, container, undefined, (entries) => {
+      for (const [name, value] of Object.entries(entries)) {
+        counters.set(name, (counters.get(name) ?? 0) + value);
+      }
+    });
+    try {
+      root.commit(jsx("main", {}, Array.from({ length: count }, (_, index) =>
+        jsx("section", { key: `slot-${index}` },
+          copyRuntimeElement("group", {
+            key: "motion", name: `owner-${index}`, "rotation-y": 0,
+            children: jsx("mesh", { key: `child-${index}`, x: index }),
+          }, index + 1)))));
+      const groups = container.children[0].children.map((slot) => slot.children[0]);
+      const children = groups.map((group) => group.children[0]);
+      const owners = Array.from({ length: count }, (_, index) => count - index);
+      let plans: readonly (MountedScalarStorePlan | null)[] | undefined;
+      for (let frame = 1; frame <= 3; frame++) {
+        const before = new Map(counters);
+        const candidate = root.prepareScopedKeyedRetainedAndStoreDeltas(
+          [], [], owners.map((owner) => ownerRegion(owner, frame * 10000 + owner)),
+          [], plans);
+        assert(candidate !== null, `frame ${frame} candidate declined`);
+        assert(candidate.storeScalarPlans?.every(Boolean),
+          `frame ${frame} did not prepare every owner`);
+        for (const [name, expected] of [
+          [scalarTargetCounters[0], 1],
+          [scalarTargetCounters[1], count],
+          [scalarTargetCounters[2], count],
+          [scalarTargetCounters[3], count],
+          [frame === 1 ? "store.mounted-scalar.cold-rows" :
+            "store.mounted-scalar.warm-rows", count],
+        ] as const) {
+          assert((counters.get(name) ?? 0) - (before.get(name) ?? 0) === expected,
+            `${name} did not count one candidate-local pass at frame ${frame}`);
+        }
+        plans = candidate.storeScalarPlans;
+        accept(root, candidate);
+        candidate.discard();
+        for (let index = 0; index < count; index++) {
+          assert(groups[index].props["rotation-y"] === frame * 10000 + index + 1 &&
+            groups[index].props.name === `owner-${index}` &&
+            groups[index].children[0] === children[index],
+          `frame ${frame} changed owner ${index} identity or output`);
+        }
+      }
+    } finally { root.dispose(); }
+  });
+}
+
 Deno.test("mounted scalar successor keeps constants, child and accepted snapshots", () => {
   class ReadingHost extends MemoryVDOMHost {
     during: string[] = [];
@@ -218,6 +279,201 @@ Deno.test("mounted scalar plans keep same-key owners and ordered writes distinct
       groups[1].props["rotation-y"] === 2,
     "same-key warm writes crossed owner identity");
     cold.discard(); warm.discard();
+  } finally { root.dispose(); }
+});
+
+Deno.test("scalar target snapshots distinct selected keys once", () => {
+  const counters = new Map<string, number>();
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container, undefined, (entries) => {
+    for (const [name, value] of Object.entries(entries)) {
+      counters.set(name, (counters.get(name) ?? 0) + value);
+    }
+  });
+  const keyedRegion = (key: string, owner: number | undefined, value: number) => {
+    const delta = createOwnedScalarStorePropDelta({
+      key, tag: "group", ...(owner === undefined ? {} : {
+        componentOwner: owner, retainedChildren: true,
+      }), props: [["rotation-y", value]],
+    });
+    assert(delta, "keyed scalar region declined");
+    return delta;
+  };
+  try {
+    root.commit(jsx("main", {}, [
+      ...[1, 2, 3].map((owner) => jsx("section", { key: `a-${owner}` },
+        copyRuntimeElement("group", { key: "a", "rotation-y": 0 }, owner))),
+      ...[4, 5].map((owner) => jsx("section", { key: `b-${owner}` },
+        copyRuntimeElement("group", { key: "b", "rotation-y": 0 }, owner))),
+      jsx("section", { key: "marker-parent" },
+        jsx("group", { key: "marker", "rotation-y": 0 })),
+    ]));
+    const selected = [keyedRegion("a", 2, 1), keyedRegion("b", 4, 2),
+      keyedRegion("a", 1, 3), keyedRegion("marker", undefined, 4)];
+    const candidate = root.prepareScopedKeyedRetainedAndStoreDeltas([], [], selected);
+    assert(candidate, "mixed selected-key candidate declined");
+    assert(counters.get(scalarTargetCounters[0]) === 3 &&
+      counters.get(scalarTargetCounters[1]) === 6 &&
+      counters.get(scalarTargetCounters[2]) === 5 &&
+      counters.get(scalarTargetCounters[3]) === 3,
+    "selected-key work repeated a bucket or counted the untargeted peer as a target");
+    accept(root, candidate);
+    const groups = container.children[0].children.map((parent) => parent.children[0]);
+    assert(groups[0].props["rotation-y"] === 3 &&
+      groups[1].props["rotation-y"] === 1 &&
+      groups[2].props["rotation-y"] === 0 &&
+      groups[3].props["rotation-y"] === 2 &&
+      groups[4].props["rotation-y"] === 0 &&
+      groups[5].props["rotation-y"] === 4,
+    "selected-key candidate changed an untargeted peer or wrong owner");
+    candidate.discard();
+  } finally { root.dispose(); }
+});
+
+Deno.test("duplicate same-key owner declines cold and hinted selection", () => {
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  try {
+    const tree = (duplicate: boolean) => jsx("main", {}, [1, 2].map((slot) =>
+      jsx("section", { key: `slot-${slot}` },
+        copyRuntimeElement("group", { key: "motion", "rotation-y": 0 },
+          duplicate ? 1 : slot))));
+    root.commit(tree(false));
+    const first = root.prepareScopedKeyedRetainedAndStoreDeltas([], [],
+      [ownerRegion(1, 1)]);
+    const plan = first?.storeScalarPlans?.[0];
+    assert(first && plan, "unique owner setup declined");
+    accept(root, first);
+    first.discard();
+    root.commit(tree(true));
+    assert(root.prepareScopedKeyedRetainedAndStoreDeltas([], [],
+      [ownerRegion(1, 2)]) === null,
+    "duplicate cold owner selected a target");
+    assert(root.prepareScopedKeyedRetainedAndStoreDeltas([], [],
+      [ownerRegion(1, 2)], [], [plan]) === null,
+    "stale hint bypassed duplicate-owner ambiguity");
+  } finally { root.dispose(); }
+});
+
+Deno.test("wrong-owner scalar hint cannot redirect a current target", () => {
+  const counters = new Map<string, number>();
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container, undefined, (entries) => {
+    for (const [name, value] of Object.entries(entries)) {
+      counters.set(name, (counters.get(name) ?? 0) + value);
+    }
+  });
+  try {
+    root.commit(jsx("main", {}, [1, 2].map((owner) =>
+      jsx("section", { key: `slot-${owner}` },
+        copyRuntimeElement("group", { key: "motion", "rotation-y": 0 }, owner)))));
+    const first = root.prepareScopedKeyedRetainedAndStoreDeltas([], [],
+      [ownerRegion(1, 1), ownerRegion(2, 1)]);
+    const plans = first?.storeScalarPlans;
+    assert(first && plans?.[0] && plans[1], "owner hints were unavailable");
+    accept(root, first);
+    first.discard();
+    const before = new Map(counters);
+    const second = root.prepareScopedKeyedRetainedAndStoreDeltas([], [],
+      [ownerRegion(2, 3)], [], [plans[0]]);
+    assert(second, "wrong-owner hint blocked cold target selection");
+    assert((counters.get("store.mounted-scalar.cold-rows") ?? 0) -
+      (before.get("store.mounted-scalar.cold-rows") ?? 0) === 1,
+    "wrong-owner hint was trusted for layout");
+    accept(root, second);
+    assert(container.children[0].children[0].children[0].props["rotation-y"] === 1 &&
+      container.children[0].children[1].children[0].props["rotation-y"] === 3,
+    "wrong-owner hint redirected the scalar write");
+    second.discard();
+  } finally { root.dispose(); }
+});
+
+Deno.test("same-key peer churn invalidates prepared footprint and rebinds cold", () => {
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  const tree = (owners: readonly number[]) => jsx("main", {}, owners.map((owner) =>
+    jsx("section", { key: `slot-${owner}` },
+      copyRuntimeElement("group", { key: "motion", "rotation-y": 0,
+        children: jsx("mesh", { key: `child-${owner}`, x: owner }),
+      }, owner))));
+  try {
+    root.commit(tree([1, 2]));
+    const first = root.prepareScopedKeyedRetainedAndStoreDeltas([], [],
+      [ownerRegion(1, 1)]);
+    const plan = first?.storeScalarPlans?.[0];
+    assert(first && plan, "peer churn setup lacked a successor");
+    accept(root, first);
+    first.discard();
+    const pending = root.prepareScopedKeyedRetainedAndStoreDeltas([], [],
+      [ownerRegion(1, 2)], [], [plan]);
+    assert(pending, "current same-key candidate declined");
+    root.commit(tree([1, 2, 3]));
+    assert(!pending.validate(),
+      "same-key membership change retained a prepared candidate");
+    pending.discard();
+    const rebound = root.prepareScopedKeyedRetainedAndStoreDeltas([], [],
+      [ownerRegion(1, 3)], [], [plan]);
+    assert(rebound, "same-key peer insertion blocked current target resolution");
+    accept(root, rebound);
+    assert(container.children[0].children[0].children[0].props["rotation-y"] === 3 &&
+      container.children[0].children[1].children[0].props["rotation-y"] === 0 &&
+      container.children[0].children[2].children[0].props["rotation-y"] === 0,
+    "peer insertion wrote the wrong target");
+    rebound.discard();
+    root.commit(tree([1, 3]));
+    const afterRemoval = root.prepareScopedKeyedRetainedAndStoreDeltas([], [],
+      [ownerRegion(1, 4)], [], [plan]);
+    assert(afterRemoval, "same-key peer removal blocked current target resolution");
+    afterRemoval.discard();
+  } finally { root.dispose(); }
+});
+
+Deno.test("scalar writer replacement inside first write stops the next target", () => {
+  class ReplacingHost extends MemoryVDOMHost {
+    writes = 0;
+    replace = false;
+    override setProp(node: MemoryNode, name: string, value: unknown, previous?: unknown) {
+      super.setProp(node, name, value, previous);
+      if (this.replace && name === "rotation-y" && ++this.writes === 1) {
+        this.setProp = () => { throw new Error("replacement writer ran"); };
+      }
+    }
+  }
+  const host = new ReplacingHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  try {
+    root.commit(jsx("main", {}, [1, 2].map((owner) =>
+      jsx("section", { key: `slot-${owner}` },
+        copyRuntimeElement("group", { key: "motion", "rotation-y": 0 }, owner)))));
+    const first = root.prepareScopedKeyedRetainedAndStoreDeltas([], [],
+      [ownerRegion(1, 1), ownerRegion(2, 1)]);
+    const plans = first?.storeScalarPlans;
+    assert(first && plans?.[0] && plans[1], "writer replacement setup declined");
+    accept(root, first);
+    first.discard();
+    const accepted = JSON.stringify(root.snapshot);
+    const warm = root.prepareScopedKeyedRetainedAndStoreDeltas([], [],
+      [ownerRegion(1, 2), ownerRegion(2, 2)], [], plans);
+    assert(warm, "writer replacement warm candidate declined");
+    host.replace = true;
+    root.beginPublication();
+    let caught: unknown;
+    try { warm.commit(); } catch (error) { caught = error; }
+    assert(caught instanceof Error &&
+      caught.message === "Prepared Store prop delta changed during host application" &&
+      host.writes === 1,
+    "writer replacement did not stop before the second changed target");
+    assert(JSON.stringify(root.snapshot) === accepted,
+      "writer replacement advanced the accepted snapshot");
+    root.failPublication();
+    warm.discard();
+    assert(warm.storeScalarPlans === undefined,
+      "failed writer candidate retained successor plans");
   } finally { root.dispose(); }
 });
 

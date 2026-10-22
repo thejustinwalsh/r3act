@@ -23,6 +23,8 @@ Our central ambition is **one application state model driving multiple renderers
 
 ## What the evidence says
 
+The [linear scalar-target slice](implementation/2026-10-22-linear-scalar-targets/results.md) passes algorithm/correctness/installed delivery, but its sole realtime comparison still loses: Native update3.05/3.50ms versus declarative React Compiler/R3F1.00/2.00ms median/p95. Shared-key validation is linear; no performance advantage or causal old/new saving is established. The [live HMR workbench](implementation/2026-10-22-hmr-source-delivery/results.md) now passes source watch membership but reset exposes generic Store progress starvation while the frame clock runs; actual retirement/remount remains unverified.
+
 The [bound scalar slice](implementation/2026-10-22-bound-scalar-execution/results.md) passes correctness and named installed reuse/delivery proofs but fails its sole realtime comparison: Native update 7.35/8.10ms versus declarative React Compiler/R3F 0.80/0.90ms median/p95. Source reuse is verified; no performance advantage is established.
 
 Earlier boundaries below retain their own source and workload scope.

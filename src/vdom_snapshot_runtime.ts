@@ -230,7 +230,6 @@ type ScalarPlanFields<H> = Readonly<{
   tag: string;
   componentOwner: number | undefined;
   scopedSourceProps: undefined;
-  members: readonly (readonly [WeakRef<MountedNode<H>>, number | undefined])[];
   propNames: readonly string[];
   outputNames: readonly string[];
   outputSlots: readonly number[];
@@ -4108,6 +4107,11 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     const texts: StorePropDeltaRecord<H>["texts"][number][] = [];
     let allOwnedScalar = true;
     let warmRows = 0;
+    const countTargetWork = this.#profileCounter !== undefined;
+    let bucketBuilds = 0;
+    let memberVisits = 0;
+    let ownerIndexVisits = 0;
+    let ownerLookups = 0;
     const warmEligible = scalarPlans?.length === regions.length &&
       regions.every((region) => isOwnedScalarStorePropDelta(region));
     for (let regionIndex = 0; regionIndex < regions.length; regionIndex++) {
@@ -4121,60 +4125,35 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         (region.retainedChildren === true && region.componentOwner === undefined) ||
         (region.retainedChildren === true && region.children !== undefined) ||
         (region.children === undefined && region.props.length === 0)) return null;
-      const hinted = warmEligible
-        ? readMountedScalarRecipe<H>(scalarPlans?.[regionIndex]) : null;
-      const matches = this.#nodesByKey.get(region.key);
       let bucket = buckets.get(region.key);
-      const earlyWarm = hinted && matches &&
-        hinted.root === this && hinted.key === region.key &&
-        hinted.tag === region.tag &&
-        hinted.componentOwner === region.componentOwner &&
-        hinted.node.vnode.kind === "element" &&
-        hinted.vnode === hinted.node.vnode &&
-        hinted.handle === hinted.node.handle &&
-        hinted.members.length === matches.size &&
-        (!bucket || (bucket.members.length === hinted.members.length &&
-          bucket.members.every(([member, owner], index) =>
-            hinted.members[index][0].deref() === member &&
-            hinted.members[index][1] === owner))) &&
-        hinted.members.every(([memberRef, owner]) => {
-          const member = memberRef.deref();
-          return member !== undefined && matches.has(member) &&
-            member.vnode.componentOwner === owner;
-        }) &&
-        matches.has(hinted.node) &&
-        hinted.children.length === hinted.node.children.length &&
-        hinted.childVNodes.length === hinted.vnode.children.length &&
-        hinted.children.every((child, index) =>
-          hinted.node.children[index] === child && !child.hostDisposed &&
-          child.parent === hinted.node && child.parentIndex === index &&
-          child.vnode === hinted.childVNodes[index]) &&
-        hinted.node.vnode.scopedSourceProps === hinted.scopedSourceProps &&
-        region.props.length === hinted.outputNames.length &&
-        region.props.every(([name], index) => name === hinted.outputNames[index]);
       if (!bucket) {
+        const matches = this.#nodesByKey.get(region.key);
         if (!matches?.size) return null;
-        bucket = { members: earlyWarm && hinted
-          ? hinted.members.map(([memberRef, owner]) =>
-            [memberRef.deref()!, owner] as const)
-          : [...matches].map((candidate) =>
-            [candidate, candidate.vnode.componentOwner] as const) };
+        const members: (readonly [MountedNode<H>, number | undefined])[] = [];
+        for (const candidate of matches) {
+          members.push([candidate, candidate.vnode.componentOwner]);
+          if (countTargetWork) memberVisits++;
+        }
+        bucket = { members };
         buckets.set(region.key, bucket);
+        if (countTargetWork) bucketBuilds++;
       }
       let owners = bucket.owners;
-      if (!earlyWarm && region.componentOwner !== undefined && !owners) {
+      if (region.componentOwner !== undefined && !owners) {
         const indexed = new Map<number, MountedNode<H> | null>();
         for (const [candidate, owner] of bucket.members) {
+          if (countTargetWork) ownerIndexVisits++;
           if (owner !== undefined) indexed.set(owner,
             indexed.has(owner) ? null : candidate);
         }
         bucket.owners = indexed;
         owners = indexed;
       }
-      const node: MountedNode<H> | null | undefined = earlyWarm && hinted
-        ? hinted.node : region.componentOwner === undefined
-        ? bucket.members.length === 1 ? bucket.members[0][0] : null
-        : owners?.get(region.componentOwner);
+      if (countTargetWork && region.componentOwner !== undefined) ownerLookups++;
+      const node: MountedNode<H> | null | undefined =
+        region.componentOwner === undefined
+          ? bucket.members.length === 1 ? bucket.members[0][0] : null
+          : owners?.get(region.componentOwner);
       if (!node) return null;
       if (seen.has(node)) return null;
       seen.add(node);
@@ -4186,6 +4165,22 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           node.children.length !== 0) ||
         node.keyedChildren || node.scalarBindingGroups?.size ||
         node.scalarIncompatibleBindingProps?.size) return null;
+      const hinted = warmEligible
+        ? readMountedScalarRecipe<H>(scalarPlans?.[regionIndex]) : null;
+      const earlyWarm = hinted &&
+        hinted.node === node && hinted.root === this &&
+        hinted.key === region.key && hinted.tag === region.tag &&
+        hinted.componentOwner === region.componentOwner &&
+        hinted.vnode === vnode && hinted.handle === node.handle &&
+        hinted.children.length === node.children.length &&
+        hinted.childVNodes.length === vnode.children.length &&
+        hinted.children.every((child, index) =>
+          node.children[index] === child && !child.hostDisposed &&
+          child.parent === node && child.parentIndex === index &&
+          child.vnode === hinted.childVNodes[index]) &&
+        vnode.scopedSourceProps === hinted.scopedSourceProps &&
+        region.props.length === hinted.outputNames.length &&
+        region.props.every(([name], index) => name === hinted.outputNames[index]);
       if (region.children !== undefined) {
         if (node.children.length !== region.children.length ||
           vnode.children.length !== region.children.length) return null;
@@ -4360,14 +4355,10 @@ export class VDOMSnapshotRoot<H, Parent = H> {
             typeof value !== "string" && typeof value !== "number" &&
             typeof value !== "boolean";
         }))) return null;
-      const bucket = buckets.get(target.vnode.key!);
-      if (!bucket) return null;
       return mintMountedScalarRecipe<H>(Object.freeze({
         root: this, node: target.node, vnode: target.next,
         handle: target.handle, key: target.vnode.key!, tag: target.vnode.tag,
         componentOwner: target.componentOwner, scopedSourceProps: undefined,
-        members: prior?.members ?? Object.freeze(bucket.members.map(([node, owner]) =>
-          Object.freeze([new WeakRef(node), owner] as const))),
         propNames: names,
         outputNames,
         outputSlots: slots,
@@ -4393,9 +4384,15 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     });
     if (!this.isStorePropDeltaCurrent(token)) return null;
     if (allOwnedScalar && this.#profileCounter) {
-      if (warmRows) this.#profileCounter({ "store.mounted-scalar.warm-rows": warmRows });
-      if (regions.length > warmRows) this.#profileCounter({
-        "store.mounted-scalar.cold-rows": regions.length - warmRows,
+      this.#profileCounter({
+        "store.scalar-target.bucket-builds": bucketBuilds,
+        "store.scalar-target.member-visits": memberVisits,
+        "store.scalar-target.owner-index-visits": ownerIndexVisits,
+        "store.scalar-target.owner-lookups": ownerLookups,
+        ...(warmRows ? { "store.mounted-scalar.warm-rows": warmRows } : {}),
+        ...(regions.length > warmRows ? {
+          "store.mounted-scalar.cold-rows": regions.length - warmRows,
+        } : {}),
       });
     }
     return token;

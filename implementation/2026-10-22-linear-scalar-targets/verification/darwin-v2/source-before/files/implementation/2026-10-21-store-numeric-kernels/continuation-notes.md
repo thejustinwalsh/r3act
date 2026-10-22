@@ -1,0 +1,7 @@
+# Next source-backed capability
+
+Current source passes its integrated semantic gate but loses the sole installed canvas comparison. Do not repeat current-source timing or start a diagnostic/container carousel. The full-plan goal remains active.
+
+A bounded Sol source review identifies mixed local-state and canonical Store numeric leaf expressions as a remaining compiler-first capability. `closed_store_host_program_inner` in compiler/oxc-spike/src/main.rs rejects any state sites; `closed_numeric_owner_body` rejects Store sites. For example, a retained mesh prop `pose.x + localOffset` renders generically even when both inputs and the arithmetic are proven numeric. Root can prepare cells and Stores together through #prepareClosedInputCandidate, but existing executors stage separate outputs and cannot compute one sink from both.
+
+Before selecting the next unit, read the complete master guide and actual current sources, then define one integrated compiler/runtime/fixture contract. Reuse World cells, StoreRenderTransaction captures, existing owner/revision association, exact captured acknowledgement and publication. Retire generic rendering only for a proven closed body, preserving resource/child lifetime and fallback. Do not add a second identity/version/history registry or remove whole-root guards. The current installed case also makes 256 kernel calls for 256 alternating rows; broader heterogeneous fusion is still open, with no measured removable share or attributed speed budget.

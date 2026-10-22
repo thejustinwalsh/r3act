@@ -529,6 +529,7 @@ export const nativeModuleCompilerPlugin = (
       }
       if (!candidate) return null;
       if (!helperModule && !componentModule) return null;
+      this.addWatchFile(absolutePath);
       if (helperModule.startsWith(".")) {
         this.addWatchFile(path.resolve(path.dirname(absolutePath), helperModule));
       }

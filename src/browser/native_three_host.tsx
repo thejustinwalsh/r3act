@@ -498,27 +498,21 @@ function Inspector({ store }: { store: StoreSource<StudioState> }) {
 
 const createInstrumentedHost = () => {
   const base = createThreeHost();
-  return new Proxy(base, {
-    get(target, key) {
-      if (key === "setProp") {
-        return (
-          node: ThreeHandle,
-          name: string,
-          value: unknown,
-          previous: unknown,
-        ) => {
-          allHostPropWrites++;
-          if (
-            name === "rotation-y" || name === "rotation-x" ||
-            name === "rotation-z"
-          ) phasePropWrites++;
-          return target.setProp(node, name, value, previous);
-        };
-      }
-      const value = Reflect.get(target, key, target);
-      return typeof value === "function" ? value.bind(target) : value;
-    },
-  });
+  const originalSetProp = base.setProp;
+  base.setProp = (
+    node: ThreeHandle,
+    name: string,
+    value: unknown,
+    previous: unknown,
+  ) => {
+    allHostPropWrites++;
+    if (
+      name === "rotation-y" || name === "rotation-x" ||
+      name === "rotation-z"
+    ) phasePropWrites++;
+    return originalSetProp.call(base, node, name, value, previous);
+  };
+  return base;
 };
 
 const updateCanvasSize = (element: HTMLElement) => {

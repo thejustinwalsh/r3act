@@ -12,15 +12,29 @@ export function RevisionProbe() {
 }`;
 const compilerBinary = path.join(root, "compiler/oxc-spike/target/debug/ui-graph-compiler-spike");
 const plugin = nativeModuleCompilerPlugin({ root, compilerBinary });
+const watched = [];
 const context = {
-  addWatchFile() {},
+  addWatchFile(filename) { watched.push(filename); },
   error(message) { throw new Error(String(message)); },
 };
 plugin.configResolved.call(context, { root, command: "serve" });
 
 try {
-  const transformed = await plugin.transform.call(context, source, file);
+  const transformed = await plugin.transform.call(context, source, `${file}?v=source-watch`);
   assert.ok(transformed?.code);
+  assert.deepEqual(watched.filter((filename) => filename === file), [file],
+    "a queried native transform registers its clean absolute input");
+  watched.length = 0;
+  const ordinaryFile = path.join(root, "compiler/fixtures/react-hmr-revision.tsx");
+  assert.equal(await plugin.transform.call(context,
+    "export function ReactProbe() { return <output />; }", ordinaryFile), null);
+  assert.equal(await plugin.transform.call(context, source, `${file}?raw`), null);
+  assert.deepEqual(watched, [], "ordinary and non-transform requests add no native source watch");
+  const outsideFile = path.resolve(root, "../native-hmr-outside.tsx");
+  await assert.rejects(() => plugin.transform.call(context,
+    '// @native-ui\nimport { asyncTask } from "./missing.ts";', outsideFile),
+  /Native UI module must be inside the project root/);
+  assert.deepEqual(watched, [], "a rejected outside-root candidate adds no source watch");
   const code = transformed.code;
   const register = code.indexOf("__registerNativeSemanticPlan(");
   const defineComponent = code.indexOf("__nativeDefineComponent(");
@@ -73,6 +87,10 @@ try {
   }), undefined);
   assert.deepEqual(messages, [], "explicit Vite dependency accepts stop native invalidation");
   const invalid = source.replace("useState(1)", "useState(");
+  await assert.rejects(() => plugin.transform.call(context, invalid, file),
+    /Native UI compilation failed/);
+  assert.ok(watched.includes(file), "a failed native transform still watches its input for repair");
+  watched.length = 0;
   messages.length = 0;
   await assert.rejects(() => plugin.handleHotUpdate.call(context, {
     ...hotContext, read: async () => invalid,
@@ -99,6 +117,7 @@ try {
   ], "a repaired edit invalidates exactly the last accepted revision and instance");
   const refreshed = await plugin.transform.call(context, repaired, file);
   assert.ok(refreshed?.code);
+  assert.ok(watched.includes(file), "repair re-enters the watched native transform");
   const refreshedRevision = refreshed.code.match(/"module_revision":"([^"]+)"/)?.[1];
   const refreshedInstance = refreshed.code.match(/event\.previousInstance === "([^"]+)"/)?.[1];
   assert.notEqual(refreshedRevision, revision);

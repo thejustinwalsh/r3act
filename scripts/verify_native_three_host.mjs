@@ -27,8 +27,16 @@ const assertDraw=(state,label)=>{
  assert.equal(state.drawnFrameEpoch,state.hostFrameEpoch,
   `${label}: drawn epoch differs from the committed Three marker`);
 };
-const assertActors=(state,label)=>assert.equal(state.activePhaseSetters,
- state.sceneObjects.length,`${label}: actor setter registration differs from live shapes`);
+const assertActors=(state,label)=>{
+ assert.equal(state.activePhaseSetters,0,`${label}: retired actor setter path returned`);
+ assert.equal(state.frameClock.roots,1,`${label}: frame clock root membership differs`);
+ assert.equal(state.frameClock.listeners,1,`${label}: frame clock listener membership differs`);
+ assert.equal(state.frameClock.readers,state.sceneObjects.length+1,`${label}: motion and marker reader coverage differs`);
+};
+const assertClockDisposed=(state,label)=>{
+ for(const key of ['roots','listeners','readers','retainedActions','transitions'])
+  assert.equal(state.frameClock[key],0,`${label}: frame clock ${key} survived`);
+};
 try{
  browser=await openBrowser({gpu:true});
  const context=await browser.newContext({ignoreHTTPSErrors:true,viewport:{width:1440,height:960},reducedMotion:'no-preference'});
@@ -123,9 +131,11 @@ try{
  const hmrDraw=await frames(page,0,8);assertDraw(hmrDraw,'HMR remount');assertActors(hmrDraw,'HMR remount');
  assert.equal(hmr.old.disposed,true);assert.equal(hmr.old.activePhaseSetters,0);assert.equal(hmr.old.host.liveHandles,0);assert.equal(hmr.old.host.liveResources,0);assert.equal(hmr.old.host.eventRegistrations,0);assert.equal(hmr.old.borrowedAssetsDisposed,true);
  for(const key of ['roots','listeners','readers','retainedActions','transitions'])assert.equal(hmr.old.store[key],0,key+' survived HMR');
+ assertClockDisposed(hmr.old,'HMR old page');
  assert.equal(hmr.current.sceneObjects.length,3);assertActors(hmr.current,'HMR current actors');assert.equal(await page.locator('#scene-canvas').count(),1);
  await page.evaluate(()=>window.dispatchEvent(new Event('pagehide')));const disposed=await snapshot(page);assert.equal(disposed.activePhaseSetters,0);assert.equal(disposed.host.liveHandles,0);assert.equal(disposed.host.liveResources,0);assert.equal(disposed.host.eventRegistrations,0);assert.equal(disposed.borrowedAssetsDisposed,true);
  for(const key of ['roots','listeners','readers','retainedActions','transitions'])assert.equal(disposed.store[key],0,key+' survived disposal');
+ assertClockDisposed(disposed,'final disposal');
  await page.waitForTimeout(180);const disposedLater=await snapshot(page);
  for(const key of ['rendererFrames','requestedFrameEpoch','drawnFrameEpoch','phasePropWrites'])assert.equal(disposedLater[key],disposed[key],`${key} advanced after disposal`);
  assert.equal(disposedLater.activePhaseSetters,0,'actor setters survived disposal wait');
@@ -133,6 +143,7 @@ try{
  assert.equal(await mobile.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'mobile overflow');
  const mobileInitial=await frames(mobile,0,6);const reduced=await frames(mobile,mobileInitial.rendererFrames,10);assertDraw(mobileInitial,'reduced-motion initial');assertDraw(reduced,'reduced-motion later');assertActors(reduced,'reduced-motion actors');assert.equal(reduced.phasePropWrites,mobileInitial.phasePropWrites,'reduced motion still animated JSX props');assert.equal(reduced.requestedFrameEpoch,mobileInitial.requestedFrameEpoch,'reduced motion requested another animation epoch');
  await mobile.screenshot({path:path.join(output,'mobile.png')});await mobile.evaluate(()=>window.dispatchEvent(new Event('pagehide')));const mobileDisposed=await snapshot(mobile);await mobile.waitForTimeout(180);const mobileDisposedLater=await snapshot(mobile);assert.equal(mobileDisposed.activePhaseSetters,0);for(const key of ['rendererFrames','requestedFrameEpoch','drawnFrameEpoch'])assert.equal(mobileDisposedLater[key],mobileDisposed[key],`mobile ${key} advanced after disposal`);
+ assertClockDisposed(mobileDisposed,'reduced-motion disposal');
  assert.deepEqual(errors,[]);await writeFile(path.join(output,'results.json'),JSON.stringify({status:'PASS',initial,animated,paused,still,updated,removed,added,reordered,reset,resumed,hmr,hmrDraw,disposed,disposedLater,mobile:{initial:mobileInitial,reduced,disposed:mobileDisposed,disposedLater:mobileDisposedLater},errors,websocketEvents,consoleEvents},null,2));
  console.log('PASS Three WebGL: compiled frame props without owner rerenders; native raycast selection; material controls; keyed add/remove/reorder; shared/owned resources; reduced motion; HMR and teardown.');
 }catch(error){

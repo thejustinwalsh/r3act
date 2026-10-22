@@ -81,9 +81,14 @@ try {
     if (node.type !== "CallExpression" || !/^__nativeDefineComponent_*$/.test(node.callee?.name ?? "")) return;
     const execution = property(node.arguments[2], "closedStoreExecution");
     if (!execution) return;
+    const name = node.arguments[0].value.split("#component:").at(-1);
+    const program = property(node.arguments[2], "closedStoreHostProgram");
+    assert.equal(property(property(program, "host"), "key")?.value,
+      name === "Marker" ? "marker" : "motion");
+    if (name === "Marker") assert.equal(property(program, "schemaVersion")?.value, 5);
     assert.equal(property(execution, "schemaVersion")?.value, 2);
     assert.equal(property(execution, "numericKernel")?.type, "ArrowFunctionExpression");
-    selected.push(node.arguments[0].value.split("#component:").at(-1));
+    selected.push(name);
   });
   assert.deepEqual(selected.sort(), ["Alternate", "Marker", "Motion"]);
   const sourceFile = property(plan, "source_file")?.value;
@@ -211,6 +216,76 @@ try {
   assert.ok(peerReferences.survivor, "surviving owner recipe must remain retained");
   assert.equal(peerReferences.node.deref(), undefined, "same-key recipe retained a removed peer");
   assert.equal(peerReferences.payload.deref(), undefined, "same-key recipe retained removed peer payload");
+  const manyCounters = {};
+  const manyProfile = batch => {
+    for (const [name, count] of Object.entries(batch))
+      manyCounters[name] = (manyCounters[name] ?? 0) + count;
+  };
+  const resetMany = () => { for (const name of Object.keys(manyCounters)) delete manyCounters[name]; };
+  const manyTree = extraPeer => jsx("group", { key: "many-scene" }, [
+    jsx("section", { key: "marker-slot" },
+      jsx(app.Marker, { key: "marker-owner", clock: app.clock })),
+    ...Array.from({ length: extraPeer ? 257 : 256 }, (_, id) =>
+      jsx("section", { key: `slot-${id}` },
+        jsx(id % 2 === 0 ? app.Motion : app.Alternate,
+          { key: `owner-${id}`, id: `many-${id}`, clock: app.clock,
+            children: jsx("mesh", { key: `child-${id}`, name: `retained-${id}` }) }))),
+  ]);
+  const manyHost = new ObservingHost(), manyContainer = manyHost.createContainer();
+  const manyRoot = createNativeRoot(manyHost, manyContainer,
+    { rootId: `mounted-many-${randomUUID()}`, scheduleCommit() {}, profileCounter: manyProfile });
+  roots.push(manyRoot); manyRoot.mount(manyTree(false));
+  const manySlots = () => manyContainer.children[0].children;
+  const manyMotion = () => manySlots().slice(1).map(slot => slot.children[0]);
+  const manyTargets = manyMotion(), manyChildren = manyTargets.map(node => node.children[0]);
+  assert.equal(manyTargets.length, 256);
+  assert.equal(manySlots()[0].children[0].props.name, "accepted-bound-frame");
+  const manyStep = (phase, expectedWarm) => {
+    resetMany(); app.clock.dispatch(() => storeRecord({ phase }));
+    assert.equal(manyRoot.flush(), true);
+    assert.equal(manyCounters["store.owned-data.verified-rows"], 257);
+    assert.equal(manyCounters["owner.component-renders"] ?? 0, 0);
+    assert.equal(manyCounters["store.scalar-target.bucket-builds"], 2);
+    for (const name of ["member-visits", "owner-index-visits", "owner-lookups"])
+      assert.equal(manyCounters[`store.scalar-target.${name}`], 257);
+    assert.equal(manyCounters["store.mounted-scalar.warm-rows"] ?? 0, expectedWarm);
+    assert.equal(manyCounters["store.mounted-scalar.cold-rows"] ?? 0, 257 - expectedWarm);
+    assert.equal(manySlots()[0].children[0].props.name, "accepted-bound-frame");
+    assert.equal(manySlots()[0].children[0].props["position-x"], phase);
+    for (const [id, node] of manyMotion().entries()) {
+      assert.equal(node, manyTargets[id], `motion target ${id} must retain identity`);
+      assert.equal(node.children[0], manyChildren[id], `authored child ${id} must retain identity`);
+    }
+    assert.deepEqual(manyTargets.map(node => node.props["position-x"]),
+      Array.from({ length: 256 }, (_, id) => phase * (id % 2 === 0 ? 2 : 3)));
+  };
+  manyStep(11, 0);
+  manyStep(12, 257);
+  manyStep(13, 257);
+  app.controls["many-0"](2); app.controls["many-1"](3);
+  assert.equal(manyRoot.flush(), true);
+  assert.equal(manyTargets[0].props["position-x"], 28);
+  assert.equal(manyTargets[1].props["position-x"], 42);
+  for (const [id, node] of manyTargets.entries())
+    assert.equal(node.children[0], manyChildren[id], `local offset must retain child ${id}`);
+  manyRoot.update(manyTree(true));
+  assert.equal(manyMotion().length, 257);
+  const beforeChurnStep = manyMotion().map(node => node.props["position-x"]);
+  app.clock.dispatch(() => storeRecord({ phase: 14 }));
+  assert.equal(manyRoot.flush(), true);
+  assert.equal(manySlots()[0].children[0].props["position-x"], 14);
+  assert.deepEqual(manyMotion().map((node, id) => node.props["position-x"] - beforeChurnStep[id]),
+    Array.from({ length: 257 }, (_, id) => id % 2 === 0 ? 2 : 3),
+    "same-key peer insertion must update each current owner, regardless of generic replacement");
+  resetMany(); app.clock.dispatch(() => storeRecord({ phase: 15 }));
+  assert.equal(manyRoot.flush(), true);
+  assert.equal(manyCounters["store.owned-data.verified-rows"], 258);
+  assert.equal(manyCounters["owner.component-renders"] ?? 0, 0);
+  assert.equal(manyCounters["store.scalar-target.bucket-builds"], 2);
+  for (const name of ["member-visits", "owner-index-visits", "owner-lookups"])
+    assert.equal(manyCounters[`store.scalar-target.${name}`], 258);
+  assert.equal(manyCounters["store.mounted-scalar.warm-rows"], 258);
+  assert.equal(manySlots()[0].children[0].props["position-x"], 15);
   app.clock.dispatch(() => storeRecord({ phase: 8 }));
   const stale = current.root.prepareStores([app.clock]);
   assert.ok(stale); assert.equal(stale.validate(), true);
@@ -222,7 +297,8 @@ try {
     transformedSha256: sha(transformed.code), selected,
     assertions: ["actual schema2 arithmetic", "warm input and mounted reuse", "immutable applying snapshots",
       "newer reentrant action", "local offsets and retained children", "independent accepted roots",
-      "bounded removed-target and same-key peer retention with roots alive", "stale code retirement"],
+      "bounded removed-target and same-key peer retention with roots alive", "stale code retirement",
+      "compiled 256-owner shared-key current indexing", "accepted same-key peer insertion"],
   }, null, 2) + "\n", { flag: "wx" });
   console.log(`PASS actual compiled mounted scalar reuse; provenance: ${artifact}`);
 } catch (error) { primaryError = error; }
