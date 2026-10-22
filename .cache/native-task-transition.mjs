@@ -2,7 +2,7 @@ import { registerCompiledSemanticPlan as __registerNativeSemanticPlan, invalidat
 __registerNativeSemanticPlan({
 	"schema_version": 1,
 	"source_file": ".cache/native-task-transition.tsx",
-	"module_revision": "native-v1-056abcacd62ac776",
+	"module_revision": "native-v1-2ff28be216137650",
 	"owners": [
 		{
 			"site_id": ".cache/native-task-transition.tsx#component:App",
@@ -112,7 +112,7 @@ __registerNativeSemanticPlan({
 });
 if (import.meta.hot) {
 	const __onNativeModuleRevision = (event) => {
-		if (event?.sourceFile === ".cache/native-task-transition.tsx" && event.previousRevision === "native-v1-056abcacd62ac776" && event.previousInstance === "native-v1-056abcacd62ac776") __invalidateNativeSemanticPlan(".cache/native-task-transition.tsx", "native-v1-056abcacd62ac776");
+		if (event?.sourceFile === ".cache/native-task-transition.tsx" && event.previousRevision === "native-v1-2ff28be216137650" && event.previousInstance === "native-v1-2ff28be216137650") __invalidateNativeSemanticPlan(".cache/native-task-transition.tsx", "native-v1-2ff28be216137650");
 	};
 	import.meta.hot.on("r3act:invalidate-native-module", __onNativeModuleRevision);
 	import.meta.hot.dispose(() => import.meta.hot?.off("r3act:invalidate-native-module", __onNativeModuleRevision));
@@ -192,11 +192,11 @@ export function App({ search, model }) {
 }
 export const compiledNativeComponentPlan = {
 	"schema_version": 2,
-	"module_revision": "native-v1-056abcacd62ac776",
+	"module_revision": "native-v1-2ff28be216137650",
 	"semantic_plan": {
 		"schema_version": 1,
 		"source_file": ".cache/native-task-transition.tsx",
-		"module_revision": "native-v1-056abcacd62ac776",
+		"module_revision": "native-v1-2ff28be216137650",
 		"owners": [
 			{
 				"site_id": ".cache/native-task-transition.tsx#component:App",

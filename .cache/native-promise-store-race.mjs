@@ -2,7 +2,7 @@ import { registerCompiledSemanticPlan as __registerNativeSemanticPlan, invalidat
 __registerNativeSemanticPlan({
 	"schema_version": 1,
 	"source_file": ".cache/native-promise-store-race.tsx",
-	"module_revision": "native-v1-57732f0ff600d69c",
+	"module_revision": "native-v1-ebca652f107b01a6",
 	"owners": [{
 		"site_id": ".cache/native-promise-store-race.tsx#component:Pair",
 		"repeated_scope": "runtime-keyed-owner"
@@ -88,7 +88,7 @@ __registerNativeSemanticPlan({
 });
 if (import.meta.hot) {
 	const __onNativeModuleRevision = (event) => {
-		if (event?.sourceFile === ".cache/native-promise-store-race.tsx" && event.previousRevision === "native-v1-57732f0ff600d69c" && event.previousInstance === "native-v1-57732f0ff600d69c") __invalidateNativeSemanticPlan(".cache/native-promise-store-race.tsx", "native-v1-57732f0ff600d69c");
+		if (event?.sourceFile === ".cache/native-promise-store-race.tsx" && event.previousRevision === "native-v1-ebca652f107b01a6" && event.previousInstance === "native-v1-ebca652f107b01a6") __invalidateNativeSemanticPlan(".cache/native-promise-store-race.tsx", "native-v1-ebca652f107b01a6");
 	};
 	import.meta.hot.on("r3act:invalidate-native-module", __onNativeModuleRevision);
 	import.meta.hot.dispose(() => import.meta.hot?.off("r3act:invalidate-native-module", __onNativeModuleRevision));
@@ -174,11 +174,11 @@ export function Pair() {
 }
 export const compiledNativeComponentPlan = {
 	"schema_version": 2,
-	"module_revision": "native-v1-57732f0ff600d69c",
+	"module_revision": "native-v1-ebca652f107b01a6",
 	"semantic_plan": {
 		"schema_version": 1,
 		"source_file": ".cache/native-promise-store-race.tsx",
-		"module_revision": "native-v1-57732f0ff600d69c",
+		"module_revision": "native-v1-ebca652f107b01a6",
 		"owners": [{
 			"site_id": ".cache/native-promise-store-race.tsx#component:Pair",
 			"repeated_scope": "runtime-keyed-owner"

@@ -8,6 +8,7 @@ import {
   commitAdmittedNativeCandidate,
   ComponentStateRoot,
   isNativeRootHostPublicationBusy,
+  prepareCanonicalNativeGroup,
   publishPreparedNativeGroup,
   subscribeNativeRootHostPublication,
   type NativeRootCandidate,
@@ -536,7 +537,11 @@ export class NativeRootWorkQueue {
                 );
               }
             }
-            for (const { value } of candidates) value.preparePublication();
+            const preparedCanonical = !("validateWork" in work) &&
+              prepareCanonicalNativeGroup(candidates.map(({ value }) => value));
+            if (!preparedCanonical) {
+              for (const { value } of candidates) value.preparePublication();
+            }
             for (const { value } of candidates) {
               if (!value.validatePostHost()) {
                 throw new Error(

@@ -23,8 +23,55 @@ export { storeRecord } from "./owned_store_record.ts";
  */
 
 let storeMutationClock = 0;
+const canonicalMapConstructor = Map;
+const canonicalSetConstructor = Set;
+const canonicalArrayConstructor = Array;
+const canonicalObjectConstructor = Object;
+const canonicalReflectObject = Reflect;
+const canonicalSymbolConstructor = Symbol;
 const canonicalMapSet = Map.prototype.set;
 const canonicalMapDelete = Map.prototype.delete;
+const canonicalMapGet = Map.prototype.get;
+const canonicalMapSize = Object.getOwnPropertyDescriptor(Map.prototype, "size")!;
+const canonicalMapIteratorPrototype = Object.getPrototypeOf(new Map()[Symbol.iterator]());
+const canonicalIteratorPrototype = Object.getPrototypeOf(canonicalMapIteratorPrototype);
+const canonicalSetHas = Set.prototype.has;
+const canonicalSetAdd = Set.prototype.add;
+const canonicalSetSize = Object.getOwnPropertyDescriptor(Set.prototype, "size")!;
+const canonicalObjectGetOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
+const canonicalArrayIteratorPrototype = Object.getPrototypeOf([][Symbol.iterator]());
+const passiveGlobalDescriptors: ReadonlyArray<readonly [PropertyKey, PropertyDescriptor]> = [
+  ["Map", canonicalObjectGetOwnPropertyDescriptor(globalThis, "Map")!],
+  ["Set", canonicalObjectGetOwnPropertyDescriptor(globalThis, "Set")!],
+  ["Array", canonicalObjectGetOwnPropertyDescriptor(globalThis, "Array")!],
+  ["Object", canonicalObjectGetOwnPropertyDescriptor(globalThis, "Object")!],
+  ["Reflect", canonicalObjectGetOwnPropertyDescriptor(globalThis, "Reflect")!],
+  ["Symbol", canonicalObjectGetOwnPropertyDescriptor(globalThis, "Symbol")!],
+];
+const passiveIntrinsicDescriptors: ReadonlyArray<readonly [object, PropertyKey, PropertyDescriptor | undefined]> = [
+  [Function.prototype, "call", canonicalObjectGetOwnPropertyDescriptor(Function.prototype, "call")!],
+  [Object, "hasOwn", canonicalObjectGetOwnPropertyDescriptor(Object, "hasOwn")!],
+  [Object, "getPrototypeOf", canonicalObjectGetOwnPropertyDescriptor(Object, "getPrototypeOf")!],
+  [Object, "getOwnPropertyDescriptor", canonicalObjectGetOwnPropertyDescriptor(Object, "getOwnPropertyDescriptor")!],
+  [Object, "freeze", canonicalObjectGetOwnPropertyDescriptor(Object, "freeze")!],
+  [Reflect, "ownKeys", canonicalObjectGetOwnPropertyDescriptor(Reflect, "ownKeys")!],
+  [Map.prototype, "get", canonicalObjectGetOwnPropertyDescriptor(Map.prototype, "get")!],
+  [Map.prototype, "has", canonicalObjectGetOwnPropertyDescriptor(Map.prototype, "has")!],
+  [Map.prototype, "set", canonicalObjectGetOwnPropertyDescriptor(Map.prototype, "set")!],
+  [Map.prototype, "values", canonicalObjectGetOwnPropertyDescriptor(Map.prototype, "values")!],
+  [Map.prototype, Symbol.iterator, canonicalObjectGetOwnPropertyDescriptor(Map.prototype, Symbol.iterator)!],
+  [Map.prototype, "size", canonicalMapSize],
+  [canonicalMapIteratorPrototype, "next", canonicalObjectGetOwnPropertyDescriptor(canonicalMapIteratorPrototype, "next")!],
+  [canonicalMapIteratorPrototype, Symbol.iterator, canonicalObjectGetOwnPropertyDescriptor(canonicalMapIteratorPrototype, Symbol.iterator)],
+  [canonicalIteratorPrototype, Symbol.iterator, canonicalObjectGetOwnPropertyDescriptor(canonicalIteratorPrototype, Symbol.iterator)!],
+  [Set.prototype, "has", canonicalObjectGetOwnPropertyDescriptor(Set.prototype, "has")!],
+  [Set.prototype, "add", canonicalObjectGetOwnPropertyDescriptor(Set.prototype, "add")!],
+  [Set.prototype, "size", canonicalSetSize],
+  [Array.prototype, "push", canonicalObjectGetOwnPropertyDescriptor(Array.prototype, "push")!],
+  [Array.prototype, Symbol.iterator, canonicalObjectGetOwnPropertyDescriptor(Array.prototype, Symbol.iterator)!],
+  [canonicalArrayIteratorPrototype, "next", canonicalObjectGetOwnPropertyDescriptor(canonicalArrayIteratorPrototype, "next")!],
+  [canonicalArrayIteratorPrototype, Symbol.iterator, canonicalObjectGetOwnPropertyDescriptor(canonicalArrayIteratorPrototype, Symbol.iterator)],
+];
 const canonicalArrayPush = Array.prototype.push;
 const canonicalApply = Reflect.apply;
 const ownedBatchKey = Symbol("owned-store-batch");
@@ -143,6 +190,11 @@ export type AcceptedStoreReaderReceipt = Readonly<{
   history: object;
   version: number;
   rootEpoch: object;
+}>;
+export type CanonicalStoreReaderCohortEntry = Readonly<{
+  store: AnyAsyncStore;
+  rootId: string;
+  readerId: string;
 }>;
 class CanonicalBlockedStoreReaderReceipt {
   readonly #store: AnyAsyncStore;
@@ -958,6 +1010,17 @@ export class AsyncStore<S, A = StoreAction<S, S>> implements StoreSource<S> {
     return version === receipt.version ? "current" : "retained";
   }
 
+  _inspectPassiveReaderCurrent(rootId: string, readerId: string): boolean {
+    const readers = canonicalMapGet.call(this.#readerValues, rootId) as
+      Map<string, AcceptedReaderHistory> | undefined;
+    const history = readers && canonicalMapGet.call(readers, readerId) as
+      AcceptedReaderHistory | undefined;
+    const stamp = history?.stamp;
+    return canonicalSetHas.call(this.#knownRoots, rootId) && !!stamp &&
+      canonicalMapGet.call(this.#rootEpochs, rootId) === stamp.rootEpoch &&
+      (canonicalMapGet.call(this.#rootVersions, rootId) ?? 0) === stamp.version;
+  }
+
   diagnostics() {
     return Object.freeze({
       roots: this.#knownRoots.size,
@@ -1258,6 +1321,34 @@ function closedNumericPrototypeIsCanonical(): boolean {
   }
   return true;
 }
+function passivePublicationIntrinsicsCanonical(): boolean {
+  for (let index = 0; index < passiveGlobalDescriptors.length; index++) {
+    const entry = passiveGlobalDescriptors[index];
+    const expected = entry[1];
+    const actual = canonicalObjectGetOwnPropertyDescriptor(globalThis, entry[0]);
+    if (!actual || expected.value !== actual.value || expected.get !== actual.get ||
+      expected.set !== actual.set || expected.writable !== actual.writable ||
+      expected.enumerable !== actual.enumerable ||
+      expected.configurable !== actual.configurable) return false;
+  }
+  if (Map !== canonicalMapConstructor || Set !== canonicalSetConstructor ||
+    Array !== canonicalArrayConstructor || Object !== canonicalObjectConstructor ||
+    Reflect !== canonicalReflectObject || Symbol !== canonicalSymbolConstructor) return false;
+  for (let index = 0; index < passiveIntrinsicDescriptors.length; index++) {
+    const descriptor = passiveIntrinsicDescriptors[index];
+    const holder = descriptor[0];
+    const key = descriptor[1];
+    const expected = descriptor[2];
+    const actual = canonicalObjectGetOwnPropertyDescriptor(holder, key);
+    if (!expected || !actual) {
+      if (expected !== actual) return false;
+    } else if (expected.value !== actual.value || expected.get !== actual.get ||
+      expected.set !== actual.set || expected.writable !== actual.writable ||
+      expected.enumerable !== actual.enumerable ||
+      expected.configurable !== actual.configurable) return false;
+  }
+  return true;
+}
 const canonicalBeginClosedProjectionRender = AsyncStore.prototype._beginClosedProjectionRender;
 const canonicalValidateRender = AsyncStore.prototype._validateRender;
 const canonicalValidateRenderStamp = AsyncStore.prototype._validateRenderStampCanonical;
@@ -1268,6 +1359,7 @@ const canonicalPrepareOwnedDirectReaderValues =
 const canonicalPublishReaderValues = AsyncStore.prototype._publishPreparedReaderValues;
 const canonicalCaptureReaderReceipt = AsyncStore.prototype._captureCanonicalReaderReceipt;
 const canonicalInspectReaderReceipt = AsyncStore.prototype._inspectCanonicalReaderReceipt;
+const canonicalInspectPassiveReaderCurrent = AsyncStore.prototype._inspectPassiveReaderCurrent;
 const canonicalSnapshotRootStamp = StoreRenderSnapshot.prototype.capturedRootStamp;
 const canonicalValidateSnapshotPrepared = StoreRenderSnapshot.prototype.validatePreparedCanonical;
 const canonicalValidateSnapshotLineage = StoreRenderSnapshot.prototype.validatePublicationInputsCanonical;
@@ -1330,6 +1422,42 @@ export function inspectCanonicalStoreReaderReceipt(
     if (error instanceof TypeError) return null;
     throw error;
   }
+}
+
+/** Check one passive interval of accepted reader histories without temporary receipts. */
+export function acknowledgeCanonicalStoreReaderCohort(
+  entries: readonly CanonicalStoreReaderCohortEntry[],
+): "current" | "stale" | "public-required" {
+  const normalized: Array<{ store: AnyAsyncStore; rootId: string; readerId: string }> = [];
+  try {
+    for (let index = 0; index < entries.length; index++) {
+      const entry = entries[index];
+      if (!entry || typeof entry.rootId !== "string" ||
+        typeof entry.readerId !== "string") return "public-required";
+      canonicalArrayPush.call(normalized, {
+        store: entry.store, rootId: entry.rootId, readerId: entry.readerId,
+      });
+    }
+  } catch {
+    return "public-required";
+  }
+  if (!passivePublicationIntrinsicsCanonical() ||
+    !closedNumericPrototypeIsCanonical()) return "public-required";
+  const audited = new Set<AnyAsyncStore>();
+  for (let index = 0; index < normalized.length; index++) {
+    const { store, rootId, readerId } = normalized[index];
+    try {
+      if (!canonicalSetHas.call(audited, store)) {
+        if (!canonicalOwnedBatchInstance.call(store, ownedBatchKey)) return "public-required";
+        canonicalSetAdd.call(audited, store);
+      }
+      if (!canonicalInspectPassiveReaderCurrent.call(store, rootId, readerId)) return "stale";
+    } catch (error) {
+      if (error instanceof TypeError) return "public-required";
+      throw error;
+    }
+  }
+  return "current";
 }
 
 export function captureCanonicalBlockedStoreReaderReceipt(
@@ -1615,6 +1743,39 @@ export class StoreRenderTransaction {
     const finalStatus = canonicalValidateStorePhase.call(this, key, "after-host");
     if (finalStatus === "public-required") return "public-required";
     if (finalStatus === "stale") return "stale";
+    this.#preparedPublication = prepared;
+    return "ready";
+  }
+  _inspectCanonicalClosedPublication(key: symbol):
+    "current" | "stale" | "public-required" {
+    if (typeof this !== "object" || this === null || !(#snapshots in this) ||
+      key !== ownedBatchKey) return "public-required";
+    if (!passivePublicationIntrinsicsCanonical() ||
+      Object.getPrototypeOf(this) !== StoreRenderTransaction.prototype ||
+      !transactionPublicationMethodsCanonical(this) ||
+      this.#readerStorage.kind !== "owned-direct") return "public-required";
+    if (this.#closed || this.#preparedPublication) return "stale";
+    return canonicalValidateStorePhase.call(this, key, "after-host");
+  }
+  _prepareCanonicalClosedPublicationAfterHost(key: symbol):
+    "ready" | "stale" | "public-required" {
+    const status = canonicalInspectClosedPublication.call(this, key);
+    if (status !== "current") return status;
+    const storage = this.#readerStorage;
+    if (storage.kind !== "owned-direct") return "public-required";
+    const readersByStore = new Map<AnyAsyncStore, string[]>();
+    for (const [readerId, row] of storage.rows) {
+      let readers = readersByStore.get(row.store);
+      if (!readers) readersByStore.set(row.store, readers = []);
+      readers.push(readerId);
+    }
+    const prepared = new Map<AnyAsyncStore, PreparedReaderValues>();
+    for (const [store, readerIds] of readersByStore) {
+      const snapshot = this.#snapshots.get(store)!;
+      prepared.set(store, canonicalPrepareOwnedDirectReaderValues.call(
+        store, this.#capturedRootId, readerIds, canonicalSnapshotRootStamp.call(snapshot),
+      ));
+    }
     this.#preparedPublication = prepared;
     return "ready";
   }
@@ -2275,6 +2436,10 @@ const canonicalValidateStorePhase =
   StoreRenderTransaction.prototype._validateCanonicalClosedPhase;
 const canonicalPrepareClosedPublication =
   StoreRenderTransaction.prototype._prepareCanonicalClosedPublication;
+const canonicalInspectClosedPublication =
+  StoreRenderTransaction.prototype._inspectCanonicalClosedPublication;
+const canonicalPrepareClosedPublicationAfterHost =
+  StoreRenderTransaction.prototype._prepareCanonicalClosedPublicationAfterHost;
 const canonicalReadCaptureCounts =
   StoreRenderTransaction.prototype._readOwnedCaptureCounts;
 const canonicalTransactionClosedRead =
@@ -2307,6 +2472,31 @@ export function prepareCanonicalClosedStorePublication(
 ): "ready" | "stale" | "public-required" {
   try {
     return canonicalPrepareClosedPublication.call(transaction, ownedBatchKey);
+  } catch (error) {
+    if (error instanceof TypeError &&
+      (typeof transaction !== "object" || transaction === null)) return "public-required";
+    throw error;
+  }
+}
+
+/** Check Store publication eligibility before choosing a group phase. */
+export function inspectCanonicalClosedStorePublication(
+  transaction: StoreRenderTransaction,
+): "current" | "stale" | "public-required" {
+  try {
+    return canonicalInspectClosedPublication.call(transaction, ownedBatchKey);
+  } catch (error) {
+    if (error instanceof TypeError) return "public-required";
+    throw error;
+  }
+}
+
+/** Prepare a freshly checked passive Store phase after host writes. */
+export function prepareCanonicalClosedStorePublicationAfterHost(
+  transaction: StoreRenderTransaction,
+): "ready" | "stale" | "public-required" {
+  try {
+    return canonicalPrepareClosedPublicationAfterHost.call(transaction, ownedBatchKey);
   } catch (error) {
     if (error instanceof TypeError &&
       (typeof transaction !== "object" || transaction === null)) return "public-required";

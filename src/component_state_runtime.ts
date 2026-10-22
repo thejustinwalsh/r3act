@@ -54,6 +54,7 @@ import {
 import {
   type AcceptedStoreReaderReceipt,
   type AnyAsyncStore,
+  acknowledgeCanonicalStoreReaderCohort,
   AsyncStore,
   type BlockedStoreReaderReceipt,
   captureCanonicalBlockedStoreReaderReceipt,
@@ -61,6 +62,8 @@ import {
   inspectCanonicalBlockedStoreReaderReceipt,
   inspectCanonicalStoreReaderReceipt,
   StoreRenderTransaction,
+  inspectCanonicalClosedStorePublication,
+  prepareCanonicalClosedStorePublicationAfterHost,
   prepareCanonicalClosedStorePublication,
   readOwnedClosedStoreCaptureCounts,
   type StoreSource,
@@ -177,6 +180,9 @@ import {
 } from "./keyed_collection.ts";
 
 const canonicalStoreForNumericKernel = AsyncStore.prototype._isClosedNumericCanonical;
+const ownDataDescriptor = Object.getOwnPropertyDescriptor;
+const canonicalSetForEach = Set.prototype.forEach;
+const canonicalSetHas = Set.prototype.has;
 const collectCleanupErrors = (actions: readonly (() => void)[]): unknown[] => {
   const errors: unknown[] = [];
   for (const action of actions) {
@@ -273,6 +279,8 @@ const groupPublicationReceipts = new WeakMap<object, {
   commitAdmitted(): void;
   current(): boolean;
   accept(): void;
+  canonicalPostHostEligible(): boolean;
+  prepareCanonicalPostHost(): void;
   domain: HostPublicationDomain;
   bindClaim(
     claim: HostPublicationClaim,
@@ -380,6 +388,16 @@ export const publishPreparedNativeGroup = <H, Parent>(
     throw new Error("Native candidate became stale before grouped publication");
   }
   for (const receipt of receipts) receipt!.accept();
+};
+
+/** Prepare a proven owned Store group after every public posthost check. */
+export const prepareCanonicalNativeGroup = <H, Parent>(
+  candidates: readonly NativeRootCandidate<H, Parent>[],
+): boolean => {
+  const receipts = candidates.map((candidate) => groupPublicationReceipts.get(candidate));
+  if (receipts.some((receipt) => !receipt?.canonicalPostHostEligible())) return false;
+  for (const receipt of receipts) receipt!.prepareCanonicalPostHost();
+  return true;
 };
 type BoundaryPrimary = {
   tree: RuntimeNode;
@@ -646,6 +664,7 @@ type CandidateLifecycleSpec<H, Parent> = {
   validatePreparedPrivate(): boolean;
   validateAdmittedContinuation?(): boolean;
   validatePostHost(): boolean;
+  canonicalGroupPostHost?: { eligible(): boolean; prepare(): void };
   finalGroupCurrent(): boolean;
   commitHost(): void;
   commitHostAdmitted(): void;
@@ -3324,6 +3343,10 @@ export class ComponentStateRoot<H, Parent = H> {
     };
     const passiveRows: PassiveRow[] = [];
     const passiveByReader = new Set<string>();
+    let coverage: Readonly<{
+      ownerPrefixes: ReadonlySet<string>;
+      coveredReaders: ReadonlySet<string>;
+    }> | null = null;
     const ownValue = (object: object, name: string) => {
       const descriptor = Object.getOwnPropertyDescriptor(object, name);
       return descriptor && "value" in descriptor ? descriptor.value : undefined;
@@ -3887,7 +3910,9 @@ export class ComponentStateRoot<H, Parent = H> {
         if (status === "stale") return false;
         worldPhaseCurrent = status === "current";
       }
-      const ownerPrefixes = new Set<string>();
+      const ownerPrefixes = coverage?.ownerPrefixes;
+      const coveredReaders = coverage?.coveredReaders;
+      if (!ownerPrefixes || !coveredReaders) return false;
       for (const [owner, { cache, inputs, stateInputs, keyedOutput }] of owners) {
         if (worldPhaseCurrent &&
           (typeof cache.type !== "function" || !definedComponents.has(cache.type))) {
@@ -3929,7 +3954,6 @@ export class ComponentStateRoot<H, Parent = H> {
               (afterHost ? liveVersion >= version : liveVersion === version) &&
               (afterHost && liveVersion > version || capturedScalarCurrent(source, value));
           })) return false;
-        ownerPrefixes.add(String(owner));
       }
       if (hasMixedOwner) {
         for (const change of this.#pendingChanges.capture()) {
@@ -3947,12 +3971,23 @@ export class ComponentStateRoot<H, Parent = H> {
           afterHost ? "after-host" : "prepared")) return false;
       if (!afterHost && this.#resourceHoldWait(new Set(), resourceLease,
         { cells: inputCells })) return false;
+      const canonicalMembershipIteration = passive &&
+        ownDataDescriptor(Set.prototype, "forEach")?.value === canonicalSetForEach &&
+        ownDataDescriptor(Set.prototype, "has")?.value === canonicalSetHas;
       for (const [id, membership] of this.#liveStoreReaders) {
         const split = id.indexOf("\u0000");
-        if (split >= 0 && ownerPrefixes.has(id.slice(0, split)) &&
-          !covered.has(id)) return false;
-        if ([...membership].some((store) => selectedStores.has(store)) &&
-          !covered.has(id) && !retiredPendingReaders.has(id)) return false;
+        if (split >= 0 && canonicalSetHas.call(ownerPrefixes, id.slice(0, split)) &&
+          !canonicalSetHas.call(coveredReaders, id)) return false;
+        let selectedMember = false;
+        if (canonicalMembershipIteration) {
+          canonicalSetForEach.call(membership, (store) => {
+            if (canonicalSetHas.call(selectedStores, store)) selectedMember = true;
+          });
+        } else {
+          selectedMember = [...membership].some((store) => selectedStores.has(store));
+        }
+        if (selectedMember && !canonicalSetHas.call(coveredReaders, id) &&
+          !retiredPendingReaders.has(id)) return false;
       }
       return privateOnly ? resources.validateCanonical() : resources.validate();
     };
@@ -4233,6 +4268,10 @@ export class ComponentStateRoot<H, Parent = H> {
         }
       }
       const ownerIds = new Set(owners.keys());
+      coverage = Object.freeze({
+        ownerPrefixes: new Set([...ownerIds].map(String)),
+        coveredReaders: new Set(covered),
+      });
       if ((passive ? passive.some((image) => image.lineage.slice(1).some(
         (ancestor) => ownerIds.has(ancestor))) : [...ownerIds].some((owner) =>
         this.world.ownerLineage(owner).slice(1).some((ancestor) =>
@@ -4348,6 +4387,7 @@ export class ComponentStateRoot<H, Parent = H> {
           passiveRows.length = 0; passiveByReader.clear();
           stagedByRegion.length = 0;
           acceptedScalarPlans = [];
+          coverage = null;
           if (kernelInputs) kernelInputs.length = 0;
           if (kernelOutputs) kernelOutputs.length = 0;
         },
@@ -4634,6 +4674,16 @@ export class ComponentStateRoot<H, Parent = H> {
         this.#validateRetainedCells(writes, true) &&
         (closed?.postHostCurrent() ?? true) &&
         (closed?.storeCurrent(true) ?? stores.validatePublicationInputs()),
+      ...(groupContinuation && ownedStoreOnly && ownedScalarPhases ? {
+        canonicalGroupPostHost: {
+          eligible: () => inspectCanonicalClosedStorePublication(stores) === "current",
+          prepare: () => {
+            if (prepareCanonicalClosedStorePublicationAfterHost(stores) !== "ready") {
+              throw new Error("Closed Store publication became stale after host commit");
+            }
+          },
+        },
+      } : {}),
       finalGroupCurrent: () =>
         (ownedScalarPhases || program!.validatePostHostPrivate()) &&
         privateCellsCurrent(true) &&
@@ -4955,6 +5005,7 @@ export class ComponentStateRoot<H, Parent = H> {
       return throwWithCleanup(error, errors);
     };
     const rootVersion = () => this.#publicationVersion;
+    let publicPostHostValidated = false;
     const acceptPrepared = () => {
       if (phase !== "publication-ready") throw new Error(`Candidate is ${phase}`);
       try {
@@ -5056,8 +5107,9 @@ export class ComponentStateRoot<H, Parent = H> {
         (spec.admissionCurrent?.() ?? true) &&
         spec.codeCurrent(),
       commitHost: () => commitHostInternal(false),
-      validatePostHost: () =>
-        (phase === "host-committed" || phase === "publication-ready") && !this.#disposed &&
+      validatePostHost: () => {
+        const valid =
+          (phase === "host-committed" || phase === "publication-ready") && !this.#disposed &&
         !this.#disposeRequested && !this.#terminalHostFailed &&
         !this.#codeInvalidated &&
         (!scopedDelta || spec.permitPendingDirectIntent?.() ||
@@ -5069,7 +5121,10 @@ export class ComponentStateRoot<H, Parent = H> {
         spec.validatePostHost() && !this.#codeInvalidated &&
         (!scopedDelta || spec.permitPendingDirectIntent?.() ||
           this.#pendingDirectIntent === null) &&
-        spec.codeCurrent(),
+        spec.codeCurrent();
+        publicPostHostValidated = valid;
+        return valid;
+      },
       preparePublication: () => {
         if (phase !== "host-committed") {
           throw new Error(`Candidate is ${phase}`);
@@ -5206,11 +5261,32 @@ export class ComponentStateRoot<H, Parent = H> {
         failGroup: (error) => core.failGroup(error),
       };
       candidateHandle = candidate;
+      const originalValidatePostHost = candidate.validatePostHost;
+      const originalPreparePublication = candidate.preparePublication;
       groupPublicationReceipts.set(candidate, {
         preHostCurrent: preHostPrivateCurrent,
         commitAdmitted: core.commitAdmitted,
         current: finalPrivateCurrent,
         accept: acceptPrepared,
+        canonicalPostHostEligible: () => phase === "host-committed" &&
+          publicPostHostValidated &&
+          ownDataDescriptor(candidate, "validatePostHost")?.value ===
+            originalValidatePostHost &&
+          ownDataDescriptor(candidate, "preparePublication")?.value ===
+            originalPreparePublication &&
+          spec.canonicalGroupPostHost?.eligible() === true,
+        prepareCanonicalPostHost: () => {
+          if (phase !== "host-committed" || !publicPostHostValidated ||
+            !spec.canonicalGroupPostHost) {
+            throw new Error("Candidate lacks canonical posthost preparation");
+          }
+          try {
+            spec.canonicalGroupPostHost.prepare();
+            phase = "publication-ready";
+          } catch (error) {
+            failUnpublished(error);
+          }
+        },
         domain: this.#hostPublicationDomain,
         bindClaim: (claim, entered, partial) => {
           groupClaim = claim;
@@ -11365,17 +11441,25 @@ export class ComponentStateRoot<H, Parent = H> {
     const readers = [...this.#liveStoreReaders].map(([id, membership]) =>
       ({ id, membership, stores: [...membership] }));
     const seen = new Set<AnyAsyncStore>();
+    const entries: Array<{ store: AnyAsyncStore; rootId: string; readerId: string }> = [];
     for (const { id, membership, stores } of readers) {
       if (id.startsWith("\u0000suspense-pending:") ||
         this.#liveStoreReaders.get(id) !== membership ||
         membership.size !== stores.length || stores.length === 0) return;
       for (const store of stores) {
         if (!this.#liveStoreSubscriptions.has(store)) return;
-        const receipt = captureCanonicalStoreReaderReceipt(store, this.#rootId, id);
-        if (!receipt || inspectCanonicalStoreReaderReceipt(
-          store, this.#rootId, id, receipt,
-        ) !== "current") return;
+        entries.push({ store, rootId: this.#rootId, readerId: id });
         seen.add(store);
+      }
+    }
+    const cohort = acknowledgeCanonicalStoreReaderCohort(entries);
+    if (cohort === "stale") return;
+    if (cohort === "public-required") {
+      for (const { store, rootId, readerId } of entries) {
+        const receipt = captureCanonicalStoreReaderReceipt(store, rootId, readerId);
+        if (!receipt || inspectCanonicalStoreReaderReceipt(
+          store, rootId, readerId, receipt,
+        ) !== "current") return;
       }
     }
     if (this.#storeNotificationGeneration !== generation ||

@@ -1,0 +1,11 @@
+# Primary integrated source review
+
+Reviewed Store cohort, candidate coverage and group preparation together before execution. Store cohorts normalize inputs before their fresh passive audit, private-brand-check distinct Stores and inspect existing root epochs/versions/history. No persistent proof cache is introduced. Conservative receipt fallback remains for unproved cases. Relevant global/intrinsic descriptors are audited for the new passive route; legacy receipt eligibility remains unchanged.
+
+Candidate coverage is constructed after owners/readers are finalized, before first currentness validation, and released with the candidate. Live reader membership is still scanned; no new membership generation is claimed. Captured canonical Set operations avoid repeated temporary membership arrays on the eligible route.
+
+Group preparation uses the existing private receipt WeakMap. It requires original candidate own-data methods and a successful public posthost check. Store eligibility is tested for every member before any member advances phase. Public/custom candidate accessors decline without being invoked by eligibility. Actual preparation failure follows existing terminal failure/quarantine behavior. The final public group loop and final all-member private target sweep remain. VDOM runtime is unchanged because its existing private target sweep already provides the authority needed here. This retires the inner public validation/prepare reentry on eligible groups, not every posthost validation wrapper.
+
+Authored regressions cover accepted-history forks/staleness/replacement, altered methods/intrinsics and Proxy brand rejection, newer actions, candidate accessor fallback, target remove/reinsert, descriptor writer revocation, partial failure, immutable snapshots, compiled multi-root reentry, code retirement and disposal. These are source-reviewed tests; execution is pending the consolidated gate.
+
+Fresh harness copies retain the authored Native/React/frame/imperative consumers and pins. Both baseline build arms explicitly use Vite production, NODE_ENV production and minification; optional frame diagnostics are enabled only for untimed proof. Historical artifacts/manifests are unchanged. One bounded comparison follows integrated correctness/delivery, with no per-helper timing and no favorable retry.
