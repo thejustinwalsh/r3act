@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 1,
+  "auditStatus": "FINAL_READY",
+  "productFinishLine": "NOT_MET",
+  "auditScope": "Read-only completion audit of existing evidence for master-plan finish-line items (a)-(h). No tests, builds, browser workloads, benchmarks, servers, VMs, source edits, or archive copying were performed.",
+  "binding": {
+    "gitHead": "9759a0bb3e1214218f49f35542512f10357ee7ac",
+    "worktreeStatusAtAudit": "clean",
+    "currentSourceHashes": {
+      "src/native_frame_loop.ts": "5cb4efad265797f24421fd83c21314b03c864c17f26b60625e70380413515038",
+      "src/native_runtime_api.ts": "f1f1600ad61760bb202076b4c1e39d14b3502df419ab8c47ebb4bf03f9441d0a"
+    },
+    "publicExports": "src/native_runtime_api.ts re-exports createNativeFrameLoop and its public types from src/native_frame_loop.ts."
+  },
+  "latestCurrentSourceEvidence": {
+    "nativeCorrectness": {
+      "receipt": "implementation/2026-10-22-native-frame-publication/verification/darwin-v7/receipt.json",
+      "primaryReview": "implementation/2026-10-22-native-frame-publication/verification/darwin-v7-primary-review.json",
+      "status": "PRIMARY_REVIEWED_PASS",
+      "scope": "Native-host Darwin ARM64; 80/80 phases, 1308 Deno tests, 107 Rust tests, 60 actual compiled Rust/OXC fixtures. Source audit MATCH; 2320 archive inputs. This is the latest consolidated correctness gate for this source slice, not cross-platform qualification.",
+      "receiptChecks": "Both referenced JSON files parse. Runner receipt has 80 PASS steps and no failed steps. Source-before and source-after each contain 2310 matching inputs; pre-command archive contains 2320 inputs and no unavailable context entries."
+    },
+    "installedUntimedProof": {
+      "receipt": "implementation/2026-10-22-native-frame-publication/proof-canvas-v3/canvas-proof-one-shot.json",
+      "primaryReview": "implementation/2026-10-22-native-frame-publication/verification/canvas-proof-v3-primary-review.json",
+      "status": "PRIMARY_REVIEWED_UNTIMED_PASS",
+      "scope": "Six headless contexts; 72-frame values, pixels, and retained identities match. 512 resources disposed once per context; source checks match before/after; browser closed. ReactFrame Position/Rotation compile successfully. Public per-frame evidence is group/draw/version advancement; teardown flush counters do not establish per-frame public-queue batch/sweep counts. CSP eval blocking was directly tested on minified and rebundled delivery, not baseline."
+    },
+    "installedHmr": {
+      "receipt": "implementation/2026-10-22-native-frame-publication/proof-hmr-v2/attempt-receipt.json",
+      "primaryReview": "implementation/2026-10-22-native-frame-publication/verification/hmr-v2-primary-review.json",
+      "status": "PRIMARY_REVIEWED_PASS_HMR_DELIVERY",
+      "scope": "Actual Portless HTTPS workbench controls, pause/reset/resume, reduced motion, keyed edit, source revision invalidation, full reload/new realm/remount, resource disposal, exact source restoration, and owned route/listener/process/private-TLS cleanup. No granular state-preserving HMR claim. The earlier HMR v1 failure remains preserved."
+    },
+    "soleTimingEpisode": {
+      "receipt": "implementation/2026-10-22-native-frame-publication/proof-canvas-v3/canvas-timing-one-shot.json",
+      "primaryReview": "implementation/2026-10-22-native-frame-publication/verification/canvas-timing-v3-primary-review.json",
+      "status": "PRIMARY_REVIEWED_DESCRIPTIVE_TIMING; parityPass=false",
+      "scope": "One fixed-order four-arm episode, 12 warmups and 60 measured frames, null diagnostics, one device. Native loses all four median/p95 parity checks against declarative React Compiler/R3F. The primary's read-only Git inventory overlapped the run for about 10.2 seconds; interference magnitude is unknown, so this is descriptive and not quiet-machine qualification. No repeat was performed.",
+      "nativeMedianP95Ms": {
+        "publish": [4.10, 4.80],
+        "updateThroughCommonDrawReadback": [6.60, 7.80]
+      },
+      "reactMedianP95Ms": {
+        "publish": [1.10, 1.60],
+        "updateThroughCommonDrawReadback": [4.80, 5.80]
+      },
+      "interpretationLimits": "Common draw interval includes WebGL render/readback, not physical presentation. Setup intervals are incomparable. This result must remain a performance FAIL; no causal before/after, cold/memory, independent-device, or presentation claim follows."
+    }
+  },
+  "finishLine": [
+    {
+      "item": "a",
+      "status": "PASS_WITH_SCOPED_DOCUMENTATION",
+      "requirement": "Documented native TSX subset, compiler diagnostics, and HMR rule.",
+      "evidence": ["docs/native-authoring-reference.md", "implementation/2026-10-22-native-frame-publication/design.md", "implementation/2026-10-22-native-frame-publication/results.md"],
+      "limit": "The documented native subset and conservative HMR behavior do not imply broad React compatibility."
+    },
+    {
+      "item": "b",
+      "status": "PRIMARY_ASSESSMENT_DEFERRED",
+      "requirement": "Retained VDOM and one invariant authority across numeric, keyed, Store, and async paths.",
+      "evidence": ["implementation/2026-10-21-structural-owner-scope/results.md", "implementation/2026-10-22-native-frame-publication/design.md", "implementation/2026-10-22-native-frame-publication/source-review.md", "implementation/2026-10-22-native-frame-publication/results.md", "implementation/2026-10-22-native-frame-publication/verification/darwin-v7-primary-review.json"],
+      "limit": "Current evidence covers retained VDOM, keyed identity/retention, numeric and closed-Store execution, frame publication, and async task/reveal regression suites. A complete current-source audit of one invariant authority across every numeric, keyed, Store, and async path is deferred to primary/Sol; this audit does not infer a missing implementation from historical checkpoint prose."
+    },
+    {
+      "item": "c",
+      "status": "PASS_WITH_SCOPED_CONTRACT",
+      "requirement": "Coherent accepted-view/acknowledgement and partial-failure contract across DOM and Three.",
+      "evidence": ["implementation/2026-10-22-native-frame-publication/results.md", "implementation/2026-10-22-native-frame-publication/verification/darwin-v7-primary-review.json", "implementation/2026-10-22-native-frame-publication/verification/canvas-proof-v3-primary-review.json"],
+      "limit": "Current frame slice verifies accepted reader receipts, notification acknowledgement, per-frame versions, and Three behavior; consolidated regressions cover DOM and host failure paths. The contract is scoped: arbitrary host rollback and cross-renderer visual atomicity are explicitly outside the promise, not unmet requirements."
+    },
+    {
+      "item": "d",
+      "status": "FAIL",
+      "requirement": "Named authored realtime interaction passes frozen median/p95, cold/memory, and independent-device gates without manual per-frame host micromanagement.",
+      "evidence": ["implementation/2026-10-22-native-frame-publication/verification/canvas-timing-v3-primary-review.json", "implementation/2026-10-22-native-frame-publication/results.md"],
+      "limit": "The sole current-source comparison loses all four median/p95 parity metrics; concurrent read-only inventory makes qualification weaker, not better. Cold/setup/allocation/retained-memory budgets and independent-device replication are missing. No second device is known. Preserve the FAIL; no timing retry is authorized by this audit."
+    },
+    {
+      "item": "e",
+      "status": "PASS_SCOPED_GENERIC_FALLBACK",
+      "requirement": "Structural localized edits pass identity/lifetime and integrated performance gates, or a clearly scoped generic fallback with honest cost.",
+      "evidence": ["implementation/2026-10-17-scoped-structure/design.md", "implementation/2026-10-17-scoped-structure/benchmark/reviewed-proof-v1/pair-one-shot.json", "implementation/2026-10-21-structural-owner-scope/results.md", "implementation/2026-10-22-native-frame-publication/results.md", "final-master-plan.md"],
+      "limit": "The documented route keeps unsupported structural cases on the conservative generic reconciler and states its Θ(M)-class cost; eligible keyed paths have identity/lifetime correctness coverage. Historical move/remove timings are not promoted as current performance qualification. This satisfies the finish-line's explicit generic-fallback alternative."
+    },
+    {
+      "item": "f",
+      "status": "PARTIAL_NOT_QUALIFIED",
+      "requirement": "Useful Suspense/transition behavior compared with equal React preloading and urgent input.",
+      "evidence": ["implementation/2026-10-20-installed-async-ux/results.md", "implementation/2026-10-18-host-reveal/verification/gate-results.md", "implementation-checkpoint.md#Semantic-and-finish-line-obligations"],
+      "limit": "Installed async interactions have untimed correctness and one descriptive Native-slower timing observation with equal explicit preload knowledge and urgent actions. This is not a frozen median/p95 UX gate; broad async UX, urgent input-to-present, fallback-flash and conflict/reveal requirements remain open."
+    },
+    {
+      "item": "g",
+      "status": "PASS_WITH_SCOPED_OS_SMOKE",
+      "requirement": "Public host extension and packaged consumer.",
+      "evidence": ["implementation/2026-10-22-native-frame-publication/verification/darwin-v7-primary-review.json", "implementation/2026-10-22-native-frame-publication/verification/canvas-proof-v3-primary-review.json", "implementation/2026-10-19-custom-host/results.md", "implementation/2026-10-20-podman/results.md", "implementation/2026-10-20-podman/evidence/cargo-home-contract/positive/receipt.json"],
+      "limit": "Public host extension and packaged consumer are demonstrated. Per the human's revised OS scope, the Linux ARM64 Podman quick smoke counts as the compatibility smoke despite its overall FAIL: 62/63, with all 1093 Deno tests, 84 Rust tests, 44 fixture assertions, Three/retention checks, and package checks passing; fixture 37's compiler-hash change remains a preserved failure. No architecture matrix is required by this scope."
+    },
+    {
+      "item": "h",
+      "status": "PASS_NO_MAINTENANCE_ADVANTAGE_CLAIMED",
+      "requirement": "Human maintenance evidence for a maintenance advantage, or no such claim.",
+      "evidence": ["implementation-checkpoint.md#Semantic-and-finish-line-obligations", "implementation/2026-10-22-native-frame-publication/results.md"],
+      "limit": "Human participants remain zero. No maintenance advantage is claimed; no positive maintenance evidence is implied."
+    }
+  ],
+  "historicalEvidenceAndScope": {
+    "structural": "implementation/2026-10-21-structural-owner-scope/results.md records Darwin-v3 PASS 69/69 with runtime identity/retention tests. This audit does not attribute a move/remove timing result to that report; historical timing receipts remain source- and workload-specific.",
+    "async": "implementation/2026-10-20-installed-async-ux/results.md records a source-specific installed interaction proof and a single descriptive Native-slower timing pair. It does not satisfy current-source frozen UX qualification.",
+    "lifecycle": "implementation/2026-10-19-installed-lifecycle/results.md records source-specific lifecycle and teardown evidence; it explicitly does not establish general retained-heap or memory budgets, independent hardware, or current-source qualification.",
+    "otherPlatform": "implementation/2026-10-20-podman/results.md records the user-scoped Linux ARM64 Podman quick smoke: overall FAIL 62/63 due to fixture 37 compiler-hash change, while 1093 Deno tests, 84 Rust tests, 44 compiled-fixture assertions, Three/retention, and package checks pass. The smoke is accepted for the revised compatibility scope; it is not a green consolidated gate or a performance/independent-device result.",
+    "preservedGlobalResults": "Historic narrow wins, integrated dense performance FAIL, exhausted Recording A, and physical-selection HOLD retain their original source/workload scope. They are not overwritten by this current slice."
+  },
+  "receiptIntegrity": {
+    "referencedCurrentReceiptsAndReviews": "All referenced current Darwin-v7, canvas proof v3, HMR v2, and timing v3 JSON receipts/reviews were opened and parsed successfully. Their explicit status fields and primary-review summaries are recorded above.",
+    "archiveVerification": "This audit relies on the Darwin-v7 immutable archive and primary's independent validation of all 2320 archived files/sourceAudit MATCH; it does not copy the archive or repeat the full archive hashing.",
+    "historicalReceiptPolicy": "Historical reports are cited for their stated source/workload limits only; this audit does not upgrade them to current-source passes."
+  },
+  "conclusion": "The evidence audit is ready for primary review. Items b and c require primary/Sol confirmation of the current-source invariant/host contract; the evidence supports their covered paths. Item d remains a performance FAIL. Items e, g, and h meet their explicitly scoped finish-line alternatives. Item f still lacks the required comparative async UX qualification. Keep the current realtime performance result as FAIL."
+}

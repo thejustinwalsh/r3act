@@ -1,5 +1,11 @@
 # Implementation checkpoint
 
+## First-pass completion audit — 22 October 2026
+
+A current source/receipt audit at `9759a0b` finds no demonstrated missing capability within the documented native subset. Sol-medium audits cover async/coherence and structural/host/package contracts; Luna checks existing receipts without new workloads. README/authoring and research/handoff entry points now correct stale workbench-HMR status and route to the passing final full-reload/remount lifecycle. No product source, historical evidence or timing changes.
+
+The full goal remains unachieved: the named realtime parity result fails, concurrent Git activity prevents quiet-machine qualification, and frozen cold/retained-memory acceptance plus independent-device evidence are missing. Finite async/structural behavior and documented generic fallback do not prove broad UX or local-edit speed. The accepted quick Linux smoke remains overall FAIL 62/63; no architecture matrix or registry publication is added. Zero human participants permits no maintenance-advantage claim; arbitrary host rollback and cross-renderer paint atomicity remain excluded. No automatic compiler/helper/cache/container/writer successor is selected. A second physical device has been requested; none is currently known. [Requirement-by-requirement disposition](implementation/2026-10-22-first-pass-completion/results.md).
+
 ## Completed native frame publication boundary — 22 October 2026
 
 Public createNativeFrameLoop now coordinates explicit root/Store publication before draw, validates delayed completion through existing root versions, owns RAF/work cancellation and latches publication failure. The workbench uses it with independent DOM cadence. Supported compact and legacy owned scalar Store groups preserve captured cuts and newer actions; public groups keep full target admission/final checks. Postpublication canonical reader-history acknowledgement prevents clock-only generic scene rerenders while preserving real Studio/newer/blocked work. No new identity/version/publication registry.
