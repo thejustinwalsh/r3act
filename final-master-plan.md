@@ -1,5 +1,15 @@
 # Final master plan: classify, measure, then choose
 
+## Mixed local-state and Store inputs — 22 October 2026
+
+Compiler schema 7 and existing range kernels now combine Store projections with local state in one retained host output. Activation controls and children survive updates; existing World handles, Store reader history, exact acknowledgement, hold admission and live validation remain authoritative. No second identity/version registry is added.
+
+Corrected Darwin-v2 passes all 71 phases: 1137 runtime tests, 99 Rust tests, all 51 compiler fixtures and 1614 matching runner hashes. The first failed gate and installed-build guard failure remain preserved. Fresh installed proof verifies actual kernels and React Compiler transforms, equivalent declarative object ownership, matching real WebGL output and exactly-once disposal. Both browser phases match 12340 hashes and close cleanly.
+
+The sole declarative Native versus React Compiler + R3F comparison still loses: publication median/p95 4.10/5.30 versus 0.60/0.80 ms; update-through-draw 6.45/8.00 versus 2.80/3.20 ms. The fixed-order 12-warmup/60-frame observation uses real WebGL2 on Apple M4. Older layout-effect adapter timings remain preserved with corrected scope and do not establish a declarative R3F loss. There is no causal old/new, presentation, useFrame, phase attribution, matched cold/memory or independent-device claim.
+
+The semantic slice is complete; the full-plan goal remains active. Realtime speed, broader computation fusion, HMR delivery and lifecycle/independent-device requirements remain open. Historical narrow wins, qualified dense DOM loss and physical HOLD retain scope. [Results and failures](implementation/2026-10-22-mixed-numeric-inputs/results.md); [primary review](implementation/2026-10-22-mixed-numeric-inputs/source-review.md).
+
 ## Compiled numeric Store kernels — 21 October 2026
 
 Rust now emits revision-associated numeric Store range kernels using the shared expression DAG. Root executes contiguous same-program rows over cut buffers and stages existing Store prop deltas; retained children, reader history, exact acknowledgement and generic fallback remain. Arithmetic/bitwise numeric leaf expressions qualify; logical/conditional, aggregate, subtree, resource and opaque forms keep their existing routes. No parallel identity/version registry or storage layout is added.

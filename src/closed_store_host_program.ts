@@ -33,6 +33,8 @@ export type ClosedStoreHostProgram = Readonly<{
   | Readonly<{ schemaVersion: 4; inputs: readonly ClosedStoreHostInput[]; host: ClosedHostTreeNode }>
   | Readonly<{ schemaVersion: 5; inputs: readonly ClosedStoreProjectionInput[]; host: ClosedHostTreeNode }>
   | Readonly<{ schemaVersion: 6; inputs: readonly ClosedStoreProjectionInput[]; host: Host<ClosedHostValue>; retainedChildProp: "children" }>
+  | Readonly<{ schemaVersion: 7; inputs: readonly ClosedStoreProjectionInput[]; stateSites: readonly string[];
+    effectSites: readonly string[]; host: Host<ClosedHostValue>; retainedChildProp: "children" | null }>
 );
 
 export type ClosedStoreHostOutput = readonly (readonly [string, ClosedHostOutputValue])[];
@@ -80,16 +82,32 @@ export const normalizeClosedStoreHostProgram = (
       !root.moduleRevision) return null;
     let inputs: readonly ClosedStoreHostInput[];
     let valueCount = 0;
+    let stateSites: readonly string[] | undefined;
+    let effectSites: readonly string[] | undefined;
     if (root.schemaVersion === 1) {
       if (!exact(root, ["schemaVersion", "componentProgramId", "moduleRevision", "storeUseSiteId", "storeProp", "host"])) return null;
       const one = input(root.storeUseSiteId, root.storeProp);
       if (!one) return null;
       inputs = Object.freeze([one]);
-    } else if (root.schemaVersion === 2 || root.schemaVersion === 3 || root.schemaVersion === 4 || root.schemaVersion === 5 || root.schemaVersion === 6) {
-      if (!exact(root, root.schemaVersion === 6
+    } else if (root.schemaVersion === 2 || root.schemaVersion === 3 || root.schemaVersion === 4 || root.schemaVersion === 5 || root.schemaVersion === 6 || root.schemaVersion === 7) {
+      if (!exact(root, root.schemaVersion === 7
+        ? ["schemaVersion", "componentProgramId", "moduleRevision", "inputs", "stateSites", "effectSites", "host", "retainedChildProp"]
+        : root.schemaVersion === 6
         ? ["schemaVersion", "componentProgramId", "moduleRevision", "inputs", "host", "retainedChildProp"]
         : ["schemaVersion", "componentProgramId", "moduleRevision", "inputs", "host"])) return null;
       if (root.schemaVersion === 6 && root.retainedChildProp !== "children") return null;
+      if (root.schemaVersion === 7) {
+        if (root.retainedChildProp !== "children" && root.retainedChildProp !== null) return null;
+        const copiedStateSites = array(root.stateSites, 8);
+        const copiedEffectSites = array(root.effectSites, 32);
+        if (!copiedStateSites || copiedStateSites.length < 1 || !copiedEffectSites ||
+          [...copiedStateSites, ...copiedEffectSites].some((site) =>
+            typeof site !== "string" || site.length === 0) ||
+          new Set(copiedStateSites).size !== copiedStateSites.length ||
+          new Set(copiedEffectSites).size !== copiedEffectSites.length) return null;
+        stateSites = Object.freeze(copiedStateSites as string[]);
+        effectSites = Object.freeze(copiedEffectSites as string[]);
+      }
       const rawInputs = array(root.inputs);
       if (!rawInputs || rawInputs.length < (root.schemaVersion === 2 ? 2 : 1) || rawInputs.length > 8) return null;
       const next: ClosedStoreHostInput[] = [];
@@ -97,13 +115,13 @@ export const normalizeClosedStoreHostProgram = (
       let hasProjection = false;
       for (const rawInput of rawInputs) {
         const item = record(rawInput);
-        if (!item || !exact(item, root.schemaVersion === 5 || root.schemaVersion === 6
+        if (!item || !exact(item, root.schemaVersion === 5 || root.schemaVersion === 6 || root.schemaVersion === 7
           ? ["storeUseSiteId", "storeProp", "paths"]
           : ["storeUseSiteId", "storeProp"])) return null;
         const normalized = input(item.storeUseSiteId, item.storeProp);
         if (!normalized || sites.has(normalized.storeUseSiteId)) return null;
         sites.add(normalized.storeUseSiteId);
-        if (root.schemaVersion === 5 || root.schemaVersion === 6) {
+        if (root.schemaVersion === 5 || root.schemaVersion === 6 || root.schemaVersion === 7) {
           const paths = inputPaths(item.paths);
           if (!paths) return null;
           valueCount += paths.length;
@@ -115,6 +133,8 @@ export const normalizeClosedStoreHostProgram = (
       if (root.schemaVersion === 5 && !hasProjection) return null;
       inputs = Object.freeze(next);
     } else return null;
+    if (root.schemaVersion === 7 &&
+      valueCount + stateSites!.length > 32) return null;
     if (root.schemaVersion === 4 || root.schemaVersion === 5) {
       const inputCount = root.schemaVersion === 5
         ? inputs.reduce((count, item) => count + item.paths!.length, 0)
@@ -132,7 +152,7 @@ export const normalizeClosedStoreHostProgram = (
     const host = record(root.host);
     if (!host || !exact(host, ["tag", "key", "props", "child"]) ||
       !["mesh", "group", "div", "span", "output"].includes(host.tag as string) ||
-      (root.schemaVersion !== 3 && root.schemaVersion !== 6 && host.tag === "span") ||
+      (root.schemaVersion !== 3 && root.schemaVersion !== 6 && root.schemaVersion !== 7 && host.tag === "span") ||
       typeof host.key !== "string" || host.key.length === 0 ||
       host.child !== null) return null;
     const tag = host.tag as Host<ClosedHostValue>["tag"];
@@ -143,10 +163,12 @@ export const normalizeClosedStoreHostProgram = (
     for (const rawProp of rawProps) {
       const pair = array(rawProp);
       if (!pair || pair.length !== 2 || typeof pair[0] !== "string" ||
-        (root.schemaVersion !== 3 && root.schemaVersion !== 6 && !allowedName(tag, pair[0])) || names.has(pair[0])) return null;
+        (root.schemaVersion !== 3 && root.schemaVersion !== 6 && root.schemaVersion !== 7 && !allowedName(tag, pair[0])) || names.has(pair[0])) return null;
       const expression = normalizeClosedHostValue(pair[1], tag, pair[0],
-        root.schemaVersion === 6 ? valueCount : inputs.length,
-        root.schemaVersion === 3 || root.schemaVersion === 6);
+        root.schemaVersion === 6 || root.schemaVersion === 7
+          ? valueCount + (root.schemaVersion === 7 ? stateSites!.length : 0)
+          : inputs.length,
+        root.schemaVersion === 3 || root.schemaVersion === 6 || root.schemaVersion === 7);
       if (!expression) return null;
       names.add(pair[0]);
       props.push(Object.freeze([pair[0], expression] as const));
@@ -160,7 +182,12 @@ export const normalizeClosedStoreHostProgram = (
     return root.schemaVersion === 1
       ? Object.freeze({ ...common, schemaVersion: 1, ...inputs[0] }) as ClosedStoreHostProgram
       : Object.freeze({ ...common, schemaVersion: root.schemaVersion, inputs,
-        ...(root.schemaVersion === 6 ? { retainedChildProp: "children" } : {}) }) as ClosedStoreHostProgram;
+        ...(root.schemaVersion === 6 ? { retainedChildProp: "children" } : {}),
+        ...(root.schemaVersion === 7 ? {
+          stateSites: stateSites!,
+          effectSites: effectSites!,
+          retainedChildProp: root.retainedChildProp,
+        } : {}) }) as ClosedStoreHostProgram;
   } catch {
     return null;
   }
@@ -184,14 +211,16 @@ export const closedStoreHostInputPaths = (
 /** Number of numeric expression inputs after lexical path flattening. */
 export const closedStoreHostValueCount = (program: ClosedStoreHostProgram): number =>
   closedStoreHostInputs(program).reduce((count, input) =>
-    count + closedStoreHostInputPaths(input).length, 0);
+    count + closedStoreHostInputPaths(input).length, 0) +
+  (program.schemaVersion === 7 ? program.stateSites.length : 0);
 
 /** Evaluate frozen compiler data into candidate-owned host values; unsupported values decline. */
 export const evaluateClosedStoreHostProgram = (
   program: ClosedStoreHostProgram,
   numericValues: number | readonly number[],
 ): ClosedStoreHostOutput | null => {
-  if (program.schemaVersion === 4 || program.schemaVersion === 5) return null;
+  if (program.schemaVersion === 4 || program.schemaVersion === 5 ||
+    program.schemaVersion === 7) return null;
   const count = program.schemaVersion === 6 ? closedStoreHostValueCount(program)
     : program.schemaVersion !== 1 ? program.inputs.length : 1;
   const values = typeof numericValues === "number"

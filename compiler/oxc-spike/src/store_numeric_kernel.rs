@@ -7,7 +7,7 @@ pub(super) struct StoreNumericKernel {
     pub(super) descriptor: Value,
 }
 
-fn numeric_expression(node: &Value, input_count: usize, depth: usize) -> Option<String> {
+pub(super) fn numeric_expression(node: &Value, input_count: usize, depth: usize) -> Option<String> {
     if depth > 32 { return None; }
     match node.get("kind")?.as_str()? {
         "input" => {
@@ -41,15 +41,18 @@ fn numeric_expression(node: &Value, input_count: usize, depth: usize) -> Option<
 
 pub(super) fn emit(program: &Value) -> Option<StoreNumericKernel> {
     let schema = program.get("schemaVersion")?.as_u64()?;
-    if !matches!(schema, 1 | 2 | 3 | 6) { return None; }
+    if !matches!(schema, 1 | 2 | 3 | 6 | 7) { return None; }
     let component_id = program.get("componentProgramId")?.as_str()?;
     let revision = program.get("moduleRevision")?.as_str()?;
     let host = program.get("host")?;
     if !host.get("child")?.is_null() { return None; }
-    let input_count = if schema == 1 { 1 } else if schema == 6 {
-        program.get("inputs")?.as_array()?.iter().try_fold(0usize, |count, input| {
+    let input_count = if schema == 1 { 1 } else if schema == 6 || schema == 7 {
+        let store_count = program.get("inputs")?.as_array()?.iter().try_fold(0usize, |count, input| {
             count.checked_add(input.get("paths")?.as_array()?.len())
-        })?
+        })?;
+        if schema == 7 {
+            store_count.checked_add(program.get("stateSites")?.as_array()?.len())?
+        } else { store_count }
     } else { program.get("inputs")?.as_array()?.len() };
     if !(1..=32).contains(&input_count) { return None; }
     let props = host.get("props")?.as_array()?;

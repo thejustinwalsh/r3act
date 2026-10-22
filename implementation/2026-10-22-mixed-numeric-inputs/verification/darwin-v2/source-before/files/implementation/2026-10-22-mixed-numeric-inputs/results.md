@@ -1,0 +1,7 @@
+# Mixed numeric input integration
+
+The first consolidated Darwin arm64 gate fails: 68/71 phases pass. Rust passes 99/99, runtime passes 1134 with three failures, and 49/51 numbered compiler fixtures pass, including the new mixed-input fixture 51. Package build/consumers and the source equality audit pass. The supervisor exits 1 after 146.1 seconds with no stop reason. [Raw receipt](verification/darwin-v1/receipt.json).
+
+All failures expose an unconditional generic pending-state capture added to ordinary mixed-input admission. Existing numeric paths require zero generic snapshots: two runtime assertions observe one capture, another throws on capture, compiled fixture 10 observes two and fixture 11 observes 240. These are regressions in the integrated source, not an environment failure or a favorable test result. The failed source and logs remain archived. Sol is repairing admission through the existing pending authority before a fresh consolidated gate. No installed build, browser proof or timing has run for this slice.
+
+The planned primary comparison is declarative Native versus declarative React Compiler + R3F with equivalent renderer ownership and real WebGL output. Prior layout-effect adapter measurements remain preserved with their narrower scope. No new-source performance claim follows from source completion or the passing new fixture. [Contract](design.md); [primary source review](source-review.md).

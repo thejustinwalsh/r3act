@@ -1,0 +1,88 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: primary R3F arm must update Three through declarative JSX props
+    at file:///private/var/folders/6p/79mr8_4n34d9_2m75n54r1qc0000gn/T/r3act-mixed-numeric-r3f-canvas-3F8mAD/build.mjs:115:10 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: '/** @jsxImportSource react */\n' +
+    "import React, { useLayoutEffect, useState, useSyncExternalStore } from 'react';\n" +
+    "import { createRoot, flushSync, unmountComponentAtNode } from '@react-three/fiber/legacy';\n" +
+    "import { OBJECTS, applyCommonRendererSettings, createView, gridX, gridY, start, value } from './scene';\n" +
+    '\n' +
+    'type Frame = Readonly<{ phase: number; epoch: number }>;\n' +
+    'const listeners = new Set<() => void>();\n' +
+    'let snapshot: Frame = Object.freeze({ phase: 0, epoch: 0 });\n' +
+    'const clock = {\n' +
+    '  subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; },\n' +
+    '  getSnapshot() { return snapshot; },\n' +
+    '  dispatch(frame: Frame) { snapshot = Object.freeze(frame); for (const listener of listeners) listener(); },\n' +
+    '};\n' +
+    'const controls: Array<((value: number) => void) | undefined> = [];\n' +
+    'const { scene, camera, renderer } = createView();\n' +
+    'const canvas = renderer.domElement;\n' +
+    '\n' +
+    'function Position({ id, children }: { id: number; children: React.ReactNode }) {\n' +
+    '  const frame = useSyncExternalStore(clock.subscribe, clock.getSnapshot);\n' +
+    '  const [offset, setOffset] = useState(0);\n' +
+    '  useLayoutEffect(() => { controls[id] = setOffset; return () => { controls[id] = undefined; }; }, [id]);\n' +
+    '  return <group key="motion" position-x={frame.phase * .01 + offset}\n' +
+    '    position-y={frame.phase * .005 + offset * .5}\n' +
+    '    rotation-z={frame.phase * .0001 + offset * .01}>{children}</group>;\n' +
+    '}\n' +
+    'function Rotation({ id, children }: { id: number; children: React.ReactNode }) {\n' +
+    '  const frame = useSyncExternalStore(clock.subscribe, clock.getSnapshot);\n' +
+    '  const [offset, setOffset] = useState(0);\n' +
+    '  useLayoutEffect(() => { controls[id] = setOffset; return () => { controls[id] = undefined; }; }, [id]);\n' +
+    '  return <group key="motion" position-x={frame.phase * .0025 + offset}\n' +
+    '    position-y={frame.phase * .0075 + offset * .5}\n' +
+    '    rotation-z={frame.phase * .0002 + offset * .01}>{children}</group>;\n' +
+    '}\n' +
+    'function FrameMarker() {\n' +
+    '  const frame = useSyncExternalStore(clock.subscribe, clock.getSnapshot);\n' +
+    '  return <group name="accepted-frame" position-x={frame.epoch} />;\n' +
+    '}\n' +
+    'function App() {\n' +
+    '  return <><FrameMarker /><group name="objects">{Array.from({ length: OBJECTS }, (_, id) =>\n' +
+    '    <group key={id} name={`object-${id}`} position-x={gridX(id)} position-y={gridY(id)}>\n' +
+    '      {id % 2 === 0\n' +
+    '        ? <Position key="motion" id={id}><group name={`child-${id}`}><mesh><boxGeometry args={[.12,.12,.12]} /><meshBasicMaterial color="orange" /></mesh></group></Position>\n' +
+    '        : <Rotation key="motion" id={id}><group name={`child-${id}`}><mesh><boxGeometry args={[.12,.12,.12]} /><meshBasicMaterial color="orange" /></mesh></group></Rotation>}\n' +
+    '    </group>)}</group></>;\n' +
+    '}\n' +
+    'const root = createRoot(canvas);\n' +
+    'const setupStart = performance.now();\n' +
+    "await root.configure({ gl: renderer, scene, camera, frameloop: 'never', dpr: 1,\n" +
+    '  size: { width: canvas.width, height: canvas.height, top: 0, left: 0 } });\n' +
+    'applyCommonRendererSettings(renderer);\n' +
+    'root.render(<App />);\n' +
+    'const setupMs = performance.now() - setupStart;\n' +
+    'start({ scene, camera, renderer,\n' +
+    '  controlProof() {\n' +
+    "    if (controls.filter(Boolean).length !== OBJECTS) throw new Error('Missing declarative R3F local controls');\n" +
+    '    flushSync(() => { controls[0]!(2); controls[1]!(3); });\n' +
+    "    const objects = scene.getObjectByName('objects')!.children;\n" +
+    '    if (objects[0].children[0].position.x !== 2 || objects[1].children[0].position.x !== 3)\n' +
+    "      throw new Error('R3F local control mismatch');\n" +
+    '    flushSync(() => { controls[0]!(0); controls[1]!(0); });\n' +
+    '  },\n' +
+    '  update(epoch) {\n' +
+    '    flushSync(() => clock.dispatch({ phase: value(epoch), epoch }));\n' +
+    "    return { published: scene.getObjectByName('accepted-frame')?.position.x === epoch };\n" +
+    '  },\n' +
+    '  async dispose() {\n' +
+    '    await new Promise<void>(resolve => unmountComponentAtNode(canvas, () => resolve()));\n' +
+    '    scene.remove(camera);\n' +
+    '    const sceneChildren = scene.children.length;\n' +
+    '    const registeredSetters = listeners.size + controls.filter(Boolean).length;\n' +
+    "    return { setupMs, setupScope: 'R3F configure plus declarative root.render through activation; scene/camera/renderer construction excluded',\n" +
+    '      sceneChildren, registeredSetters };\n' +
+    '  },\n' +
+    '});\n',
+  expected: /\.position\.[xyz]\s*=|\.rotation\.[xyz]\s*=/,
+  operator: 'doesNotMatch',
+  diff: 'simple'
+}
+
+Node.js v24.18.0

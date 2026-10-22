@@ -1,0 +1,1111 @@
+{
+  "schemaVersion": 1,
+  "createdAtUtc": "2026-10-22T00:47:42.567258+00:00",
+  "scope": "Read-only final evidence audit for the released mixed numeric inputs slice; no tests, browser work, source changes, cache cleanup, restore, or staging performed by this audit.",
+  "gate": {
+    "v2": {
+      "status": "PASS",
+      "stepCount": 71,
+      "passedSteps": 71,
+      "failedSteps": [],
+      "runtimeSummary": "ok | 1137 passed | 0 failed (18s)",
+      "rustResults": [
+        "test result: ok. 99 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s"
+      ],
+      "numberedCompiledFixtureCount": 51,
+      "numberedCompiledFixturePassCount": 51,
+      "actual": {
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      "gitHead": "bd6b4f1f7735af65bda6cc603684826a91d2daff",
+      "sourceAudit": {
+        "status": "MATCH",
+        "changed": []
+      },
+      "numericExit": 0
+    },
+    "v1PreservedFailure": {
+      "status": "FAIL",
+      "stepCount": 71,
+      "failedSteps": [
+        {
+          "name": "deno-full",
+          "exitCode": 1,
+          "log": "logs/deno-full.log"
+        },
+        {
+          "name": "compiled-10",
+          "exitCode": 1,
+          "log": "logs/compiled-10.log"
+        },
+        {
+          "name": "compiled-11",
+          "exitCode": 1,
+          "log": "logs/compiled-11.log"
+        }
+      ],
+      "runtimeTail": [
+        "    at ComponentStateRoot.flush (file:///Volumes/Depot/Developer/r3act/src/component_state_runtime.ts:4966:47)",
+        "    at file:///Volumes/Depot/Developer/r3act/src/native_numeric_lane_cut_test.ts:75:10",
+        "",
+        " FAILURES ",
+        "",
+        "native numeric cut bypasses StateChange capture and defers reentrant flush => ./src/native_numeric_cell_cut_test.ts:27:6",
+        "native numeric cut leaves state pending after a host writer throws => ./src/native_numeric_cell_cut_test.ts:118:6",
+        "native lane cuts retain newer reentrant writes without scalar snapshots => ./src/native_numeric_lane_cut_test.ts:34:6",
+        "",
+        "FAILED | 1134 passed | 3 failed (18s)",
+        "",
+        "error: Test failed"
+      ]
+    }
+  },
+  "sourceIntegrity": {
+    "v2Archive": {
+      "gateInputRows": 1614,
+      "archiveRows": 1624,
+      "runnerRows": 1614,
+      "contextRows": 10,
+      "unavailableContext": [],
+      "archiveVerifiedRows": 1624,
+      "archiveMismatchCount": 0,
+      "archiveMismatches": [],
+      "runnerRowsEqualSourceBefore": true,
+      "manifestStatus": "ARCHIVED_BEFORE_PRODUCT_COMMANDS"
+    },
+    "currentVsV2Archive": {
+      "comparedRows": 1614,
+      "matchesAfterDocumentedFixedRestoresAndFollowons": 1611,
+      "knownPostGateFollowonCount": 3,
+      "knownPostGateFollowons": [
+        {
+          "path": "README.md",
+          "reason": "Maintained documentation update after the frozen v2 gate.",
+          "capturedGateSha256": "85ae024020151969a2a60819046861a8002c7f68ed666f552e70b107c271f288",
+          "current": {
+            "kind": "file",
+            "sha256": "fdc39fccd6acb58e9ad743cdc1015ad8269a7e438701481cb3806d7a6fba9e7f",
+            "bytes": 14510
+          }
+        },
+        {
+          "path": "implementation/2026-10-22-mixed-numeric-inputs/consumer/build.mjs",
+          "reason": "Reviewed installed-proof assertion correction after the frozen v2 gate; the exact current bytes are included in prepared proof-canvas-v2.",
+          "capturedGateSha256": "b954383c2acee4da1c7cce11db80d7ab4d1e23ed81ce3033fe054a7e4a2799fa",
+          "current": {
+            "kind": "file",
+            "sha256": "f838297a5a1d147564ecf08b704c1ec9c6a0012ccf181715e2573b950812a280",
+            "bytes": 7679
+          }
+        },
+        {
+          "path": "implementation/2026-10-22-mixed-numeric-inputs/results.md",
+          "reason": "Maintained unit results documentation update after the frozen v2 gate.",
+          "capturedGateSha256": "18aa06aad1674c6abab740a12006b6533f1d415a35439deda3f3eae117123592",
+          "current": {
+            "kind": "file",
+            "sha256": "f1d1726b6897c2fe7ce8a67d18e50ebbac7b5c1b35fffd2329080504434e0e92",
+            "bytes": 5270
+          }
+        }
+      ],
+      "unexpectedDifferences": [],
+      "fixedRestoreCount": 4,
+      "fixedRestoreChecks": [
+        {
+          "path": ".cache/namespace-three-authored.mjs",
+          "archiveOfGeneratedSha256": "9387d19218c28a55f8ba81abfa8c656b068acfa67674195d9040ea11e11a7fb4",
+          "restoredHeadSha256": "1d7032f27eda2e36f037624b4f23f5f21034699925369302fa7e9df0f875a59a",
+          "current": {
+            "kind": "file",
+            "sha256": "1d7032f27eda2e36f037624b4f23f5f21034699925369302fa7e9df0f875a59a",
+            "bytes": 44226
+          },
+          "matchesRestoredHead": true,
+          "archivedGeneratedCopy": {
+            "kind": "file",
+            "sha256": "9387d19218c28a55f8ba81abfa8c656b068acfa67674195d9040ea11e11a7fb4",
+            "bytes": 44226
+          },
+          "archivedCopyMatchesGenerated": true
+        },
+        {
+          "path": ".cache/native-promise-store-race.mjs",
+          "archiveOfGeneratedSha256": "bef455be71b48319095825630ebd390b859e7849fb8848c916ebc0ae1e1806f9",
+          "restoredHeadSha256": "a634509fdf366aad86b04a16a4830a8a8232f37c69322351bbe5956c8e2ac325",
+          "current": {
+            "kind": "file",
+            "sha256": "a634509fdf366aad86b04a16a4830a8a8232f37c69322351bbe5956c8e2ac325",
+            "bytes": 15526
+          },
+          "matchesRestoredHead": true,
+          "archivedGeneratedCopy": {
+            "kind": "file",
+            "sha256": "bef455be71b48319095825630ebd390b859e7849fb8848c916ebc0ae1e1806f9",
+            "bytes": 15526
+          },
+          "archivedCopyMatchesGenerated": true
+        },
+        {
+          "path": ".cache/native-queue-execution.mjs",
+          "archiveOfGeneratedSha256": "f08bb94d45c64c51dddde8e559bd07cf0e820270f7b3030e15b2460bda62dc4e",
+          "restoredHeadSha256": "00539bf94d05a5d3ec2d54eae55d8b593b2304b3c80d78191c319e7c429fe5af",
+          "current": {
+            "kind": "file",
+            "sha256": "00539bf94d05a5d3ec2d54eae55d8b593b2304b3c80d78191c319e7c429fe5af",
+            "bytes": 20515
+          },
+          "matchesRestoredHead": true,
+          "archivedGeneratedCopy": {
+            "kind": "file",
+            "sha256": "f08bb94d45c64c51dddde8e559bd07cf0e820270f7b3030e15b2460bda62dc4e",
+            "bytes": 20515
+          },
+          "archivedCopyMatchesGenerated": true
+        },
+        {
+          "path": ".cache/native-task-transition.mjs",
+          "archiveOfGeneratedSha256": "d4e5771a21d574bb218c717e44c02be772dc9ace0aef89d47f80d6dd90e47b87",
+          "restoredHeadSha256": "a02436c61d9da729393d06d0a4a45a65406c68779923dbae365a6fa63c46ea8f",
+          "current": {
+            "kind": "file",
+            "sha256": "a02436c61d9da729393d06d0a4a45a65406c68779923dbae365a6fa63c46ea8f",
+            "bytes": 17071
+          },
+          "matchesRestoredHead": true,
+          "archivedGeneratedCopy": {
+            "kind": "file",
+            "sha256": "d4e5771a21d574bb218c717e44c02be772dc9ace0aef89d47f80d6dd90e47b87",
+            "bytes": 17071
+          },
+          "archivedCopyMatchesGenerated": true
+        }
+      ],
+      "status": "PASS_WITH_DOCUMENTED_FOLLOW_ON_CHANGES",
+      "caveat": "Four fixed .cache sources were archived at generated bytes during the gate and restored to manifest-recorded HEAD bytes. README.md, unit results.md, and consumer/build.mjs changed after the gate; they are recorded separately as known follow-ons, not treated as unchanged or as gate source."
+    },
+    "documentedFixedGeneratedPaths": [
+      {
+        "path": ".cache/namespace-three-authored.mjs",
+        "archivePath": "implementation/2026-10-22-mixed-numeric-inputs/verification/owned-generated-fixed-paths/namespace-three-authored.mjs",
+        "generatedSha256": "9387d19218c28a55f8ba81abfa8c656b068acfa67674195d9040ea11e11a7fb4",
+        "restoredHeadSha256": "1d7032f27eda2e36f037624b4f23f5f21034699925369302fa7e9df0f875a59a"
+      },
+      {
+        "path": ".cache/native-promise-store-race.mjs",
+        "archivePath": "implementation/2026-10-22-mixed-numeric-inputs/verification/owned-generated-fixed-paths/native-promise-store-race.mjs",
+        "generatedSha256": "bef455be71b48319095825630ebd390b859e7849fb8848c916ebc0ae1e1806f9",
+        "restoredHeadSha256": "a634509fdf366aad86b04a16a4830a8a8232f37c69322351bbe5956c8e2ac325"
+      },
+      {
+        "path": ".cache/native-queue-execution.mjs",
+        "archivePath": "implementation/2026-10-22-mixed-numeric-inputs/verification/owned-generated-fixed-paths/native-queue-execution.mjs",
+        "generatedSha256": "f08bb94d45c64c51dddde8e559bd07cf0e820270f7b3030e15b2460bda62dc4e",
+        "restoredHeadSha256": "00539bf94d05a5d3ec2d54eae55d8b593b2304b3c80d78191c319e7c429fe5af"
+      },
+      {
+        "path": ".cache/native-task-transition.mjs",
+        "archivePath": "implementation/2026-10-22-mixed-numeric-inputs/verification/owned-generated-fixed-paths/native-task-transition.mjs",
+        "generatedSha256": "d4e5771a21d574bb218c717e44c02be772dc9ace0aef89d47f80d6dd90e47b87",
+        "restoredHeadSha256": "a02436c61d9da729393d06d0a4a45a65406c68779923dbae365a6fa63c46ea8f"
+      }
+    ],
+    "fixedGeneratedPathCount": 4
+  },
+  "installedPreparation": {
+    "v1": {
+      "proof": "implementation/2026-10-22-mixed-numeric-inputs/proof-canvas-v1",
+      "inputLockStatus": "PASS_MIXED_NUMERIC_R3F_CANVAS_PREPARATION",
+      "buildStatus": "STARTED",
+      "archiveIntegrity": [
+        {
+          "document": "implementation/2026-10-22-mixed-numeric-inputs/proof-canvas-v1/input-lock.json",
+          "referenceRows": 6133,
+          "uniqueArchivePaths": 6133,
+          "verifiedUniquePaths": 6133,
+          "mismatchCount": 0,
+          "mismatches": []
+        },
+        {
+          "document": "implementation/2026-10-22-mixed-numeric-inputs/proof-canvas-v1/build-proof.json",
+          "referenceRows": 6133,
+          "uniqueArchivePaths": 6133,
+          "verifiedUniquePaths": 6133,
+          "mismatchCount": 0,
+          "mismatches": []
+        }
+      ],
+      "counts": {
+        "inputs": 12,
+        "staged": 11,
+        "rendererSourceBasis": 13,
+        "tarballs": 3,
+        "installedArchiveRows": 6092,
+        "packageSources": 53
+      },
+      "processes": {
+        "install": {
+          "exit": 0,
+          "stopped": null,
+          "spawnError": null
+        },
+        "typecheck": {
+          "exit": 0,
+          "stopped": null,
+          "spawnError": null
+        },
+        "build-native": {
+          "exit": 0,
+          "stopped": null,
+          "spawnError": null
+        }
+      },
+      "storeOwners": [
+        {
+          "component": "Position",
+          "ownerProgramId": "native.tsx#component:Position",
+          "schemaVersion": 7,
+          "inputCount": 1,
+          "stateSites": [
+            "native.tsx#component:Position#state:0"
+          ],
+          "effectSites": [
+            "native.tsx#component:Position#effect:0"
+          ],
+          "kernelInputCount": 2,
+          "kernelPropNames": [
+            "position-x",
+            "position-y",
+            "rotation-z"
+          ],
+          "sinkCount": 3,
+          "retainedChildProp": "children"
+        },
+        {
+          "component": "Rotation",
+          "ownerProgramId": "native.tsx#component:Rotation",
+          "schemaVersion": 7,
+          "inputCount": 1,
+          "stateSites": [
+            "native.tsx#component:Rotation#state:0"
+          ],
+          "effectSites": [
+            "native.tsx#component:Rotation#effect:0"
+          ],
+          "kernelInputCount": 2,
+          "kernelPropNames": [
+            "position-x",
+            "position-y",
+            "rotation-z"
+          ],
+          "sinkCount": 3,
+          "retainedChildProp": "children"
+        }
+      ],
+      "reactCapture": null,
+      "preservedBuildErrors": [
+        "AssertionError [ERR_ASSERTION]: build-react failed; logs preserved in /Volumes/Depot/Developer/r3act/implementation/2026-10-22-mixed-numeric-inputs/proof-canvas-v1\n\n1 !== 0\n\n    at run (file:///Volumes/Depot/Developer/r3act/implementation/2026-10-22-mixed-numeric-inputs/consumer/prepare.mjs:66:10)\n    at async file:///Volumes/Depot/Developer/r3act/implementation/2026-10-22-mixed-numeric-inputs/consumer/prepare.mjs:137:41"
+      ]
+    },
+    "v2": {
+      "proof": "implementation/2026-10-22-mixed-numeric-inputs/proof-canvas-v2",
+      "inputLockStatus": "PASS_MIXED_NUMERIC_R3F_CANVAS_PREPARATION",
+      "buildStatus": "PASS_MIXED_NUMERIC_R3F_CANVAS_BUILD",
+      "archiveIntegrity": [
+        {
+          "document": "implementation/2026-10-22-mixed-numeric-inputs/proof-canvas-v2/input-lock.json",
+          "referenceRows": 6133,
+          "uniqueArchivePaths": 6133,
+          "verifiedUniquePaths": 6133,
+          "mismatchCount": 0,
+          "mismatches": []
+        },
+        {
+          "document": "implementation/2026-10-22-mixed-numeric-inputs/proof-canvas-v2/build-proof.json",
+          "referenceRows": 6133,
+          "uniqueArchivePaths": 6133,
+          "verifiedUniquePaths": 6133,
+          "mismatchCount": 0,
+          "mismatches": []
+        }
+      ],
+      "counts": {
+        "inputs": 12,
+        "staged": 11,
+        "rendererSourceBasis": 13,
+        "tarballs": 3,
+        "installedArchiveRows": 6092,
+        "packageSources": 53
+      },
+      "processes": {
+        "install": {
+          "exit": 0,
+          "stopped": null,
+          "spawnError": null
+        },
+        "typecheck": {
+          "exit": 0,
+          "stopped": null,
+          "spawnError": null
+        },
+        "build-native": {
+          "exit": 0,
+          "stopped": null,
+          "spawnError": null
+        },
+        "build-react": {
+          "exit": 0,
+          "stopped": null,
+          "spawnError": null
+        },
+        "build-imperative": {
+          "exit": 0,
+          "stopped": null,
+          "spawnError": null
+        }
+      },
+      "storeOwners": [
+        {
+          "component": "Position",
+          "ownerProgramId": "native.tsx#component:Position",
+          "schemaVersion": 7,
+          "inputCount": 1,
+          "stateSites": [
+            "native.tsx#component:Position#state:0"
+          ],
+          "effectSites": [
+            "native.tsx#component:Position#effect:0"
+          ],
+          "kernelInputCount": 2,
+          "kernelPropNames": [
+            "position-x",
+            "position-y",
+            "rotation-z"
+          ],
+          "sinkCount": 3,
+          "retainedChildProp": "children"
+        },
+        {
+          "component": "Rotation",
+          "ownerProgramId": "native.tsx#component:Rotation",
+          "schemaVersion": 7,
+          "inputCount": 1,
+          "stateSites": [
+            "native.tsx#component:Rotation#state:0"
+          ],
+          "effectSites": [
+            "native.tsx#component:Rotation#effect:0"
+          ],
+          "kernelInputCount": 2,
+          "kernelPropNames": [
+            "position-x",
+            "position-y",
+            "rotation-z"
+          ],
+          "sinkCount": 3,
+          "retainedChildProp": "children"
+        }
+      ],
+      "reactCapture": {
+        "compilerEvents": [
+          {
+            "filename": "/private/var/folders/6p/79mr8_4n34d9_2m75n54r1qc0000gn/T/r3act-mixed-numeric-r3f-canvas-lmdlBw/react.tsx",
+            "kind": "CompileSuccess",
+            "fnName": "Position",
+            "reason": null
+          },
+          {
+            "filename": "/private/var/folders/6p/79mr8_4n34d9_2m75n54r1qc0000gn/T/r3act-mixed-numeric-r3f-canvas-lmdlBw/react.tsx",
+            "kind": "CompileSuccess",
+            "fnName": "Rotation",
+            "reason": null
+          },
+          {
+            "filename": "/private/var/folders/6p/79mr8_4n34d9_2m75n54r1qc0000gn/T/r3act-mixed-numeric-r3f-canvas-lmdlBw/react.tsx",
+            "kind": "CompileSuccess",
+            "fnName": "FrameMarker",
+            "reason": null
+          },
+          {
+            "filename": "/private/var/folders/6p/79mr8_4n34d9_2m75n54r1qc0000gn/T/r3act-mixed-numeric-r3f-canvas-lmdlBw/react.tsx",
+            "kind": "CompileSuccess",
+            "fnName": "App",
+            "reason": null
+          }
+        ],
+        "reactMemoized": true,
+        "primaryComparator": "declarative-r3f-10.0.0-alpha.6-react-compiler"
+      },
+      "preservedBuildErrors": []
+    },
+    "v1BuildFailure": {
+      "buildProofStatus": "STARTED",
+      "reactBuildExit": 1,
+      "reactBuildLog": "implementation/2026-10-22-mixed-numeric-inputs/proof-canvas-v1/build-react.stderr.log",
+      "failure": "primary R3F declarative JSX guard matched the authored position.x !== 2 comparison in the control proof; v2 changed the guard to exclude equality operators.",
+      "v1CurrentSourceMatchClaimed": false,
+      "intentionalBuildSourceDifference": {
+        "path": "implementation/2026-10-22-mixed-numeric-inputs/consumer/build.mjs",
+        "v1ArchiveSha256": "b954383c2acee4da1c7cce11db80d7ab4d1e23ed81ce3033fe054a7e4a2799fa",
+        "v2ArchiveSha256": "f838297a5a1d147564ecf08b704c1ec9c6a0012ccf181715e2573b950812a280",
+        "currentSha256": "f838297a5a1d147564ecf08b704c1ec9c6a0012ccf181715e2573b950812a280"
+      }
+    }
+  },
+  "browserProof": {
+    "artifact": "implementation/2026-10-22-mixed-numeric-inputs/proof-canvas-v2/canvas-proof-one-shot.json",
+    "status": "PASS_MIXED_NUMERIC_R3F_CANVAS_UNTIMED_PROOF",
+    "phase": "proof",
+    "expectedStatus": "PASS_MIXED_NUMERIC_R3F_CANVAS_UNTIMED_PROOF",
+    "browser": {
+      "version": "153.0.8010.12",
+      "headless": true,
+      "gpu": true
+    },
+    "browserClosed": true,
+    "order": [
+      "native",
+      "react",
+      "imperative"
+    ],
+    "workload": "256 declaratively owned Three meshes under retained child groups and alternating mixed numeric motion programs; one shared Store clock plus authored local controls reset before timing",
+    "sourceBeforeRows": 12340,
+    "sourceAfterRows": 12340,
+    "sourceBeforeAllMatch": true,
+    "sourceAfterAllMatch": true,
+    "outputsMatchAcrossArms": true,
+    "renderers": [
+      {
+        "mode": "native",
+        "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+        "renderer": "WebKit WebGL",
+        "unmaskedRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+        "outputColorSpace": "srgb",
+        "toneMapping": 0,
+        "pixelRatio": 1,
+        "antialias": false,
+        "preserveDrawingBuffer": true,
+        "drawingBuffer": [
+          640,
+          480
+        ],
+        "camera": {
+          "manual": true,
+          "left": -4,
+          "right": 4,
+          "top": 4,
+          "bottom": -4,
+          "near": 0.1,
+          "far": 100,
+          "projectionMatrix": [
+            0.25,
+            0,
+            0,
+            0,
+            0,
+            0.25,
+            0,
+            0,
+            0,
+            0,
+            -0.02002002002002002,
+            0,
+            0,
+            0,
+            -1.002002002002002,
+            1
+          ]
+        }
+      },
+      {
+        "mode": "react",
+        "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+        "renderer": "WebKit WebGL",
+        "unmaskedRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+        "outputColorSpace": "srgb",
+        "toneMapping": 0,
+        "pixelRatio": 1,
+        "antialias": false,
+        "preserveDrawingBuffer": true,
+        "drawingBuffer": [
+          640,
+          480
+        ],
+        "camera": {
+          "manual": true,
+          "left": -4,
+          "right": 4,
+          "top": 4,
+          "bottom": -4,
+          "near": 0.1,
+          "far": 100,
+          "projectionMatrix": [
+            0.25,
+            0,
+            0,
+            0,
+            0,
+            0.25,
+            0,
+            0,
+            0,
+            0,
+            -0.02002002002002002,
+            0,
+            0,
+            0,
+            -1.002002002002002,
+            1
+          ]
+        }
+      },
+      {
+        "mode": "imperative",
+        "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+        "renderer": "WebKit WebGL",
+        "unmaskedRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+        "outputColorSpace": "srgb",
+        "toneMapping": 0,
+        "pixelRatio": 1,
+        "antialias": false,
+        "preserveDrawingBuffer": true,
+        "drawingBuffer": [
+          640,
+          480
+        ],
+        "camera": {
+          "manual": true,
+          "left": -4,
+          "right": 4,
+          "top": 4,
+          "bottom": -4,
+          "near": 0.1,
+          "far": 100,
+          "projectionMatrix": [
+            0.25,
+            0,
+            0,
+            0,
+            0,
+            0.25,
+            0,
+            0,
+            0,
+            0,
+            -0.02002002002002002,
+            0,
+            0,
+            0,
+            -1.002002002002002,
+            1
+          ]
+        }
+      }
+    ],
+    "arms": [
+      {
+        "mode": "native",
+        "contextClosed": true,
+        "sampleCount": 60,
+        "warmupCount": 12,
+        "firstEpoch": 13,
+        "lastEpoch": 72,
+        "sampleCountersNull": false,
+        "firstUpdateCounters": {
+          "store.numeric-kernel.runs": 256,
+          "store.numeric-kernel.rows": 256
+        },
+        "lastSampleCounters": {
+          "store.numeric-kernel.runs": 18432,
+          "store.numeric-kernel.rows": 18432
+        },
+        "firstUpdateComponentRenders": 0,
+        "lastSampleComponentRenders": 0,
+        "cleanup": {
+          "setupMs": 20.5,
+          "setupScope": "root.mount through activation; scene/root construction excluded",
+          "sceneChildren": 0,
+          "registeredSetters": 0,
+          "ownerCount": 0,
+          "pending": 0,
+          "counters": {
+            "store.numeric-kernel.runs": 18432,
+            "store.numeric-kernel.rows": 18432
+          }
+        },
+        "resourcesExpected": 512,
+        "resourcesDisposed": 512,
+        "duplicateDisposalEvents": 0,
+        "stopped": true
+      },
+      {
+        "mode": "react",
+        "contextClosed": true,
+        "sampleCount": 60,
+        "warmupCount": 12,
+        "firstEpoch": 13,
+        "lastEpoch": 72,
+        "sampleCountersNull": true,
+        "firstUpdateCounters": null,
+        "lastSampleCounters": null,
+        "firstUpdateComponentRenders": 0,
+        "lastSampleComponentRenders": 0,
+        "cleanup": {
+          "setupMs": 13.5,
+          "setupScope": "R3F configure plus declarative root.render through activation; scene/camera/renderer construction excluded",
+          "sceneChildren": 0,
+          "registeredSetters": 0
+        },
+        "resourcesExpected": 512,
+        "resourcesDisposed": 512,
+        "duplicateDisposalEvents": 0,
+        "stopped": true
+      },
+      {
+        "mode": "imperative",
+        "contextClosed": true,
+        "sampleCount": 60,
+        "warmupCount": 12,
+        "firstEpoch": 13,
+        "lastEpoch": 72,
+        "sampleCountersNull": true,
+        "firstUpdateCounters": null,
+        "lastSampleCounters": null,
+        "firstUpdateComponentRenders": 0,
+        "lastSampleComponentRenders": 0,
+        "cleanup": {
+          "setupMs": 4.899999976158142,
+          "setupScope": "object creation and attachment; scene/group construction excluded",
+          "sceneChildren": 0,
+          "retainedObjects": 256
+        },
+        "resourcesExpected": 512,
+        "resourcesDisposed": 512,
+        "duplicateDisposalEvents": 0,
+        "stopped": true
+      }
+    ],
+    "blockedRequestCount": 0,
+    "requestFailures": [],
+    "pageErrors": [],
+    "consoleErrors": [],
+    "errors": [],
+    "cleanupErrors": [],
+    "timingStats": null,
+    "sourceStable": true
+  },
+  "timing": {
+    "authorization": {
+      "status": "APPROVED_FOR_ONE_MIXED_NUMERIC_R3F_CANVAS_TIMING_COMPARISON",
+      "buildProofSha256": "ea9a0c62ea4a7f90f0de323deb4ddf3da8c992e7921c4fcad6ba8c2014aae43e",
+      "inputLockSha256": "a06a32fc2d9140f784dcca12eba758ee121bbf49cb314849aa196d92c9b09088",
+      "proofSha256": "b73ab2df6723204b7b48c8ea05178ef977dba8a172264b4ebdfbeed5191e3b0e",
+      "basis": "Primary reviewed schema7 input/kernel association, actual React Compiler transforms, declarative renderer ownership, matching real WebGL outputs/settings, retained identities, exactly-once cleanup, source lock and closed contexts. One fixed-order descriptive comparison; no favorable repeat, causal old/new or presentation qualification."
+    },
+    "authorizationChain": {
+      "buildProofSha256": {
+        "expected": "ea9a0c62ea4a7f90f0de323deb4ddf3da8c992e7921c4fcad6ba8c2014aae43e",
+        "actual": "ea9a0c62ea4a7f90f0de323deb4ddf3da8c992e7921c4fcad6ba8c2014aae43e",
+        "matches": true
+      },
+      "inputLockSha256": {
+        "expected": "a06a32fc2d9140f784dcca12eba758ee121bbf49cb314849aa196d92c9b09088",
+        "actual": "a06a32fc2d9140f784dcca12eba758ee121bbf49cb314849aa196d92c9b09088",
+        "matches": true
+      },
+      "proofSha256": {
+        "expected": "b73ab2df6723204b7b48c8ea05178ef977dba8a172264b4ebdfbeed5191e3b0e",
+        "actual": "b73ab2df6723204b7b48c8ea05178ef977dba8a172264b4ebdfbeed5191e3b0e",
+        "matches": true
+      },
+      "authorizationSha256": {
+        "expected": "70fee0480e68eebc8bd0534bfd2b700ec16b4527f621f6905b5aec6b3f424583",
+        "actual": "70fee0480e68eebc8bd0534bfd2b700ec16b4527f621f6905b5aec6b3f424583",
+        "matches": true
+      }
+    },
+    "result": {
+      "artifact": "implementation/2026-10-22-mixed-numeric-inputs/proof-canvas-v2/canvas-timing-one-shot.json",
+      "status": "PASS_MIXED_NUMERIC_R3F_CANVAS_DESCRIPTIVE_TIMING",
+      "phase": "timing",
+      "expectedStatus": "PASS_MIXED_NUMERIC_R3F_CANVAS_DESCRIPTIVE_TIMING",
+      "browser": {
+        "version": "153.0.8010.12",
+        "headless": true,
+        "gpu": true
+      },
+      "browserClosed": true,
+      "order": [
+        "native",
+        "react",
+        "imperative"
+      ],
+      "workload": "256 declaratively owned Three meshes under retained child groups and alternating mixed numeric motion programs; one shared Store clock plus authored local controls reset before timing",
+      "sourceBeforeRows": 12340,
+      "sourceAfterRows": 12340,
+      "sourceBeforeAllMatch": true,
+      "sourceAfterAllMatch": true,
+      "outputsMatchAcrossArms": true,
+      "renderers": [
+        {
+          "mode": "native",
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "renderer": "WebKit WebGL",
+          "unmaskedRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+          "outputColorSpace": "srgb",
+          "toneMapping": 0,
+          "pixelRatio": 1,
+          "antialias": false,
+          "preserveDrawingBuffer": true,
+          "drawingBuffer": [
+            640,
+            480
+          ],
+          "camera": {
+            "manual": true,
+            "left": -4,
+            "right": 4,
+            "top": 4,
+            "bottom": -4,
+            "near": 0.1,
+            "far": 100,
+            "projectionMatrix": [
+              0.25,
+              0,
+              0,
+              0,
+              0,
+              0.25,
+              0,
+              0,
+              0,
+              0,
+              -0.02002002002002002,
+              0,
+              0,
+              0,
+              -1.002002002002002,
+              1
+            ]
+          }
+        },
+        {
+          "mode": "react",
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "renderer": "WebKit WebGL",
+          "unmaskedRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+          "outputColorSpace": "srgb",
+          "toneMapping": 0,
+          "pixelRatio": 1,
+          "antialias": false,
+          "preserveDrawingBuffer": true,
+          "drawingBuffer": [
+            640,
+            480
+          ],
+          "camera": {
+            "manual": true,
+            "left": -4,
+            "right": 4,
+            "top": 4,
+            "bottom": -4,
+            "near": 0.1,
+            "far": 100,
+            "projectionMatrix": [
+              0.25,
+              0,
+              0,
+              0,
+              0,
+              0.25,
+              0,
+              0,
+              0,
+              0,
+              -0.02002002002002002,
+              0,
+              0,
+              0,
+              -1.002002002002002,
+              1
+            ]
+          }
+        },
+        {
+          "mode": "imperative",
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "renderer": "WebKit WebGL",
+          "unmaskedRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+          "outputColorSpace": "srgb",
+          "toneMapping": 0,
+          "pixelRatio": 1,
+          "antialias": false,
+          "preserveDrawingBuffer": true,
+          "drawingBuffer": [
+            640,
+            480
+          ],
+          "camera": {
+            "manual": true,
+            "left": -4,
+            "right": 4,
+            "top": 4,
+            "bottom": -4,
+            "near": 0.1,
+            "far": 100,
+            "projectionMatrix": [
+              0.25,
+              0,
+              0,
+              0,
+              0,
+              0.25,
+              0,
+              0,
+              0,
+              0,
+              -0.02002002002002002,
+              0,
+              0,
+              0,
+              -1.002002002002002,
+              1
+            ]
+          }
+        }
+      ],
+      "arms": [
+        {
+          "mode": "native",
+          "contextClosed": true,
+          "sampleCount": 60,
+          "warmupCount": 12,
+          "firstEpoch": 13,
+          "lastEpoch": 72,
+          "sampleCountersNull": true,
+          "firstUpdateCounters": null,
+          "lastSampleCounters": null,
+          "firstUpdateComponentRenders": 0,
+          "lastSampleComponentRenders": 0,
+          "cleanup": {
+            "setupMs": 20.099999994039536,
+            "setupScope": "root.mount through activation; scene/root construction excluded",
+            "sceneChildren": 0,
+            "registeredSetters": 0,
+            "ownerCount": 0,
+            "pending": 0,
+            "counters": {}
+          },
+          "resourcesExpected": 512,
+          "resourcesDisposed": 512,
+          "duplicateDisposalEvents": 0,
+          "stopped": true
+        },
+        {
+          "mode": "react",
+          "contextClosed": true,
+          "sampleCount": 60,
+          "warmupCount": 12,
+          "firstEpoch": 13,
+          "lastEpoch": 72,
+          "sampleCountersNull": true,
+          "firstUpdateCounters": null,
+          "lastSampleCounters": null,
+          "firstUpdateComponentRenders": 0,
+          "lastSampleComponentRenders": 0,
+          "cleanup": {
+            "setupMs": 14.099999994039536,
+            "setupScope": "R3F configure plus declarative root.render through activation; scene/camera/renderer construction excluded",
+            "sceneChildren": 0,
+            "registeredSetters": 0
+          },
+          "resourcesExpected": 512,
+          "resourcesDisposed": 512,
+          "duplicateDisposalEvents": 0,
+          "stopped": true
+        },
+        {
+          "mode": "imperative",
+          "contextClosed": true,
+          "sampleCount": 60,
+          "warmupCount": 12,
+          "firstEpoch": 13,
+          "lastEpoch": 72,
+          "sampleCountersNull": true,
+          "firstUpdateCounters": null,
+          "lastSampleCounters": null,
+          "firstUpdateComponentRenders": 0,
+          "lastSampleComponentRenders": 0,
+          "cleanup": {
+            "setupMs": 5.5999999940395355,
+            "setupScope": "object creation and attachment; scene/group construction excluded",
+            "sceneChildren": 0,
+            "retainedObjects": 256
+          },
+          "resourcesExpected": 512,
+          "resourcesDisposed": 512,
+          "duplicateDisposalEvents": 0,
+          "stopped": true
+        }
+      ],
+      "blockedRequestCount": 0,
+      "requestFailures": [],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "errors": [],
+      "cleanupErrors": [],
+      "timingStats": {
+        "native": {
+          "publishMs": {
+            "n": 60,
+            "median": 4.1,
+            "p95NearestRank": 5.3,
+            "unit": "ms"
+          },
+          "updateThroughDrawMs": {
+            "n": 60,
+            "median": 6.45,
+            "p95NearestRank": 8.0,
+            "unit": "ms"
+          },
+          "stateAgeMs": {
+            "n": 60,
+            "median": 4.2,
+            "p95NearestRank": 5.3,
+            "unit": "ms"
+          },
+          "callbackMs": {
+            "n": 60,
+            "median": 6.45,
+            "p95NearestRank": 8.0,
+            "unit": "ms"
+          },
+          "rafIntervalMs": {
+            "n": 60,
+            "median": 16.7,
+            "p95NearestRank": 16.7,
+            "unit": "ms"
+          }
+        },
+        "react": {
+          "publishMs": {
+            "n": 60,
+            "median": 0.6,
+            "p95NearestRank": 0.8,
+            "unit": "ms"
+          },
+          "updateThroughDrawMs": {
+            "n": 60,
+            "median": 2.8,
+            "p95NearestRank": 3.2,
+            "unit": "ms"
+          },
+          "stateAgeMs": {
+            "n": 60,
+            "median": 0.7,
+            "p95NearestRank": 0.9,
+            "unit": "ms"
+          },
+          "callbackMs": {
+            "n": 60,
+            "median": 2.8,
+            "p95NearestRank": 3.2,
+            "unit": "ms"
+          },
+          "rafIntervalMs": {
+            "n": 60,
+            "median": 16.7,
+            "p95NearestRank": 16.7,
+            "unit": "ms"
+          }
+        },
+        "imperative": {
+          "publishMs": {
+            "n": 60,
+            "median": 0.1,
+            "p95NearestRank": 0.2,
+            "unit": "ms"
+          },
+          "updateThroughDrawMs": {
+            "n": 60,
+            "median": 2.3,
+            "p95NearestRank": 2.7,
+            "unit": "ms"
+          },
+          "stateAgeMs": {
+            "n": 60,
+            "median": 0.2,
+            "p95NearestRank": 0.3,
+            "unit": "ms"
+          },
+          "callbackMs": {
+            "n": 60,
+            "median": 2.3,
+            "p95NearestRank": 2.7,
+            "unit": "ms"
+          },
+          "rafIntervalMs": {
+            "n": 60,
+            "median": 16.7,
+            "p95NearestRank": 16.7,
+            "unit": "ms"
+          }
+        }
+      },
+      "sourceStable": true
+    },
+    "nonClaims": [
+      "No causal old/new saving is established.",
+      "No presentation latency or independent population claim is established.",
+      "This comparison does not isolate a pure Store bottleneck and does not compare against idiomatic R3F useFrame."
+    ]
+  },
+  "cacheInventory": {
+    "path": "implementation/2026-10-22-mixed-numeric-inputs/unit/verification/cache-raw-inventory.json",
+    "count": 558,
+    "status": "PASS",
+    "cleanupPerformed": false
+  },
+  "preservedGateV1Failure": {
+    "status": "FAIL",
+    "stepCount": 71,
+    "failedSteps": [
+      {
+        "name": "deno-full",
+        "exitCode": 1,
+        "log": "logs/deno-full.log"
+      },
+      {
+        "name": "compiled-10",
+        "exitCode": 1,
+        "log": "logs/compiled-10.log"
+      },
+      {
+        "name": "compiled-11",
+        "exitCode": 1,
+        "log": "logs/compiled-11.log"
+      }
+    ],
+    "runtimeTail": [
+      "    at ComponentStateRoot.flush (file:///Volumes/Depot/Developer/r3act/src/component_state_runtime.ts:4966:47)",
+      "    at file:///Volumes/Depot/Developer/r3act/src/native_numeric_lane_cut_test.ts:75:10",
+      "",
+      " FAILURES ",
+      "",
+      "native numeric cut bypasses StateChange capture and defers reentrant flush => ./src/native_numeric_cell_cut_test.ts:27:6",
+      "native numeric cut leaves state pending after a host writer throws => ./src/native_numeric_cell_cut_test.ts:118:6",
+      "native lane cuts retain newer reentrant writes without scalar snapshots => ./src/native_numeric_lane_cut_test.ts:34:6",
+      "",
+      "FAILED | 1134 passed | 3 failed (18s)",
+      "",
+      "error: Test failed"
+    ]
+  },
+  "preflightInspectionNote": {
+    "artifact": "implementation/2026-10-22-mixed-numeric-inputs/unit/verification/final-audit-inspection-error.log",
+    "description": "An initial schema-inspection snippet treated the fixed-path manifest's top-level list as a mapping. The final audit correctly reads it as a list; no evidence or source files were changed by the failed inspection."
+  },
+  "auditErrors": [],
+  "status": "PASS"
+}

@@ -1,5 +1,7 @@
 # Compiled numeric Store kernels — completed slice
 
+The recent canvas comparison below has unequal renderer obligations: declarative Native versus a React layout-effect adapter over pre-created Three objects. It is adapter/floor evidence, not a like-for-like declarative React/R3F result. A corrected primary is being authored in [the mixed-input slice](../2026-10-22-mixed-numeric-inputs/design.md).
+
 The compiler/runtime/fixture slice is integrated and verified. It remains slower than React Compiler on the installed shared-clock workload. Existing qualified losses and narrow historical wins retain their original scope; the full-plan goal remains active.
 
 ## Preserved first consolidated gate
@@ -43,3 +45,7 @@ The final audit verifies 830 maintained code paths against current source and fr
 The Store semantics hold up; the final fast implementation is unproven. Compiler-generated arithmetic alone has not won. Mixed local-state + Store numeric expressions remain generic: the current Store proof excludes state sites, and the local-state proof excludes Store sites. Integrating those inputs is a concrete remaining authored capability, rather than another isolated helper measurement. Existing identity, source versions, accepted history and publication must remain authoritative. Broader heterogeneous computation fusion, realtime speed, workbench HMR delivery and lifecycle/independent-device finish-line requirements stay open. No maintenance advantage is claimed; participants remain zero.
 
 Four tracked fixed-path fixture outputs regenerated during the gates were archived under [owned-generated-fixed-paths](verification/owned-generated-fixed-paths/manifest.json), then restored byte-for-byte from HEAD. Frozen historical evidence is unchanged.
+
+## Comparator source clarification
+
+Inspection of the archived React transform confirms `_c(4)` caches for Position/Rotation effect closures and dependency arrays, `_c(3)` for FrameMarker and `_c(1)` for static App JSX. Phase/epoch changes invalidate those effect caches on each update. The compiler does not fuse the numerical props or execute a cross-owner range here. Every consumer still reads useSyncExternalStore and writes the pre-created Three object in a layout effect; the motion components return null. Native instead routes declarative retained host props through its Store/publication/host adapter. This is equal output and a strong React integration baseline, with different renderer work and authoring contracts; it does not measure R3F or general declarative React-to-Three reconciliation. Setup exclusions were already recorded. The loss is preserved, without attributing it to an advanced React Compiler pass. [Authored React arm](consumer/react.tsx), [actual generated transform](proof-canvas-v1/transforms/react/react.tsx.js).

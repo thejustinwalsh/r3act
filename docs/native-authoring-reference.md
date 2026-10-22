@@ -190,7 +190,20 @@ Compiler/runtime component and collection registration sites reserve NUL for int
 
 Matching compiler/core versions automatically execute eligible numeric Store leaf props through generated arithmetic kernels, including retained wrappers. No new authoring API or opt-in is needed. Numeric arithmetic and bitwise expressions qualify; logical/conditional expressions, aggregates, subtrees and resource/opaque inputs retain their existing evaluator or generic behavior. Missing older kernel metadata retains the evaluator; malformed supplied metadata is rejected at registration.
 
-Consecutive owners using the same kernel can share a range without changing host order. Different programs split ranges; the current alternating 256-row canvas workload produces 256 runs and remains slower than React Compiler. Expressions combining a local state hook with a Store value still render generically. [Contract and measured limits](../implementation/2026-10-21-store-numeric-kernels/results.md).
+Consecutive owners using the same kernel can share a range without changing host order. Different programs split ranges. The preceding alternating 256-row workload produced 256 runs; its slower result compared Native declarative ownership with a React layout-effect adapter over pre-created objects. It does not establish a declarative R3F loss. [Contract and measured limits](../implementation/2026-10-21-store-numeric-kernels/results.md).
+
+Matching compiler/core versions also support numeric props combining direct `use(props.store)` inputs with local `useState` values. A function or const arrow can declare one to eight of each, pure numeric derived locals, native activation effects and one keyed intrinsic leaf, optionally forwarding exactly `{props.children}`. State initializers must be proven numeric expressions. Calls in prop computations, mutable captures, conditional hooks, child aliases and unsupported output shapes retain generic rendering. The schema-7 metadata requires its associated numeric kernel; older cores reject it.
+
+```tsx
+function Motion(props: { clock: typeof clock; children?: RuntimeNode }) {
+  const frame = use(props.clock);
+  const [offset, setOffset] = useState(0);
+  useEffect(() => registerOffsetControl(setOffset));
+  return <group key="motion" position-x={frame.phase + offset}>{props.children}</group>;
+}
+```
+
+Here `registerOffsetControl` is an application function that returns its cleanup. Native activation effects register once for the owner and survive numeric updates; their semantics differ from React dependency effects. A Store update, local control or joint cut stages one complete output while retaining the child. Unselected inputs must remain accepted/current before host work, held inputs preserve publication ordering, and newer host-time actions remain pending. Dependencies select consumers; explicit transactions still define coherence. The [mixed-input integration](../implementation/2026-10-22-mixed-numeric-inputs/results.md) passes consolidated compiler/runtime and installed WebGL correctness checks. The sole declarative React Compiler + R3F comparison is faster than Native; no performance advantage is established.
 
 ### Fixed Store host subtrees
 

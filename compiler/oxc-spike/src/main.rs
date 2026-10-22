@@ -26,6 +26,7 @@ mod numeric_expression_dag;
 mod owner_update_program;
 mod semantic_plan;
 mod store_numeric_kernel;
+mod mixed_store_numeric_program;
 use semantic_plan::{SemanticPlan, build_semantic_plan, module_revision};
 use owner_update_program::{Sink, StateReference, emit_owner_update_program, primitive_output_expression};
 use serde::{Deserialize, Serialize};
@@ -3252,7 +3253,7 @@ fn compile_native_module(request: NativeModuleRequest) -> NativeModuleResponse {
         "source": &request.source,
         "component": request.component_module.as_deref().unwrap_or(&request.source),
         "trustedRuntimeModules": &trusted_runtime_modules,
-        "compilerSemanticAbi": "store-numeric-kernel-v1",
+        "compilerSemanticAbi": "mixed-store-numeric-v1",
     }).to_string();
     let revision = module_revision(
         &request.path,
@@ -5751,6 +5752,7 @@ fn closed_store_host_expression<'a>(
 struct StoreProjectionProof<'s, 'a> {
     semantic: &'s Semantic<'a>,
     bindings: BTreeMap<SymbolId, usize>,
+    derived: BTreeMap<SymbolId, serde_json::Value>,
     paths: Vec<Vec<Vec<String>>>,
     slots: Vec<(usize, usize)>,
     member_seen: bool,
@@ -5794,8 +5796,14 @@ impl<'s, 'a> StoreProjectionProof<'s, 'a> {
             Expression::BooleanLiteral(value) =>
                 Some(serde_json::json!({"kind":"literal","value":value.value})),
             Expression::NullLiteral(_) => Some(serde_json::json!({"kind":"literal","value":null})),
-            Expression::Identifier(identifier) =>
-                self.input(reference_symbol(identifier, self.semantic)?, Vec::new()),
+            Expression::Identifier(identifier) => {
+                let symbol = reference_symbol(identifier, self.semantic)?;
+                if let Some(value) = self.derived.get(&symbol) {
+                    Some(value.clone())
+                } else {
+                    self.input(symbol, Vec::new())
+                }
+            },
             Expression::StaticMemberExpression(_) => {
                 let mut current = expression;
                 let mut path = Vec::new();
@@ -5858,15 +5866,38 @@ impl<'s, 'a> StoreProjectionProof<'s, 'a> {
         }
     }
 
-    fn finish(mut self, host: &mut serde_json::Value,
+    fn finish(self, host: &mut serde_json::Value,
         inputs: &mut [serde_json::Value]) -> Option<()> {
-        if !self.member_seen || self.paths.iter().any(Vec::is_empty) { return None; }
-        let mut offsets = Vec::with_capacity(inputs.len());
+        let paths = self.finish_paths(host, true)?;
+        if paths.len() != inputs.len() { return None; }
+        for (input, path) in inputs.iter_mut().zip(paths) {
+            input["paths"] = serde_json::json!(path);
+        }
+        Some(())
+    }
+
+    fn finish_mixed(self, host: &mut serde_json::Value,
+        inputs: &mut [serde_json::Value]) -> Option<()> {
+        if self.paths.iter().skip(inputs.len()).any(|paths|
+            paths.len() != 1 || !paths[0].is_empty()) { return None; }
+        let paths = self.finish_paths(host, false)?;
+        if paths.len() <= inputs.len() { return None; }
+        for (input, path) in inputs.iter_mut().zip(paths) {
+            input["paths"] = serde_json::json!(path);
+        }
+        Some(())
+    }
+
+    fn finish_paths(mut self, host: &mut serde_json::Value,
+        require_member: bool) -> Option<Vec<Vec<Vec<String>>>> {
+        if (require_member && !self.member_seen) || self.paths.iter().any(Vec::is_empty) {
+            return None;
+        }
+        let mut offsets = Vec::with_capacity(self.paths.len());
         let mut offset = 0;
-        for (index, paths) in self.paths.drain(..).enumerate() {
+        for paths in &self.paths {
             offsets.push(offset);
             offset += paths.len();
-            inputs[index]["paths"] = serde_json::json!(paths);
         }
         fn remap(value: &mut serde_json::Value, slots: &[(usize, usize)], offsets: &[usize]) {
             if value.get("kind").and_then(serde_json::Value::as_str) == Some("input") {
@@ -5880,7 +5911,7 @@ impl<'s, 'a> StoreProjectionProof<'s, 'a> {
             }
         }
         remap(host, &self.slots, &offsets);
-        Some(())
+        Some(self.paths)
     }
 }
 
@@ -5982,6 +6013,7 @@ fn closed_store_host_program_inner<'a>(
     }
     if projected && !retained_child {
         let mut proof = StoreProjectionProof { semantic, bindings: projected_bindings,
+            derived: BTreeMap::new(),
             paths: vec![Vec::new(); input_count], slots: Vec::new(), member_seen: false };
         let mut keys = BTreeSet::new();
         let mut count = 0;
@@ -6001,6 +6033,7 @@ fn closed_store_host_program_inner<'a>(
     }
     let mut retained_projection = if retained_child && projected {
         Some(StoreProjectionProof { semantic, bindings: projected_bindings,
+            derived: BTreeMap::new(),
             paths: vec![Vec::new(); input_count], slots: Vec::new(), member_seen: false })
     } else { None };
     let legacy_leaf = (|| {
@@ -6131,6 +6164,8 @@ impl<'a> Visit<'a> for ClosedStoreHostCollector<'_, 'a> {
             && let Some(callable) = ClosedCallable::function(node)
             && let Some((program, tuple_spans)) = closed_store_host_program(&callable, component,
                 self.semantic, self.source, self.revision)
+                .or_else(|| mixed_store_numeric_program::closed_program(&callable,
+                    component, self.semantic, self.revision).map(|program| (program, Vec::new())))
         {
             if !tuple_spans.is_empty() {
                 self.tuple_spans.insert(component.component_site_id.clone(), tuple_spans);
@@ -6150,6 +6185,8 @@ impl<'a> Visit<'a> for ClosedStoreHostCollector<'_, 'a> {
             && let Some(callable) = ClosedCallable::arrow(arrow, symbol)
             && let Some((program, tuple_spans)) = closed_store_host_program(&callable, component,
                 self.semantic, self.source, self.revision)
+                .or_else(|| mixed_store_numeric_program::closed_program(&callable,
+                    component, self.semantic, self.revision).map(|program| (program, Vec::new())))
         {
             if !tuple_spans.is_empty() {
                 self.tuple_spans.insert(component.component_site_id.clone(), tuple_spans);
@@ -11867,5 +11904,61 @@ export function Aggregate(props) {
         assert!(code.contains("const $r3actDag0"));
         assert!(code.contains("inputStart + $r3actRow * 2"));
         assert!(code.contains("outputStart + $r3actRow * 2"));
+    }
+
+    #[test]
+    fn emits_mixed_store_state_leaf_with_activation_sites_and_flat_input_order() {
+        let source = r#"import { use, useState, useEffect } from "native_runtime_api.ts";
+export function Motion(props) {
+  const [offset, setOffset] = useState(1);
+  const pose = use(props.frame);
+  const scale = use(props.scale);
+  useEffect(() => { props.control.current = setOffset; return () => { props.control.current = null; }; });
+  const x = pose.x + scale.y;
+  return <group key="motion" position-x={x + offset} position-y={scale.y * offset}>{props.children}</group>;
+}
+export const Arrow = (props) => {
+  const pose = use(props.frame);
+  const [offset] = useState(-0);
+  return <mesh key="arrow" position-x={pose.x + offset}/>;
+};
+export function Opaque(props) {
+  const pose = use(props.frame); const [offset] = useState(0);
+  return <mesh key="opaque" position-x={Math.random() + pose.x + offset}/>;
+}
+export function StateMember(props) {
+  const pose = use(props.frame); const [offset] = useState(0);
+  return <mesh key="state-member" position-x={pose.x + offset.x}/>;
+}"#;
+        let response = compile_state("mixed-store-state.tsx", source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let plan = response.plan.unwrap();
+        let revision = plan.module_revision.clone();
+        let code = plan.component_module.unwrap();
+        let components = plan.components.unwrap();
+        let motion = components.iter().find(|component| component.name == "Motion").unwrap();
+        let program = motion.closed_store_host_program.as_ref().unwrap();
+        let kernel = motion.closed_store_numeric_kernel.as_ref().unwrap();
+        assert_eq!(program["schemaVersion"], 7);
+        assert_eq!(program["moduleRevision"], revision);
+        assert_eq!(program["retainedChildProp"], "children");
+        assert_eq!(program["inputs"][0]["storeUseSiteId"], motion.store_sites[0].site_id);
+        assert_eq!(program["inputs"][1]["storeUseSiteId"], motion.store_sites[1].site_id);
+        assert_eq!(program["inputs"][0]["paths"], serde_json::json!([["x"]]));
+        assert_eq!(program["inputs"][1]["paths"], serde_json::json!([["y"]]));
+        assert_eq!(program["stateSites"], serde_json::json!([motion.state_sites[0].site_id]));
+        assert_eq!(program["effectSites"], serde_json::json!([motion.effect_sites[0].site_id]));
+        assert_eq!(kernel["inputCount"], 3);
+        assert_eq!(kernel["moduleRevision"], revision);
+        assert_eq!(kernel["propNames"], serde_json::json!(["position-x", "position-y"]));
+        let arrow = components.iter().find(|component| component.name == "Arrow").unwrap();
+        assert_eq!(arrow.closed_store_host_program.as_ref().unwrap()["schemaVersion"], 7);
+        assert_eq!(arrow.closed_store_host_program.as_ref().unwrap()["retainedChildProp"], serde_json::Value::Null);
+        assert_eq!(arrow.closed_store_numeric_kernel.as_ref().unwrap()["inputCount"], 2);
+        assert!(components.iter().find(|component| component.name == "Opaque")
+            .unwrap().closed_store_host_program.is_none());
+        assert!(components.iter().find(|component| component.name == "StateMember")
+            .unwrap().closed_store_host_program.is_none());
+        assert_eq!(code.matches("closedStoreNumericKernel:").count(), 2);
     }
 }

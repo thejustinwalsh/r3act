@@ -1,0 +1,9 @@
+Preserved preflight inspection error (not a product check)
+
+A preliminary schema-inspection snippet loaded verification/owned-generated-fixed-paths/manifest.json and attempted to call .items() on its top-level value. The manifest is a JSON list, so the inspection stopped with:
+
+Traceback (most recent call last):
+  File "<inline-schema-inspection>", line 5, in <module>
+AttributeError: 'list' object has no attribute 'items'
+
+No source, evidence, cache, or output files were changed by that inspection. The final-audit script treats the manifest as a list and independently validates its four archived generated files and restored current hashes.

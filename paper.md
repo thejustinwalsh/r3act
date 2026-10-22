@@ -1720,3 +1720,14 @@ Actual WebGL checks pass animation without owner rerenders, controls, keyed edit
 The full-plan first pass remains active. Next source work is the generic component-output identity gap using the existing owner incarnation, with all candidate/snapshot clone paths and text-root semantics accounted for; no new registry or key renaming is assumed. HMR, release performance/cold/memory and independent-device requirements remain open. Historical narrow wins, qualified dense loss, exhausted Recording A and physical HOLD retain scope. No maintenance advantage is claimed. No VM or owned project server remains running.
 
 [Results, preserved failures and exact receipts](implementation/2026-10-21-realtime-direction/results.md); [primary source review](implementation/2026-10-21-realtime-direction/source-review.md).
+
+
+## Mixed local-state and Store inputs — 22 October 2026
+
+Compiler schema 7 and existing range kernels now combine Store projections with local state in one retained host output. Activation controls and children survive updates; existing World handles, Store reader history, exact acknowledgement, hold admission and live validation remain authoritative. No second identity/version registry is added.
+
+Corrected Darwin-v2 passes all 71 phases: 1137 runtime tests, 99 Rust tests, all 51 compiler fixtures and 1614 matching runner hashes. The first failed gate and installed-build guard failure remain preserved. Fresh installed proof verifies actual kernels and React Compiler transforms, equivalent declarative object ownership, matching real WebGL output and exactly-once disposal. Both browser phases match 12340 hashes and close cleanly.
+
+The sole declarative Native versus React Compiler + R3F comparison still loses: publication median/p95 4.10/5.30 versus 0.60/0.80 ms; update-through-draw 6.45/8.00 versus 2.80/3.20 ms. The fixed-order 12-warmup/60-frame observation uses real WebGL2 on Apple M4. Older layout-effect adapter timings remain preserved with corrected scope and do not establish a declarative R3F loss. There is no causal old/new, presentation, useFrame, phase attribution, matched cold/memory or independent-device claim.
+
+The semantic slice is complete; the full-plan goal remains active. Realtime speed, broader computation fusion, HMR delivery and lifecycle/independent-device requirements remain open. Historical narrow wins, qualified dense DOM loss and physical HOLD retain scope. [Results and failures](implementation/2026-10-22-mixed-numeric-inputs/results.md); [primary review](implementation/2026-10-22-mixed-numeric-inputs/source-review.md).
