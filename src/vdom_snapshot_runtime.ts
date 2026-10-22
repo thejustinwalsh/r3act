@@ -22,6 +22,10 @@ import {
 import { KeyedRegionBuckets } from "./keyed_region_buckets.ts";
 import { createDOMStylePropWriter } from "./dom_style_writer.ts";
 import { snapshotScopedHostProp } from "./scoped_host_values.ts";
+import {
+  createOwnedScalarStorePropDelta,
+  isOwnedScalarStorePropDelta,
+} from "./closed_store_execution.ts";
 import type { ClosedHostOutputValue } from "./closed_host_value.ts";
 import {
   type CompiledOwnerUpdatePrimitive,
@@ -179,105 +183,8 @@ export type StorePropDelta = Readonly<{
     Readonly<{ kind: "text"; text: string }>)[];
 }>;
 
-const ownedScalarStorePropDeltas = new WeakSet<StorePropDelta>();
-
-const ownScalarRegionData = (input: unknown): Record<string, unknown> | null => {
-  if (input === null || typeof input !== "object") return null;
-  try {
-    const prototype = Object.getPrototypeOf(input);
-    if (prototype !== Object.prototype && prototype !== null) return null;
-    const descriptors = Object.getOwnPropertyDescriptors(input);
-    const keys = Reflect.ownKeys(descriptors);
-    if (keys.length < 3 || keys.length > 5 ||
-      keys.some((key) => typeof key !== "string" ||
-        !["key", "tag", "props", "retainedChildren", "componentOwner", "children"]
-          .includes(key)) ||
-      !descriptors.key || !descriptors.tag || !descriptors.props) return null;
-    const copy: Record<string, unknown> = Object.create(null);
-    for (const key of keys as string[]) {
-      const descriptor = descriptors[key];
-      if (!descriptor || !("value" in descriptor)) return null;
-      copy[key] = descriptor.value;
-    }
-    return copy;
-  } catch { return null; }
-};
-
-const ownArray = (input: unknown, limit: number): readonly unknown[] | null => {
-  if (!Array.isArray(input)) return null;
-  try {
-    if (Object.getPrototypeOf(input) !== Array.prototype) return null;
-    const size = Object.getOwnPropertyDescriptor(input, "length")?.value;
-    if (!Number.isSafeInteger(size) || size < 0 || size > limit) return null;
-    const descriptors = Object.getOwnPropertyDescriptors(input) as unknown as
-      Record<string, PropertyDescriptor>;
-    const length = descriptors.length?.value;
-    if (length !== size ||
-      Reflect.ownKeys(descriptors).length !== length + 1) return null;
-    const copy: unknown[] = [];
-    for (let index = 0; index < length; index++) {
-      const descriptor = descriptors[index];
-      if (!descriptor || !("value" in descriptor)) return null;
-      copy.push(descriptor.value);
-    }
-    return copy;
-  } catch { return null; }
-};
-
 /** Copy a scalar Store region into a privately owned, immutable data shape. */
-export const createOwnedScalarStorePropDelta = (
-  region: StorePropDelta,
-): StorePropDelta | null => {
-  const data = ownScalarRegionData(region);
-  return data ? copyOwnedScalarRegion(data) : null;
-};
-
-const copyOwnedScalarRegion = (fields: Record<string, unknown>): StorePropDelta | null => {
-  const { key, tag, props, retainedChildren, componentOwner, children } = fields;
-  if (typeof key !== "string" || !key || typeof tag !== "string" || !tag ||
-    !["div", "span", "output", "group", "mesh"].includes(tag) ||
-    (Object.hasOwn(fields, "retainedChildren") !==
-      Object.hasOwn(fields, "componentOwner")) ||
-    (Object.hasOwn(fields, "children") && children === undefined) ||
-    (retainedChildren !== undefined && retainedChildren !== true) ||
-    (componentOwner !== undefined &&
-      (retainedChildren !== true || typeof componentOwner !== "number" ||
-        !Number.isSafeInteger(componentOwner))) ||
-    (retainedChildren === true && (componentOwner === undefined ||
-      children !== undefined))) return null;
-  const rawProps = ownArray(props, 32);
-  if (!rawProps || (!rawProps.length && children === undefined)) return null;
-  const pairs: (readonly [string, ClosedHostOutputValue])[] = [];
-  const names = new Set<string>();
-  for (const rawPair of rawProps) {
-    const pair = ownArray(rawPair, 2);
-    if (!pair || pair.length !== 2 || typeof pair[0] !== "string" ||
-      !pair[0] || pair[0] === "__proto__" || pair[0] === "prototype" ||
-      pair[0] === "constructor" || pair[0] === "ref" ||
-      /^on[A-Z]/.test(pair[0]) || names.has(pair[0])) return null;
-    const value = pair[1];
-    if (value !== null && typeof value !== "string" &&
-      typeof value !== "boolean" &&
-      !(typeof value === "number" && Number.isFinite(value))) return null;
-    const captured = snapshotScopedHostProp(tag, pair[0], value);
-    if (!captured.accepted || captured.value === undefined ||
-      !Object.is(captured.value, value)) return null;
-    names.add(pair[0]);
-    pairs.push(Object.freeze([pair[0], value] as const));
-  }
-  if (children !== undefined) {
-    const empty = ownArray(children, 0);
-    if (!empty || empty.length !== 0) return null;
-  }
-  const copy: StorePropDelta = Object.freeze({ key, tag,
-    props: Object.freeze(pairs),
-    ...(retainedChildren === true ? { retainedChildren: true as const,
-      componentOwner: componentOwner as number } : {}),
-    ...(children === undefined ? {} : { children: Object.freeze([]) }),
-  });
-  ownedScalarStorePropDeltas.add(copy);
-  return copy;
-};
+export { createOwnedScalarStorePropDelta };
 
 const storePropDeltaBrand: unique symbol = Symbol();
 export interface PreparedStorePropDelta {
@@ -4122,7 +4029,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     const texts: StorePropDeltaRecord<H>["texts"][number][] = [];
     let allOwnedScalar = true;
     for (const region of regions) {
-      const ownedScalar = ownedScalarStorePropDeltas.has(region);
+      const ownedScalar = isOwnedScalarStorePropDelta(region);
       allOwnedScalar &&= ownedScalar;
       if (!region.key || !region.tag ||
         (region.componentOwner !== undefined &&

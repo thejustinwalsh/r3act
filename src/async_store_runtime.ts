@@ -206,6 +206,26 @@ export class StoreRenderSnapshot<S, A = StoreAction<S, S>> {
   readonly #capturedVersion: number;
   readonly #capturedRootEpoch: object;
 
+  static _isOwnedPhaseSnapshot(
+    candidate: unknown, store: AnyAsyncStore, rootId: string,
+  ): boolean {
+    if (typeof candidate !== "object" || candidate === null ||
+      !(#capturedStore in candidate)) return false;
+    if (Object.getPrototypeOf(candidate) !== StoreRenderSnapshot.prototype ||
+      !snapshotPhaseMethodsCanonical(candidate)) return false;
+    const snapshot = candidate as StoreRenderSnapshot<unknown, any>;
+    const ownData = (name: string, expected: unknown) => {
+      const descriptor = Object.getOwnPropertyDescriptor(snapshot, name);
+      return !!descriptor && "value" in descriptor && descriptor.value === expected;
+    };
+    return snapshot.#capturedStore === store &&
+      snapshot.#capturedRootId === rootId &&
+      ownData("store", store) && ownData("rootId", rootId) &&
+      ownData("version", snapshot.#capturedVersion) &&
+      ownData("rootEpoch", snapshot.#capturedRootEpoch) &&
+      ownData("closedNumeric", true);
+  }
+
   constructor(
     private readonly store: AsyncStore<S, A>,
     readonly rootId: string,
@@ -1186,6 +1206,39 @@ const canonicalInspectReaderReceipt = AsyncStore.prototype._inspectCanonicalRead
 const canonicalSnapshotRootStamp = StoreRenderSnapshot.prototype.capturedRootStamp;
 const canonicalValidateSnapshotPrepared = StoreRenderSnapshot.prototype.validatePreparedCanonical;
 const canonicalValidateSnapshotLineage = StoreRenderSnapshot.prototype.validatePublicationInputsCanonical;
+const canonicalIsOwnedPhaseSnapshot = StoreRenderSnapshot._isOwnedPhaseSnapshot;
+const snapshotPhaseMethodNames = Object.freeze([
+  "validate", "validatePublicationInputs", "validatePreparedCanonical",
+  "validatePublicationInputsCanonical",
+] as const);
+const snapshotPhaseDescriptors = new Map(snapshotPhaseMethodNames.map((name) => [
+  name, Object.getOwnPropertyDescriptor(StoreRenderSnapshot.prototype, name)!,
+]));
+
+function phaseMethodsCanonical(
+  receiver: object,
+  prototype: object,
+  names: readonly string[],
+  expected: ReadonlyMap<string, PropertyDescriptor>,
+): boolean {
+  for (const name of names) {
+    if (Object.hasOwn(receiver, name)) return false;
+    const actual = Object.getOwnPropertyDescriptor(prototype, name);
+    const original = expected.get(name);
+    if (!actual || !original || actual.value !== original.value ||
+      actual.get !== original.get || actual.set !== original.set ||
+      actual.writable !== original.writable ||
+      actual.enumerable !== original.enumerable ||
+      actual.configurable !== original.configurable) return false;
+  }
+  return true;
+}
+
+function snapshotPhaseMethodsCanonical(snapshot: object): boolean {
+  return phaseMethodsCanonical(snapshot, StoreRenderSnapshot.prototype,
+    snapshotPhaseMethodNames, snapshotPhaseDescriptors);
+}
+
 
 export function captureCanonicalStoreReaderReceipt(
   store: AnyAsyncStore,
@@ -1318,6 +1371,45 @@ export class StoreRenderTransaction {
   #checkpointSequence = 0;
   #startedEpoch = storeMutationClock;
   #discoveredAfterMutation = false;
+
+  _validateCanonicalClosedPhase(
+    key: symbol, phase: "prepared" | "after-host",
+  ): "current" | "stale" | "public-required" {
+    if (typeof this !== "object" || this === null || !(#snapshots in this)) {
+      return "public-required";
+    }
+    if (key !== ownedBatchKey || (phase !== "prepared" && phase !== "after-host")) {
+      return "public-required";
+    }
+    if (Object.getPrototypeOf(this) !== StoreRenderTransaction.prototype ||
+      !transactionPhaseMethodsCanonical(this)) return "public-required";
+    const root = Object.getOwnPropertyDescriptor(this, "rootId");
+    const options = Object.getOwnPropertyDescriptor(this, "options");
+    const transitions = Object.getOwnPropertyDescriptor(this.#capturedOptions, "transitions");
+    if (!root || !("value" in root) || root.value !== this.#capturedRootId ||
+      !options || !("value" in options) || options.value !== this.#capturedOptions ||
+      !transitions || !("value" in transitions) ||
+      transitions.value !== this.#capturedTransitions) return "public-required";
+    if (this.#closed || this.#discoveredAfterMutation) return "stale";
+    if (this.#snapshots.size === 0 ||
+      this.#ownedProjectionValues.size !== this.#snapshots.size ||
+      this.#capturedTransitions.length !== 0) return "public-required";
+    if (!closedNumericPrototypeIsCanonical()) return "public-required";
+    for (const [store, snapshot] of this.#snapshots) {
+      if (!this.#ownedProjectionValues.has(snapshot) ||
+        !canonicalIsOwnedPhaseSnapshot.call(
+          StoreRenderSnapshot, snapshot, store, this.#capturedRootId,
+        ) ||
+        !canonicalOwnedBatchInstance.call(store, ownedBatchKey)) return "public-required";
+    }
+    for (const snapshot of this.#snapshots.values()) {
+      const current = phase === "prepared"
+        ? canonicalValidateSnapshotPrepared.call(snapshot)
+        : canonicalValidateSnapshotLineage.call(snapshot);
+      if (!current) return "stale";
+    }
+    return "current";
+  }
   constructor(
     readonly rootId: string,
     private readonly options: StoreReadOptions = {},
@@ -1335,6 +1427,7 @@ export class StoreRenderTransaction {
     key: symbol,
     requests: readonly OwnedClosedProjectionRequest[],
   ): readonly (readonly number[])[] | null {
+    if (typeof this !== "object" || this === null || !(#snapshots in this)) return null;
     if (key !== ownedBatchKey || this.#closed || this.#preparedPublication ||
       this.#snapshots.size || this.#states.size || this.#readers.size ||
       this.#pending.size || this.#values.size || this.#discoveredAfterMutation ||
@@ -1901,17 +1994,45 @@ export class StoreRenderTransaction {
 
 const canonicalReadOwnedClosedProjectionBatch =
   StoreRenderTransaction.prototype._readOwnedClosedProjectionBatch;
+const canonicalValidateStorePhase =
+  StoreRenderTransaction.prototype._validateCanonicalClosedPhase;
 const canonicalTransactionClosedRead =
   Object.getOwnPropertyDescriptor(StoreRenderTransaction.prototype, "readClosedProjections")!;
+const transactionPhaseMethodNames = Object.freeze([
+  "validate", "validatePublicationInputs", "validatePreparedCanonical",
+  "validatePublicationInputsCanonical",
+] as const);
+const transactionPhaseDescriptors = new Map(transactionPhaseMethodNames.map((name) => [
+  name, Object.getOwnPropertyDescriptor(StoreRenderTransaction.prototype, name)!,
+]));
+
+function transactionPhaseMethodsCanonical(transaction: object): boolean {
+  return phaseMethodsCanonical(transaction, StoreRenderTransaction.prototype,
+    transactionPhaseMethodNames, transactionPhaseDescriptors);
+}
+
+/** Audit selected owned Store snapshots and their captured phase stamps. */
+export function validateCanonicalClosedStorePhase(
+  transaction: StoreRenderTransaction,
+  phase: "prepared" | "after-host",
+): "current" | "stale" | "public-required" {
+  try {
+    return canonicalValidateStorePhase.call(transaction, ownedBatchKey, phase);
+  } catch (error) {
+    if (error instanceof TypeError) return "public-required";
+    throw error;
+  }
+}
 
 export function readOwnedClosedProjectionBatch(
   transaction: StoreRenderTransaction,
   requests: readonly OwnedClosedProjectionRequest[],
 ): readonly (readonly number[])[] | null {
+  let copied: OwnedClosedProjectionRequest[];
   try {
     const length = Object.getOwnPropertyDescriptor(requests, "length")?.value;
     if (!Number.isSafeInteger(length) || length < 0 || length > 65536) return null;
-    const copied: OwnedClosedProjectionRequest[] = [];
+    copied = [];
     for (let index = 0; index < length; index++) {
       const request = Object.getOwnPropertyDescriptor(requests, String(index));
       if (!request || !("value" in request) || !request.value) return null;
@@ -1922,9 +2043,9 @@ export function readOwnedClosedProjectionBatch(
         typeof readerId.value !== "string" || !paths || !("value" in paths)) return null;
       copied.push({ store: store.value, readerId: readerId.value, paths: paths.value });
     }
-    return canonicalReadOwnedClosedProjectionBatch.call(transaction, ownedBatchKey, copied);
   } catch (error) {
     if (error instanceof TypeError) return null;
     throw error;
   }
+  return canonicalReadOwnedClosedProjectionBatch.call(transaction, ownedBatchKey, copied);
 }

@@ -1,0 +1,21 @@
+# Closed Store preparation and publication contraction
+
+Base ff95540a7188a4ff2f94ad9ef611b3fcc47b314a, local main, MIT. The primary reread the complete master guide, checkpoint and active source/evidence before selection. The human explicitly requested the Astra-high investigation; [its report](../2026-10-22-astra-realtime-gap/report.md) identifies the source-backed retirements. This is one integrated semantic factoring slice over existing layouts, not a new storage policy or a resumption of exhausted Recording A. Full-plan scope and physical HOLD remain.
+
+## Replaced work and authority
+
+Retire repeated normalization of immutable projection and retained scalar output shape, quadratic prototype-key membership searches and redundant key arrays, empty pending/accepted selector Maps for direct readers, overlapping ancestor-cache invalidation, transient props/VNode copies and two strictly adjacent callback-free VDOM checks. Use the existing World, per-root Store accepted reader records, pending action versions, ComponentCache, mounted VDOM, prepared StorePropDelta and private publication receipts. No persistent owner/source/version/history registry or whole-tree snapshot copy is permitted.
+
+Canonical audits may be shared only inside a demonstrably passive preparation interval. Public executeRange functions, resource/World overrides, descriptor/Proxy access and host callbacks end that interval. Keep original kernel order; do not reorder inputs/callbacks or infer effect freedom from compiler-shaped function metadata. No global canonical-status cache. A direct reader still owns its exact accepted identity/stamp and held/fork semantics even when its selector history is represented without an empty Map. Public generic selector paths and arbitrary path metadata retain current behavior.
+
+## Integrated boundary
+
+Sol A owns Store/owned-record/closed-host normalization and focused tests. Sol B owns Root/cache/JSX helpers and focused tests. Sol C owns VDOM/scoped scalar preparation and focused tests. Primary fixes the cross-agent contracts before dispatch, reviews the combined source, authors any necessary cross-layer compiled regression and maintains checkpoint/docs. Implementation agents execute no tests/builds/benchmarks. Luna stays idle until primary releases the complete slice for consolidated verification.
+
+Retain exact captured acknowledgement, newer reentrant writes, per-root accepted histories, current owner/source/code/writer checks, held-input ordering, resource/effect/child lifetimes, generic fallback and host partial-failure quarantine. Whole-tree/cache replacement guards remain. Public explicit candidates retain fresh validation; immediate internal admission uses existing private receipts. Immutable shape receipts must match exact current program/element/props/child references and owner incarnation, live only on existing cache records, and retire with those caches. Do not mutate accepted frozen props or retain scratch in output.
+
+## Evaluation and falsifiers
+
+Reuse the unchanged authored Native/React/imperative workload from the mixed-input unit, including declarative R3F, real WebGL, 256 objects, original alternating programs, 12 warmup/60 measured frames and identical renderer/camera/output/lifetime checks. One consolidated correctness gate, one installed untimed proof and one bounded new-source three-arm comparison at the integrated boundary. Preserve all failures. No helper timings, favorable repeat, old-Native replay or causal old/new claim is selected. The prior 4.10/5.30 versus 0.60/0.80 publication observation remains bound to its old source.
+
+The removable-time budget is unmeasured. Source-derived 515 pre-lifecycle prototype audits and allocation counts are not phase milliseconds or predicted savings. Semantic acceptance requires all invariants plus visible retirement of named work. A speed success requires the fresh publication/update-through-draw median and p95 comparison to meet its stated target without output/state-age/lifetime regression; an improvement that still loses remains a loss. If this integrated comparison does not improve, stop this optimization slice and review whether optional contractions merit retention; do not add another cache to rescue it. Broader DAG fusion, useFrame, HMR, lifecycle/cold/memory and independent-device requirements remain open.

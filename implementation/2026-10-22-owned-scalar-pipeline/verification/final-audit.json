@@ -1,0 +1,1759 @@
+{
+  "schemaVersion": 1,
+  "summary": {
+    "audit": "enclosed-scalar-pipeline-final-evidence-audit",
+    "status": "PASS",
+    "checkCount": 17,
+    "passed": 17,
+    "failed": [],
+    "correctedGate": {
+      "phases": 73,
+      "passedPhases": 73,
+      "denoTests": 1191,
+      "rustTests": 101,
+      "compiledFixtures": 53,
+      "gateTimeRunnerInputs": 1825,
+      "archivedInputsAndContext": 1835
+    },
+    "currentCheckoutComparison": {
+      "matched": 1829,
+      "baseline": 1835,
+      "expectedPostGateDocumentMismatches": [
+        "HANDOFF-PROMPT.txt",
+        "README.md",
+        "RESEARCH-GUIDE.md",
+        "final-master-plan.md",
+        "implementation-checkpoint.md",
+        "implementation/2026-10-22-owned-scalar-pipeline/source-review.md"
+      ],
+      "wholeInventoryMatchClaim": false
+    },
+    "proofHashes": {
+      "buildProof": "1db6b392247250a8dbd6eb201b1bb2d2ba9d12beb63ebb62de7600a8aea1f12a",
+      "inputLock": "f8ae40b3512fd19ed7dcf4ef2aec21348fdf394a81b97ac7d18960057f830c8a",
+      "untimedProof": "3ec34003533e2cca5a466e88cb9de8fdfcae23766004ebe0886fa3dabb604c83",
+      "timingAuthorization": "eb35904d9449191d61350b4686770f9138fa500365f7f58db645e9d0b82d7ce6",
+      "timing": "5cb9eeaae38e8da668640a0bdf830e15cceb6f724e7f9dc32d0e327e9acae416"
+    },
+    "timing": {
+      "method": "median: average of two central sorted samples; p95: nearest rank ceil(0.95*n)",
+      "sampleCountPerArm": 60,
+      "rows": {
+        "native": {
+          "publishMs": {
+            "count": 60,
+            "median": 3.0,
+            "p95NearestRank": 3.699999988079071
+          },
+          "updateThroughDrawMs": {
+            "count": 60,
+            "median": 5.5999999940395355,
+            "p95NearestRank": 6.299999982118607
+          },
+          "stateAgeMs": {
+            "count": 60,
+            "median": 3.0999999940395355,
+            "p95NearestRank": 3.699999988079071
+          },
+          "callbackMs": {
+            "count": 60,
+            "median": 5.5999999940395355,
+            "p95NearestRank": 6.299999982118607
+          },
+          "rafIntervalMs": {
+            "count": 60,
+            "median": 16.699999999999932,
+            "p95NearestRank": 16.700000000000045
+          }
+        },
+        "react": {
+          "publishMs": {
+            "count": 60,
+            "median": 0.7000000178813934,
+            "p95NearestRank": 0.9000000059604645
+          },
+          "updateThroughDrawMs": {
+            "count": 60,
+            "median": 3.25,
+            "p95NearestRank": 3.9000000059604645
+          },
+          "stateAgeMs": {
+            "count": 60,
+            "median": 0.7999999821186066,
+            "p95NearestRank": 1
+          },
+          "callbackMs": {
+            "count": 60,
+            "median": 3.25,
+            "p95NearestRank": 3.9000000059604645
+          },
+          "rafIntervalMs": {
+            "count": 60,
+            "median": 16.69999999999999,
+            "p95NearestRank": 16.700000000000045
+          }
+        },
+        "react-frame": {
+          "publishMs": {
+            "count": 60,
+            "median": 3.0499999970197678,
+            "p95NearestRank": 3.5
+          },
+          "updateThroughDrawMs": {
+            "count": 60,
+            "median": 5.850000008940697,
+            "p95NearestRank": 6.699999988079071
+          },
+          "stateAgeMs": {
+            "count": 60,
+            "median": 3.100000023841858,
+            "p95NearestRank": 3.5999999940395355
+          },
+          "callbackMs": {
+            "count": 60,
+            "median": 5.850000008940697,
+            "p95NearestRank": 6.699999988079071
+          },
+          "rafIntervalMs": {
+            "count": 60,
+            "median": 16.699999999999932,
+            "p95NearestRank": 16.700000000000045
+          }
+        },
+        "imperative": {
+          "publishMs": {
+            "count": 60,
+            "median": 0.09999999403953552,
+            "p95NearestRank": 0.20000001788139343
+          },
+          "updateThroughDrawMs": {
+            "count": 60,
+            "median": 3.600000023841858,
+            "p95NearestRank": 6.199999988079071
+          },
+          "stateAgeMs": {
+            "count": 60,
+            "median": 0.19999998807907104,
+            "p95NearestRank": 0.4000000059604645
+          },
+          "callbackMs": {
+            "count": 60,
+            "median": 3.600000023841858,
+            "p95NearestRank": 6.199999988079071
+          },
+          "rafIntervalMs": {
+            "count": 60,
+            "median": 16.699999999999932,
+            "p95NearestRank": 16.700000000000045
+          }
+        }
+      },
+      "matchesPublishedFigures": true
+    },
+    "limitations": [
+      "No workload, test, build, browser, or protocol was rerun for this audit.",
+      "Timing is one descriptive episode and establishes no causal old/new saving, phase cost, presentation behavior, cold or memory result, or independent-device qualification."
+    ]
+  },
+  "checks": [
+    {
+      "name": "darwin-v2-all-73-phases-pass",
+      "status": "PASS",
+      "detail": {
+        "PASS": 73
+      }
+    },
+    {
+      "name": "darwin-v2-1191-deno-tests",
+      "status": "PASS",
+      "detail": {
+        "passed": 1191,
+        "failed": 0
+      }
+    },
+    {
+      "name": "darwin-v2-101-rust-tests",
+      "status": "PASS",
+      "detail": {
+        "passed": 101,
+        "failed": 0
+      }
+    },
+    {
+      "name": "darwin-v2-53-compiled-fixtures",
+      "status": "PASS",
+      "detail": 53
+    },
+    {
+      "name": "gate-time-source-audit-matched-1825-runner-inputs",
+      "status": "PASS",
+      "detail": {
+        "status": "PASS",
+        "phaseCount": 73,
+        "phaseStatuses": {
+          "PASS": 73
+        },
+        "deno": {
+          "passed": 1191,
+          "failed": 0
+        },
+        "rust": {
+          "passed": 101,
+          "failed": 0
+        },
+        "compiledFixtureCount": 53,
+        "allCompiledFixturesPass": true,
+        "sourceAuditAtGate": {
+          "status": "MATCH",
+          "changed": []
+        },
+        "runnerInputs": 1825,
+        "archivedRunnerAndContextFiles": 1835,
+        "runnerInputsInArchive": 1825,
+        "contextInputsInArchive": 10,
+        "sourceArchiveSha256": "7721053784b9a62c7f64c0ea9f4b795cdec9efbef4c9a29d658301dc5f2f91e4",
+        "sourceArchiveManifestSha256Expected": "7721053784b9a62c7f64c0ea9f4b795cdec9efbef4c9a29d658301dc5f2f91e4",
+        "sourceBeforeManifestSha256Expected": "43a8c1a5717745eb42d19774f5684ba95b3e036e3c57f30a9fb89fb6b12c1c8f"
+      }
+    },
+    {
+      "name": "corrected-v2-archive-manifest-hash",
+      "status": "PASS",
+      "detail": null
+    },
+    {
+      "name": "darwin-v1-failure-preserved",
+      "status": "PASS",
+      "detail": {
+        "status": "FAIL",
+        "failedPhases": [
+          "deno-full",
+          "native-tooling",
+          "package-build"
+        ],
+        "consumerStatus": "SKIPPED_DEPENDENCY_FAILED",
+        "containsFirstTypeFailure": true,
+        "containsMalformedRequestTypeFailure": true,
+        "artifactPath": "implementation/2026-10-22-owned-scalar-pipeline/verification/darwin-v1"
+      }
+    },
+    {
+      "name": "only-intended-postgate-source-archive-differences",
+      "status": "PASS",
+      "detail": {
+        "comparisonTime": "after gate, installed proof, timing, results/review/docs updates and generated-cache preservation",
+        "baselineEntries": 1835,
+        "exactCurrentMatches": 1829,
+        "runnerInputMatches": 1823,
+        "contextMatches": 6,
+        "intendedPostGateDocumentMismatches": [
+          {
+            "path": "README.md",
+            "kind": "runner-input",
+            "gateSha256": "3b211164dfebe246f5907147922d881b476fad5b598bafde2a16d75e68e6c0c0",
+            "currentSha256": "793edc32608e6f6ba892e65e4a5e0e77c08148beb284fb012435ace8ad692301",
+            "archiveSha256": "3b211164dfebe246f5907147922d881b476fad5b598bafde2a16d75e68e6c0c0"
+          },
+          {
+            "path": "implementation/2026-10-22-owned-scalar-pipeline/source-review.md",
+            "kind": "runner-input",
+            "gateSha256": "4f2ea88a6ee95504b7b0074749ea8e1a61c86ab7f8053ec3df9063689dada637",
+            "currentSha256": "088ae4e9fdf1c6e0e49c9db6467d98c3c3ee377db3d059df96f290f74c033a54",
+            "archiveSha256": "4f2ea88a6ee95504b7b0074749ea8e1a61c86ab7f8053ec3df9063689dada637"
+          },
+          {
+            "path": "final-master-plan.md",
+            "kind": "context",
+            "gateSha256": "bf18330ec3b0b61b18c963ba79ce448cd50536b59edb16d265d8c4e3d6ef53fd",
+            "currentSha256": "77770efbd30427ed9ecebe2cf3a024ea06ff292216e72747c086162a986c6cfe",
+            "archiveSha256": "bf18330ec3b0b61b18c963ba79ce448cd50536b59edb16d265d8c4e3d6ef53fd"
+          },
+          {
+            "path": "implementation-checkpoint.md",
+            "kind": "context",
+            "gateSha256": "b7973a1e6cab17f07830c4c420d22294d4d839b12154d45cda7873aced196b4d",
+            "currentSha256": "bbe45b023ac7ef7ffaaae2dde36fd11115cc30a7dcadf418db1ab0d148c938d7",
+            "archiveSha256": "b7973a1e6cab17f07830c4c420d22294d4d839b12154d45cda7873aced196b4d"
+          },
+          {
+            "path": "HANDOFF-PROMPT.txt",
+            "kind": "context",
+            "gateSha256": "e9d434079006847ad3f3058b00e0a28f74b3deffabf1e2bbc7a1f2148cc8322f",
+            "currentSha256": "4188e6993a49c8d65ba677db9f440509cdfccee8e687cdc8448d7d8958339589",
+            "archiveSha256": "e9d434079006847ad3f3058b00e0a28f74b3deffabf1e2bbc7a1f2148cc8322f"
+          },
+          {
+            "path": "RESEARCH-GUIDE.md",
+            "kind": "context",
+            "gateSha256": "aafe229cb5663a95c0d242f048f91360c620ee1be6d58f9e988f7e2876999432",
+            "currentSha256": "c2b6046bcdc9bcc458c85c1c4ef9f192dafac06c43e170124525b154a9b9d63f",
+            "archiveSha256": "aafe229cb5663a95c0d242f048f91360c620ee1be6d58f9e988f7e2876999432"
+          }
+        ],
+        "expectedDocumentMismatchPaths": [
+          "HANDOFF-PROMPT.txt",
+          "README.md",
+          "RESEARCH-GUIDE.md",
+          "final-master-plan.md",
+          "implementation-checkpoint.md",
+          "implementation/2026-10-22-owned-scalar-pipeline/source-review.md"
+        ],
+        "unexpectedMismatchPaths": [],
+        "expectedButAbsentDocumentMismatchPaths": [],
+        "postGateSupplementalFilesOutsideRunnerInventory": [
+          {
+            "path": "paper.md",
+            "presentInRunnerInventory": false,
+            "sha256": "ebc47c1850304d3cd1774203aeee6f76e8d564a074c11502803bfff717563391"
+          },
+          {
+            "path": "research.ipynb",
+            "presentInRunnerInventory": false,
+            "sha256": "a32b83a61c1b2f19e4c49f191b844300d7e2abd06b8d2b6df0827bd57ee8bd67"
+          },
+          {
+            "path": "implementation/2026-10-22-owned-scalar-pipeline/results.md",
+            "presentInRunnerInventory": false,
+            "sha256": "c9afcf15b520732a5485d3e65980555f74bbe479342c4762c05765b87938e638"
+          },
+          {
+            "path": "implementation/2026-10-22-owned-scalar-pipeline/evidence/generated-followons/receipt.json",
+            "presentInRunnerInventory": false,
+            "sha256": "f180ae1d6b662bfdc56de6a13479fb11507d60cea01ca33d259cb0ca85c77b16"
+          },
+          {
+            "path": "implementation/2026-10-22-owned-scalar-pipeline/evidence/generated-followons/namespace-three-authored.mjs",
+            "presentInRunnerInventory": false,
+            "sha256": "9387d19218c28a55f8ba81abfa8c656b068acfa67674195d9040ea11e11a7fb4"
+          },
+          {
+            "path": "implementation/2026-10-22-owned-scalar-pipeline/evidence/generated-followons/native-promise-store-race.mjs",
+            "presentInRunnerInventory": false,
+            "sha256": "bef455be71b48319095825630ebd390b859e7849fb8848c916ebc0ae1e1806f9"
+          },
+          {
+            "path": "implementation/2026-10-22-owned-scalar-pipeline/evidence/generated-followons/native-queue-execution.mjs",
+            "presentInRunnerInventory": false,
+            "sha256": "f08bb94d45c64c51dddde8e559bd07cf0e820270f7b3030e15b2460bda62dc4e"
+          },
+          {
+            "path": "implementation/2026-10-22-owned-scalar-pipeline/evidence/generated-followons/native-task-transition.mjs",
+            "presentInRunnerInventory": false,
+            "sha256": "d4e5771a21d574bb218c717e44c02be772dc9ace0aef89d47f80d6dd90e47b87"
+          }
+        ],
+        "claimBoundary": "The gate-time sourceAudit MATCH is historical. Current checkout has documented post-gate changes; this is not a whole-inventory MATCH claim."
+      }
+    },
+    {
+      "name": "installed-proof-input-lock-current-and-archive-hashes",
+      "status": "PASS",
+      "detail": {
+        "status": "PASS_R3F_FRAME_BASELINES_CANVAS_PREPARATION",
+        "groups": {
+          "inputs": {
+            "count": 14,
+            "currentExact": 14,
+            "archiveExact": 14
+          },
+          "staged": {
+            "count": 13,
+            "currentExact": 13,
+            "archiveExact": 13
+          },
+          "packageSources": {
+            "count": 54,
+            "currentExact": 54,
+            "archiveExact": null
+          },
+          "rendererSourceBasis": {
+            "count": 17,
+            "currentExact": 17,
+            "archiveExact": 17
+          },
+          "tarballs": {
+            "count": 3,
+            "currentExact": 3,
+            "archiveExact": 3
+          },
+          "installed": {
+            "count": 6097,
+            "currentExact": 6097,
+            "archiveExact": 6097
+          },
+          "report": {
+            "count": 1,
+            "currentExact": 1,
+            "archiveExact": 1
+          },
+          "compiler": {
+            "count": 1,
+            "currentExact": 1,
+            "archiveExact": 1
+          }
+        },
+        "mismatchCount": 0,
+        "mismatches": []
+      }
+    },
+    {
+      "name": "installed-actual-compiler-and-native-owned-route-captured",
+      "status": "PASS",
+      "detail": {
+        "nativeCapture": "PASS",
+        "nativeOwnedDataComponents": [
+          "Position",
+          "Rotation"
+        ],
+        "reactCapture": "PASS",
+        "reactCompilerPositionRotation": true,
+        "reactFrameCapture": "PASS",
+        "reactFrameCompilerPositionRotation": true,
+        "reactFrameMotionCompiled": {
+          "Position": true,
+          "Rotation": true
+        },
+        "fallbackReviewExists": false
+      }
+    },
+    {
+      "name": "untimed-proof-artifacts-and-cleanup",
+      "status": "PASS",
+      "detail": {
+        "status": "PASS_R3F_FRAME_BASELINES_CANVAS_UNTIMED_PROOF",
+        "buildProofSha256": "1db6b392247250a8dbd6eb201b1bb2d2ba9d12beb63ebb62de7600a8aea1f12a",
+        "inputLockSha256": "f8ae40b3512fd19ed7dcf4ef2aec21348fdf394a81b97ac7d18960057f830c8a",
+        "authorizationSha256": null,
+        "priorProofSha256": null,
+        "browser": {
+          "version": "153.0.8010.12",
+          "headless": true,
+          "gpu": true
+        },
+        "browserClosed": true,
+        "sourceBeforeCount": 12378,
+        "sourceBeforeMatches": 12378,
+        "sourceAfterCount": 12378,
+        "sourceAfterMatches": 12378,
+        "blockedRequests": 0,
+        "requestFailures": 0,
+        "pageErrors": 0,
+        "consoleErrors": 0,
+        "errors": 0,
+        "cleanupErrors": 0,
+        "armOrder": [
+          "native",
+          "react",
+          "react-frame",
+          "imperative"
+        ],
+        "arms": [
+          {
+            "mode": "native",
+            "contextClosed": true,
+            "warmupCount": 12,
+            "sampleCount": 60,
+            "firstUpdateEpoch": 1,
+            "firstMeasuredEpoch": 13,
+            "lastMeasuredEpoch": 72,
+            "retained256EverySample": true,
+            "litPixelsEverySample": true,
+            "countersNullEverySample": false,
+            "teardown": {
+              "resourcesExpected": 512,
+              "resourcesDisposed": 512,
+              "duplicateDisposalEvents": 0,
+              "sceneChildren": 0,
+              "ownerCount": 0,
+              "pending": 0,
+              "registeredSetters": 0,
+              "registeredFrameCallbacks": null,
+              "rootStopped": null
+            }
+          },
+          {
+            "mode": "react",
+            "contextClosed": true,
+            "warmupCount": 12,
+            "sampleCount": 60,
+            "firstUpdateEpoch": 1,
+            "firstMeasuredEpoch": 13,
+            "lastMeasuredEpoch": 72,
+            "retained256EverySample": true,
+            "litPixelsEverySample": true,
+            "countersNullEverySample": true,
+            "teardown": {
+              "resourcesExpected": 512,
+              "resourcesDisposed": 512,
+              "duplicateDisposalEvents": 0,
+              "sceneChildren": 0,
+              "ownerCount": null,
+              "pending": null,
+              "registeredSetters": 0,
+              "registeredFrameCallbacks": null,
+              "rootStopped": null
+            }
+          },
+          {
+            "mode": "react-frame",
+            "contextClosed": true,
+            "warmupCount": 12,
+            "sampleCount": 60,
+            "firstUpdateEpoch": 1,
+            "firstMeasuredEpoch": 13,
+            "lastMeasuredEpoch": 72,
+            "retained256EverySample": true,
+            "litPixelsEverySample": true,
+            "countersNullEverySample": false,
+            "teardown": {
+              "resourcesExpected": 512,
+              "resourcesDisposed": 512,
+              "duplicateDisposalEvents": 0,
+              "sceneChildren": 0,
+              "ownerCount": null,
+              "pending": null,
+              "registeredSetters": 0,
+              "registeredFrameCallbacks": 0,
+              "rootStopped": true
+            }
+          },
+          {
+            "mode": "imperative",
+            "contextClosed": true,
+            "warmupCount": 12,
+            "sampleCount": 60,
+            "firstUpdateEpoch": 1,
+            "firstMeasuredEpoch": 13,
+            "lastMeasuredEpoch": 72,
+            "retained256EverySample": true,
+            "litPixelsEverySample": true,
+            "countersNullEverySample": true,
+            "teardown": {
+              "resourcesExpected": 512,
+              "resourcesDisposed": 512,
+              "duplicateDisposalEvents": 0,
+              "sceneChildren": 0,
+              "ownerCount": null,
+              "pending": null,
+              "registeredSetters": null,
+              "registeredFrameCallbacks": null,
+              "rootStopped": null
+            }
+          }
+        ],
+        "semanticComparisons": [
+          {
+            "mode": "react",
+            "sameEpochChecksum": true,
+            "sameEpochPixels": true
+          },
+          {
+            "mode": "react-frame",
+            "sameEpochChecksum": true,
+            "sameEpochPixels": true
+          },
+          {
+            "mode": "imperative",
+            "sameEpochChecksum": true,
+            "sameEpochPixels": true
+          }
+        ],
+        "nativePerEpochRouteCounts": {
+          "firstEpochExact": true,
+          "all72EpochsExact": true,
+          "epoch72Counters": {
+            "store.owned-data.rows": 18504,
+            "store.owned-data.batches": 72,
+            "store.owned-data.enclosed-batches": 72,
+            "publication.immediate.runs": 72
+          }
+        },
+        "reactFrameRouteCountsExact": true
+      }
+    },
+    {
+      "name": "timing-proof-artifacts-and-cleanup",
+      "status": "PASS",
+      "detail": {
+        "status": "PASS_R3F_FRAME_BASELINES_CANVAS_DESCRIPTIVE_TIMING",
+        "buildProofSha256": "1db6b392247250a8dbd6eb201b1bb2d2ba9d12beb63ebb62de7600a8aea1f12a",
+        "inputLockSha256": "f8ae40b3512fd19ed7dcf4ef2aec21348fdf394a81b97ac7d18960057f830c8a",
+        "authorizationSha256": "eb35904d9449191d61350b4686770f9138fa500365f7f58db645e9d0b82d7ce6",
+        "priorProofSha256": "3ec34003533e2cca5a466e88cb9de8fdfcae23766004ebe0886fa3dabb604c83",
+        "browser": {
+          "version": "153.0.8010.12",
+          "headless": true,
+          "gpu": true
+        },
+        "browserClosed": true,
+        "sourceBeforeCount": 12378,
+        "sourceBeforeMatches": 12378,
+        "sourceAfterCount": 12378,
+        "sourceAfterMatches": 12378,
+        "blockedRequests": 0,
+        "requestFailures": 0,
+        "pageErrors": 0,
+        "consoleErrors": 0,
+        "errors": 0,
+        "cleanupErrors": 0,
+        "armOrder": [
+          "native",
+          "react",
+          "react-frame",
+          "imperative"
+        ],
+        "arms": [
+          {
+            "mode": "native",
+            "contextClosed": true,
+            "warmupCount": 12,
+            "sampleCount": 60,
+            "firstUpdateEpoch": 1,
+            "firstMeasuredEpoch": 13,
+            "lastMeasuredEpoch": 72,
+            "retained256EverySample": true,
+            "litPixelsEverySample": true,
+            "countersNullEverySample": true,
+            "teardown": {
+              "resourcesExpected": 512,
+              "resourcesDisposed": 512,
+              "duplicateDisposalEvents": 0,
+              "sceneChildren": 0,
+              "ownerCount": 0,
+              "pending": 0,
+              "registeredSetters": 0,
+              "registeredFrameCallbacks": null,
+              "rootStopped": null
+            }
+          },
+          {
+            "mode": "react",
+            "contextClosed": true,
+            "warmupCount": 12,
+            "sampleCount": 60,
+            "firstUpdateEpoch": 1,
+            "firstMeasuredEpoch": 13,
+            "lastMeasuredEpoch": 72,
+            "retained256EverySample": true,
+            "litPixelsEverySample": true,
+            "countersNullEverySample": true,
+            "teardown": {
+              "resourcesExpected": 512,
+              "resourcesDisposed": 512,
+              "duplicateDisposalEvents": 0,
+              "sceneChildren": 0,
+              "ownerCount": null,
+              "pending": null,
+              "registeredSetters": 0,
+              "registeredFrameCallbacks": null,
+              "rootStopped": null
+            }
+          },
+          {
+            "mode": "react-frame",
+            "contextClosed": true,
+            "warmupCount": 12,
+            "sampleCount": 60,
+            "firstUpdateEpoch": 1,
+            "firstMeasuredEpoch": 13,
+            "lastMeasuredEpoch": 72,
+            "retained256EverySample": true,
+            "litPixelsEverySample": true,
+            "countersNullEverySample": true,
+            "teardown": {
+              "resourcesExpected": 512,
+              "resourcesDisposed": 512,
+              "duplicateDisposalEvents": 0,
+              "sceneChildren": 0,
+              "ownerCount": null,
+              "pending": null,
+              "registeredSetters": 0,
+              "registeredFrameCallbacks": 0,
+              "rootStopped": true
+            }
+          },
+          {
+            "mode": "imperative",
+            "contextClosed": true,
+            "warmupCount": 12,
+            "sampleCount": 60,
+            "firstUpdateEpoch": 1,
+            "firstMeasuredEpoch": 13,
+            "lastMeasuredEpoch": 72,
+            "retained256EverySample": true,
+            "litPixelsEverySample": true,
+            "countersNullEverySample": true,
+            "teardown": {
+              "resourcesExpected": 512,
+              "resourcesDisposed": 512,
+              "duplicateDisposalEvents": 0,
+              "sceneChildren": 0,
+              "ownerCount": null,
+              "pending": null,
+              "registeredSetters": null,
+              "registeredFrameCallbacks": null,
+              "rootStopped": null
+            }
+          }
+        ],
+        "semanticComparisons": [
+          {
+            "mode": "react",
+            "sameEpochChecksum": true,
+            "sameEpochPixels": true
+          },
+          {
+            "mode": "react-frame",
+            "sameEpochChecksum": true,
+            "sameEpochPixels": true
+          },
+          {
+            "mode": "imperative",
+            "sameEpochChecksum": true,
+            "sameEpochPixels": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "timing-table-recomputed-from-existing-samples",
+      "status": "PASS",
+      "detail": {
+        "method": "median: average of two central sorted samples; p95: nearest rank ceil(0.95*n)",
+        "sampleCountPerArm": 60,
+        "rows": {
+          "native": {
+            "publishMs": {
+              "count": 60,
+              "median": 3.0,
+              "p95NearestRank": 3.699999988079071
+            },
+            "updateThroughDrawMs": {
+              "count": 60,
+              "median": 5.5999999940395355,
+              "p95NearestRank": 6.299999982118607
+            },
+            "stateAgeMs": {
+              "count": 60,
+              "median": 3.0999999940395355,
+              "p95NearestRank": 3.699999988079071
+            },
+            "callbackMs": {
+              "count": 60,
+              "median": 5.5999999940395355,
+              "p95NearestRank": 6.299999982118607
+            },
+            "rafIntervalMs": {
+              "count": 60,
+              "median": 16.699999999999932,
+              "p95NearestRank": 16.700000000000045
+            }
+          },
+          "react": {
+            "publishMs": {
+              "count": 60,
+              "median": 0.7000000178813934,
+              "p95NearestRank": 0.9000000059604645
+            },
+            "updateThroughDrawMs": {
+              "count": 60,
+              "median": 3.25,
+              "p95NearestRank": 3.9000000059604645
+            },
+            "stateAgeMs": {
+              "count": 60,
+              "median": 0.7999999821186066,
+              "p95NearestRank": 1
+            },
+            "callbackMs": {
+              "count": 60,
+              "median": 3.25,
+              "p95NearestRank": 3.9000000059604645
+            },
+            "rafIntervalMs": {
+              "count": 60,
+              "median": 16.69999999999999,
+              "p95NearestRank": 16.700000000000045
+            }
+          },
+          "react-frame": {
+            "publishMs": {
+              "count": 60,
+              "median": 3.0499999970197678,
+              "p95NearestRank": 3.5
+            },
+            "updateThroughDrawMs": {
+              "count": 60,
+              "median": 5.850000008940697,
+              "p95NearestRank": 6.699999988079071
+            },
+            "stateAgeMs": {
+              "count": 60,
+              "median": 3.100000023841858,
+              "p95NearestRank": 3.5999999940395355
+            },
+            "callbackMs": {
+              "count": 60,
+              "median": 5.850000008940697,
+              "p95NearestRank": 6.699999988079071
+            },
+            "rafIntervalMs": {
+              "count": 60,
+              "median": 16.699999999999932,
+              "p95NearestRank": 16.700000000000045
+            }
+          },
+          "imperative": {
+            "publishMs": {
+              "count": 60,
+              "median": 0.09999999403953552,
+              "p95NearestRank": 0.20000001788139343
+            },
+            "updateThroughDrawMs": {
+              "count": 60,
+              "median": 3.600000023841858,
+              "p95NearestRank": 6.199999988079071
+            },
+            "stateAgeMs": {
+              "count": 60,
+              "median": 0.19999998807907104,
+              "p95NearestRank": 0.4000000059604645
+            },
+            "callbackMs": {
+              "count": 60,
+              "median": 3.600000023841858,
+              "p95NearestRank": 6.199999988079071
+            },
+            "rafIntervalMs": {
+              "count": 60,
+              "median": 16.699999999999932,
+              "p95NearestRank": 16.700000000000045
+            }
+          }
+        },
+        "matchesPublishedFigures": true
+      }
+    },
+    {
+      "name": "four-generated-cache-archives-and-head-restoration",
+      "status": "PASS",
+      "detail": {
+        "kind": "preserved-generated-followons-restored-prior-tracked-bytes",
+        "entries": [
+          {
+            "path": ".cache/namespace-three-authored.mjs",
+            "archive": "implementation/2026-10-22-owned-scalar-pipeline/evidence/generated-followons/namespace-three-authored.mjs",
+            "receiptGeneratedSha256": "9387d19218c28a55f8ba81abfa8c656b068acfa67674195d9040ea11e11a7fb4",
+            "archiveSha256": "9387d19218c28a55f8ba81abfa8c656b068acfa67674195d9040ea11e11a7fb4",
+            "receiptRestoredHeadSha256": "1d7032f27eda2e36f037624b4f23f5f21034699925369302fa7e9df0f875a59a",
+            "currentSha256": "1d7032f27eda2e36f037624b4f23f5f21034699925369302fa7e9df0f875a59a",
+            "gitHeadSha256": "1d7032f27eda2e36f037624b4f23f5f21034699925369302fa7e9df0f875a59a",
+            "archiveByteCountMatchesReceipt": true,
+            "restoredBytesExactlyEqualGitHead": true
+          },
+          {
+            "path": ".cache/native-promise-store-race.mjs",
+            "archive": "implementation/2026-10-22-owned-scalar-pipeline/evidence/generated-followons/native-promise-store-race.mjs",
+            "receiptGeneratedSha256": "bef455be71b48319095825630ebd390b859e7849fb8848c916ebc0ae1e1806f9",
+            "archiveSha256": "bef455be71b48319095825630ebd390b859e7849fb8848c916ebc0ae1e1806f9",
+            "receiptRestoredHeadSha256": "a634509fdf366aad86b04a16a4830a8a8232f37c69322351bbe5956c8e2ac325",
+            "currentSha256": "a634509fdf366aad86b04a16a4830a8a8232f37c69322351bbe5956c8e2ac325",
+            "gitHeadSha256": "a634509fdf366aad86b04a16a4830a8a8232f37c69322351bbe5956c8e2ac325",
+            "archiveByteCountMatchesReceipt": true,
+            "restoredBytesExactlyEqualGitHead": true
+          },
+          {
+            "path": ".cache/native-queue-execution.mjs",
+            "archive": "implementation/2026-10-22-owned-scalar-pipeline/evidence/generated-followons/native-queue-execution.mjs",
+            "receiptGeneratedSha256": "f08bb94d45c64c51dddde8e559bd07cf0e820270f7b3030e15b2460bda62dc4e",
+            "archiveSha256": "f08bb94d45c64c51dddde8e559bd07cf0e820270f7b3030e15b2460bda62dc4e",
+            "receiptRestoredHeadSha256": "00539bf94d05a5d3ec2d54eae55d8b593b2304b3c80d78191c319e7c429fe5af",
+            "currentSha256": "00539bf94d05a5d3ec2d54eae55d8b593b2304b3c80d78191c319e7c429fe5af",
+            "gitHeadSha256": "00539bf94d05a5d3ec2d54eae55d8b593b2304b3c80d78191c319e7c429fe5af",
+            "archiveByteCountMatchesReceipt": true,
+            "restoredBytesExactlyEqualGitHead": true
+          },
+          {
+            "path": ".cache/native-task-transition.mjs",
+            "archive": "implementation/2026-10-22-owned-scalar-pipeline/evidence/generated-followons/native-task-transition.mjs",
+            "receiptGeneratedSha256": "d4e5771a21d574bb218c717e44c02be772dc9ace0aef89d47f80d6dd90e47b87",
+            "archiveSha256": "d4e5771a21d574bb218c717e44c02be772dc9ace0aef89d47f80d6dd90e47b87",
+            "receiptRestoredHeadSha256": "a02436c61d9da729393d06d0a4a45a65406c68779923dbae365a6fa63c46ea8f",
+            "currentSha256": "a02436c61d9da729393d06d0a4a45a65406c68779923dbae365a6fa63c46ea8f",
+            "gitHeadSha256": "a02436c61d9da729393d06d0a4a45a65406c68779923dbae365a6fa63c46ea8f",
+            "archiveByteCountMatchesReceipt": true,
+            "restoredBytesExactlyEqualGitHead": true
+          }
+        ],
+        "allGeneratedArchivedAndCurrentRestoredToHead": true
+      }
+    },
+    {
+      "name": "notebook-adds-one-markdown-cell-and-preserves-prior-evidence",
+      "status": "PASS",
+      "detail": {
+        "headCellCount": 243,
+        "currentCellCount": 244,
+        "oldCellsPreservedVerbatimInOrder": true,
+        "addedCells": [
+          {
+            "id": "owned-scalar-pipeline-20261022",
+            "type": "markdown",
+            "sourceSha256": "64c76a633e6e7bef4f556a81996df87658fd0180d5dc1c66465110cdfb379d42"
+          }
+        ],
+        "newCellFiguresAndClaimsMatchCurrentResults": true
+      }
+    },
+    {
+      "name": "current-docs-match-results-figures-and-open-scope",
+      "status": "PASS",
+      "detail": [
+        {
+          "path": "README.md",
+          "sha256": "793edc32608e6f6ba892e65e4a5e0e77c08148beb284fb012435ace8ad692301",
+          "evidenceDetail": "compact README summary",
+          "figurePairsPresentForDeclaredScope": true,
+          "gateCountsPresentForDeclaredScope": true,
+          "parityFailureRecorded": true,
+          "noUniversalSpeedOrMaintenanceClaim": true,
+          "broaderScopeStillOpen": true
+        },
+        {
+          "path": "HANDOFF-PROMPT.txt",
+          "sha256": "4188e6993a49c8d65ba677db9f440509cdfccee8e687cdc8448d7d8958339589",
+          "evidenceDetail": "full results summary",
+          "figurePairsPresentForDeclaredScope": true,
+          "gateCountsPresentForDeclaredScope": true,
+          "parityFailureRecorded": true,
+          "noUniversalSpeedOrMaintenanceClaim": true,
+          "broaderScopeStillOpen": true
+        },
+        {
+          "path": "RESEARCH-GUIDE.md",
+          "sha256": "c2b6046bcdc9bcc458c85c1c4ef9f192dafac06c43e170124525b154a9b9d63f",
+          "evidenceDetail": "full results summary",
+          "figurePairsPresentForDeclaredScope": true,
+          "gateCountsPresentForDeclaredScope": true,
+          "parityFailureRecorded": true,
+          "noUniversalSpeedOrMaintenanceClaim": true,
+          "broaderScopeStillOpen": true
+        },
+        {
+          "path": "final-master-plan.md",
+          "sha256": "77770efbd30427ed9ecebe2cf3a024ea06ff292216e72747c086162a986c6cfe",
+          "evidenceDetail": "full results summary",
+          "figurePairsPresentForDeclaredScope": true,
+          "gateCountsPresentForDeclaredScope": true,
+          "parityFailureRecorded": true,
+          "noUniversalSpeedOrMaintenanceClaim": true,
+          "broaderScopeStillOpen": true
+        },
+        {
+          "path": "implementation-checkpoint.md",
+          "sha256": "bbe45b023ac7ef7ffaaae2dde36fd11115cc30a7dcadf418db1ab0d148c938d7",
+          "evidenceDetail": "full results summary",
+          "figurePairsPresentForDeclaredScope": true,
+          "gateCountsPresentForDeclaredScope": true,
+          "parityFailureRecorded": true,
+          "noUniversalSpeedOrMaintenanceClaim": true,
+          "broaderScopeStillOpen": true
+        },
+        {
+          "path": "paper.md",
+          "sha256": "ebc47c1850304d3cd1774203aeee6f76e8d564a074c11502803bfff717563391",
+          "evidenceDetail": "full results summary",
+          "figurePairsPresentForDeclaredScope": true,
+          "gateCountsPresentForDeclaredScope": true,
+          "parityFailureRecorded": true,
+          "noUniversalSpeedOrMaintenanceClaim": true,
+          "broaderScopeStillOpen": true
+        },
+        {
+          "path": "implementation/2026-10-22-owned-scalar-pipeline/results.md",
+          "sha256": "c9afcf15b520732a5485d3e65980555f74bbe479342c4762c05765b87938e638",
+          "evidenceDetail": "full results summary",
+          "figurePairsPresentForDeclaredScope": true,
+          "gateCountsPresentForDeclaredScope": true,
+          "parityFailureRecorded": true,
+          "noUniversalSpeedOrMaintenanceClaim": true,
+          "broaderScopeStillOpen": true
+        }
+      ]
+    },
+    {
+      "name": "primary-source-review-records-failures-proof-and-limits",
+      "status": "PASS",
+      "detail": {
+        "sha256": "088ae4e9fdf1c6e0e49c9db6467d98c3c3ee377db3d059df96f290f74c033a54",
+        "recordsPreservedV1AndCorrectedV2": true,
+        "recordsProofAndPerformanceLimits": true
+      }
+    }
+  ],
+  "details": {
+    "correctedGate": {
+      "status": "PASS",
+      "phaseCount": 73,
+      "phaseStatuses": {
+        "PASS": 73
+      },
+      "deno": {
+        "passed": 1191,
+        "failed": 0
+      },
+      "rust": {
+        "passed": 101,
+        "failed": 0
+      },
+      "compiledFixtureCount": 53,
+      "allCompiledFixturesPass": true,
+      "sourceAuditAtGate": {
+        "status": "MATCH",
+        "changed": []
+      },
+      "runnerInputs": 1825,
+      "archivedRunnerAndContextFiles": 1835,
+      "runnerInputsInArchive": 1825,
+      "contextInputsInArchive": 10,
+      "sourceArchiveSha256": "7721053784b9a62c7f64c0ea9f4b795cdec9efbef4c9a29d658301dc5f2f91e4",
+      "sourceArchiveManifestSha256Expected": "7721053784b9a62c7f64c0ea9f4b795cdec9efbef4c9a29d658301dc5f2f91e4",
+      "sourceBeforeManifestSha256Expected": "43a8c1a5717745eb42d19774f5684ba95b3e036e3c57f30a9fb89fb6b12c1c8f"
+    },
+    "preservedV1Failure": {
+      "status": "FAIL",
+      "failedPhases": [
+        "deno-full",
+        "native-tooling",
+        "package-build"
+      ],
+      "consumerStatus": "SKIPPED_DEPENDENCY_FAILED",
+      "containsFirstTypeFailure": true,
+      "containsMalformedRequestTypeFailure": true,
+      "artifactPath": "implementation/2026-10-22-owned-scalar-pipeline/verification/darwin-v1"
+    },
+    "currentVsDarwinV2Archive": {
+      "comparisonTime": "after gate, installed proof, timing, results/review/docs updates and generated-cache preservation",
+      "baselineEntries": 1835,
+      "exactCurrentMatches": 1829,
+      "runnerInputMatches": 1823,
+      "contextMatches": 6,
+      "intendedPostGateDocumentMismatches": [
+        {
+          "path": "README.md",
+          "kind": "runner-input",
+          "gateSha256": "3b211164dfebe246f5907147922d881b476fad5b598bafde2a16d75e68e6c0c0",
+          "currentSha256": "793edc32608e6f6ba892e65e4a5e0e77c08148beb284fb012435ace8ad692301",
+          "archiveSha256": "3b211164dfebe246f5907147922d881b476fad5b598bafde2a16d75e68e6c0c0"
+        },
+        {
+          "path": "implementation/2026-10-22-owned-scalar-pipeline/source-review.md",
+          "kind": "runner-input",
+          "gateSha256": "4f2ea88a6ee95504b7b0074749ea8e1a61c86ab7f8053ec3df9063689dada637",
+          "currentSha256": "088ae4e9fdf1c6e0e49c9db6467d98c3c3ee377db3d059df96f290f74c033a54",
+          "archiveSha256": "4f2ea88a6ee95504b7b0074749ea8e1a61c86ab7f8053ec3df9063689dada637"
+        },
+        {
+          "path": "final-master-plan.md",
+          "kind": "context",
+          "gateSha256": "bf18330ec3b0b61b18c963ba79ce448cd50536b59edb16d265d8c4e3d6ef53fd",
+          "currentSha256": "77770efbd30427ed9ecebe2cf3a024ea06ff292216e72747c086162a986c6cfe",
+          "archiveSha256": "bf18330ec3b0b61b18c963ba79ce448cd50536b59edb16d265d8c4e3d6ef53fd"
+        },
+        {
+          "path": "implementation-checkpoint.md",
+          "kind": "context",
+          "gateSha256": "b7973a1e6cab17f07830c4c420d22294d4d839b12154d45cda7873aced196b4d",
+          "currentSha256": "bbe45b023ac7ef7ffaaae2dde36fd11115cc30a7dcadf418db1ab0d148c938d7",
+          "archiveSha256": "b7973a1e6cab17f07830c4c420d22294d4d839b12154d45cda7873aced196b4d"
+        },
+        {
+          "path": "HANDOFF-PROMPT.txt",
+          "kind": "context",
+          "gateSha256": "e9d434079006847ad3f3058b00e0a28f74b3deffabf1e2bbc7a1f2148cc8322f",
+          "currentSha256": "4188e6993a49c8d65ba677db9f440509cdfccee8e687cdc8448d7d8958339589",
+          "archiveSha256": "e9d434079006847ad3f3058b00e0a28f74b3deffabf1e2bbc7a1f2148cc8322f"
+        },
+        {
+          "path": "RESEARCH-GUIDE.md",
+          "kind": "context",
+          "gateSha256": "aafe229cb5663a95c0d242f048f91360c620ee1be6d58f9e988f7e2876999432",
+          "currentSha256": "c2b6046bcdc9bcc458c85c1c4ef9f192dafac06c43e170124525b154a9b9d63f",
+          "archiveSha256": "aafe229cb5663a95c0d242f048f91360c620ee1be6d58f9e988f7e2876999432"
+        }
+      ],
+      "expectedDocumentMismatchPaths": [
+        "HANDOFF-PROMPT.txt",
+        "README.md",
+        "RESEARCH-GUIDE.md",
+        "final-master-plan.md",
+        "implementation-checkpoint.md",
+        "implementation/2026-10-22-owned-scalar-pipeline/source-review.md"
+      ],
+      "unexpectedMismatchPaths": [],
+      "expectedButAbsentDocumentMismatchPaths": [],
+      "postGateSupplementalFilesOutsideRunnerInventory": [
+        {
+          "path": "paper.md",
+          "presentInRunnerInventory": false,
+          "sha256": "ebc47c1850304d3cd1774203aeee6f76e8d564a074c11502803bfff717563391"
+        },
+        {
+          "path": "research.ipynb",
+          "presentInRunnerInventory": false,
+          "sha256": "a32b83a61c1b2f19e4c49f191b844300d7e2abd06b8d2b6df0827bd57ee8bd67"
+        },
+        {
+          "path": "implementation/2026-10-22-owned-scalar-pipeline/results.md",
+          "presentInRunnerInventory": false,
+          "sha256": "c9afcf15b520732a5485d3e65980555f74bbe479342c4762c05765b87938e638"
+        },
+        {
+          "path": "implementation/2026-10-22-owned-scalar-pipeline/evidence/generated-followons/receipt.json",
+          "presentInRunnerInventory": false,
+          "sha256": "f180ae1d6b662bfdc56de6a13479fb11507d60cea01ca33d259cb0ca85c77b16"
+        },
+        {
+          "path": "implementation/2026-10-22-owned-scalar-pipeline/evidence/generated-followons/namespace-three-authored.mjs",
+          "presentInRunnerInventory": false,
+          "sha256": "9387d19218c28a55f8ba81abfa8c656b068acfa67674195d9040ea11e11a7fb4"
+        },
+        {
+          "path": "implementation/2026-10-22-owned-scalar-pipeline/evidence/generated-followons/native-promise-store-race.mjs",
+          "presentInRunnerInventory": false,
+          "sha256": "bef455be71b48319095825630ebd390b859e7849fb8848c916ebc0ae1e1806f9"
+        },
+        {
+          "path": "implementation/2026-10-22-owned-scalar-pipeline/evidence/generated-followons/native-queue-execution.mjs",
+          "presentInRunnerInventory": false,
+          "sha256": "f08bb94d45c64c51dddde8e559bd07cf0e820270f7b3030e15b2460bda62dc4e"
+        },
+        {
+          "path": "implementation/2026-10-22-owned-scalar-pipeline/evidence/generated-followons/native-task-transition.mjs",
+          "presentInRunnerInventory": false,
+          "sha256": "d4e5771a21d574bb218c717e44c02be772dc9ace0aef89d47f80d6dd90e47b87"
+        }
+      ],
+      "claimBoundary": "The gate-time sourceAudit MATCH is historical. Current checkout has documented post-gate changes; this is not a whole-inventory MATCH claim."
+    },
+    "proofInputLock": {
+      "status": "PASS_R3F_FRAME_BASELINES_CANVAS_PREPARATION",
+      "groups": {
+        "inputs": {
+          "count": 14,
+          "currentExact": 14,
+          "archiveExact": 14
+        },
+        "staged": {
+          "count": 13,
+          "currentExact": 13,
+          "archiveExact": 13
+        },
+        "packageSources": {
+          "count": 54,
+          "currentExact": 54,
+          "archiveExact": null
+        },
+        "rendererSourceBasis": {
+          "count": 17,
+          "currentExact": 17,
+          "archiveExact": 17
+        },
+        "tarballs": {
+          "count": 3,
+          "currentExact": 3,
+          "archiveExact": 3
+        },
+        "installed": {
+          "count": 6097,
+          "currentExact": 6097,
+          "archiveExact": 6097
+        },
+        "report": {
+          "count": 1,
+          "currentExact": 1,
+          "archiveExact": 1
+        },
+        "compiler": {
+          "count": 1,
+          "currentExact": 1,
+          "archiveExact": 1
+        }
+      },
+      "mismatchCount": 0,
+      "mismatches": []
+    },
+    "proofHashes": {
+      "buildProof": "1db6b392247250a8dbd6eb201b1bb2d2ba9d12beb63ebb62de7600a8aea1f12a",
+      "inputLock": "f8ae40b3512fd19ed7dcf4ef2aec21348fdf394a81b97ac7d18960057f830c8a",
+      "untimedProof": "3ec34003533e2cca5a466e88cb9de8fdfcae23766004ebe0886fa3dabb604c83",
+      "timingAuthorization": "eb35904d9449191d61350b4686770f9138fa500365f7f58db645e9d0b82d7ce6",
+      "timing": "5cb9eeaae38e8da668640a0bdf830e15cceb6f724e7f9dc32d0e327e9acae416"
+    },
+    "installedRouteEvidence": {
+      "nativeCapture": "PASS",
+      "nativeOwnedDataComponents": [
+        "Position",
+        "Rotation"
+      ],
+      "reactCapture": "PASS",
+      "reactCompilerPositionRotation": true,
+      "reactFrameCapture": "PASS",
+      "reactFrameCompilerPositionRotation": true,
+      "reactFrameMotionCompiled": {
+        "Position": true,
+        "Rotation": true
+      },
+      "fallbackReviewExists": false
+    },
+    "proofRun": {
+      "untimed": {
+        "status": "PASS_R3F_FRAME_BASELINES_CANVAS_UNTIMED_PROOF",
+        "buildProofSha256": "1db6b392247250a8dbd6eb201b1bb2d2ba9d12beb63ebb62de7600a8aea1f12a",
+        "inputLockSha256": "f8ae40b3512fd19ed7dcf4ef2aec21348fdf394a81b97ac7d18960057f830c8a",
+        "authorizationSha256": null,
+        "priorProofSha256": null,
+        "browser": {
+          "version": "153.0.8010.12",
+          "headless": true,
+          "gpu": true
+        },
+        "browserClosed": true,
+        "sourceBeforeCount": 12378,
+        "sourceBeforeMatches": 12378,
+        "sourceAfterCount": 12378,
+        "sourceAfterMatches": 12378,
+        "blockedRequests": 0,
+        "requestFailures": 0,
+        "pageErrors": 0,
+        "consoleErrors": 0,
+        "errors": 0,
+        "cleanupErrors": 0,
+        "armOrder": [
+          "native",
+          "react",
+          "react-frame",
+          "imperative"
+        ],
+        "arms": [
+          {
+            "mode": "native",
+            "contextClosed": true,
+            "warmupCount": 12,
+            "sampleCount": 60,
+            "firstUpdateEpoch": 1,
+            "firstMeasuredEpoch": 13,
+            "lastMeasuredEpoch": 72,
+            "retained256EverySample": true,
+            "litPixelsEverySample": true,
+            "countersNullEverySample": false,
+            "teardown": {
+              "resourcesExpected": 512,
+              "resourcesDisposed": 512,
+              "duplicateDisposalEvents": 0,
+              "sceneChildren": 0,
+              "ownerCount": 0,
+              "pending": 0,
+              "registeredSetters": 0,
+              "registeredFrameCallbacks": null,
+              "rootStopped": null
+            }
+          },
+          {
+            "mode": "react",
+            "contextClosed": true,
+            "warmupCount": 12,
+            "sampleCount": 60,
+            "firstUpdateEpoch": 1,
+            "firstMeasuredEpoch": 13,
+            "lastMeasuredEpoch": 72,
+            "retained256EverySample": true,
+            "litPixelsEverySample": true,
+            "countersNullEverySample": true,
+            "teardown": {
+              "resourcesExpected": 512,
+              "resourcesDisposed": 512,
+              "duplicateDisposalEvents": 0,
+              "sceneChildren": 0,
+              "ownerCount": null,
+              "pending": null,
+              "registeredSetters": 0,
+              "registeredFrameCallbacks": null,
+              "rootStopped": null
+            }
+          },
+          {
+            "mode": "react-frame",
+            "contextClosed": true,
+            "warmupCount": 12,
+            "sampleCount": 60,
+            "firstUpdateEpoch": 1,
+            "firstMeasuredEpoch": 13,
+            "lastMeasuredEpoch": 72,
+            "retained256EverySample": true,
+            "litPixelsEverySample": true,
+            "countersNullEverySample": false,
+            "teardown": {
+              "resourcesExpected": 512,
+              "resourcesDisposed": 512,
+              "duplicateDisposalEvents": 0,
+              "sceneChildren": 0,
+              "ownerCount": null,
+              "pending": null,
+              "registeredSetters": 0,
+              "registeredFrameCallbacks": 0,
+              "rootStopped": true
+            }
+          },
+          {
+            "mode": "imperative",
+            "contextClosed": true,
+            "warmupCount": 12,
+            "sampleCount": 60,
+            "firstUpdateEpoch": 1,
+            "firstMeasuredEpoch": 13,
+            "lastMeasuredEpoch": 72,
+            "retained256EverySample": true,
+            "litPixelsEverySample": true,
+            "countersNullEverySample": true,
+            "teardown": {
+              "resourcesExpected": 512,
+              "resourcesDisposed": 512,
+              "duplicateDisposalEvents": 0,
+              "sceneChildren": 0,
+              "ownerCount": null,
+              "pending": null,
+              "registeredSetters": null,
+              "registeredFrameCallbacks": null,
+              "rootStopped": null
+            }
+          }
+        ],
+        "semanticComparisons": [
+          {
+            "mode": "react",
+            "sameEpochChecksum": true,
+            "sameEpochPixels": true
+          },
+          {
+            "mode": "react-frame",
+            "sameEpochChecksum": true,
+            "sameEpochPixels": true
+          },
+          {
+            "mode": "imperative",
+            "sameEpochChecksum": true,
+            "sameEpochPixels": true
+          }
+        ],
+        "nativePerEpochRouteCounts": {
+          "firstEpochExact": true,
+          "all72EpochsExact": true,
+          "epoch72Counters": {
+            "store.owned-data.rows": 18504,
+            "store.owned-data.batches": 72,
+            "store.owned-data.enclosed-batches": 72,
+            "publication.immediate.runs": 72
+          }
+        },
+        "reactFrameRouteCountsExact": true
+      },
+      "timing": {
+        "status": "PASS_R3F_FRAME_BASELINES_CANVAS_DESCRIPTIVE_TIMING",
+        "buildProofSha256": "1db6b392247250a8dbd6eb201b1bb2d2ba9d12beb63ebb62de7600a8aea1f12a",
+        "inputLockSha256": "f8ae40b3512fd19ed7dcf4ef2aec21348fdf394a81b97ac7d18960057f830c8a",
+        "authorizationSha256": "eb35904d9449191d61350b4686770f9138fa500365f7f58db645e9d0b82d7ce6",
+        "priorProofSha256": "3ec34003533e2cca5a466e88cb9de8fdfcae23766004ebe0886fa3dabb604c83",
+        "browser": {
+          "version": "153.0.8010.12",
+          "headless": true,
+          "gpu": true
+        },
+        "browserClosed": true,
+        "sourceBeforeCount": 12378,
+        "sourceBeforeMatches": 12378,
+        "sourceAfterCount": 12378,
+        "sourceAfterMatches": 12378,
+        "blockedRequests": 0,
+        "requestFailures": 0,
+        "pageErrors": 0,
+        "consoleErrors": 0,
+        "errors": 0,
+        "cleanupErrors": 0,
+        "armOrder": [
+          "native",
+          "react",
+          "react-frame",
+          "imperative"
+        ],
+        "arms": [
+          {
+            "mode": "native",
+            "contextClosed": true,
+            "warmupCount": 12,
+            "sampleCount": 60,
+            "firstUpdateEpoch": 1,
+            "firstMeasuredEpoch": 13,
+            "lastMeasuredEpoch": 72,
+            "retained256EverySample": true,
+            "litPixelsEverySample": true,
+            "countersNullEverySample": true,
+            "teardown": {
+              "resourcesExpected": 512,
+              "resourcesDisposed": 512,
+              "duplicateDisposalEvents": 0,
+              "sceneChildren": 0,
+              "ownerCount": 0,
+              "pending": 0,
+              "registeredSetters": 0,
+              "registeredFrameCallbacks": null,
+              "rootStopped": null
+            }
+          },
+          {
+            "mode": "react",
+            "contextClosed": true,
+            "warmupCount": 12,
+            "sampleCount": 60,
+            "firstUpdateEpoch": 1,
+            "firstMeasuredEpoch": 13,
+            "lastMeasuredEpoch": 72,
+            "retained256EverySample": true,
+            "litPixelsEverySample": true,
+            "countersNullEverySample": true,
+            "teardown": {
+              "resourcesExpected": 512,
+              "resourcesDisposed": 512,
+              "duplicateDisposalEvents": 0,
+              "sceneChildren": 0,
+              "ownerCount": null,
+              "pending": null,
+              "registeredSetters": 0,
+              "registeredFrameCallbacks": null,
+              "rootStopped": null
+            }
+          },
+          {
+            "mode": "react-frame",
+            "contextClosed": true,
+            "warmupCount": 12,
+            "sampleCount": 60,
+            "firstUpdateEpoch": 1,
+            "firstMeasuredEpoch": 13,
+            "lastMeasuredEpoch": 72,
+            "retained256EverySample": true,
+            "litPixelsEverySample": true,
+            "countersNullEverySample": true,
+            "teardown": {
+              "resourcesExpected": 512,
+              "resourcesDisposed": 512,
+              "duplicateDisposalEvents": 0,
+              "sceneChildren": 0,
+              "ownerCount": null,
+              "pending": null,
+              "registeredSetters": 0,
+              "registeredFrameCallbacks": 0,
+              "rootStopped": true
+            }
+          },
+          {
+            "mode": "imperative",
+            "contextClosed": true,
+            "warmupCount": 12,
+            "sampleCount": 60,
+            "firstUpdateEpoch": 1,
+            "firstMeasuredEpoch": 13,
+            "lastMeasuredEpoch": 72,
+            "retained256EverySample": true,
+            "litPixelsEverySample": true,
+            "countersNullEverySample": true,
+            "teardown": {
+              "resourcesExpected": 512,
+              "resourcesDisposed": 512,
+              "duplicateDisposalEvents": 0,
+              "sceneChildren": 0,
+              "ownerCount": null,
+              "pending": null,
+              "registeredSetters": null,
+              "registeredFrameCallbacks": null,
+              "rootStopped": null
+            }
+          }
+        ],
+        "semanticComparisons": [
+          {
+            "mode": "react",
+            "sameEpochChecksum": true,
+            "sameEpochPixels": true
+          },
+          {
+            "mode": "react-frame",
+            "sameEpochChecksum": true,
+            "sameEpochPixels": true
+          },
+          {
+            "mode": "imperative",
+            "sameEpochChecksum": true,
+            "sameEpochPixels": true
+          }
+        ]
+      }
+    },
+    "recomputedTiming": {
+      "method": "median: average of two central sorted samples; p95: nearest rank ceil(0.95*n)",
+      "sampleCountPerArm": 60,
+      "rows": {
+        "native": {
+          "publishMs": {
+            "count": 60,
+            "median": 3.0,
+            "p95NearestRank": 3.699999988079071
+          },
+          "updateThroughDrawMs": {
+            "count": 60,
+            "median": 5.5999999940395355,
+            "p95NearestRank": 6.299999982118607
+          },
+          "stateAgeMs": {
+            "count": 60,
+            "median": 3.0999999940395355,
+            "p95NearestRank": 3.699999988079071
+          },
+          "callbackMs": {
+            "count": 60,
+            "median": 5.5999999940395355,
+            "p95NearestRank": 6.299999982118607
+          },
+          "rafIntervalMs": {
+            "count": 60,
+            "median": 16.699999999999932,
+            "p95NearestRank": 16.700000000000045
+          }
+        },
+        "react": {
+          "publishMs": {
+            "count": 60,
+            "median": 0.7000000178813934,
+            "p95NearestRank": 0.9000000059604645
+          },
+          "updateThroughDrawMs": {
+            "count": 60,
+            "median": 3.25,
+            "p95NearestRank": 3.9000000059604645
+          },
+          "stateAgeMs": {
+            "count": 60,
+            "median": 0.7999999821186066,
+            "p95NearestRank": 1
+          },
+          "callbackMs": {
+            "count": 60,
+            "median": 3.25,
+            "p95NearestRank": 3.9000000059604645
+          },
+          "rafIntervalMs": {
+            "count": 60,
+            "median": 16.69999999999999,
+            "p95NearestRank": 16.700000000000045
+          }
+        },
+        "react-frame": {
+          "publishMs": {
+            "count": 60,
+            "median": 3.0499999970197678,
+            "p95NearestRank": 3.5
+          },
+          "updateThroughDrawMs": {
+            "count": 60,
+            "median": 5.850000008940697,
+            "p95NearestRank": 6.699999988079071
+          },
+          "stateAgeMs": {
+            "count": 60,
+            "median": 3.100000023841858,
+            "p95NearestRank": 3.5999999940395355
+          },
+          "callbackMs": {
+            "count": 60,
+            "median": 5.850000008940697,
+            "p95NearestRank": 6.699999988079071
+          },
+          "rafIntervalMs": {
+            "count": 60,
+            "median": 16.699999999999932,
+            "p95NearestRank": 16.700000000000045
+          }
+        },
+        "imperative": {
+          "publishMs": {
+            "count": 60,
+            "median": 0.09999999403953552,
+            "p95NearestRank": 0.20000001788139343
+          },
+          "updateThroughDrawMs": {
+            "count": 60,
+            "median": 3.600000023841858,
+            "p95NearestRank": 6.199999988079071
+          },
+          "stateAgeMs": {
+            "count": 60,
+            "median": 0.19999998807907104,
+            "p95NearestRank": 0.4000000059604645
+          },
+          "callbackMs": {
+            "count": 60,
+            "median": 3.600000023841858,
+            "p95NearestRank": 6.199999988079071
+          },
+          "rafIntervalMs": {
+            "count": 60,
+            "median": 16.699999999999932,
+            "p95NearestRank": 16.700000000000045
+          }
+        }
+      },
+      "matchesPublishedFigures": true
+    },
+    "generatedCachePreservation": {
+      "kind": "preserved-generated-followons-restored-prior-tracked-bytes",
+      "entries": [
+        {
+          "path": ".cache/namespace-three-authored.mjs",
+          "archive": "implementation/2026-10-22-owned-scalar-pipeline/evidence/generated-followons/namespace-three-authored.mjs",
+          "receiptGeneratedSha256": "9387d19218c28a55f8ba81abfa8c656b068acfa67674195d9040ea11e11a7fb4",
+          "archiveSha256": "9387d19218c28a55f8ba81abfa8c656b068acfa67674195d9040ea11e11a7fb4",
+          "receiptRestoredHeadSha256": "1d7032f27eda2e36f037624b4f23f5f21034699925369302fa7e9df0f875a59a",
+          "currentSha256": "1d7032f27eda2e36f037624b4f23f5f21034699925369302fa7e9df0f875a59a",
+          "gitHeadSha256": "1d7032f27eda2e36f037624b4f23f5f21034699925369302fa7e9df0f875a59a",
+          "archiveByteCountMatchesReceipt": true,
+          "restoredBytesExactlyEqualGitHead": true
+        },
+        {
+          "path": ".cache/native-promise-store-race.mjs",
+          "archive": "implementation/2026-10-22-owned-scalar-pipeline/evidence/generated-followons/native-promise-store-race.mjs",
+          "receiptGeneratedSha256": "bef455be71b48319095825630ebd390b859e7849fb8848c916ebc0ae1e1806f9",
+          "archiveSha256": "bef455be71b48319095825630ebd390b859e7849fb8848c916ebc0ae1e1806f9",
+          "receiptRestoredHeadSha256": "a634509fdf366aad86b04a16a4830a8a8232f37c69322351bbe5956c8e2ac325",
+          "currentSha256": "a634509fdf366aad86b04a16a4830a8a8232f37c69322351bbe5956c8e2ac325",
+          "gitHeadSha256": "a634509fdf366aad86b04a16a4830a8a8232f37c69322351bbe5956c8e2ac325",
+          "archiveByteCountMatchesReceipt": true,
+          "restoredBytesExactlyEqualGitHead": true
+        },
+        {
+          "path": ".cache/native-queue-execution.mjs",
+          "archive": "implementation/2026-10-22-owned-scalar-pipeline/evidence/generated-followons/native-queue-execution.mjs",
+          "receiptGeneratedSha256": "f08bb94d45c64c51dddde8e559bd07cf0e820270f7b3030e15b2460bda62dc4e",
+          "archiveSha256": "f08bb94d45c64c51dddde8e559bd07cf0e820270f7b3030e15b2460bda62dc4e",
+          "receiptRestoredHeadSha256": "00539bf94d05a5d3ec2d54eae55d8b593b2304b3c80d78191c319e7c429fe5af",
+          "currentSha256": "00539bf94d05a5d3ec2d54eae55d8b593b2304b3c80d78191c319e7c429fe5af",
+          "gitHeadSha256": "00539bf94d05a5d3ec2d54eae55d8b593b2304b3c80d78191c319e7c429fe5af",
+          "archiveByteCountMatchesReceipt": true,
+          "restoredBytesExactlyEqualGitHead": true
+        },
+        {
+          "path": ".cache/native-task-transition.mjs",
+          "archive": "implementation/2026-10-22-owned-scalar-pipeline/evidence/generated-followons/native-task-transition.mjs",
+          "receiptGeneratedSha256": "d4e5771a21d574bb218c717e44c02be772dc9ace0aef89d47f80d6dd90e47b87",
+          "archiveSha256": "d4e5771a21d574bb218c717e44c02be772dc9ace0aef89d47f80d6dd90e47b87",
+          "receiptRestoredHeadSha256": "a02436c61d9da729393d06d0a4a45a65406c68779923dbae365a6fa63c46ea8f",
+          "currentSha256": "a02436c61d9da729393d06d0a4a45a65406c68779923dbae365a6fa63c46ea8f",
+          "gitHeadSha256": "a02436c61d9da729393d06d0a4a45a65406c68779923dbae365a6fa63c46ea8f",
+          "archiveByteCountMatchesReceipt": true,
+          "restoredBytesExactlyEqualGitHead": true
+        }
+      ],
+      "allGeneratedArchivedAndCurrentRestoredToHead": true
+    },
+    "notebook": {
+      "headCellCount": 243,
+      "currentCellCount": 244,
+      "oldCellsPreservedVerbatimInOrder": true,
+      "addedCells": [
+        {
+          "id": "owned-scalar-pipeline-20261022",
+          "type": "markdown",
+          "sourceSha256": "64c76a633e6e7bef4f556a81996df87658fd0180d5dc1c66465110cdfb379d42"
+        }
+      ],
+      "newCellFiguresAndClaimsMatchCurrentResults": true,
+      "newCellText": "## Enclosed scalar pipeline \u2014 22 October 2026\n\nThe eligible owned scalar route now encloses passive World/Store capture, one reused numeric input scratch, existing finite evaluation and one immutable scalar output producer. Fresh canonical phase audits retain public override fallback and final live checks. Root and VDOM share the same output authority; exact acknowledgement, newer actions, independent histories, accepted snapshots, retained children/resources and partial-host quarantine remain. No new evaluator, registry, host writer or physical layout is added. Arithmetic remains recursively interpreted; cold/memory costs are unmeasured.\n\nCorrected Darwin-v2 passes all73 phases,1191 runtime tests,101 Rust tests and53 actual compiled fixtures. All1825 runner input hashes match before/after, with1835 files archived including context. The first typecheck failure is preserved. Fresh installed four-arm proof verifies actual owned-data/React Compiler routes, matching values/pixels/retained identities,257 rows/one enclosed batch/one immediate run per epoch and512 exactly-once disposals per arm. Both browser phases match all12378 source checks and close cleanly.\n\nThe sole fixed-order12/60 comparison still loses: Native update median/p95 **3.00/3.70ms** versus declarative React Compiler/R3F **0.70/0.90ms**; through-draw **5.60/6.30ms** versus **3.25/3.90ms**. R3F useFrame observes3.05/3.50 and5.85/6.70ms; imperative0.10/0.20 and3.60/6.20ms. This descriptive episode establishes no causal old/new saving, phase allocation, presentation, matched cold/memory or independent-device advantage. No favorable repeat occurs.\n\nCorrectness is PASS; realtime parity remains **FAIL**. [Results and preserved failure](implementation/2026-10-22-owned-scalar-pipeline/results.md), [primary review](implementation/2026-10-22-owned-scalar-pipeline/source-review.md) and [Astra's requested deep dive](implementation/2026-10-22-astra-scalar-gap-deep-dive/report.md) bind the boundary. Astra recommends a separately selected verified emitted-arithmetic capability with [three exact Sol assignments](implementation/2026-10-22-astra-scalar-gap-deep-dive/orchestration.md), finite behavioral proof and mandatory minified/rebundled delivery checks. It is unimplemented and has no speed forecast; a DAG interpreter alone is not the recommended parity strategy. Full-plan HMR, broader structural/reveal, lifecycle/cold/memory and independent-device obligations remain open. Historical narrow wins, qualified dense loss, exhausted RecordingA/physical HOLD and zero-participant/no-maintenance-advantage limits remain.\n\n"
+    },
+    "maintainedDocs": [
+      {
+        "path": "README.md",
+        "sha256": "793edc32608e6f6ba892e65e4a5e0e77c08148beb284fb012435ace8ad692301",
+        "evidenceDetail": "compact README summary",
+        "figurePairsPresentForDeclaredScope": true,
+        "gateCountsPresentForDeclaredScope": true,
+        "parityFailureRecorded": true,
+        "noUniversalSpeedOrMaintenanceClaim": true,
+        "broaderScopeStillOpen": true
+      },
+      {
+        "path": "HANDOFF-PROMPT.txt",
+        "sha256": "4188e6993a49c8d65ba677db9f440509cdfccee8e687cdc8448d7d8958339589",
+        "evidenceDetail": "full results summary",
+        "figurePairsPresentForDeclaredScope": true,
+        "gateCountsPresentForDeclaredScope": true,
+        "parityFailureRecorded": true,
+        "noUniversalSpeedOrMaintenanceClaim": true,
+        "broaderScopeStillOpen": true
+      },
+      {
+        "path": "RESEARCH-GUIDE.md",
+        "sha256": "c2b6046bcdc9bcc458c85c1c4ef9f192dafac06c43e170124525b154a9b9d63f",
+        "evidenceDetail": "full results summary",
+        "figurePairsPresentForDeclaredScope": true,
+        "gateCountsPresentForDeclaredScope": true,
+        "parityFailureRecorded": true,
+        "noUniversalSpeedOrMaintenanceClaim": true,
+        "broaderScopeStillOpen": true
+      },
+      {
+        "path": "final-master-plan.md",
+        "sha256": "77770efbd30427ed9ecebe2cf3a024ea06ff292216e72747c086162a986c6cfe",
+        "evidenceDetail": "full results summary",
+        "figurePairsPresentForDeclaredScope": true,
+        "gateCountsPresentForDeclaredScope": true,
+        "parityFailureRecorded": true,
+        "noUniversalSpeedOrMaintenanceClaim": true,
+        "broaderScopeStillOpen": true
+      },
+      {
+        "path": "implementation-checkpoint.md",
+        "sha256": "bbe45b023ac7ef7ffaaae2dde36fd11115cc30a7dcadf418db1ab0d148c938d7",
+        "evidenceDetail": "full results summary",
+        "figurePairsPresentForDeclaredScope": true,
+        "gateCountsPresentForDeclaredScope": true,
+        "parityFailureRecorded": true,
+        "noUniversalSpeedOrMaintenanceClaim": true,
+        "broaderScopeStillOpen": true
+      },
+      {
+        "path": "paper.md",
+        "sha256": "ebc47c1850304d3cd1774203aeee6f76e8d564a074c11502803bfff717563391",
+        "evidenceDetail": "full results summary",
+        "figurePairsPresentForDeclaredScope": true,
+        "gateCountsPresentForDeclaredScope": true,
+        "parityFailureRecorded": true,
+        "noUniversalSpeedOrMaintenanceClaim": true,
+        "broaderScopeStillOpen": true
+      },
+      {
+        "path": "implementation/2026-10-22-owned-scalar-pipeline/results.md",
+        "sha256": "c9afcf15b520732a5485d3e65980555f74bbe479342c4762c05765b87938e638",
+        "evidenceDetail": "full results summary",
+        "figurePairsPresentForDeclaredScope": true,
+        "gateCountsPresentForDeclaredScope": true,
+        "parityFailureRecorded": true,
+        "noUniversalSpeedOrMaintenanceClaim": true,
+        "broaderScopeStillOpen": true
+      }
+    ],
+    "sourceReview": {
+      "sha256": "088ae4e9fdf1c6e0e49c9db6467d98c3c3ee377db3d059df96f290f74c033a54",
+      "recordsPreservedV1AndCorrectedV2": true,
+      "recordsProofAndPerformanceLimits": true
+    }
+  }
+}

@@ -1,5 +1,15 @@
 # Final master plan: classify, measure, then choose
 
+## Enclosed scalar pipeline — 22 October 2026
+
+The eligible owned scalar route now encloses passive World/Store capture, one reused numeric input scratch, existing finite evaluation and one immutable scalar output producer. Fresh canonical phase audits retain public override fallback and final live checks. Root and VDOM share the same output authority; exact acknowledgement, newer actions, independent histories, accepted snapshots, retained children/resources and partial-host quarantine remain. No new evaluator, registry, host writer or physical layout is added. Arithmetic remains recursively interpreted; cold/memory costs are unmeasured.
+
+Corrected Darwin-v2 passes all73 phases,1191 runtime tests,101 Rust tests and53 actual compiled fixtures. All1825 runner input hashes match before/after, with1835 files archived including context. The first typecheck failure is preserved. Fresh installed four-arm proof verifies actual owned-data/React Compiler routes, matching values/pixels/retained identities,257 rows/one enclosed batch/one immediate run per epoch and512 exactly-once disposals per arm. Both browser phases match all12378 source checks and close cleanly.
+
+The sole fixed-order12/60 comparison still loses: Native update median/p95 **3.00/3.70ms** versus declarative React Compiler/R3F **0.70/0.90ms**; through-draw **5.60/6.30ms** versus **3.25/3.90ms**. R3F useFrame observes3.05/3.50 and5.85/6.70ms; imperative0.10/0.20 and3.60/6.20ms. This descriptive episode establishes no causal old/new saving, phase allocation, presentation, matched cold/memory or independent-device advantage. No favorable repeat occurs.
+
+Correctness is PASS; realtime parity remains **FAIL**. [Results and preserved failure](implementation/2026-10-22-owned-scalar-pipeline/results.md), [primary review](implementation/2026-10-22-owned-scalar-pipeline/source-review.md) and [Astra's requested deep dive](implementation/2026-10-22-astra-scalar-gap-deep-dive/report.md) bind the boundary. Astra recommends a separately selected verified emitted-arithmetic capability with [three exact Sol assignments](implementation/2026-10-22-astra-scalar-gap-deep-dive/orchestration.md), finite behavioral proof and mandatory minified/rebundled delivery checks. It is unimplemented and has no speed forecast; a DAG interpreter alone is not the recommended parity strategy. Full-plan HMR, broader structural/reveal, lifecycle/cold/memory and independent-device obligations remain open. Historical narrow wins, qualified dense loss, exhausted RecordingA/physical HOLD and zero-participant/no-maintenance-advantage limits remain.
+
 ## Ordinary scalar execution — 22 October 2026
 
 Root reuses ordered passive Store rows, World validates one copied scalar cut, VDOM skips generic completion for owned scalar deltas, and immediate flushes drive one publication core without a deferred facade. Conservative local/lane, mixed and legacy routes preserve their earlier checks. No new evaluator, registry, host writer or physical layout is added; cold/memory costs remain unmeasured.

@@ -338,6 +338,7 @@ Deno.test("owned Store data evaluates in one passive batch and retains host iden
     assertEquals(retained.props["position-x"], 5);
     assertEquals(observed["store.owned-data.rows"], 1);
     assertEquals(observed["store.owned-data.batches"], 1);
+    assertEquals(observed["store.owned-data.enclosed-batches"], 1);
     assertEquals(observed["publication.immediate.runs"], 1);
     assertEquals(observed["publication.deferred-adapters"] ?? 0, 0);
   } finally { root.dispose(); }
@@ -375,6 +376,7 @@ Deno.test("empty schema-5 data groups with one host key retain distinct owners",
     assertEquals(root.flush(), true);
     assertEquals(counters["store.owned-data.rows"], 2);
     assertEquals(counters["store.owned-data.batches"], 1);
+    assertEquals(counters["store.owned-data.enclosed-batches"], 1);
     assertEquals(renders, 2);
     for (const [index, node] of container.children[0].children.entries()) {
       assertStrictEquals(node, retained[index]);
@@ -428,6 +430,7 @@ Deno.test("ordinary owned-data flush preserves preflight owner order and accepte
     assertStrictEquals(container.children[0].children[1], retained[1]);
     assertEquals(counters["store.owned-data.rows"], 2);
     assertEquals(counters["store.owned-data.batches"], 1);
+    assertEquals(counters["store.owned-data.enclosed-batches"], 1);
     assertEquals(counters["publication.immediate.runs"], 1);
     assertEquals(counters["publication.deferred-adapters"] ?? 0, 0);
   } finally { root.dispose(); }
@@ -516,6 +519,7 @@ Deno.test("mixed owned data and callback kernel keep original owner order", () =
       [6, 6, 6]);
     assertEquals(observedCounters["store.owned-data.rows"], 2);
     assertEquals(observedCounters["store.owned-data.batches"] ?? 0, 0);
+    assertEquals(observedCounters["store.owned-data.enclosed-batches"] ?? 0, 0);
   } finally { root.dispose(); }
 });
 
@@ -623,5 +627,17 @@ Deno.test("owned mixed cut acknowledges its old cell version and retains host-ti
     root.flush();
     assertEquals(container.children[0].props["position-x"], 9);
     assertEquals(renders, 1);
+    const ordinaryScalarSourceForCell = root.world.scalarSourceForCell.bind(root.world);
+    let publicReads = 0;
+    Object.defineProperty(root.world, "scalarSourceForCell", { configurable: true,
+      value: (cell: typeof handle) => {
+        publicReads++;
+        return ordinaryScalarSourceForCell(cell);
+      } });
+    assert(setOffset(6));
+    clock.dispatch(7);
+    assertEquals(root.flush(), true);
+    assertEquals(container.children[0].props["position-x"], 13);
+    assert(publicReads > 0, "World override was skipped by passive capture fallback");
   } finally { root.dispose(); }
 });

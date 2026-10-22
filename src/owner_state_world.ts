@@ -443,6 +443,7 @@ class PrivateClosedWorldCellCut {
 
 /** Candidate-local captured cells, privately copied for one publication cut. */
 export type ClosedWorldCellCut = PrivateClosedWorldCellCut;
+export type CanonicalClosedPhaseStatus = "current" | "stale" | "public-required";
 
 type OwnerRecord = {
   id: OwnerId;
@@ -603,17 +604,7 @@ export class OwnerStateWorld {
     if (key !== ownedWorldCaptureKey) return null;
     if (typeof world !== "object" || world === null || !(#owners in world)) return null;
     try {
-      if (Object.getPrototypeOf(world) !== OwnerStateWorld.prototype) return null;
-      for (const name of closedWorldCaptureMethods) {
-        if (Object.hasOwn(world, name)) return null;
-        const current = Object.getOwnPropertyDescriptor(OwnerStateWorld.prototype, name);
-        const expected = closedWorldCaptureDescriptors.get(name);
-        if (!current || !expected || current.value !== expected.value ||
-          current.get !== expected.get || current.set !== expected.set ||
-          current.writable !== expected.writable ||
-          current.enumerable !== expected.enumerable ||
-          current.configurable !== expected.configurable) return null;
-      }
+      if (!OwnerStateWorld.#closedCaptureShapeCanonical(world)) return null;
       const rows: OwnedClosedWorldInputRow[] = [];
       for (const request of requests) {
         const owner = request.owner;
@@ -659,24 +650,66 @@ export class OwnerStateWorld {
     if (key !== closedWorldCellCutKey ||
       (phase !== "prepared" && phase !== "after-host") ||
       typeof world !== "object" || world === null || !(#owners in world)) return false;
-    const rows = PrivateClosedWorldCellCut.cells(cut);
-    if (!rows) return false;
-    for (const row of rows) {
-      if (!world.#owners.has(row.owner) || world.#stagedOwners.has(row.owner)) return false;
-      const cell = world.#resolveCellIdentity(row.identity, row.owner, row.site);
-      if (!cell || world.#stateByOwner.get(row.owner)?.get(row.site) !== cell ||
-        cell.source !== row.source || cell.lane) return false;
-      const valueDescriptor = Object.getOwnPropertyDescriptor(cell, "value");
-      const value = valueDescriptor && "value" in valueDescriptor
-        ? valueDescriptor.value
-        : undefined;
-      const sourceValue = canonicalScalarSourceValue(row.source);
-      if (typeof value !== "number" || sourceValue === null ||
-        !Object.is(value, sourceValue) || cell.version < row.version ||
-        (phase === "prepared" && cell.version !== row.version) ||
-        (cell.version === row.version && !Object.is(value, row.value))) return false;
+    return OwnerStateWorld.#closedCellCutStatus(world, cut, phase) === "current";
+  }
+
+  static #closedCaptureShapeCanonical(world: OwnerStateWorld): boolean {
+    if (Object.getPrototypeOf(world) !== OwnerStateWorld.prototype) return false;
+    for (const name of closedWorldCaptureMethods) {
+      if (Object.hasOwn(world, name)) return false;
+      const current = Object.getOwnPropertyDescriptor(OwnerStateWorld.prototype, name);
+      const expected = closedWorldCaptureDescriptors.get(name);
+      if (!current || !expected || current.value !== expected.value ||
+        current.get !== expected.get || current.set !== expected.set ||
+        current.writable !== expected.writable ||
+        current.enumerable !== expected.enumerable ||
+        current.configurable !== expected.configurable) return false;
     }
     return true;
+  }
+
+  static #closedCellCutStatus(
+    world: OwnerStateWorld,
+    cut: ClosedWorldCellCut,
+    phase: "prepared" | "after-host",
+  ): CanonicalClosedPhaseStatus {
+    const rows = PrivateClosedWorldCellCut.cells(cut);
+    if (!rows) return "public-required";
+    for (const row of rows) {
+      if (!world.#owners.has(row.owner) || world.#stagedOwners.has(row.owner)) return "stale";
+      const cell = world.#resolveCellIdentity(row.identity, row.owner, row.site);
+      if (!cell || world.#stateByOwner.get(row.owner)?.get(row.site) !== cell ||
+        cell.source !== row.source) return "stale";
+      if (cell.lane) return "public-required";
+      const valueDescriptor = Object.getOwnPropertyDescriptor(cell, "value");
+      if (!valueDescriptor || !("value" in valueDescriptor)) return "public-required";
+      const value = valueDescriptor.value;
+      const sourceValue = canonicalScalarSourceValue(row.source);
+      if (sourceValue === null || typeof value !== "number") return "public-required";
+      if (!Object.is(value, sourceValue) || cell.version < row.version ||
+        (phase === "prepared" && cell.version !== row.version) ||
+        (cell.version === row.version && !Object.is(value, row.value))) return "stale";
+    }
+    return "current";
+  }
+
+  static _validateCanonicalClosedPhase(
+    key: symbol,
+    world: OwnerStateWorld,
+    cut: ClosedWorldCellCut,
+    phase: "prepared" | "after-host",
+  ): CanonicalClosedPhaseStatus {
+    if (key !== closedWorldCellCutKey ||
+      (phase !== "prepared" && phase !== "after-host") ||
+      typeof world !== "object" || world === null || !(#owners in world)) return "public-required";
+    if (!PrivateClosedWorldCellCut.cells(cut)) return "public-required";
+    try {
+      if (!OwnerStateWorld.#closedCaptureShapeCanonical(world)) return "public-required";
+      return OwnerStateWorld.#closedCellCutStatus(world, cut, phase);
+    } catch (error) {
+      if (error instanceof TypeError) return "public-required";
+      throw error;
+    }
   }
 
   #layoutRecord(owner: OwnerId, layout: CompiledStateLayout) {
@@ -2591,6 +2624,7 @@ const closedWorldCaptureDescriptors = new Map(
 );
 const canonicalCaptureOwnedClosedInputs = OwnerStateWorld._captureOwnedClosedInputs;
 const canonicalValidateClosedCellCut = OwnerStateWorld._validateClosedCellCut;
+const canonicalValidateClosedWorldPhase = OwnerStateWorld._validateCanonicalClosedPhase;
 const canonicalCanRetireOwnedOwner = OwnerStateWorld._canRetireOwnedOwner;
 const canonicalRetireOwnedOwner = OwnerStateWorld._retireOwnedOwner;
 
@@ -2706,6 +2740,17 @@ export function validateClosedWorldCellCut(
   phase: "prepared" | "after-host",
 ): boolean {
   return canonicalValidateClosedCellCut.call(
+    OwnerStateWorld, closedWorldCellCutKey, world, cut, phase,
+  );
+}
+
+/** Audit canonical World shape and validate one private cut at this phase. */
+export function validateCanonicalClosedWorldPhase(
+  world: OwnerStateWorld,
+  cut: ClosedWorldCellCut,
+  phase: "prepared" | "after-host",
+): CanonicalClosedPhaseStatus {
+  return canonicalValidateClosedWorldPhase.call(
     OwnerStateWorld, closedWorldCellCutKey, world, cut, phase,
   );
 }

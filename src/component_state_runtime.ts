@@ -24,8 +24,11 @@ import {
 import {
   type ClosedStoreDataExecution,
   type NormalizedClosedStoreDataExecution,
+  type OwnedClosedStoreOutputRow,
   evaluateClosedStoreDataExecution,
   normalizeClosedStoreDataExecution,
+  prepareOwnedClosedStoreOutputs,
+  createOwnedScalarStorePropDelta,
 } from "./closed_store_execution.ts";
 import type { ClosedHostTreeNode } from "./closed_host_tree.ts";
 import type { ClosedHostOutputValue } from "./closed_host_value.ts";
@@ -46,9 +49,9 @@ import {
   AsyncStore,
   captureCanonicalStoreReaderReceipt,
   inspectCanonicalStoreReaderReceipt,
-  readOwnedClosedProjectionBatch,
   StoreRenderTransaction,
   type StoreSource,
+  validateCanonicalClosedStorePhase,
 } from "./async_store_runtime.ts";
 import {
   AsyncResource,
@@ -101,6 +104,7 @@ import {
   canRetireOwnedWorldOwner,
   captureOwnedClosedWorldInputs,
   createClosedWorldCellCut,
+  validateCanonicalClosedWorldPhase,
   validateClosedWorldCellCut,
   type ClosedWorldCellCut,
   retireOwnedWorldOwner,
@@ -141,7 +145,6 @@ import {
   type RuntimeCounterCallback,
   type RuntimeProfileCallback,
   type StorePropDelta,
-  createOwnedScalarStorePropDelta,
   type VDOMHost,
   type VDOMKeyIndexMaintenance,
   VDOMSnapshotRoot,
@@ -531,9 +534,11 @@ type ClosedStoreOutputCut = {
   readonly inputCells: readonly StateCellHandle[];
   readonly inputCellWrites: readonly RetainedCellWrite[];
   readonly ordinaryScalar: boolean;
-  useExternalCellCut(): void;
+  readonly deferredValidation: boolean;
+  useExternalCellCut(cut: ClosedWorldCellCut): void;
   readonly inputResources: ReadonlySet<AsyncResource<any>>;
   current(): boolean;
+  storeCurrent(afterHost?: boolean): boolean;
   privateCurrent(): boolean;
   postHostCurrent(): boolean;
   postHostPrivateCurrent(): boolean;
@@ -2920,6 +2925,7 @@ export class ComponentStateRoot<H, Parent = H> {
       nextResult?: RuntimeElement; nextShape?: ClosedStoreOutputShape };
     const owners = new Map<OwnerId, Owner>();
     let privateCellCut: ClosedWorldCellCut | null = null;
+    let phaseCellCut: ClosedWorldCellCut | null = null;
     let externalCellCutCovered = false;
     let hasMixedOwner = false;
     const covered = new Set<string>();
@@ -2938,19 +2944,16 @@ export class ComponentStateRoot<H, Parent = H> {
     let numericRun: {
       kernel: ClosedStoreNumericKernel; inputStart: number; rows: NumericRow[];
     } | null = null;
-    type PassiveRequest = { store: AnyAsyncStore; readerId: string;
-      paths: readonly (readonly string[])[] };
     type PassiveRow = {
       owner: OwnerId;
       cache: ComponentCache;
       program: ClosedStoreHostProgram;
       dataExecution: NormalizedClosedStoreDataExecution;
       inputs: readonly { id: string; store: AnyAsyncStore;
-        membership: Set<AnyAsyncStore>; requestIndex: number }[];
+        membership: Set<AnyAsyncStore> }[];
     };
     const passiveRows: PassiveRow[] = [];
-    const passiveRequests: PassiveRequest[] = [];
-    const passiveByReader = new Map<string, number>();
+    const passiveByReader = new Set<string>();
     let passiveEligible = newlyStaged.size === 0 && retiredPendingReaders.size === 0;
     if (passiveEligible) {
       const candidates = new Set<OwnerId>();
@@ -3001,11 +3004,9 @@ export class ComponentStateRoot<H, Parent = H> {
             !membership.has(store as AnyAsyncStore)) {
             passiveEligible = false; break;
           }
-          passiveByReader.set(id, passiveRequests.length);
+          passiveByReader.add(id);
           rowInputs.push({ id, store: store as AnyAsyncStore,
-            membership, requestIndex: passiveRequests.length });
-          passiveRequests.push({ store: store as AnyAsyncStore, readerId: id,
-            paths: closedStoreHostInputPaths(input) });
+            membership });
         }
         if (passiveEligible) passiveRows.push({ owner, cache, program,
           dataExecution: metadata.closedStoreExecution, inputs: rowInputs });
@@ -3014,15 +3015,11 @@ export class ComponentStateRoot<H, Parent = H> {
         [...membership].some((store) => selectedStores.has(store)) &&
         !passiveByReader.has(id))) passiveEligible = false;
       if ([...selectedStores].some((store) =>
-        !passiveRequests.some((request) => request.store === store))) passiveEligible = false;
+        !passiveRows.some((row) => row.inputs.some((input) => input.store === store)))) {
+        passiveEligible = false;
+      }
     }
-    const passiveWorld = passiveEligible ? captureOwnedClosedWorldInputs(this.world,
-      passiveRows.map(({ owner, program }) => ({ owner,
-        sites: program.schemaVersion === 7 ? program.stateSites : [] }))) : null;
-    let passive: {
-      world: Map<OwnerId, NonNullable<typeof passiveWorld>[number]>;
-      values: readonly (readonly number[])[];
-    } | null = null;
+    let passive: Map<OwnerId, OwnedClosedStoreOutputRow> | null = null;
     const ownValue = (object: object, name: string) => {
       const descriptor = Object.getOwnPropertyDescriptor(object, name);
       return descriptor && "value" in descriptor ? descriptor.value : undefined;
@@ -3146,6 +3143,7 @@ export class ComponentStateRoot<H, Parent = H> {
     const stageLeaf = (
       { owner, cache, inputs, stateInputs, program }: NumericRow,
       output: ClosedStoreHostOutput | null,
+      enclosedRegion?: StorePropDelta,
     ) => {
       if (program.schemaVersion === 6 ||
         (program.schemaVersion === 7 && program.retainedChildProp === "children")) {
@@ -3195,7 +3193,7 @@ export class ComponentStateRoot<H, Parent = H> {
         owners.set(owner, { cache, inputs, stateInputs, next, nextResult,
           nextShape: nextShape(cache, program, owner, hostKey, nextResult, next,
             child.value, expandedChild) });
-        regions.push(scalarRegion({ key: hostKey, tag: program.host.tag,
+        regions.push(enclosedRegion ?? scalarRegion({ key: hostKey, tag: program.host.tag,
           props: output, retainedChildren: true, componentOwner: owner }));
         return;
       }
@@ -3237,8 +3235,8 @@ export class ComponentStateRoot<H, Parent = H> {
           [["key", hostKey], ...output], owner);
         owners.set(owner, { cache, inputs, stateInputs, next,
           nextShape: nextShape(cache, program, owner, hostKey, next, next) });
-        regions.push(scalarRegion({ key: hostKey, tag: program.host.tag, props: output,
-          retainedChildren: true, componentOwner: owner }));
+        regions.push(enclosedRegion ?? scalarRegion({ key: hostKey, tag: program.host.tag,
+          props: output, retainedChildren: true, componentOwner: owner }));
         return;
       }
       const previous = cache.expandedResult;
@@ -3252,7 +3250,8 @@ export class ComponentStateRoot<H, Parent = H> {
       const next = copyRuntimeElementFromEntries(program.host.tag,
         [["key", program.host.key], ...output], owner);
       owners.set(owner, { cache, inputs, stateInputs, next });
-      regions.push(scalarRegion({ key: program.host.key, tag: program.host.tag, props: output }));
+      regions.push(enclosedRegion ?? scalarRegion({ key: program.host.key,
+        tag: program.host.tag, props: output }));
     };
     const flushNumericRun = () => {
       const run = numericRun;
@@ -3289,8 +3288,19 @@ export class ComponentStateRoot<H, Parent = H> {
       run.rows.length = 0;
     };
     const current = (privateOnly = false, afterHost = false) => {
+      let worldPhaseCurrent = false;
+      if (!privateOnly && passive && phaseCellCut) {
+        const status = validateCanonicalClosedWorldPhase(this.world, phaseCellCut,
+          afterHost ? "after-host" : "prepared");
+        if (status === "stale") return false;
+        worldPhaseCurrent = status === "current";
+      }
       const ownerPrefixes = new Set<string>();
       for (const [owner, { cache, inputs, stateInputs }] of owners) {
+        if (worldPhaseCurrent &&
+          (typeof cache.type !== "function" || !definedComponents.has(cache.type))) {
+          worldPhaseCurrent = false;
+        }
         if (!this.#liveOwners.has(owner) ||
           !canonicalWorldIsAlive.call(this.world, owner) ||
           this.#componentCache.get(owner) !== cache ||
@@ -3310,6 +3320,7 @@ export class ComponentStateRoot<H, Parent = H> {
             }
             return true;
           }) || !stateInputs.every(({ handle, source, version, value }) => {
+            if (worldPhaseCurrent) return true;
             if (privateOnly && (privateCellCut ||
               (deferPrivateCells && externalCellCutCovered))) return true;
             const liveSource = privateOnly
@@ -3349,13 +3360,29 @@ export class ComponentStateRoot<H, Parent = H> {
       }
       return privateOnly ? resources.validateCanonical() : resources.validate();
     };
+    const storeCurrent = (afterHost = false) => {
+      if (passive) {
+        const status = validateCanonicalClosedStorePhase(stores,
+          afterHost ? "after-host" : "prepared");
+        if (status !== "public-required") return status === "current";
+      }
+      return afterHost ? stores.validatePublicationInputs() : stores.validate();
+    };
     try {
-      if (passiveWorld) {
-        const values = readOwnedClosedProjectionBatch(stores, passiveRequests);
-        if (values) passive = {
-          world: new Map(passiveWorld.map((row) => [row.owner, row] as const)),
-          values,
-        };
+      if (passiveEligible) {
+        const requests = passiveRows.map(({ owner, cache, program, dataExecution, inputs }) => ({
+          execution: dataExecution,
+          owner,
+          hostKey: cache.scopeExplicitHostKeys === true
+            ? `${String(cache.hostKeyScope)}\u0000${program.host.key}` : program.host.key,
+          inputs: inputs.map(({ store, id }) => ({ store, readerId: id })),
+        }));
+        const batch = prepareOwnedClosedStoreOutputs(this.world, stores, requests);
+        if (batch === null) throw new SparseCandidateIneligible();
+        if (batch.kind === "ready") {
+          if (batch.rows.length !== passiveRows.length) throw new SparseCandidateIneligible();
+          passive = new Map(batch.rows.map((row) => [row.owner, row] as const));
+        }
       }
       for (const entry of passive ? passiveRows : this.#liveStoreReaders) {
         const row = passive ? entry as PassiveRow : null;
@@ -3364,6 +3391,8 @@ export class ComponentStateRoot<H, Parent = H> {
         const membership = reader?.[1];
         const split = id?.indexOf("\u0000") ?? -1;
         const owner = row?.owner ?? Number(id!.slice(0, split));
+        const enclosedRegion = passive?.get(owner)?.region;
+        if (passive && !enclosedRegion) throw new SparseCandidateIneligible();
         if (!row && ![...membership!].some((store) => selectedStores.has(store)) &&
           !selectedCellSites.has(owner)) continue;
         if (!row && covered.has(id!)) continue;
@@ -3394,7 +3423,7 @@ export class ComponentStateRoot<H, Parent = H> {
           }
           for (let index = 0; index < program.stateSites.length; index++) {
             const site = program.stateSites[index];
-            const captured = passive?.world.get(owner)?.cells[index];
+            const captured = passive?.get(owner)?.cells[index];
             const handle = passive ? captured?.handle : this.world.cellHandle(owner, site);
             if (handle) {
               const wait = this.#resourceHoldWait(new Set(), resourceLease,
@@ -3440,7 +3469,7 @@ export class ComponentStateRoot<H, Parent = H> {
         }
         if (numericRun && numericRun.kernel !== numericKernel) flushNumericRun();
         const inputs: Input[] = [];
-        const values: number[] = [];
+        const values: number[] | null = passive ? null : [];
         const programInputs = closedStoreHostInputs(program);
         for (let inputIndex = 0; inputIndex < programInputs.length; inputIndex++) {
           const input = programInputs[inputIndex];
@@ -3449,10 +3478,8 @@ export class ComponentStateRoot<H, Parent = H> {
           const store = preflightInput?.store ?? ownValue(cache.props, input.storeProp);
           const inputMembership = preflightInput?.membership ??
             this.#liveStoreReaders.get(inputId);
-          const paths = passiveRequests[preflightInput?.requestIndex ?? -1]?.paths ??
-            closedStoreHostInputPaths(input);
           let acceptedReceipt: AcceptedStoreReaderReceipt | undefined;
-          let projections: readonly number[] | null;
+          let projections: readonly number[] | null = null;
           if (store instanceof AsyncStore) {
             inputStores.add(store);
             const wait = this.#resourceHoldWait(new Set(), resourceLease,
@@ -3470,12 +3497,12 @@ export class ComponentStateRoot<H, Parent = H> {
               ) !== "current") throw new SparseCandidateIneligible();
               acceptedReceipt = receipt;
             }
-            const passiveIndex = preflightInput?.requestIndex ?? passiveByReader.get(inputId);
-            projections = passive && passiveIndex !== undefined
-              ? passive.values[passiveIndex]
-              : stores.readClosedProjections(store, inputId, paths);
+            if (passive && !preflightInput) throw new SparseCandidateIneligible();
+            if (!passive) projections = stores.readClosedProjections(store, inputId,
+              closedStoreHostInputPaths(input));
             if (selectedStores.has(store)) seen.add(store);
           } else {
+            if (passive) throw new SparseCandidateIneligible();
             if (program.schemaVersion === 6 || program.schemaVersion === 7) {
               throw new SparseCandidateIneligible();
             }
@@ -3486,21 +3513,22 @@ export class ComponentStateRoot<H, Parent = H> {
             const wait = this.#resourceHoldWait(new Set([store]), resourceLease);
             if (wait) throw new HeldPublicationWait(wait);
             const status = resources.readClosed(store);
-            projections = status ? captureClosedProjectionValues(status.value, paths) : null;
+            projections = status ? captureClosedProjectionValues(status.value,
+              closedStoreHostInputPaths(input)) : null;
           }
-          if (!projections) throw new SparseCandidateIneligible();
+          if (!passive && !projections) throw new SparseCandidateIneligible();
           inputs.push({ id: inputId, prop: input.storeProp, source: store,
             ...(inputMembership ? { membership: inputMembership } : {}),
             ...(acceptedReceipt ? { acceptedReceipt } : {}) });
-          values.push(...projections);
+          if (!passive) values!.push(...projections!);
           if (inputMembership) covered.add(inputId);
         }
-        if (program.schemaVersion === 7) {
-          values.push(...stateInputs.map(({ value }) => value));
+        if (program.schemaVersion === 7 && !passive) {
+          values!.push(...stateInputs.map(({ value }) => value));
         }
         if (program.schemaVersion === 4 ||
           (program.schemaVersion === 5 && !dataExecution)) {
-          const tree = evaluateClosedStoreHostTree(program, values);
+          const tree = evaluateClosedStoreHostTree(program, values!);
           if (!tree) throw new SparseCandidateIneligible();
           const next = copyRuntimeElement(tree.type, tree.props, owner);
           const previous = cache.expandedResult;
@@ -3517,20 +3545,25 @@ export class ComponentStateRoot<H, Parent = H> {
           if (!numericRun) numericRun = {
             kernel: numericKernel, inputStart: kernelInputs.length, rows: [],
           };
-          kernelInputs.push(...values);
+          kernelInputs.push(...values!);
           numericRun.rows.push({ owner, cache, inputs, stateInputs, program });
           continue;
         }
-        stageLeaf({ owner, cache, inputs, stateInputs, program }, dataExecution
-          ? evaluateClosedStoreDataExecution(dataExecution, values)
-          : evaluateClosedStoreHostProgram(program, values));
+        stageLeaf({ owner, cache, inputs, stateInputs, program }, enclosedRegion
+          ? enclosedRegion.props : dataExecution
+          ? evaluateClosedStoreDataExecution(dataExecution, values!)
+          : evaluateClosedStoreHostProgram(program, values!), enclosedRegion);
         if (dataExecution && this.#activeCounters) this.#count("store.owned-data.rows");
       }
       flushNumericRun();
       const stagedCellWrites = [...owners.values()].flatMap(({ stateInputs }) =>
         [...stateInputs]);
+      if (passive && !deferPrivateCells) {
+        phaseCellCut = createClosedWorldCellCut(stagedCellWrites);
+        if (!phaseCellCut) throw new SparseCandidateIneligible();
+        privateCellCut = phaseCellCut;
+      }
       if (!deferPrivateCells && passive && stagedCellWrites.length) {
-        privateCellCut = createClosedWorldCellCut(stagedCellWrites);
         if (!privateCellCut ||
           !validateClosedWorldCellCut(this.world, privateCellCut, "prepared")) {
           throw new SparseCandidateIneligible();
@@ -3538,28 +3571,37 @@ export class ComponentStateRoot<H, Parent = H> {
       }
       const ownerIds = new Set(owners.keys());
       if ([...ownerIds].some((owner) =>
-        (passive?.world.get(owner)?.lineage ?? this.world.ownerLineage(owner))
+        (passive?.get(owner)?.lineage ?? this.world.ownerLineage(owner))
           .slice(1).some((ancestor) =>
           ownerIds.has(ancestor))) ||
         [...selectedStores].some((store) =>
         !seen.has(store) && !newlyStaged.has(store)) ||
         [...selectedCellSites.keys()].some((owner) => !ownerIds.has(owner)) ||
         (requireOutputChange && !outputChanged) ||
-        !current() || !stores.validate()) throw new SparseCandidateIneligible();
+        (!(deferPrivateCells && passive) && (!current() || !storeCurrent()))) {
+        throw new SparseCandidateIneligible();
+      }
       const publicationLineages = privatePublication
         ? new Map([...ownerIds].map((owner) =>
           [owner, canonicalWorldOwnerLineage.call(this.world, owner)] as const))
         : null;
-      if (passive && this.#activeCounters) this.#count("store.owned-data.batches");
+      if (passive && this.#activeCounters) {
+        this.#count("store.owned-data.batches");
+        this.#count("store.owned-data.enclosed-batches");
+      }
       return {
-        owners: ownerIds, regions, current: () => current(),
-        useExternalCellCut: () => { externalCellCutCovered = true; },
+        owners: ownerIds, regions, current: () => current(), storeCurrent,
+        useExternalCellCut: (cut) => {
+          phaseCellCut = cut;
+          externalCellCutCovered = true;
+        },
         privateCurrent: () => current(true),
         postHostCurrent: () => current(false, true),
         postHostPrivateCurrent: () => current(true, true),
         inputStores, inputResources,
         inputCells, inputCellWrites: stagedCellWrites,
         ordinaryScalar: !!passive && allOwnedScalar && regions.length > 0,
+        deferredValidation: deferPrivateCells && !!passive,
         privatePreparedCurrent: () => current(true) &&
           canonicalResourceCutCurrent(resources),
         publish: () => {
@@ -3595,8 +3637,9 @@ export class ComponentStateRoot<H, Parent = H> {
           publicationLineages?.clear(); regions.length = 0;
           inputCells.length = 0;
           stagedCellWrites.length = 0;
-          passive = null; privateCellCut = null; externalCellCutCovered = false;
-          passiveRows.length = 0; passiveRequests.length = 0; passiveByReader.clear();
+          passive = null; privateCellCut = null; phaseCellCut = null;
+          externalCellCutCovered = false;
+          passiveRows.length = 0; passiveByReader.clear();
           if (kernelInputs) kernelInputs.length = 0;
           if (kernelOutputs) kernelOutputs.length = 0;
         },
@@ -3606,8 +3649,9 @@ export class ComponentStateRoot<H, Parent = H> {
       owners.clear(); covered.clear(); seen.clear();
       inputStores.clear(); inputResources.clear(); regions.length = 0;
       inputCells.length = 0;
-      passive = null; privateCellCut = null; externalCellCutCovered = false;
-      passiveRows.length = 0; passiveRequests.length = 0; passiveByReader.clear();
+      passive = null; privateCellCut = null; phaseCellCut = null;
+      externalCellCutCovered = false;
+      passiveRows.length = 0; passiveByReader.clear();
       if (kernelInputs) kernelInputs.length = 0;
       if (kernelOutputs) kernelOutputs.length = 0;
       throw error;
@@ -3703,14 +3747,18 @@ export class ComponentStateRoot<H, Parent = H> {
         writes.every(({ handle }) => closed!.owners.has(handle.owner));
       if (ownedCellCut) {
         cellFootprint = [...writes, ...closed!.inputCellWrites];
-        if (cellFootprint.length) {
-          privateCellCut = createClosedWorldCellCut(cellFootprint);
-          if (!privateCellCut ||
-            !validateClosedWorldCellCut(this.world, privateCellCut, "prepared")) {
-            throw new SparseCandidateIneligible();
-          }
+        privateCellCut = createClosedWorldCellCut(cellFootprint);
+        if (!privateCellCut ||
+          !validateClosedWorldCellCut(this.world, privateCellCut, "prepared")) {
+          throw new SparseCandidateIneligible();
         }
-        closed!.useExternalCellCut();
+        closed!.useExternalCellCut(privateCellCut);
+        if (!closed!.current() || !closed!.storeCurrent()) {
+          throw new SparseCandidateIneligible();
+        }
+      } else if (closed?.deferredValidation &&
+        (!closed.current() || !closed.storeCurrent())) {
+        throw new SparseCandidateIneligible();
       }
       program = this.#vdom.prepareScopedKeyedRetainedAndStoreDeltas([], writes.filter(
         ({ handle }) => !closed?.owners.has(handle.owner)).map(
@@ -3770,7 +3818,8 @@ export class ComponentStateRoot<H, Parent = H> {
         (!resourceLease || this.#publicationIntents.has(resourceLease)),
       codeCurrent,
       validatePrepared: () => program!.validate() && this.#validateRetainedCells(writes, false) &&
-        (closed?.current() ?? true) && stores.validate(),
+        (closed?.current() ?? true) &&
+        (closed?.storeCurrent() ?? stores.validate()),
       validatePreparedPrivate: () => program!.validatePreparedPrivate() &&
         (!resourceLease || this.#publicationIntents.has(resourceLease)) &&
         !this.#resourceHoldWait(
@@ -3792,7 +3841,8 @@ export class ComponentStateRoot<H, Parent = H> {
             componentCodeCurrentPrivate(cache.type);
         }),
       validatePostHost: () => program!.validatePostHost() && this.#validateRetainedCells(writes, true) &&
-        (closed?.postHostCurrent() ?? true) && stores.validatePublicationInputs(),
+        (closed?.postHostCurrent() ?? true) &&
+        (closed?.storeCurrent(true) ?? stores.validatePublicationInputs()),
       finalGroupCurrent: () => program!.validatePostHostPrivate() &&
         privateCellsCurrent(true) &&
         (closed?.postHostPrivateCurrent() ?? true) && stores.validatePublicationInputsCanonical() &&

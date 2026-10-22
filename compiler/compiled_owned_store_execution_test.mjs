@@ -9,6 +9,7 @@ import { createNativeRoot, jsx, storeRecord } from "../src/native_runtime_api.ts
 import { defineComponent, useStoreAt } from "../src/component_state_runtime.ts";
 import { registerCompiledSemanticPlan } from "../src/compiled_semantic_plan.ts";
 import { MemoryVDOMHost } from "../src/vdom_snapshot_runtime.ts";
+import { OwnerStateWorld } from "../src/owner_state_world.ts";
 
 const rootPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const artifact = path.join(rootPath, ".cache", `compiled-owned-store-execution-${randomUUID()}`);
@@ -76,10 +77,11 @@ try {
       return rowCount;
     },
   } });
-  const make = label => {
+  const make = (label, options = {}) => {
     const host = new MemoryVDOMHost(), container = host.createContainer();
     const root = createNativeRoot(host, container,
-      { rootId: `${label}-${randomUUID()}`, scheduleCommit() {}, profileCounter: count });
+      { rootId: `${label}-${randomUUID()}`, scheduleCommit() {}, profileCounter: count,
+        ...options });
     roots.push(root);
     return { root, container };
   };
@@ -94,6 +96,7 @@ try {
   assert.equal(counters["publication.immediate.runs"], 1);
   assert.equal(counters["publication.deferred-adapters"] ?? 0, 0);
   assert.equal(counters["store.owned-data.batches"], 1);
+  assert.equal(counters["store.owned-data.enclosed-batches"], 1);
   assert.equal(counters["store.numeric-kernel.runs"] ?? 0, 0);
   pure.container.children[0].children.forEach((node, index) => assert.equal(node, original[index]));
   for (const node of original) {
@@ -113,6 +116,7 @@ try {
   assert.equal(mixed.root.flush(), true);
   assert.equal(counters["store.owned-data.rows"], 2);
   assert.equal(counters["store.owned-data.batches"] ?? 0, 0);
+  assert.equal(counters["store.owned-data.enclosed-batches"] ?? 0, 0);
   assert.equal(counters["store.numeric-kernel.runs"], 1);
   assert.deepEqual(calls, [{ inputStart: 0, rowCount: 1, outputStart: 0, inputs: [3] }]);
   assert.deepEqual(nodes.map(node => node.props["position-x"]), [6, 9, 6]);
@@ -140,6 +144,30 @@ try {
   assert.throws(() => mixed.root.prepareStores([app.clock]), error => error === failure);
   assert.equal(mixed.root.publicationVersion, accepted);
   assert.deepEqual(nodes.map(node => node.props["position-x"]), [6, 9, 6]);
+  const observedLineages = [];
+  class PublicWorld extends OwnerStateWorld {
+    ownerLineage(owner) {
+      observedLineages.push(owner);
+      return super.ownerLineage(owner);
+    }
+  }
+  const conservative = make("public-world", { world: new PublicWorld() });
+  conservative.root.mount(jsx("group", { key: "scene" }, [
+    jsx(app.Data, { key: "a", clock: app.clock }),
+    jsx(app.Data, { key: "b", clock: app.clock }),
+  ]));
+  const publicNodes = [...conservative.container.children[0].children];
+  observedLineages.length = 0; reset();
+  app.clock.dispatch(() => storeRecord({ phase: 5 }));
+  const publicCut = conservative.root.prepareStores([app.clock]);
+  assert.ok(publicCut, "passive decline must preserve public World preparation");
+  assert.ok(observedLineages.length >= 2, "public lineage callbacks remain observable");
+  assert.equal(counters["store.owned-data.enclosed-batches"] ?? 0, 0);
+  assert.equal(publicCut.validate(), true);
+  publicCut.commitHost(); publicCut.publish(); publicCut.runEffects();
+  assert.deepEqual(publicNodes.map(node => node.props["position-x"]), [10, 10]);
+  conservative.container.children[0].children.forEach((node, index) =>
+    assert.equal(node, publicNodes[index]));
   console.log(`PASS compiled owned data and manual legacy execution; provenance: ${artifact}`);
 } catch (error) { primaryError = error; }
 const cleanup = [];

@@ -3,10 +3,70 @@ import {
   captureOwnedClosedWorldInputs,
   createClosedWorldCellCut,
   validateClosedWorldCellCut,
+  validateCanonicalClosedWorldPhase,
   OwnerStateWorld,
   retireOwnedWorldOwner,
   type OwnedClosedWorldInputCell,
 } from "./owner_state_world.ts";
+
+Deno.test("canonical World phase distinguishes public overrides, stale cuts and newer actions", () => {
+  const world = new OwnerStateWorld();
+  const owner = world.resolveOwner(null, "phase");
+  const [, dispatch] = world.useState(owner, "value", 1);
+  const cut = createClosedWorldCellCut([capturedCell(world, owner, "value")]);
+  if (!cut) throw new Error("World cut declined");
+  assertEquals(validateCanonicalClosedWorldPhase(world, cut, "prepared"), "current");
+  const original = world.versionForCell;
+  world.versionForCell = (...args) => original.call(world, ...args);
+  assertEquals(validateCanonicalClosedWorldPhase(world, cut, "prepared"), "public-required");
+  delete (world as { versionForCell?: unknown }).versionForCell;
+  assertEquals(dispatch(2), true);
+  assertEquals(validateCanonicalClosedWorldPhase(world, cut, "prepared"), "stale");
+  assertEquals(validateCanonicalClosedWorldPhase(world, cut, "after-host"), "current");
+  world.destroyOwner(owner);
+  assertEquals(validateCanonicalClosedWorldPhase(world, cut, "after-host"), "stale");
+});
+
+Deno.test("canonical World phase audits prototype between phases and avoids Proxy traps", () => {
+  const world = new OwnerStateWorld();
+  const owner = world.resolveOwner(null, "phase-prototype");
+  world.useState(owner, "value", 1);
+  const cut = createClosedWorldCellCut([capturedCell(world, owner, "value")]);
+  if (!cut) throw new Error("World cut declined");
+  const descriptor = Object.getOwnPropertyDescriptor(OwnerStateWorld.prototype, "versionForCell")!;
+  try {
+    Object.defineProperty(OwnerStateWorld.prototype, "versionForCell", {
+      ...descriptor, value() { return null; },
+    });
+    assertEquals(validateCanonicalClosedWorldPhase(world, cut, "after-host"), "public-required");
+  } finally {
+    Object.defineProperty(OwnerStateWorld.prototype, "versionForCell", descriptor);
+  }
+  let traps = 0;
+  const proxy = new Proxy(world, { getPrototypeOf() { traps++; throw new Error("trap"); } });
+  assertEquals(validateCanonicalClosedWorldPhase(proxy, cut, "prepared"), "public-required");
+  assertEquals(traps, 0);
+});
+
+Deno.test("canonical World phase preserves subclass public validation", () => {
+  let calls = 0;
+  class ObservedWorld extends OwnerStateWorld {
+    override versionForCell(handle: Parameters<OwnerStateWorld["versionForCell"]>[0]) {
+      calls++;
+      return super.versionForCell(handle);
+    }
+  }
+  const world = new ObservedWorld();
+  const owner = world.resolveOwner(null, "subclass");
+  world.useState(owner, "value", 1);
+  const cut = createClosedWorldCellCut([capturedCell(world, owner, "value")]);
+  if (!cut) throw new Error("World cut declined");
+  const before = calls;
+  assertEquals(validateCanonicalClosedWorldPhase(world, cut, "prepared"), "public-required");
+  assertEquals(calls, before);
+  assertEquals(world.versionForCell(capturedCell(world, owner, "value").handle) !== null, true);
+  assertEquals(calls > before, true);
+});
 
 const capturedCell = (
   world: OwnerStateWorld, owner: number, site: string,

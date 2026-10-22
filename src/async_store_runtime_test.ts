@@ -2,7 +2,79 @@ import {
   AsyncStore, captureCanonicalStoreReaderReceipt, createAsyncStore,
   inspectCanonicalStoreReaderReceipt, readOwnedClosedProjectionBatch,
   StoreRenderTransaction,
+  validateCanonicalClosedStorePhase,
 } from "./async_store_runtime.ts";
+
+Deno.test("canonical Store phase covers selected readers and preserves newer action lineage", () => {
+  const paths = normalizeClosedProjectionPaths([["phase"]])!;
+  const store = createAsyncStore(storeRecord({ phase: 1 }));
+  const transaction = new StoreRenderTransaction("phase-root");
+  const values = readOwnedClosedProjectionBatch(transaction, [
+    { store, readerId: "first", paths },
+    { store, readerId: "second", paths },
+  ]);
+  assert(values, "owned Store batch declined");
+  equal(values[0][0], 1, "first reader projection");
+  equal(values[1][0], 1, "second reader projection");
+  equal(validateCanonicalClosedStorePhase(transaction, "prepared"), "current", "prepared phase");
+  store.dispatch(storeRecord({ phase: 2 }));
+  equal(validateCanonicalClosedStorePhase(transaction, "prepared"), "stale", "newer action prepared phase");
+  equal(validateCanonicalClosedStorePhase(transaction, "after-host"), "current", "newer action lineage");
+  transaction.preparePublicationAfterHost();
+  transaction.publishAccepted();
+  equal(store.diagnostics().readers, 2, "independent direct reader histories");
+});
+
+Deno.test("canonical Store phase falls back on override and rejects revoked root epoch", () => {
+  const paths = normalizeClosedProjectionPaths([["phase"]])!;
+  const store = createAsyncStore(storeRecord({ phase: 1 }));
+  const transaction = new StoreRenderTransaction("phase-root");
+  assert(readOwnedClosedProjectionBatch(transaction, [
+    { store, readerId: "reader", paths },
+  ]), "owned Store batch declined");
+  const original = Object.getOwnPropertyDescriptor(AsyncStore.prototype, "_validateRender")!;
+  try {
+    Object.defineProperty(AsyncStore.prototype, "_validateRender", {
+      ...original, value() { return false; },
+    });
+    equal(validateCanonicalClosedStorePhase(transaction, "prepared"), "public-required", "prototype override");
+  } finally {
+    Object.defineProperty(AsyncStore.prototype, "_validateRender", original);
+  }
+  const originalValidate = transaction.validate;
+  transaction.validate = () => originalValidate.call(transaction);
+  equal(validateCanonicalClosedStorePhase(transaction, "prepared"), "public-required", "own override");
+  delete (transaction as { validate?: unknown }).validate;
+  store.detachRoot("phase-root");
+  equal(validateCanonicalClosedStorePhase(transaction, "after-host"), "stale", "revoked epoch");
+  transaction.discard();
+});
+
+Deno.test("canonical Store phase rejects Proxy receiver before reflection", () => {
+  const transaction = new StoreRenderTransaction("phase-proxy");
+  let traps = 0;
+  const proxy = new Proxy(transaction, { getPrototypeOf() { traps++; throw new Error("trap"); } });
+  equal(validateCanonicalClosedStorePhase(proxy, "prepared"), "public-required", "Proxy status");
+  equal(traps, 0, "receiver trap ran before private brand check");
+});
+
+Deno.test("canonical Store phase declines a mixed pinned snapshot without changing reader publication", () => {
+  const paths = normalizeClosedProjectionPaths([["phase"]])!;
+  const selected = createAsyncStore(storeRecord({ phase: 1 }));
+  const other = createAsyncStore(5);
+  const transaction = new StoreRenderTransaction("mixed-phase");
+  assert(readOwnedClosedProjectionBatch(transaction, [
+    { store: selected, readerId: "selected", paths },
+  ]), "owned Store batch declined");
+  equal(transaction.read(other, "other"), 5, "ordinary reader value");
+  equal(validateCanonicalClosedStorePhase(transaction, "prepared"),
+    "public-required", "mixed snapshot did not retain public validation");
+  assert(transaction.validate(), "ordinary transaction validation changed");
+  transaction.preparePublication();
+  transaction.publishAccepted();
+  equal(selected.diagnostics().readers, 1, "selected history was not published");
+  equal(other.diagnostics().readers, 1, "ordinary history was not published");
+});
 import { normalizeClosedProjectionPaths, storeRecord } from "./owned_store_record.ts";
 
 function assert(condition: unknown, message: string): asserts condition {

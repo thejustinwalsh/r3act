@@ -105,6 +105,32 @@ Deno.test("owned scalar no-op writes preserve retained resource disposal", () =>
     "retained resource was not disposed exactly once");
 });
 
+Deno.test("owned and generic scalar cuts publish the same accepted host image", () => {
+  const hostA = new MemoryVDOMHost(), hostB = new MemoryVDOMHost();
+  const containerA = hostA.createContainer(), containerB = hostB.createContainer();
+  const ownedRoot = new VDOMSnapshotRoot(hostA, containerA);
+  const genericRoot = new VDOMSnapshotRoot(hostB, containerB);
+  try {
+    ownedRoot.commit(tree()); genericRoot.commit(tree());
+    const ownedCut = ownedRoot.prepareStorePropDelta([
+      owned("mesh", 2), owned("outline", 3),
+    ]);
+    const genericCut = genericRoot.prepareStorePropDelta([
+      { key: "mesh", tag: "mesh", props: [["x", 2]], children: [] },
+      { key: "outline", tag: "mesh", props: [["x", 3]], children: [] },
+    ]);
+    assert(ownedCut && genericCut, "equivalent scalar cuts declined");
+    accept(ownedRoot, ownedCut); accept(genericRoot, genericCut);
+    assert(JSON.stringify(ownedRoot.snapshot) === JSON.stringify(genericRoot.snapshot),
+      "owned cut changed accepted snapshot semantics");
+    assert(containerA.children[0].children[0].props.x === 2 &&
+      containerB.children[0].children[0].props.x === 2 &&
+      containerA.children[0].children[1].props.x === 3 &&
+      containerB.children[0].children[1].props.x === 3,
+    "owned cut changed host props");
+  } finally { ownedRoot.dispose(); genericRoot.dispose(); }
+});
+
 Deno.test("mixed owned scalar and text subtree uses general completion", () => {
   const host = new MemoryVDOMHost();
   const container = host.createContainer();
