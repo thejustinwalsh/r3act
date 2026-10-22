@@ -1,0 +1,2376 @@
+{
+  "schemaVersion": 1,
+  "createdAtUtc": "2026-10-22T02:20:51.240463+00:00",
+  "status": "PASS",
+  "scope": "Read-only final evidence audit for the R3F frame baseline. No product changes, tests, browser runs, timing runs, cleanup, restore, or staging performed.",
+  "auditExecution": {
+    "preservedInitialFailure": {
+      "supervisor": "implementation/2026-10-22-r3f-frame-baseline/verification/audit-relatedlogs/receipts/final-audit-supervisor.json",
+      "stderr": "implementation/2026-10-22-r3f-frame-baseline/verification/audit-relatedlogs/receipts/final-audit-supervisor.stderr.log",
+      "stderrSha256": "29c3c6a74848d993cbb9719be7df235c1f48bd55f9906e7f6a3b03030008321e",
+      "exitCode": 1,
+      "cause": "Auditor root-path parent index pointed one directory above repository; corrected before the final audit pass."
+    },
+    "preservedScopeFailure": {
+      "artifact": "implementation/2026-10-22-r3f-frame-baseline/verification/audit-relatedlogs/receipts/final-audit-attempt-v2.json",
+      "priorAuditStatus": "FAIL",
+      "priorSupervisorExit": 0,
+      "cause": "Compared the 1693 runner rows but omitted four changed files among the 10 archived context rows; corrected to compare all 1703 archived rows."
+    }
+  },
+  "semanticChecks": {
+    "gatePass72": true,
+    "gateRuntime1147": true,
+    "gateRust99": true,
+    "gateCompiled52": true,
+    "gateArchive1703": true,
+    "currentFollowonsExplicit": true,
+    "productDiffEmpty": true,
+    "initialCopies22Plus3": true,
+    "sourceBasis13Plus4": true,
+    "prepArchivesIntact": true,
+    "packageGraphStable": true,
+    "v1FailurePreserved": true,
+    "v2DeclineUnapproved": true,
+    "v3AllFrameCompiles": true,
+    "proofStatus": true,
+    "proofContextsAndCleanup": true,
+    "frame72CountersAndCleanup": true,
+    "timingStatusAndChain": true,
+    "timingSourceAndCounters": true,
+    "timingContextsAndCleanup": true,
+    "astraProductionLock": true,
+    "cacheInventoryComplete": true,
+    "ownerSetterCleanup": true,
+    "noBrowserErrorsOrBlockedRequests": true,
+    "noNativeTimingParity": true
+  },
+  "gate": {
+    "status": "PASS",
+    "gitHead": "04b7757e606de235f228ee4f9966f39e28feb2e1",
+    "actual": {
+      "platform": "darwin",
+      "arch": "arm64"
+    },
+    "stepCount": 72,
+    "passedSteps": 72,
+    "failedSteps": [],
+    "denoSummary": "ok | 1147 passed | 0 failed (19s)",
+    "rustTestResults": [
+      "test result: ok. 99 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s"
+    ],
+    "compiledFixtureCount": 52,
+    "compiledFixturePassed": 52,
+    "sourceAudit": {
+      "status": "MATCH",
+      "changed": []
+    },
+    "supervisor": {
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "scripts/verify_native_platform.mjs",
+        "--output-dir",
+        "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-r3f-frame-baseline/verification/darwin-v1",
+        "--expected-platform",
+        "darwin",
+        "--expected-arch",
+        "arm64",
+        "--execution-kind",
+        "native-host"
+      ],
+      "startedAtUtc": "2026-10-22T02:00:26.372820+00:00",
+      "finishedAtUtc": "2026-10-22T02:02:22.935368+00:00",
+      "wallSeconds": 116.5707122500171,
+      "deadlineSeconds": 1200,
+      "exitCode": 0,
+      "stop": null,
+      "stdout": "implementation/2026-10-22-r3f-frame-baseline/verification/darwin-v1-supervisor.stdout.log",
+      "stderr": "implementation/2026-10-22-r3f-frame-baseline/verification/darwin-v1-supervisor.stderr.log"
+    }
+  },
+  "gateArchiveIntegrity": {
+    "status": "ARCHIVED_BEFORE_PRODUCT_COMMANDS",
+    "sourceBeforeRows": 1693,
+    "archiveRows": 1703,
+    "runnerRows": 1693,
+    "contextRows": 10,
+    "unavailableContext": [],
+    "verifiedRows": 1703,
+    "mismatchCount": 0,
+    "mismatches": [],
+    "runnerRowsEqualSourceBefore": true
+  },
+  "currentVsGate": {
+    "gateArchiveRows": 1703,
+    "gateRunnerRows": 1693,
+    "gateContextRows": 10,
+    "matchedIncludingReviewedRestores": 1692,
+    "reviewedFollowonDifferences": [
+      {
+        "path": "README.md",
+        "capturedGateSha256": "f41600fdaef369f4d5ae854700c27cd1fb7a1be2c5927f2a267aca200ed7b5cf",
+        "effectiveExpectedSha256": "f41600fdaef369f4d5ae854700c27cd1fb7a1be2c5927f2a267aca200ed7b5cf",
+        "current": {
+          "kind": "file",
+          "sha256": "efbe3f225f9bb68dc6fceb9fc7209b879b83aa40d56fbdbd216ce1fe698e7769",
+          "bytes": 14530
+        },
+        "reason": "Maintained repository summary updated after the frozen correctness gate."
+      },
+      {
+        "path": "implementation/2026-10-22-r3f-frame-baseline/agent-authored.md",
+        "capturedGateSha256": "20f6ca53ec6e38a3667571a87ba2bbe0e7e28ebd58332a6974a06bd9867181f2",
+        "effectiveExpectedSha256": "20f6ca53ec6e38a3667571a87ba2bbe0e7e28ebd58332a6974a06bd9867181f2",
+        "current": {
+          "kind": "file",
+          "sha256": "c2f5cd51fb67d8cabcad30e2fda8cc01e432d95e35632f92bb9808e75d432eb3",
+          "bytes": 4714
+        },
+        "reason": "Agent handoff documentation created/updated after the gate."
+      },
+      {
+        "path": "implementation/2026-10-22-r3f-frame-baseline/agent-tooling.md",
+        "capturedGateSha256": "79eb43728bf798f08cfebfcc0aff8d462b35a7485a916e26fe805ada8de849ea",
+        "effectiveExpectedSha256": "79eb43728bf798f08cfebfcc0aff8d462b35a7485a916e26fe805ada8de849ea",
+        "current": {
+          "kind": "file",
+          "sha256": "2f20deba2f2dc5c587c86caad536412783433dc3237c623f602529c4422b78e8",
+          "bytes": 5661
+        },
+        "reason": "Agent handoff documentation created/updated after the gate."
+      },
+      {
+        "path": "implementation/2026-10-22-r3f-frame-baseline/consumer/build.mjs",
+        "capturedGateSha256": "2e332e887730e197ea540410094b1622c358e724377085e6fe5adbe4f2963fe0",
+        "effectiveExpectedSha256": "2e332e887730e197ea540410094b1622c358e724377085e6fe5adbe4f2963fe0",
+        "current": {
+          "kind": "file",
+          "sha256": "67eab4ad7e3a90634313cc65b1176ae2f51a49ca0e64dec73cb4906065c9717a",
+          "bytes": 11751
+        },
+        "reason": "Reviewed installed logger/guard diagnostics tooling follow-on; separately captured by v2/v3 input locks."
+      },
+      {
+        "path": "implementation/2026-10-22-r3f-frame-baseline/consumer/react-frame.tsx",
+        "capturedGateSha256": "580a8937b6389139e261b3d71fb5a50f05c700c4534ecb635e5c1e3b9b9cfd18",
+        "effectiveExpectedSha256": "580a8937b6389139e261b3d71fb5a50f05c700c4534ecb635e5c1e3b9b9cfd18",
+        "current": {
+          "kind": "file",
+          "sha256": "802bc412de8041562c38722bab154971187591a5608a69e7a2eb3ca62d220eae",
+          "bytes": 7629
+        },
+        "reason": "Reviewed observer bookkeeping moved into module helpers; separately captured by v3."
+      },
+      {
+        "path": "implementation/2026-10-22-r3f-frame-baseline/consumer/verify.mjs",
+        "capturedGateSha256": "6a8a61820f6f84ca8555facbf3492bdc642595b6536c79f8a55069cead9a5907",
+        "effectiveExpectedSha256": "6a8a61820f6f84ca8555facbf3492bdc642595b6536c79f8a55069cead9a5907",
+        "current": {
+          "kind": "file",
+          "sha256": "d9a1adbf8b15e13f8dd4c617f2451e8386f276395cad686ab413e8cc03773554",
+          "bytes": 15729
+        },
+        "reason": "Reviewed browser evidence-chain/verification follow-on; separately captured by v3."
+      },
+      {
+        "path": "implementation/2026-10-22-r3f-frame-baseline/source-review.md",
+        "capturedGateSha256": "f439ecbfd1511eea8de246c6f12fe114125a6137b4b8203f761eee3862b9d23f",
+        "effectiveExpectedSha256": "f439ecbfd1511eea8de246c6f12fe114125a6137b4b8203f761eee3862b9d23f",
+        "current": {
+          "kind": "file",
+          "sha256": "ed864e72251bc55df50213424d4e793e46f83d4b165e8920c9fc3c9b33dd6177",
+          "bytes": 4225
+        },
+        "reason": "Primary source review updated with actual v1-v3 and browser disposition."
+      },
+      {
+        "path": "final-master-plan.md",
+        "capturedGateSha256": "fb008bfa3ad589a5ecd18fc61b481a2c934a6c0689e8d47cf48d85ed8c94daf5",
+        "effectiveExpectedSha256": "fb008bfa3ad589a5ecd18fc61b481a2c934a6c0689e8d47cf48d85ed8c94daf5",
+        "current": {
+          "kind": "file",
+          "sha256": "86a0741fe87e135da88ceee9d9ab75a7dc2378873d09e4b65e89244806c7881c",
+          "bytes": 205589
+        },
+        "reason": "Primary-maintained guide follow-on; current claim remains proposal, not implementation."
+      },
+      {
+        "path": "implementation-checkpoint.md",
+        "capturedGateSha256": "4f7475ef2bec40ab38b0a149fa3fd773fc90b68d913f3fe6f541eaa6f87c2530",
+        "effectiveExpectedSha256": "4f7475ef2bec40ab38b0a149fa3fd773fc90b68d913f3fe6f541eaa6f87c2530",
+        "current": {
+          "kind": "file",
+          "sha256": "94cecc3a074f97de266fb189dd7046cc94015db058a5c31e5314173553c471f1",
+          "bytes": 197499
+        },
+        "reason": "Primary-maintained evidence checkpoint follow-on."
+      },
+      {
+        "path": "HANDOFF-PROMPT.txt",
+        "capturedGateSha256": "eb61e197018cdba0386a3e30e91f5d7b6428d217f1a2bb3dc2b1466c7e45961b",
+        "effectiveExpectedSha256": "eb61e197018cdba0386a3e30e91f5d7b6428d217f1a2bb3dc2b1466c7e45961b",
+        "current": {
+          "kind": "file",
+          "sha256": "72cbb434ddbb60dc19979b3c8e686d6cd31eeca3843b057307b3174fb0d8a25f",
+          "bytes": 51289
+        },
+        "reason": "Maintained handoff context updated after the gate."
+      },
+      {
+        "path": "RESEARCH-GUIDE.md",
+        "capturedGateSha256": "3a58434ac043dfd041f22d3769ef8714fd6e728c9c738b6e8bdb2d7af8c2361b",
+        "effectiveExpectedSha256": "3a58434ac043dfd041f22d3769ef8714fd6e728c9c738b6e8bdb2d7af8c2361b",
+        "current": {
+          "kind": "file",
+          "sha256": "28a27be116c0834dea30783cd408eff0e4910458af1b00c25cdcdf9839d8160f",
+          "bytes": 134480
+        },
+        "reason": "Maintained research context updated after the gate."
+      }
+    ],
+    "unexpectedDifferences": [],
+    "fixedRestoreChecks": [
+      {
+        "path": ".cache/namespace-three-authored.mjs",
+        "current": {
+          "kind": "file",
+          "sha256": "1d7032f27eda2e36f037624b4f23f5f21034699925369302fa7e9df0f875a59a",
+          "bytes": 44226
+        },
+        "restoredHeadSha256": "1d7032f27eda2e36f037624b4f23f5f21034699925369302fa7e9df0f875a59a",
+        "matchesRestoredHead": true,
+        "headBlob": {
+          "kind": "git-blob",
+          "sha256": "1d7032f27eda2e36f037624b4f23f5f21034699925369302fa7e9df0f875a59a",
+          "bytes": 44226
+        },
+        "matchesActualHead": true,
+        "archivedGeneratedCopy": {
+          "kind": "file",
+          "sha256": "9387d19218c28a55f8ba81abfa8c656b068acfa67674195d9040ea11e11a7fb4",
+          "bytes": 44226
+        },
+        "generatedSha256": "9387d19218c28a55f8ba81abfa8c656b068acfa67674195d9040ea11e11a7fb4",
+        "archivedCopyMatchesGenerated": true
+      },
+      {
+        "path": ".cache/native-promise-store-race.mjs",
+        "current": {
+          "kind": "file",
+          "sha256": "a634509fdf366aad86b04a16a4830a8a8232f37c69322351bbe5956c8e2ac325",
+          "bytes": 15526
+        },
+        "restoredHeadSha256": "a634509fdf366aad86b04a16a4830a8a8232f37c69322351bbe5956c8e2ac325",
+        "matchesRestoredHead": true,
+        "headBlob": {
+          "kind": "git-blob",
+          "sha256": "a634509fdf366aad86b04a16a4830a8a8232f37c69322351bbe5956c8e2ac325",
+          "bytes": 15526
+        },
+        "matchesActualHead": true,
+        "archivedGeneratedCopy": {
+          "kind": "file",
+          "sha256": "bef455be71b48319095825630ebd390b859e7849fb8848c916ebc0ae1e1806f9",
+          "bytes": 15526
+        },
+        "generatedSha256": "bef455be71b48319095825630ebd390b859e7849fb8848c916ebc0ae1e1806f9",
+        "archivedCopyMatchesGenerated": true
+      },
+      {
+        "path": ".cache/native-queue-execution.mjs",
+        "current": {
+          "kind": "file",
+          "sha256": "00539bf94d05a5d3ec2d54eae55d8b593b2304b3c80d78191c319e7c429fe5af",
+          "bytes": 20515
+        },
+        "restoredHeadSha256": "00539bf94d05a5d3ec2d54eae55d8b593b2304b3c80d78191c319e7c429fe5af",
+        "matchesRestoredHead": true,
+        "headBlob": {
+          "kind": "git-blob",
+          "sha256": "00539bf94d05a5d3ec2d54eae55d8b593b2304b3c80d78191c319e7c429fe5af",
+          "bytes": 20515
+        },
+        "matchesActualHead": true,
+        "archivedGeneratedCopy": {
+          "kind": "file",
+          "sha256": "f08bb94d45c64c51dddde8e559bd07cf0e820270f7b3030e15b2460bda62dc4e",
+          "bytes": 20515
+        },
+        "generatedSha256": "f08bb94d45c64c51dddde8e559bd07cf0e820270f7b3030e15b2460bda62dc4e",
+        "archivedCopyMatchesGenerated": true
+      },
+      {
+        "path": ".cache/native-task-transition.mjs",
+        "current": {
+          "kind": "file",
+          "sha256": "a02436c61d9da729393d06d0a4a45a65406c68779923dbae365a6fa63c46ea8f",
+          "bytes": 17071
+        },
+        "restoredHeadSha256": "a02436c61d9da729393d06d0a4a45a65406c68779923dbae365a6fa63c46ea8f",
+        "matchesRestoredHead": true,
+        "headBlob": {
+          "kind": "git-blob",
+          "sha256": "a02436c61d9da729393d06d0a4a45a65406c68779923dbae365a6fa63c46ea8f",
+          "bytes": 17071
+        },
+        "matchesActualHead": true,
+        "archivedGeneratedCopy": {
+          "kind": "file",
+          "sha256": "d4e5771a21d574bb218c717e44c02be772dc9ace0aef89d47f80d6dd90e47b87",
+          "bytes": 17071
+        },
+        "generatedSha256": "d4e5771a21d574bb218c717e44c02be772dc9ace0aef89d47f80d6dd90e47b87",
+        "archivedCopyMatchesGenerated": true
+      }
+    ],
+    "fixedRestoreCount": 4,
+    "resultsMdPostGateFollowon": {
+      "path": "implementation/2026-10-22-r3f-frame-baseline/results.md",
+      "kind": "file",
+      "sha256": "849238d5ce9ebfe1f5118fc8e9344d748fa355fa4310437aec140ade2581c054",
+      "bytes": 8999,
+      "noGateInputRow": true
+    },
+    "status": "PASS_WITH_EXPLICIT_FOLLOWONS"
+  },
+  "productionVsHead": {
+    "head": "04b7757e606de235f228ee4f9966f39e28feb2e1",
+    "diffPaths": [],
+    "clean": true
+  },
+  "initialCopies": {
+    "base": "04b7757e606de235f228ee4f9966f39e28feb2e1",
+    "entryCount": 25,
+    "unchangedCount": 22,
+    "changedRows": [
+      {
+        "source": "implementation/2026-10-22-closed-store-contraction/consumer/build.mjs",
+        "copy": "implementation/2026-10-22-r3f-frame-baseline/consumer/build.mjs",
+        "expectedInitialSha256": "f838297a5a1d147564ecf08b704c1ec9c6a0012ccf181715e2573b950812a280",
+        "actual": {
+          "kind": "file",
+          "sha256": "67eab4ad7e3a90634313cc65b1176ae2f51a49ca0e64dec73cb4906065c9717a",
+          "bytes": 11751
+        },
+        "matchesInitial": false,
+        "reviewedToolingFollowon": true
+      },
+      {
+        "source": "implementation/2026-10-22-closed-store-contraction/consumer/prepare.mjs",
+        "copy": "implementation/2026-10-22-r3f-frame-baseline/consumer/prepare.mjs",
+        "expectedInitialSha256": "b880c342698afb090490ed71df863125d08964a35183788f4fb39c388c0ddb2f",
+        "actual": {
+          "kind": "file",
+          "sha256": "938bb26acaa8206d1d2bcb373b8c5132246bbbc1ca84175394db29c39d2ae0ba",
+          "bytes": 10004
+        },
+        "matchesInitial": false,
+        "reviewedToolingFollowon": true
+      },
+      {
+        "source": "implementation/2026-10-22-closed-store-contraction/consumer/verify.mjs",
+        "copy": "implementation/2026-10-22-r3f-frame-baseline/consumer/verify.mjs",
+        "expectedInitialSha256": "caeabe91b6e0e791e72f9c1026a130c8f77e269956ca3e8a9f03950502e0ae93",
+        "actual": {
+          "kind": "file",
+          "sha256": "d9a1adbf8b15e13f8dd4c617f2451e8386f276395cad686ab413e8cc03773554",
+          "bytes": 15729
+        },
+        "matchesInitial": false,
+        "reviewedToolingFollowon": true
+      }
+    ],
+    "changedCount": 3,
+    "allChangesAreReviewedTooling": true
+  },
+  "r3fSourceBasis": {
+    "priorCount": 13,
+    "currentCount": 17,
+    "unchangedPriorCount": 13,
+    "unchangedPriorFiles": [
+      "configuration.ts",
+      "core-index.tsx",
+      "legacy.tsx",
+      "loop.ts",
+      "package.json",
+      "provenance.json",
+      "reconciler.tsx",
+      "renderer.ts",
+      "root.tsx",
+      "store.ts",
+      "support-webgl.ts",
+      "three-registry.ts",
+      "utils-three.ts"
+    ],
+    "priorMismatches": [],
+    "additions": [
+      "scheduler-types-v0.3.0.ts",
+      "scheduler-v0.3.0.ts",
+      "supplemental-provenance.json",
+      "useFrame.ts"
+    ]
+  },
+  "installedPreparation": {
+    "v1": {
+      "inputLockSha256": "b06ab7b0bea61fbfa3feb4390dff558a6759e37789fbe3c4b51a9f4ecf37dbcf",
+      "buildProofSha256": "4d001fce84989bd35c313639306f60b70924bf223de3b3a6919bce4268cd8f31",
+      "inputLockStatus": "PASS_R3F_FRAME_BASELINES_CANVAS_PREPARATION",
+      "buildStatus": "STARTED",
+      "counts": {
+        "inputs": 14,
+        "staged": 13,
+        "packageSources": 53,
+        "rendererSourceBasis": 17,
+        "tarballs": 3,
+        "installed": 6092
+      },
+      "processes": {
+        "install": {
+          "exit": 0,
+          "stopped": null,
+          "spawnError": null
+        },
+        "typecheck": {
+          "exit": 0,
+          "stopped": null,
+          "spawnError": null
+        },
+        "build-native": {
+          "exit": 0,
+          "stopped": null,
+          "spawnError": null
+        },
+        "build-react": {
+          "exit": 0,
+          "stopped": null,
+          "spawnError": null
+        }
+      },
+      "archiveIntegrity": [
+        {
+          "document": "implementation/2026-10-22-r3f-frame-baseline/proof-canvas-v1/input-lock.json",
+          "referenceRows": 6141,
+          "uniqueArchivePaths": 6141,
+          "verifiedUniquePaths": 6141,
+          "mismatchCount": 0,
+          "conflictingPaths": [],
+          "mismatches": []
+        },
+        {
+          "document": "implementation/2026-10-22-r3f-frame-baseline/proof-canvas-v1/build-proof.json",
+          "referenceRows": 6141,
+          "uniqueArchivePaths": 6141,
+          "verifiedUniquePaths": 6141,
+          "mismatchCount": 0,
+          "conflictingPaths": [],
+          "mismatches": []
+        }
+      ],
+      "packageGraphComparedWithPriorUnit": {
+        "packageSources": {
+          "currentCount": 53,
+          "previousCount": 53,
+          "added": [],
+          "removed": [],
+          "changed": [],
+          "identical": true
+        },
+        "tarballs": {
+          "currentCount": 3,
+          "previousCount": 3,
+          "added": [],
+          "removed": [],
+          "changed": [],
+          "identical": true
+        }
+      },
+      "supervisor": {
+        "command": [
+          "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+          "implementation/2026-10-22-r3f-frame-baseline/consumer/prepare.mjs",
+          "--proof-dir",
+          "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-r3f-frame-baseline/proof-canvas-v1"
+        ],
+        "startedAtUtc": "2026-10-22T02:03:10.142133+00:00",
+        "finishedAtUtc": "2026-10-22T02:03:19.947727+00:00",
+        "wallSeconds": 9.805739000003086,
+        "deadlineSeconds": 1200,
+        "exitCode": 1,
+        "stop": null,
+        "stdout": "implementation/2026-10-22-r3f-frame-baseline/verification/installed-build-v1-supervisor.stdout.log",
+        "stderr": "implementation/2026-10-22-r3f-frame-baseline/verification/installed-build-v1-supervisor.stderr.log"
+      },
+      "frameCapture": null,
+      "preservedBuildErrors": [
+        "AssertionError [ERR_ASSERTION]: build-react-frame failed; logs preserved in /Volumes/Depot/Developer/r3act/implementation/2026-10-22-r3f-frame-baseline/proof-canvas-v1\n\n1 !== 0\n\n    at run (file:///Volumes/Depot/Developer/r3act/implementation/2026-10-22-r3f-frame-baseline/consumer/prepare.mjs:66:10)\n    at async file:///Volumes/Depot/Developer/r3act/implementation/2026-10-22-r3f-frame-baseline/consumer/prepare.mjs:149:41"
+      ],
+      "hasCapture": false
+    },
+    "v2": {
+      "inputLockSha256": "ef1f34619045edbc4ef278cd6891d70a2988fbf5d66b36c9c84496a6c18038e1",
+      "buildProofSha256": "cfd56645684036051a308c85a5e830a2fbb063a3afb80d0d678a57197c40063d",
+      "inputLockStatus": "PASS_R3F_FRAME_BASELINES_CANVAS_PREPARATION",
+      "buildStatus": "PASS_R3F_FRAME_BASELINES_CANVAS_BUILD",
+      "counts": {
+        "inputs": 14,
+        "staged": 13,
+        "packageSources": 53,
+        "rendererSourceBasis": 17,
+        "tarballs": 3,
+        "installed": 6092
+      },
+      "processes": {
+        "install": {
+          "exit": 0,
+          "stopped": null,
+          "spawnError": null
+        },
+        "typecheck": {
+          "exit": 0,
+          "stopped": null,
+          "spawnError": null
+        },
+        "build-native": {
+          "exit": 0,
+          "stopped": null,
+          "spawnError": null
+        },
+        "build-react": {
+          "exit": 0,
+          "stopped": null,
+          "spawnError": null
+        },
+        "build-react-frame": {
+          "exit": 0,
+          "stopped": null,
+          "spawnError": null
+        },
+        "build-imperative": {
+          "exit": 0,
+          "stopped": null,
+          "spawnError": null
+        }
+      },
+      "archiveIntegrity": [
+        {
+          "document": "implementation/2026-10-22-r3f-frame-baseline/proof-canvas-v2/input-lock.json",
+          "referenceRows": 6141,
+          "uniqueArchivePaths": 6141,
+          "verifiedUniquePaths": 6141,
+          "mismatchCount": 0,
+          "conflictingPaths": [],
+          "mismatches": []
+        },
+        {
+          "document": "implementation/2026-10-22-r3f-frame-baseline/proof-canvas-v2/build-proof.json",
+          "referenceRows": 6141,
+          "uniqueArchivePaths": 6141,
+          "verifiedUniquePaths": 6141,
+          "mismatchCount": 0,
+          "conflictingPaths": [],
+          "mismatches": []
+        }
+      ],
+      "packageGraphComparedWithPriorUnit": {
+        "packageSources": {
+          "currentCount": 53,
+          "previousCount": 53,
+          "added": [],
+          "removed": [],
+          "changed": [],
+          "identical": true
+        },
+        "tarballs": {
+          "currentCount": 3,
+          "previousCount": 3,
+          "added": [],
+          "removed": [],
+          "changed": [],
+          "identical": true
+        }
+      },
+      "supervisor": {
+        "command": [
+          "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+          "implementation/2026-10-22-r3f-frame-baseline/consumer/prepare.mjs",
+          "--proof-dir",
+          "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-r3f-frame-baseline/proof-canvas-v2"
+        ],
+        "startedAtUtc": "2026-10-22T02:08:13.304927+00:00",
+        "finishedAtUtc": "2026-10-22T02:08:22.756345+00:00",
+        "wallSeconds": 9.451562708010897,
+        "deadlineSeconds": 1200,
+        "exitCode": 0,
+        "stop": null,
+        "stdout": "implementation/2026-10-22-r3f-frame-baseline/verification/installed-build-v2-supervisor.stdout.log",
+        "stderr": "implementation/2026-10-22-r3f-frame-baseline/verification/installed-build-v2-supervisor.stderr.log"
+      },
+      "frameCapture": {
+        "sha256": "2f21961d105efb692a988fc32766822fb397c0a186c84ff3f3f3eef1094a8b2f",
+        "status": "FRAME_COMPILER_DECLINE_PENDING_PRIMARY_REVIEW",
+        "motionCompiled": {
+          "Position": false,
+          "Rotation": false
+        },
+        "events": [
+          {
+            "fnName": null,
+            "kind": "CompileError",
+            "reason": "(BuildHIR::lowerExpression) Support UpdateExpression where argument is a global",
+            "category": "Todo"
+          },
+          {
+            "fnName": null,
+            "kind": "CompileError",
+            "reason": "(BuildHIR::lowerExpression) Support UpdateExpression where argument is a global",
+            "category": "Todo"
+          },
+          {
+            "fnName": null,
+            "kind": "CompileError",
+            "reason": "(BuildHIR::lowerExpression) Support UpdateExpression where argument is a global",
+            "category": "Todo"
+          },
+          {
+            "fnName": null,
+            "kind": "CompileError",
+            "reason": "(BuildHIR::lowerExpression) Support UpdateExpression where argument is a global",
+            "category": "Todo"
+          },
+          {
+            "fnName": null,
+            "kind": "CompileError",
+            "reason": "(BuildHIR::lowerExpression) Support UpdateExpression where argument is a global",
+            "category": "Todo"
+          },
+          {
+            "fnName": null,
+            "kind": "CompileError",
+            "reason": "(BuildHIR::lowerExpression) Support UpdateExpression where argument is a global",
+            "category": "Todo"
+          },
+          {
+            "fnName": null,
+            "kind": "CompileError",
+            "reason": "(BuildHIR::lowerExpression) Support UpdateExpression where argument is a global",
+            "category": "Todo"
+          },
+          {
+            "fnName": null,
+            "kind": "CompileError",
+            "reason": "(BuildHIR::lowerExpression) Support UpdateExpression where argument is a global",
+            "category": "Todo"
+          },
+          {
+            "fnName": null,
+            "kind": "CompileError",
+            "reason": "(BuildHIR::lowerExpression) Support UpdateExpression where argument is a global",
+            "category": "Todo"
+          },
+          {
+            "fnName": null,
+            "kind": "CompileError",
+            "reason": "(BuildHIR::lowerExpression) Support UpdateExpression where argument is a global",
+            "category": "Todo"
+          },
+          {
+            "fnName": null,
+            "kind": "CompileError",
+            "reason": "(BuildHIR::lowerExpression) Support UpdateExpression where argument is a global",
+            "category": "Todo"
+          },
+          {
+            "fnName": null,
+            "kind": "CompileError",
+            "reason": "(BuildHIR::lowerExpression) Support UpdateExpression where argument is a global",
+            "category": "Todo"
+          },
+          {
+            "fnName": null,
+            "kind": "CompileError",
+            "reason": "(BuildHIR::lowerExpression) Support UpdateExpression where argument is a global",
+            "category": "Todo"
+          },
+          {
+            "fnName": null,
+            "kind": "CompileError",
+            "reason": "(BuildHIR::lowerExpression) Support UpdateExpression where argument is a global",
+            "category": "Todo"
+          },
+          {
+            "fnName": "App",
+            "kind": "CompileSuccess",
+            "reason": null,
+            "category": null
+          }
+        ]
+      },
+      "preservedBuildErrors": [],
+      "hasCapture": true
+    },
+    "v3": {
+      "inputLockSha256": "f797a36ed1ccdac20594ce8780a8d72f93afd50ce7d3c433569c85e64956a4f3",
+      "buildProofSha256": "9dce99598054b3754d7481883f4aeb0276840b79811345beafe796359ea142d4",
+      "inputLockStatus": "PASS_R3F_FRAME_BASELINES_CANVAS_PREPARATION",
+      "buildStatus": "PASS_R3F_FRAME_BASELINES_CANVAS_BUILD",
+      "counts": {
+        "inputs": 14,
+        "staged": 13,
+        "packageSources": 53,
+        "rendererSourceBasis": 17,
+        "tarballs": 3,
+        "installed": 6092
+      },
+      "processes": {
+        "install": {
+          "exit": 0,
+          "stopped": null,
+          "spawnError": null
+        },
+        "typecheck": {
+          "exit": 0,
+          "stopped": null,
+          "spawnError": null
+        },
+        "build-native": {
+          "exit": 0,
+          "stopped": null,
+          "spawnError": null
+        },
+        "build-react": {
+          "exit": 0,
+          "stopped": null,
+          "spawnError": null
+        },
+        "build-react-frame": {
+          "exit": 0,
+          "stopped": null,
+          "spawnError": null
+        },
+        "build-imperative": {
+          "exit": 0,
+          "stopped": null,
+          "spawnError": null
+        }
+      },
+      "archiveIntegrity": [
+        {
+          "document": "implementation/2026-10-22-r3f-frame-baseline/proof-canvas-v3/input-lock.json",
+          "referenceRows": 6141,
+          "uniqueArchivePaths": 6141,
+          "verifiedUniquePaths": 6141,
+          "mismatchCount": 0,
+          "conflictingPaths": [],
+          "mismatches": []
+        },
+        {
+          "document": "implementation/2026-10-22-r3f-frame-baseline/proof-canvas-v3/build-proof.json",
+          "referenceRows": 6141,
+          "uniqueArchivePaths": 6141,
+          "verifiedUniquePaths": 6141,
+          "mismatchCount": 0,
+          "conflictingPaths": [],
+          "mismatches": []
+        }
+      ],
+      "packageGraphComparedWithPriorUnit": {
+        "packageSources": {
+          "currentCount": 53,
+          "previousCount": 53,
+          "added": [],
+          "removed": [],
+          "changed": [],
+          "identical": true
+        },
+        "tarballs": {
+          "currentCount": 3,
+          "previousCount": 3,
+          "added": [],
+          "removed": [],
+          "changed": [],
+          "identical": true
+        }
+      },
+      "supervisor": {
+        "command": [
+          "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+          "implementation/2026-10-22-r3f-frame-baseline/consumer/prepare.mjs",
+          "--proof-dir",
+          "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-r3f-frame-baseline/proof-canvas-v3"
+        ],
+        "startedAtUtc": "2026-10-22T02:11:13.391740+00:00",
+        "finishedAtUtc": "2026-10-22T02:11:22.749116+00:00",
+        "wallSeconds": 9.357508292014245,
+        "deadlineSeconds": 1200,
+        "exitCode": 0,
+        "stop": null,
+        "stdout": "implementation/2026-10-22-r3f-frame-baseline/verification/installed-build-v3-supervisor.stdout.log",
+        "stderr": "implementation/2026-10-22-r3f-frame-baseline/verification/installed-build-v3-supervisor.stderr.log"
+      },
+      "frameCapture": {
+        "sha256": "93e84b44ef1cccd39753ed8d6d2b1183936496d88e8fbfd0a54390c1a1b54ca3",
+        "status": "PASS",
+        "motionCompiled": {
+          "Position": true,
+          "Rotation": true
+        },
+        "events": [
+          {
+            "fnName": "Position",
+            "kind": "CompileSuccess",
+            "reason": null,
+            "category": null
+          },
+          {
+            "fnName": "Rotation",
+            "kind": "CompileSuccess",
+            "reason": null,
+            "category": null
+          },
+          {
+            "fnName": "FrameMarker",
+            "kind": "CompileSuccess",
+            "reason": null,
+            "category": null
+          },
+          {
+            "fnName": "RenderTakeover",
+            "kind": "CompileSuccess",
+            "reason": null,
+            "category": null
+          },
+          {
+            "fnName": "App",
+            "kind": "CompileSuccess",
+            "reason": null,
+            "category": null
+          }
+        ]
+      },
+      "preservedBuildErrors": [],
+      "hasCapture": true
+    }
+  },
+  "priorPackageGraph": {
+    "v1": {
+      "packageSources": {
+        "currentCount": 53,
+        "previousCount": 53,
+        "added": [],
+        "removed": [],
+        "changed": [],
+        "identical": true
+      },
+      "tarballs": {
+        "currentCount": 3,
+        "previousCount": 3,
+        "added": [],
+        "removed": [],
+        "changed": [],
+        "identical": true
+      }
+    },
+    "v2": {
+      "packageSources": {
+        "currentCount": 53,
+        "previousCount": 53,
+        "added": [],
+        "removed": [],
+        "changed": [],
+        "identical": true
+      },
+      "tarballs": {
+        "currentCount": 3,
+        "previousCount": 3,
+        "added": [],
+        "removed": [],
+        "changed": [],
+        "identical": true
+      }
+    },
+    "v3": {
+      "packageSources": {
+        "currentCount": 53,
+        "previousCount": 53,
+        "added": [],
+        "removed": [],
+        "changed": [],
+        "identical": true
+      },
+      "tarballs": {
+        "currentCount": 3,
+        "previousCount": 3,
+        "added": [],
+        "removed": [],
+        "changed": [],
+        "identical": true
+      }
+    }
+  },
+  "v1UnmanifestedRawFrameOutputs": {
+    "scope": "Read-only hashes of v1 frame-arm orphan transform/bundle outputs; no v1 diagnostics reconstructed.",
+    "items": [
+      {
+        "path": "implementation/2026-10-22-r3f-frame-baseline/proof-canvas-v1/transforms/react-frame/react-frame.tsx.js",
+        "kind": "file",
+        "sha256": "261f30b4665737aa47c52f232a43e5127ab03cb7ba88e57df402f663c249083f",
+        "bytes": 7826
+      },
+      {
+        "path": "implementation/2026-10-22-r3f-frame-baseline/proof-canvas-v1/transforms/react-frame/scene.ts.js",
+        "kind": "file",
+        "sha256": "468b8535ddd4a8dcc5fb1fc2295e54ce9297c84b09ef3b2097b7f65c5eb17d46",
+        "bytes": 10435
+      },
+      {
+        "path": "implementation/2026-10-22-r3f-frame-baseline/proof-canvas-v1/dist/react-frame/assets/EXRLoader-JOdohJpl.js",
+        "kind": "file",
+        "sha256": "17e839b5c041cad5b365cdcdb5cb4c0e1a2c040bbe5bc263c719d54194f2deee",
+        "bytes": 76370
+      },
+      {
+        "path": "implementation/2026-10-22-r3f-frame-baseline/proof-canvas-v1/dist/react-frame/assets/HDRCubeTextureLoader-CopL38Eh.js",
+        "kind": "file",
+        "sha256": "db3515ac228ea189648b7e8b469e11f24ea2ab426e961e6ede327b4f75ed6b25",
+        "bytes": 3712
+      },
+      {
+        "path": "implementation/2026-10-22-r3f-frame-baseline/proof-canvas-v1/dist/react-frame/assets/HDRLoader-8C27I1lB.js",
+        "kind": "file",
+        "sha256": "216824d553bbc50d7a114b83df9ba70c11da96d1826d82197ba8929b8358c9bc",
+        "bytes": 8940
+      },
+      {
+        "path": "implementation/2026-10-22-r3f-frame-baseline/proof-canvas-v1/dist/react-frame/assets/HDRLoader-C37_W0Qv.js",
+        "kind": "file",
+        "sha256": "c28714c9955068ce991c1cff0d567058e128088864ce90f8a59b7a3e7d08a7c5",
+        "bytes": 58
+      },
+      {
+        "path": "implementation/2026-10-22-r3f-frame-baseline/proof-canvas-v1/dist/react-frame/assets/UltraHDRLoader-CmNqACB0.js",
+        "kind": "file",
+        "sha256": "d6d252073e648f86856ce9b147661b102780609e7d2b7073e3b4aa0e394b8498",
+        "bytes": 14883
+      },
+      {
+        "path": "implementation/2026-10-22-r3f-frame-baseline/proof-canvas-v1/dist/react-frame/assets/react-frame-C-VNSpCF.js",
+        "kind": "file",
+        "sha256": "4ba7e85d51a63abd96246cb09d0663cc5c7f9f1ade8f826025b5d77f4850b8c5",
+        "bytes": 1030790
+      },
+      {
+        "path": "implementation/2026-10-22-r3f-frame-baseline/proof-canvas-v1/dist/react-frame/assets/three.core-E_EG327N.js",
+        "kind": "file",
+        "sha256": "58b0655b9cb06eff374653634f49d83fc81d3d9666518b4da4c03ca1489fd369",
+        "bytes": 1308583
+      },
+      {
+        "path": "implementation/2026-10-22-r3f-frame-baseline/proof-canvas-v1/dist/react-frame/react-frame.html",
+        "kind": "file",
+        "sha256": "b3b61707b6ddd0534d05d84278989d11e1c01d69631fefa9fcbb59a89800858b",
+        "bytes": 331
+      }
+    ],
+    "count": 10,
+    "allPresent": true
+  },
+  "untimedBrowserProof": {
+    "artifact": "implementation/2026-10-22-r3f-frame-baseline/proof-canvas-v3/canvas-proof-one-shot.json",
+    "sha256": "2ca84f88d30c57937a8c9e5737979cb53e756a7c220bd4a3bf8e48e50881ee45",
+    "status": "PASS_R3F_FRAME_BASELINES_CANVAS_UNTIMED_PROOF",
+    "expectedStatus": "PASS_R3F_FRAME_BASELINES_CANVAS_UNTIMED_PROOF",
+    "phase": "proof",
+    "browser": {
+      "version": "153.0.8010.12",
+      "headless": true,
+      "gpu": true
+    },
+    "browserClosed": true,
+    "order": [
+      "native",
+      "react",
+      "react-frame",
+      "imperative"
+    ],
+    "transport": "Offline intercepted synthetic HTTPS; no server",
+    "sourceBeforeRows": 12367,
+    "sourceAfterRows": 12367,
+    "sourceRowsEqual": true,
+    "allSourceMatches": true,
+    "outputsMatchAcrossArms": true,
+    "arms": [
+      {
+        "mode": "native",
+        "contextClosed": true,
+        "mount": {
+          "epoch": 0,
+          "checksum": 0,
+          "count": 256,
+          "retained": true
+        },
+        "warmupCount": 12,
+        "sampleCount": 60,
+        "firstEpoch": 1,
+        "lastEpoch": 72,
+        "allRetainedCount256": true,
+        "allLitPixelsNonzero": true,
+        "frameCountersEveryStep": null,
+        "teardownRenderCalls": null,
+        "allSamplesCountersNull": false,
+        "firstUpdateCounters": {
+          "store.numeric-kernel.runs": 256,
+          "store.numeric-kernel.rows": 256
+        },
+        "lastCounters": {
+          "store.numeric-kernel.runs": 18432,
+          "store.numeric-kernel.rows": 18432
+        },
+        "cleanup": {
+          "setupMs": 19.700000017881393,
+          "setupScope": "root.mount through activation; scene/root construction excluded",
+          "sceneChildren": 0,
+          "registeredSetters": 0,
+          "ownerCount": 0,
+          "pending": 0,
+          "counters": {
+            "store.numeric-kernel.runs": 18432,
+            "store.numeric-kernel.rows": 18432
+          }
+        },
+        "stopped": true,
+        "resourcesExpected": 512,
+        "resourcesDisposed": 512,
+        "duplicateDisposalEvents": 0,
+        "rendering": "Shared WebGLRenderer render/readPixels after Three Object3D graph validation; no presentation claim"
+      },
+      {
+        "mode": "react",
+        "contextClosed": true,
+        "mount": {
+          "epoch": 0,
+          "checksum": 0,
+          "count": 256,
+          "retained": true
+        },
+        "warmupCount": 12,
+        "sampleCount": 60,
+        "firstEpoch": 1,
+        "lastEpoch": 72,
+        "allRetainedCount256": true,
+        "allLitPixelsNonzero": true,
+        "frameCountersEveryStep": null,
+        "teardownRenderCalls": null,
+        "allSamplesCountersNull": true,
+        "firstUpdateCounters": null,
+        "lastCounters": null,
+        "cleanup": {
+          "setupMs": 13.300000011920929,
+          "setupScope": "R3F configure plus declarative root.render through activation; scene/camera/renderer construction excluded",
+          "sceneChildren": 0,
+          "registeredSetters": 0
+        },
+        "stopped": true,
+        "resourcesExpected": 512,
+        "resourcesDisposed": 512,
+        "duplicateDisposalEvents": 0,
+        "rendering": "Shared WebGLRenderer render/readPixels after Three Object3D graph validation; no presentation claim"
+      },
+      {
+        "mode": "react-frame",
+        "contextClosed": true,
+        "mount": {
+          "epoch": 0,
+          "checksum": 0,
+          "count": 256,
+          "retained": true
+        },
+        "warmupCount": 12,
+        "sampleCount": 60,
+        "firstEpoch": 1,
+        "lastEpoch": 72,
+        "allRetainedCount256": true,
+        "allLitPixelsNonzero": true,
+        "frameCountersEveryStep": true,
+        "teardownRenderCalls": 72,
+        "allSamplesCountersNull": false,
+        "firstUpdateCounters": {
+          "frameCallbacks": 257,
+          "motionCallbacks": 256,
+          "markerCallbacks": 1,
+          "renderTakeovers": 1,
+          "controlCommitsDuringUpdate": 0,
+          "drawsDuringAdvance": 0
+        },
+        "lastCounters": {
+          "frameCallbacks": 257,
+          "motionCallbacks": 256,
+          "markerCallbacks": 1,
+          "renderTakeovers": 1,
+          "controlCommitsDuringUpdate": 0,
+          "drawsDuringAdvance": 0
+        },
+        "cleanup": {
+          "setupMs": 13.900000005960464,
+          "setupScope": "R3F configure plus authored frame root.render through activation; scene/camera/renderer construction excluded",
+          "sceneChildren": 0,
+          "registeredSetters": 0,
+          "registeredFrameCallbacks": 0,
+          "rootStopped": true,
+          "renderCalls": 72
+        },
+        "stopped": true,
+        "resourcesExpected": 512,
+        "resourcesDisposed": 512,
+        "duplicateDisposalEvents": 0,
+        "rendering": "Shared WebGLRenderer render/readPixels after Three Object3D graph validation; no presentation claim"
+      },
+      {
+        "mode": "imperative",
+        "contextClosed": true,
+        "mount": {
+          "epoch": 0,
+          "checksum": 0,
+          "count": 256,
+          "retained": true
+        },
+        "warmupCount": 12,
+        "sampleCount": 60,
+        "firstEpoch": 1,
+        "lastEpoch": 72,
+        "allRetainedCount256": true,
+        "allLitPixelsNonzero": true,
+        "frameCountersEveryStep": null,
+        "teardownRenderCalls": null,
+        "allSamplesCountersNull": true,
+        "firstUpdateCounters": null,
+        "lastCounters": null,
+        "cleanup": {
+          "setupMs": 4.5,
+          "setupScope": "object creation and attachment; scene/group construction excluded",
+          "sceneChildren": 0,
+          "retainedObjects": 256
+        },
+        "stopped": true,
+        "resourcesExpected": 512,
+        "resourcesDisposed": 512,
+        "duplicateDisposalEvents": 0,
+        "rendering": "Shared WebGLRenderer render/readPixels after Three Object3D graph validation; no presentation claim"
+      }
+    ],
+    "frameCompilerOutcome": {
+      "status": "PASS",
+      "motionCompiled": {
+        "Position": true,
+        "Rotation": true
+      },
+      "compilerEvents": [
+        {
+          "filename": "/private/var/folders/6p/79mr8_4n34d9_2m75n54r1qc0000gn/T/r3act-r3f-frame-baselines-canvas-kWPiV8/react-frame.tsx",
+          "kind": "CompileSuccess",
+          "fnName": "Position",
+          "fnLoc": {
+            "start": {
+              "line": 32,
+              "column": 0,
+              "index": 1517
+            },
+            "end": {
+              "line": 49,
+              "column": 1,
+              "index": 2287
+            }
+          },
+          "loc": null,
+          "reason": null,
+          "detail": null,
+          "data": null,
+          "text": "CompileSuccess",
+          "metrics": {
+            "memoSlots": 10,
+            "memoBlocks": 5,
+            "memoValues": 6,
+            "prunedMemoBlocks": 0,
+            "prunedMemoValues": 0
+          }
+        },
+        {
+          "filename": "/private/var/folders/6p/79mr8_4n34d9_2m75n54r1qc0000gn/T/r3act-r3f-frame-baselines-canvas-kWPiV8/react-frame.tsx",
+          "kind": "CompileSuccess",
+          "fnName": "Rotation",
+          "fnLoc": {
+            "start": {
+              "line": 51,
+              "column": 0,
+              "index": 2289
+            },
+            "end": {
+              "line": 68,
+              "column": 1,
+              "index": 3062
+            }
+          },
+          "loc": null,
+          "reason": null,
+          "detail": null,
+          "data": null,
+          "text": "CompileSuccess",
+          "metrics": {
+            "memoSlots": 10,
+            "memoBlocks": 5,
+            "memoValues": 6,
+            "prunedMemoBlocks": 0,
+            "prunedMemoValues": 0
+          }
+        },
+        {
+          "filename": "/private/var/folders/6p/79mr8_4n34d9_2m75n54r1qc0000gn/T/r3act-r3f-frame-baselines-canvas-kWPiV8/react-frame.tsx",
+          "kind": "CompileSuccess",
+          "fnName": "FrameMarker",
+          "fnLoc": {
+            "start": {
+              "line": 70,
+              "column": 0,
+              "index": 3064
+            },
+            "end": {
+              "line": 78,
+              "column": 1,
+              "index": 3424
+            }
+          },
+          "loc": null,
+          "reason": null,
+          "detail": null,
+          "data": null,
+          "text": "CompileSuccess",
+          "metrics": {
+            "memoSlots": 4,
+            "memoBlocks": 3,
+            "memoValues": 4,
+            "prunedMemoBlocks": 0,
+            "prunedMemoValues": 0
+          }
+        },
+        {
+          "filename": "/private/var/folders/6p/79mr8_4n34d9_2m75n54r1qc0000gn/T/r3act-r3f-frame-baselines-canvas-kWPiV8/react-frame.tsx",
+          "kind": "CompileSuccess",
+          "fnName": "RenderTakeover",
+          "fnLoc": {
+            "start": {
+              "line": 80,
+              "column": 0,
+              "index": 3426
+            },
+            "end": {
+              "line": 88,
+              "column": 1,
+              "index": 3705
+            }
+          },
+          "loc": null,
+          "reason": null,
+          "detail": null,
+          "data": null,
+          "text": "CompileSuccess",
+          "metrics": {
+            "memoSlots": 4,
+            "memoBlocks": 2,
+            "memoValues": 3,
+            "prunedMemoBlocks": 0,
+            "prunedMemoValues": 0
+          }
+        },
+        {
+          "filename": "/private/var/folders/6p/79mr8_4n34d9_2m75n54r1qc0000gn/T/r3act-r3f-frame-baselines-canvas-kWPiV8/react-frame.tsx",
+          "kind": "CompileSuccess",
+          "fnName": "App",
+          "fnLoc": {
+            "start": {
+              "line": 90,
+              "column": 0,
+              "index": 3707
+            },
+            "end": {
+              "line": 97,
+              "column": 1,
+              "index": 4320
+            }
+          },
+          "loc": null,
+          "reason": null,
+          "detail": null,
+          "data": null,
+          "text": "CompileSuccess",
+          "metrics": {
+            "memoSlots": 3,
+            "memoBlocks": 2,
+            "memoValues": 3,
+            "prunedMemoBlocks": 0,
+            "prunedMemoValues": 0
+          }
+        }
+      ]
+    },
+    "blockedRequestCount": 0,
+    "requestFailures": [],
+    "pageErrors": [],
+    "consoleErrors": [],
+    "errors": [],
+    "cleanupErrors": [],
+    "timingStats": null
+  },
+  "timing": {
+    "authorization": {
+      "status": "APPROVED_FOR_ONE_R3F_FRAME_BASELINES_CANVAS_TIMING_COMPARISON",
+      "scope": "Primary reviewed installed proof v3: compiled R3F frame components, public scheduler callbacks and exactly one common draw per frame, matching all four outputs and cleanup. One fixed-order Native/declarative React/R3F-frame/imperative descriptive comparison; no repeat, old-Native arm or equivalent Store-contract claim.",
+      "buildProofSha256": "9dce99598054b3754d7481883f4aeb0276840b79811345beafe796359ea142d4",
+      "inputLockSha256": "f797a36ed1ccdac20594ce8780a8d72f93afd50ce7d3c433569c85e64956a4f3",
+      "proofSha256": "2ca84f88d30c57937a8c9e5737979cb53e756a7c220bd4a3bf8e48e50881ee45"
+    },
+    "authorizationChain": {
+      "buildProofSha256": {
+        "expected": "9dce99598054b3754d7481883f4aeb0276840b79811345beafe796359ea142d4",
+        "actual": "9dce99598054b3754d7481883f4aeb0276840b79811345beafe796359ea142d4",
+        "matches": true
+      },
+      "inputLockSha256": {
+        "expected": "f797a36ed1ccdac20594ce8780a8d72f93afd50ce7d3c433569c85e64956a4f3",
+        "actual": "f797a36ed1ccdac20594ce8780a8d72f93afd50ce7d3c433569c85e64956a4f3",
+        "matches": true
+      },
+      "proofSha256": {
+        "expected": "2ca84f88d30c57937a8c9e5737979cb53e756a7c220bd4a3bf8e48e50881ee45",
+        "actual": "2ca84f88d30c57937a8c9e5737979cb53e756a7c220bd4a3bf8e48e50881ee45",
+        "matches": true
+      },
+      "authorizationSha256": {
+        "expected": "3cfabbb2517c33165817f762641dc7631efeaa57ded70e7bcb8fd5925c418d82",
+        "actual": "3cfabbb2517c33165817f762641dc7631efeaa57ded70e7bcb8fd5925c418d82",
+        "matches": true
+      }
+    },
+    "result": {
+      "artifact": "implementation/2026-10-22-r3f-frame-baseline/proof-canvas-v3/canvas-timing-one-shot.json",
+      "sha256": "d77c37750f91bf44e1aa54a2d05c12c388e9b1aa6fbefc6c7aebd490b29fd7da",
+      "status": "PASS_R3F_FRAME_BASELINES_CANVAS_DESCRIPTIVE_TIMING",
+      "expectedStatus": "PASS_R3F_FRAME_BASELINES_CANVAS_DESCRIPTIVE_TIMING",
+      "phase": "timing",
+      "browser": {
+        "version": "153.0.8010.12",
+        "headless": true,
+        "gpu": true
+      },
+      "browserClosed": true,
+      "order": [
+        "native",
+        "react",
+        "react-frame",
+        "imperative"
+      ],
+      "transport": "Offline intercepted synthetic HTTPS; no server",
+      "sourceBeforeRows": 12367,
+      "sourceAfterRows": 12367,
+      "sourceRowsEqual": true,
+      "allSourceMatches": true,
+      "outputsMatchAcrossArms": true,
+      "arms": [
+        {
+          "mode": "native",
+          "contextClosed": true,
+          "mount": {
+            "epoch": 0,
+            "checksum": 0,
+            "count": 256,
+            "retained": true
+          },
+          "warmupCount": 12,
+          "sampleCount": 60,
+          "firstEpoch": 1,
+          "lastEpoch": 72,
+          "allRetainedCount256": true,
+          "allLitPixelsNonzero": true,
+          "frameCountersEveryStep": null,
+          "teardownRenderCalls": null,
+          "allSamplesCountersNull": true,
+          "firstUpdateCounters": null,
+          "lastCounters": null,
+          "cleanup": {
+            "setupMs": 18.400000005960464,
+            "setupScope": "root.mount through activation; scene/root construction excluded",
+            "sceneChildren": 0,
+            "registeredSetters": 0,
+            "ownerCount": 0,
+            "pending": 0,
+            "counters": {}
+          },
+          "stopped": true,
+          "resourcesExpected": 512,
+          "resourcesDisposed": 512,
+          "duplicateDisposalEvents": 0,
+          "rendering": "Shared WebGLRenderer render/readPixels after Three Object3D graph validation; no presentation claim"
+        },
+        {
+          "mode": "react",
+          "contextClosed": true,
+          "mount": {
+            "epoch": 0,
+            "checksum": 0,
+            "count": 256,
+            "retained": true
+          },
+          "warmupCount": 12,
+          "sampleCount": 60,
+          "firstEpoch": 1,
+          "lastEpoch": 72,
+          "allRetainedCount256": true,
+          "allLitPixelsNonzero": true,
+          "frameCountersEveryStep": null,
+          "teardownRenderCalls": null,
+          "allSamplesCountersNull": true,
+          "firstUpdateCounters": null,
+          "lastCounters": null,
+          "cleanup": {
+            "setupMs": 12.699999988079071,
+            "setupScope": "R3F configure plus declarative root.render through activation; scene/camera/renderer construction excluded",
+            "sceneChildren": 0,
+            "registeredSetters": 0
+          },
+          "stopped": true,
+          "resourcesExpected": 512,
+          "resourcesDisposed": 512,
+          "duplicateDisposalEvents": 0,
+          "rendering": "Shared WebGLRenderer render/readPixels after Three Object3D graph validation; no presentation claim"
+        },
+        {
+          "mode": "react-frame",
+          "contextClosed": true,
+          "mount": {
+            "epoch": 0,
+            "checksum": 0,
+            "count": 256,
+            "retained": true
+          },
+          "warmupCount": 12,
+          "sampleCount": 60,
+          "firstEpoch": 1,
+          "lastEpoch": 72,
+          "allRetainedCount256": true,
+          "allLitPixelsNonzero": true,
+          "frameCountersEveryStep": false,
+          "teardownRenderCalls": null,
+          "allSamplesCountersNull": true,
+          "firstUpdateCounters": null,
+          "lastCounters": null,
+          "cleanup": {
+            "setupMs": 13.5,
+            "setupScope": "R3F configure plus authored frame root.render through activation; scene/camera/renderer construction excluded",
+            "sceneChildren": 0,
+            "registeredSetters": 0,
+            "registeredFrameCallbacks": 0,
+            "rootStopped": true
+          },
+          "stopped": true,
+          "resourcesExpected": 512,
+          "resourcesDisposed": 512,
+          "duplicateDisposalEvents": 0,
+          "rendering": "Shared WebGLRenderer render/readPixels after Three Object3D graph validation; no presentation claim"
+        },
+        {
+          "mode": "imperative",
+          "contextClosed": true,
+          "mount": {
+            "epoch": 0,
+            "checksum": 0,
+            "count": 256,
+            "retained": true
+          },
+          "warmupCount": 12,
+          "sampleCount": 60,
+          "firstEpoch": 1,
+          "lastEpoch": 72,
+          "allRetainedCount256": true,
+          "allLitPixelsNonzero": true,
+          "frameCountersEveryStep": null,
+          "teardownRenderCalls": null,
+          "allSamplesCountersNull": true,
+          "firstUpdateCounters": null,
+          "lastCounters": null,
+          "cleanup": {
+            "setupMs": 4.699999988079071,
+            "setupScope": "object creation and attachment; scene/group construction excluded",
+            "sceneChildren": 0,
+            "retainedObjects": 256
+          },
+          "stopped": true,
+          "resourcesExpected": 512,
+          "resourcesDisposed": 512,
+          "duplicateDisposalEvents": 0,
+          "rendering": "Shared WebGLRenderer render/readPixels after Three Object3D graph validation; no presentation claim"
+        }
+      ],
+      "frameCompilerOutcome": {
+        "status": "PASS",
+        "motionCompiled": {
+          "Position": true,
+          "Rotation": true
+        },
+        "compilerEvents": [
+          {
+            "filename": "/private/var/folders/6p/79mr8_4n34d9_2m75n54r1qc0000gn/T/r3act-r3f-frame-baselines-canvas-kWPiV8/react-frame.tsx",
+            "kind": "CompileSuccess",
+            "fnName": "Position",
+            "fnLoc": {
+              "start": {
+                "line": 32,
+                "column": 0,
+                "index": 1517
+              },
+              "end": {
+                "line": 49,
+                "column": 1,
+                "index": 2287
+              }
+            },
+            "loc": null,
+            "reason": null,
+            "detail": null,
+            "data": null,
+            "text": "CompileSuccess",
+            "metrics": {
+              "memoSlots": 10,
+              "memoBlocks": 5,
+              "memoValues": 6,
+              "prunedMemoBlocks": 0,
+              "prunedMemoValues": 0
+            }
+          },
+          {
+            "filename": "/private/var/folders/6p/79mr8_4n34d9_2m75n54r1qc0000gn/T/r3act-r3f-frame-baselines-canvas-kWPiV8/react-frame.tsx",
+            "kind": "CompileSuccess",
+            "fnName": "Rotation",
+            "fnLoc": {
+              "start": {
+                "line": 51,
+                "column": 0,
+                "index": 2289
+              },
+              "end": {
+                "line": 68,
+                "column": 1,
+                "index": 3062
+              }
+            },
+            "loc": null,
+            "reason": null,
+            "detail": null,
+            "data": null,
+            "text": "CompileSuccess",
+            "metrics": {
+              "memoSlots": 10,
+              "memoBlocks": 5,
+              "memoValues": 6,
+              "prunedMemoBlocks": 0,
+              "prunedMemoValues": 0
+            }
+          },
+          {
+            "filename": "/private/var/folders/6p/79mr8_4n34d9_2m75n54r1qc0000gn/T/r3act-r3f-frame-baselines-canvas-kWPiV8/react-frame.tsx",
+            "kind": "CompileSuccess",
+            "fnName": "FrameMarker",
+            "fnLoc": {
+              "start": {
+                "line": 70,
+                "column": 0,
+                "index": 3064
+              },
+              "end": {
+                "line": 78,
+                "column": 1,
+                "index": 3424
+              }
+            },
+            "loc": null,
+            "reason": null,
+            "detail": null,
+            "data": null,
+            "text": "CompileSuccess",
+            "metrics": {
+              "memoSlots": 4,
+              "memoBlocks": 3,
+              "memoValues": 4,
+              "prunedMemoBlocks": 0,
+              "prunedMemoValues": 0
+            }
+          },
+          {
+            "filename": "/private/var/folders/6p/79mr8_4n34d9_2m75n54r1qc0000gn/T/r3act-r3f-frame-baselines-canvas-kWPiV8/react-frame.tsx",
+            "kind": "CompileSuccess",
+            "fnName": "RenderTakeover",
+            "fnLoc": {
+              "start": {
+                "line": 80,
+                "column": 0,
+                "index": 3426
+              },
+              "end": {
+                "line": 88,
+                "column": 1,
+                "index": 3705
+              }
+            },
+            "loc": null,
+            "reason": null,
+            "detail": null,
+            "data": null,
+            "text": "CompileSuccess",
+            "metrics": {
+              "memoSlots": 4,
+              "memoBlocks": 2,
+              "memoValues": 3,
+              "prunedMemoBlocks": 0,
+              "prunedMemoValues": 0
+            }
+          },
+          {
+            "filename": "/private/var/folders/6p/79mr8_4n34d9_2m75n54r1qc0000gn/T/r3act-r3f-frame-baselines-canvas-kWPiV8/react-frame.tsx",
+            "kind": "CompileSuccess",
+            "fnName": "App",
+            "fnLoc": {
+              "start": {
+                "line": 90,
+                "column": 0,
+                "index": 3707
+              },
+              "end": {
+                "line": 97,
+                "column": 1,
+                "index": 4320
+              }
+            },
+            "loc": null,
+            "reason": null,
+            "detail": null,
+            "data": null,
+            "text": "CompileSuccess",
+            "metrics": {
+              "memoSlots": 3,
+              "memoBlocks": 2,
+              "memoValues": 3,
+              "prunedMemoBlocks": 0,
+              "prunedMemoValues": 0
+            }
+          }
+        ]
+      },
+      "blockedRequestCount": 0,
+      "requestFailures": [],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "errors": [],
+      "cleanupErrors": [],
+      "timingStats": {
+        "native": {
+          "publishMs": {
+            "n": 60,
+            "medianCentralTwo": 4.1,
+            "p95NearestRank": 4.9,
+            "unit": "ms"
+          },
+          "updateThroughDrawMs": {
+            "n": 60,
+            "medianCentralTwo": 6.6,
+            "p95NearestRank": 7.5,
+            "unit": "ms"
+          },
+          "stateAgeMs": {
+            "n": 60,
+            "medianCentralTwo": 4.1,
+            "p95NearestRank": 5.0,
+            "unit": "ms"
+          },
+          "callbackMs": {
+            "n": 60,
+            "medianCentralTwo": 6.6,
+            "p95NearestRank": 7.5,
+            "unit": "ms"
+          },
+          "rafIntervalMs": {
+            "n": 60,
+            "medianCentralTwo": 16.7,
+            "p95NearestRank": 16.8,
+            "unit": "ms"
+          }
+        },
+        "react": {
+          "publishMs": {
+            "n": 60,
+            "medianCentralTwo": 0.8,
+            "p95NearestRank": 1.0,
+            "unit": "ms"
+          },
+          "updateThroughDrawMs": {
+            "n": 60,
+            "medianCentralTwo": 3.55,
+            "p95NearestRank": 4.4,
+            "unit": "ms"
+          },
+          "stateAgeMs": {
+            "n": 60,
+            "medianCentralTwo": 0.8,
+            "p95NearestRank": 1.1,
+            "unit": "ms"
+          },
+          "callbackMs": {
+            "n": 60,
+            "medianCentralTwo": 3.55,
+            "p95NearestRank": 4.4,
+            "unit": "ms"
+          },
+          "rafIntervalMs": {
+            "n": 60,
+            "medianCentralTwo": 16.7,
+            "p95NearestRank": 16.7,
+            "unit": "ms"
+          }
+        },
+        "react-frame": {
+          "publishMs": {
+            "n": 60,
+            "medianCentralTwo": 3.1,
+            "p95NearestRank": 3.4,
+            "unit": "ms"
+          },
+          "updateThroughDrawMs": {
+            "n": 60,
+            "medianCentralTwo": 5.7,
+            "p95NearestRank": 6.2,
+            "unit": "ms"
+          },
+          "stateAgeMs": {
+            "n": 60,
+            "medianCentralTwo": 3.1,
+            "p95NearestRank": 3.4,
+            "unit": "ms"
+          },
+          "callbackMs": {
+            "n": 60,
+            "medianCentralTwo": 5.7,
+            "p95NearestRank": 6.2,
+            "unit": "ms"
+          },
+          "rafIntervalMs": {
+            "n": 60,
+            "medianCentralTwo": 16.7,
+            "p95NearestRank": 16.7,
+            "unit": "ms"
+          }
+        },
+        "imperative": {
+          "publishMs": {
+            "n": 60,
+            "medianCentralTwo": 0.1,
+            "p95NearestRank": 0.2,
+            "unit": "ms"
+          },
+          "updateThroughDrawMs": {
+            "n": 60,
+            "medianCentralTwo": 3.3,
+            "p95NearestRank": 5.4,
+            "unit": "ms"
+          },
+          "stateAgeMs": {
+            "n": 60,
+            "medianCentralTwo": 0.1,
+            "p95NearestRank": 0.4,
+            "unit": "ms"
+          },
+          "callbackMs": {
+            "n": 60,
+            "medianCentralTwo": 3.3,
+            "p95NearestRank": 5.4,
+            "unit": "ms"
+          },
+          "rafIntervalMs": {
+            "n": 60,
+            "medianCentralTwo": 16.7,
+            "p95NearestRank": 16.7,
+            "unit": "ms"
+          }
+        }
+      }
+    },
+    "nativeParity": {
+      "status": "FAIL",
+      "byReactPath": {
+        "react": {
+          "publishMs": {
+            "nativeMedian": 4.1,
+            "reactMedian": 0.8,
+            "nativeP95": 4.9,
+            "reactP95": 1.0,
+            "nativeLosesBoth": true
+          },
+          "updateThroughDrawMs": {
+            "nativeMedian": 6.6,
+            "reactMedian": 3.55,
+            "nativeP95": 7.5,
+            "reactP95": 4.4,
+            "nativeLosesBoth": true
+          }
+        },
+        "react-frame": {
+          "publishMs": {
+            "nativeMedian": 4.1,
+            "reactMedian": 3.1,
+            "nativeP95": 4.9,
+            "reactP95": 3.4,
+            "nativeLosesBoth": true
+          },
+          "updateThroughDrawMs": {
+            "nativeMedian": 6.6,
+            "reactMedian": 5.7,
+            "nativeP95": 7.5,
+            "reactP95": 6.2,
+            "nativeLosesBoth": true
+          }
+        }
+      }
+    },
+    "nonClaims": [
+      "One fixed-order observation is descriptive, not a causal old/new saving.",
+      "No population-tail, presentation, automatic-frameloop, cold/memory, independent-device, or maintenance claim is established.",
+      "The Native update-step and useFrame update-step have different semantics."
+    ]
+  },
+  "astraSourceLockedReview": {
+    "sourceLock": "implementation/2026-10-22-owned-execution-review/source-lock.json",
+    "head": "04b7757e606de235f228ee4f9966f39e28feb2e1",
+    "fileRows": 26,
+    "productionRows": 16,
+    "productionAllMatchHead": true,
+    "allLockRowsMatchGateArchive": true,
+    "rows": [
+      {
+        "path": "AGENTS.md",
+        "expected": {
+          "sha256": "c9965c9989e1193935ef1cc9c216436aff3d5c361408e7f1f70cb5a1e9b24d5c",
+          "bytes": 2995
+        },
+        "current": {
+          "kind": "file",
+          "sha256": "c9965c9989e1193935ef1cc9c216436aff3d5c361408e7f1f70cb5a1e9b24d5c",
+          "bytes": 2995
+        },
+        "currentMatchesLock": true,
+        "gateArchiveRow": true,
+        "headBlob": null,
+        "matchesHead": true
+      },
+      {
+        "path": "final-master-plan.md",
+        "expected": {
+          "sha256": "fb008bfa3ad589a5ecd18fc61b481a2c934a6c0689e8d47cf48d85ed8c94daf5",
+          "bytes": 203849
+        },
+        "current": {
+          "kind": "file",
+          "sha256": "86a0741fe87e135da88ceee9d9ab75a7dc2378873d09e4b65e89244806c7881c",
+          "bytes": 205589
+        },
+        "currentMatchesLock": false,
+        "gateArchiveRow": true,
+        "headBlob": null,
+        "matchesHead": true
+      },
+      {
+        "path": "implementation-checkpoint.md",
+        "expected": {
+          "sha256": "4f7475ef2bec40ab38b0a149fa3fd773fc90b68d913f3fe6f541eaa6f87c2530",
+          "bytes": 195759
+        },
+        "current": {
+          "kind": "file",
+          "sha256": "94cecc3a074f97de266fb189dd7046cc94015db058a5c31e5314173553c471f1",
+          "bytes": 197499
+        },
+        "currentMatchesLock": false,
+        "gateArchiveRow": true,
+        "headBlob": null,
+        "matchesHead": true
+      },
+      {
+        "path": "src/component_state_runtime.ts",
+        "expected": {
+          "sha256": "216b14ec7ee65a06d17481efd6a6e775997cd2ee76003e195c19a04667f0ae37",
+          "bytes": 463435
+        },
+        "current": {
+          "kind": "file",
+          "sha256": "216b14ec7ee65a06d17481efd6a6e775997cd2ee76003e195c19a04667f0ae37",
+          "bytes": 463435
+        },
+        "currentMatchesLock": true,
+        "gateArchiveRow": true,
+        "headBlob": {
+          "kind": "git-blob",
+          "sha256": "216b14ec7ee65a06d17481efd6a6e775997cd2ee76003e195c19a04667f0ae37",
+          "bytes": 463435
+        },
+        "matchesHead": true
+      },
+      {
+        "path": "src/async_store_runtime.ts",
+        "expected": {
+          "sha256": "0924139a8c8d3da25a3dccab185c8bb5d1d86ce47fa59b1e768f01d51d1a88a4",
+          "bytes": 61445
+        },
+        "current": {
+          "kind": "file",
+          "sha256": "0924139a8c8d3da25a3dccab185c8bb5d1d86ce47fa59b1e768f01d51d1a88a4",
+          "bytes": 61445
+        },
+        "currentMatchesLock": true,
+        "gateArchiveRow": true,
+        "headBlob": {
+          "kind": "git-blob",
+          "sha256": "0924139a8c8d3da25a3dccab185c8bb5d1d86ce47fa59b1e768f01d51d1a88a4",
+          "bytes": 61445
+        },
+        "matchesHead": true
+      },
+      {
+        "path": "src/owner_state_world.ts",
+        "expected": {
+          "sha256": "2639d879a2a6216913f9bbed94ff5a90728ce82b532f01609ba27ea4169cc241",
+          "bytes": 83054
+        },
+        "current": {
+          "kind": "file",
+          "sha256": "2639d879a2a6216913f9bbed94ff5a90728ce82b532f01609ba27ea4169cc241",
+          "bytes": 83054
+        },
+        "currentMatchesLock": true,
+        "gateArchiveRow": true,
+        "headBlob": {
+          "kind": "git-blob",
+          "sha256": "2639d879a2a6216913f9bbed94ff5a90728ce82b532f01609ba27ea4169cc241",
+          "bytes": 83054
+        },
+        "matchesHead": true
+      },
+      {
+        "path": "src/closed_store_host_program.ts",
+        "expected": {
+          "sha256": "ac7a8aa4de3de4166d5f8614be84d8fcb3773d4ef2034490a633d3c255af169b",
+          "bytes": 12673
+        },
+        "current": {
+          "kind": "file",
+          "sha256": "ac7a8aa4de3de4166d5f8614be84d8fcb3773d4ef2034490a633d3c255af169b",
+          "bytes": 12673
+        },
+        "currentMatchesLock": true,
+        "gateArchiveRow": true,
+        "headBlob": {
+          "kind": "git-blob",
+          "sha256": "ac7a8aa4de3de4166d5f8614be84d8fcb3773d4ef2034490a633d3c255af169b",
+          "bytes": 12673
+        },
+        "matchesHead": true
+      },
+      {
+        "path": "src/closed_store_numeric_kernel.ts",
+        "expected": {
+          "sha256": "c1dde8e2408d2b74a2c1514afb2fca909ba196ffb016dc68f3064f347d94bc9f",
+          "bytes": 2801
+        },
+        "current": {
+          "kind": "file",
+          "sha256": "c1dde8e2408d2b74a2c1514afb2fca909ba196ffb016dc68f3064f347d94bc9f",
+          "bytes": 2801
+        },
+        "currentMatchesLock": true,
+        "gateArchiveRow": true,
+        "headBlob": {
+          "kind": "git-blob",
+          "sha256": "c1dde8e2408d2b74a2c1514afb2fca909ba196ffb016dc68f3064f347d94bc9f",
+          "bytes": 2801
+        },
+        "matchesHead": true
+      },
+      {
+        "path": "src/closed_numeric_expression.ts",
+        "expected": {
+          "sha256": "0d36410a70799dfa060720cce8cf614dae844f61a1d810a35bb1fa0328deef4b",
+          "bytes": 10345
+        },
+        "current": {
+          "kind": "file",
+          "sha256": "0d36410a70799dfa060720cce8cf614dae844f61a1d810a35bb1fa0328deef4b",
+          "bytes": 10345
+        },
+        "currentMatchesLock": true,
+        "gateArchiveRow": true,
+        "headBlob": {
+          "kind": "git-blob",
+          "sha256": "0d36410a70799dfa060720cce8cf614dae844f61a1d810a35bb1fa0328deef4b",
+          "bytes": 10345
+        },
+        "matchesHead": true
+      },
+      {
+        "path": "src/closed_host_value.ts",
+        "expected": {
+          "sha256": "fe2090bcb59220bdf3f600d6417669cff71806f24cc751851a2b19f12ac82625",
+          "bytes": 6714
+        },
+        "current": {
+          "kind": "file",
+          "sha256": "fe2090bcb59220bdf3f600d6417669cff71806f24cc751851a2b19f12ac82625",
+          "bytes": 6714
+        },
+        "currentMatchesLock": true,
+        "gateArchiveRow": true,
+        "headBlob": {
+          "kind": "git-blob",
+          "sha256": "fe2090bcb59220bdf3f600d6417669cff71806f24cc751851a2b19f12ac82625",
+          "bytes": 6714
+        },
+        "matchesHead": true
+      },
+      {
+        "path": "src/closed_host_tree.ts",
+        "expected": {
+          "sha256": "f98eab1b75b899e25ffe2dbdc929bfce4b70db1b73b5bdbf4c2e0979e1a651ba",
+          "bytes": 4828
+        },
+        "current": {
+          "kind": "file",
+          "sha256": "f98eab1b75b899e25ffe2dbdc929bfce4b70db1b73b5bdbf4c2e0979e1a651ba",
+          "bytes": 4828
+        },
+        "currentMatchesLock": true,
+        "gateArchiveRow": true,
+        "headBlob": {
+          "kind": "git-blob",
+          "sha256": "f98eab1b75b899e25ffe2dbdc929bfce4b70db1b73b5bdbf4c2e0979e1a651ba",
+          "bytes": 4828
+        },
+        "matchesHead": true
+      },
+      {
+        "path": "src/owned_store_record.ts",
+        "expected": {
+          "sha256": "d35724ace29889d475131b0e2775bdd4e4e5ee75582ffdf56ef474a9afe377e8",
+          "bytes": 5250
+        },
+        "current": {
+          "kind": "file",
+          "sha256": "d35724ace29889d475131b0e2775bdd4e4e5ee75582ffdf56ef474a9afe377e8",
+          "bytes": 5250
+        },
+        "currentMatchesLock": true,
+        "gateArchiveRow": true,
+        "headBlob": {
+          "kind": "git-blob",
+          "sha256": "d35724ace29889d475131b0e2775bdd4e4e5ee75582ffdf56ef474a9afe377e8",
+          "bytes": 5250
+        },
+        "matchesHead": true
+      },
+      {
+        "path": "src/jsx_binding_runtime.ts",
+        "expected": {
+          "sha256": "37ed8d97ca89c373938f6a2eb6d68225fd314e80e9b5e637ba93643d63787875",
+          "bytes": 27133
+        },
+        "current": {
+          "kind": "file",
+          "sha256": "37ed8d97ca89c373938f6a2eb6d68225fd314e80e9b5e637ba93643d63787875",
+          "bytes": 27133
+        },
+        "currentMatchesLock": true,
+        "gateArchiveRow": true,
+        "headBlob": {
+          "kind": "git-blob",
+          "sha256": "37ed8d97ca89c373938f6a2eb6d68225fd314e80e9b5e637ba93643d63787875",
+          "bytes": 27133
+        },
+        "matchesHead": true
+      },
+      {
+        "path": "src/compiled_semantic_plan.ts",
+        "expected": {
+          "sha256": "3670f897a67043799daa2767b2ad3813b8147a7b7025345f7e90bfc6eeb02f6d",
+          "bytes": 6221
+        },
+        "current": {
+          "kind": "file",
+          "sha256": "3670f897a67043799daa2767b2ad3813b8147a7b7025345f7e90bfc6eeb02f6d",
+          "bytes": 6221
+        },
+        "currentMatchesLock": true,
+        "gateArchiveRow": true,
+        "headBlob": {
+          "kind": "git-blob",
+          "sha256": "3670f897a67043799daa2767b2ad3813b8147a7b7025345f7e90bfc6eeb02f6d",
+          "bytes": 6221
+        },
+        "matchesHead": true
+      },
+      {
+        "path": "src/closed_store_numeric_kernel_test.ts",
+        "expected": {
+          "sha256": "7a9e113c59ee33df39323696d62c9ccdca7e87dc6b2c76a088626141611d1f00",
+          "bytes": 13138
+        },
+        "current": {
+          "kind": "file",
+          "sha256": "7a9e113c59ee33df39323696d62c9ccdca7e87dc6b2c76a088626141611d1f00",
+          "bytes": 13138
+        },
+        "currentMatchesLock": true,
+        "gateArchiveRow": true,
+        "headBlob": {
+          "kind": "git-blob",
+          "sha256": "7a9e113c59ee33df39323696d62c9ccdca7e87dc6b2c76a088626141611d1f00",
+          "bytes": 13138
+        },
+        "matchesHead": true
+      },
+      {
+        "path": "src/vdom_snapshot_runtime.ts",
+        "expected": {
+          "sha256": "64182dd0379ac665cf4d554f687f883c18fe113eb9f6274a3325f08f9186f054",
+          "bytes": 298779
+        },
+        "current": {
+          "kind": "file",
+          "sha256": "64182dd0379ac665cf4d554f687f883c18fe113eb9f6274a3325f08f9186f054",
+          "bytes": 298779
+        },
+        "currentMatchesLock": true,
+        "gateArchiveRow": true,
+        "headBlob": {
+          "kind": "git-blob",
+          "sha256": "64182dd0379ac665cf4d554f687f883c18fe113eb9f6274a3325f08f9186f054",
+          "bytes": 298779
+        },
+        "matchesHead": true
+      },
+      {
+        "path": "compiler/oxc-spike/src/main.rs",
+        "expected": {
+          "sha256": "a5529752d251216fcf9746b62dcfa2b5aca35794e926347a925903a52199f4d9",
+          "bytes": 557707
+        },
+        "current": {
+          "kind": "file",
+          "sha256": "a5529752d251216fcf9746b62dcfa2b5aca35794e926347a925903a52199f4d9",
+          "bytes": 557707
+        },
+        "currentMatchesLock": true,
+        "gateArchiveRow": true,
+        "headBlob": {
+          "kind": "git-blob",
+          "sha256": "a5529752d251216fcf9746b62dcfa2b5aca35794e926347a925903a52199f4d9",
+          "bytes": 557707
+        },
+        "matchesHead": true
+      },
+      {
+        "path": "compiler/oxc-spike/src/store_numeric_kernel.rs",
+        "expected": {
+          "sha256": "816f3dbb66db40e03ad393e3dfd6d140cde7e7bd9acb8fcc5c2a24fdc2140fc2",
+          "bytes": 7107
+        },
+        "current": {
+          "kind": "file",
+          "sha256": "816f3dbb66db40e03ad393e3dfd6d140cde7e7bd9acb8fcc5c2a24fdc2140fc2",
+          "bytes": 7107
+        },
+        "currentMatchesLock": true,
+        "gateArchiveRow": true,
+        "headBlob": {
+          "kind": "git-blob",
+          "sha256": "816f3dbb66db40e03ad393e3dfd6d140cde7e7bd9acb8fcc5c2a24fdc2140fc2",
+          "bytes": 7107
+        },
+        "matchesHead": true
+      },
+      {
+        "path": "compiler/oxc-spike/src/mixed_store_numeric_program.rs",
+        "expected": {
+          "sha256": "bdf48eebd4baa39333c086b5aba40b8cc1bcd4efc711b1c418cde0deffe2b328",
+          "bytes": 10304
+        },
+        "current": {
+          "kind": "file",
+          "sha256": "bdf48eebd4baa39333c086b5aba40b8cc1bcd4efc711b1c418cde0deffe2b328",
+          "bytes": 10304
+        },
+        "currentMatchesLock": true,
+        "gateArchiveRow": true,
+        "headBlob": {
+          "kind": "git-blob",
+          "sha256": "bdf48eebd4baa39333c086b5aba40b8cc1bcd4efc711b1c418cde0deffe2b328",
+          "bytes": 10304
+        },
+        "matchesHead": true
+      },
+      {
+        "path": "implementation/2026-10-22-astra-realtime-gap/report.md",
+        "expected": {
+          "sha256": "f85c1c8cf54e95c1f55d9fb4f4a3a0d3002d870cd559ed1b2f3fdbeee8abc453",
+          "bytes": 32708
+        },
+        "current": {
+          "kind": "file",
+          "sha256": "f85c1c8cf54e95c1f55d9fb4f4a3a0d3002d870cd559ed1b2f3fdbeee8abc453",
+          "bytes": 32708
+        },
+        "currentMatchesLock": true,
+        "gateArchiveRow": true,
+        "headBlob": null,
+        "matchesHead": true
+      },
+      {
+        "path": "implementation/2026-10-22-astra-realtime-gap/orchestration.md",
+        "expected": {
+          "sha256": "9ef02a8748ebfaeb63a8aa1d9c4a01a3c8fda86511e89a9b4082d5b0c7fdf059",
+          "bytes": 26994
+        },
+        "current": {
+          "kind": "file",
+          "sha256": "9ef02a8748ebfaeb63a8aa1d9c4a01a3c8fda86511e89a9b4082d5b0c7fdf059",
+          "bytes": 26994
+        },
+        "currentMatchesLock": true,
+        "gateArchiveRow": true,
+        "headBlob": null,
+        "matchesHead": true
+      },
+      {
+        "path": "implementation/2026-10-22-closed-store-contraction/design.md",
+        "expected": {
+          "sha256": "113b22c551a5ddf7f1d6d3cdf964286c7999f30ed6322ce34e138c369355c3f3",
+          "bytes": 4354
+        },
+        "current": {
+          "kind": "file",
+          "sha256": "113b22c551a5ddf7f1d6d3cdf964286c7999f30ed6322ce34e138c369355c3f3",
+          "bytes": 4354
+        },
+        "currentMatchesLock": true,
+        "gateArchiveRow": true,
+        "headBlob": null,
+        "matchesHead": true
+      },
+      {
+        "path": "implementation/2026-10-22-closed-store-contraction/source-review.md",
+        "expected": {
+          "sha256": "2f57cd1ca4147d40fc6500125a83e2b7e45baf1897b049ba7cd1ea38722013ac",
+          "bytes": 4656
+        },
+        "current": {
+          "kind": "file",
+          "sha256": "2f57cd1ca4147d40fc6500125a83e2b7e45baf1897b049ba7cd1ea38722013ac",
+          "bytes": 4656
+        },
+        "currentMatchesLock": true,
+        "gateArchiveRow": true,
+        "headBlob": null,
+        "matchesHead": true
+      },
+      {
+        "path": "implementation/2026-10-22-closed-store-contraction/results.md",
+        "expected": {
+          "sha256": "37708a72b12daa547440fe337de6e10f5833e01a511a3c4e9b5307523bcd9ca2",
+          "bytes": 6604
+        },
+        "current": {
+          "kind": "file",
+          "sha256": "37708a72b12daa547440fe337de6e10f5833e01a511a3c4e9b5307523bcd9ca2",
+          "bytes": 6604
+        },
+        "currentMatchesLock": true,
+        "gateArchiveRow": true,
+        "headBlob": null,
+        "matchesHead": true
+      },
+      {
+        "path": "implementation/2026-10-22-closed-store-contraction/summary.json",
+        "expected": {
+          "sha256": "f872fd6da99f34cbd386d43582205461c21865fe4f4d71bf0daf8c2c4c54c924",
+          "bytes": 12753
+        },
+        "current": {
+          "kind": "file",
+          "sha256": "f872fd6da99f34cbd386d43582205461c21865fe4f4d71bf0daf8c2c4c54c924",
+          "bytes": 12753
+        },
+        "currentMatchesLock": true,
+        "gateArchiveRow": true,
+        "headBlob": null,
+        "matchesHead": true
+      },
+      {
+        "path": "implementation/2026-10-22-r3f-frame-baseline/design.md",
+        "expected": {
+          "sha256": "891fb972062473d4fba4a3f81c851316245a2c64e19ec4b47475f3b329df0592",
+          "bytes": 5333
+        },
+        "current": {
+          "kind": "file",
+          "sha256": "891fb972062473d4fba4a3f81c851316245a2c64e19ec4b47475f3b329df0592",
+          "bytes": 5333
+        },
+        "currentMatchesLock": true,
+        "gateArchiveRow": true,
+        "headBlob": null,
+        "matchesHead": true
+      }
+    ],
+    "reviewDocuments": [
+      {
+        "path": "implementation/2026-10-22-owned-execution-review/report.md",
+        "kind": "file",
+        "sha256": "61e72f4942b5b682e48ee6d12948b574dbf6b5f71f5d34eb85e0e5eb43fd5fcf",
+        "bytes": 17944
+      },
+      {
+        "path": "implementation/2026-10-22-owned-execution-review/orchestration.md",
+        "kind": "file",
+        "sha256": "ac7b672c8bdeb67650145f4835c4c8cda387bd2682c4449cbb0f59d8ca56fc3b",
+        "bytes": 13587
+      }
+    ],
+    "currentMasterAndCheckpointFollowons": [
+      {
+        "path": "final-master-plan.md",
+        "kind": "file",
+        "sha256": "86a0741fe87e135da88ceee9d9ab75a7dc2378873d09e4b65e89244806c7881c",
+        "bytes": 205589,
+        "gateHash": "fb008bfa3ad589a5ecd18fc61b481a2c934a6c0689e8d47cf48d85ed8c94daf5",
+        "differsFromGate": true
+      },
+      {
+        "path": "implementation-checkpoint.md",
+        "kind": "file",
+        "sha256": "94cecc3a074f97de266fb189dd7046cc94015db058a5c31e5314173553c471f1",
+        "bytes": 197499,
+        "gateHash": "4f7475ef2bec40ab38b0a149fa3fd773fc90b68d913f3fe6f541eaa6f87c2530",
+        "differsFromGate": true
+      }
+    ],
+    "proposedABIImplemented": false,
+    "note": "The Astra source-locked execution report is a proposal; matching source locks do not implement its ABI or authorize performance claims."
+  },
+  "cacheInventory": {
+    "path": "implementation/2026-10-22-r3f-frame-baseline/verification/cache-raw-inventory.json",
+    "count": 284,
+    "status": "PASS",
+    "cleanupPerformed": false
+  },
+  "auditErrors": []
+}

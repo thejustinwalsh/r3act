@@ -1,0 +1,9 @@
+# Host resource lifetime installed boundary
+
+This unit reuses the previous installed async application and collector under a new proof identity. App, scene, controller and React comparator bytes stay unchanged. A separate installed Node consumer checks the new host lifetime semantics before building, using public package exports. It performs no timing and does not warm the browser. Actual compiled DOM/Three group and failure coverage runs in the consolidated gate.
+
+Prepare fresh five-tarball proof with prepare.mjs --proof-dir NEW_CHILD; run verify-browser.mjs --proof-dir CHILD --phase proof once. Review build, installed resource conformance and untimed complete async/fork/urgent/cancel/dispose evidence before primary authorizes one timing pair with the exact build/input/untimed hash chain. Then run phase timing once. Preserve every failure and raw interval; no favorable retry or additional diagnostic. Collector schema names stay compatible with the preceding async protocol.
+
+Both browser arms retain separate installed static graphs. Timing is twenty real urgent button dispatches to matching MutationObserver callback entry, plus final C settlement to matching entry, with timer quantum recorded. Earlier observer/harness work and scheduling are included, paint excluded. No CPU, cold/memory, population-tail, physical input/presentation, network/frontier, independent-device or release-budget claim follows. Three remains an object tree without WebGL. The pair observes a complete existing application; it does not isolate reference-count cost or measure shared-resource destruction latency. New ownership bookkeeping has no performance qualification.
+
+Browser execution is headless, GPU-disabled, interruptible and bounded to ninety seconds, using exact offline synthetic HTTPS assets. No project server or VM is started and no memory limit increases. Prior historic wins/losses, exhausted Recording A and physical HOLD remain.
