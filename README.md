@@ -23,6 +23,10 @@ Our central ambition is **one application state model driving multiple renderers
 
 ## What the evidence says
 
+The [bound scalar slice](implementation/2026-10-22-bound-scalar-execution/results.md) passes correctness and named installed reuse/delivery proofs but fails its sole realtime comparison: Native update 7.35/8.10ms versus declarative React Compiler/R3F 0.80/0.90ms median/p95. Source reuse is verified; no performance advantage is established.
+
+Earlier boundaries below retain their own source and workload scope.
+
 Verified emitted arithmetic now passes consolidated correctness and installed baseline/minified/rebundled delivery, including CSP without unsafe-eval. The single four-arm timing still loses: Native update median/p95 2.70/7.30ms versus declarative React Compiler/R3F 0.55/0.70ms; through-draw5.00/10.80 versus2.50/2.80ms. [Current results](implementation/2026-10-22-verified-scalar-execution/results.md) preserve the negative tail and all failures. This is no causal old/new, presentation, matched cold/memory or independent-device result; the full goal remains open.
 
 The enclosed scalar pipeline passes73 consolidated phases,1191 runtime tests,101 Rust tests and53 compiled fixtures. Fresh installed proof verifies matching canvas outputs, retained identities and exactly-once resource cleanup. Its sole four-arm comparison still loses: Native update median/p953.00/3.70ms versus declarative React Compiler/R3F0.70/0.90ms; through-draw5.60/6.30 versus3.25/3.90ms. This is one descriptive episode, not a causal saving or presentation/cold/memory/independent-device result. [Current results and limits](implementation/2026-10-22-owned-scalar-pipeline/results.md) preserve the failure and full product scope. Arithmetic remains interpreted; [Astra's proposed compiler execution slice](implementation/2026-10-22-astra-scalar-gap-deep-dive/orchestration.md) is unimplemented and has no speed forecast.

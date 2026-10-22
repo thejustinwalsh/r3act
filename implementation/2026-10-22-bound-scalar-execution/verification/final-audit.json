@@ -1,0 +1,574 @@
+{
+  "schemaVersion": 1,
+  "unit": "2026-10-22-bound-scalar-execution",
+  "status": "PASS",
+  "disposition": {
+    "correctness": "PASS",
+    "boundAndCompiledDelivery": "PASS",
+    "realtimeParity": "FAIL"
+  },
+  "auditScope": "Static evidence audit only; no workload, test, build, browser, gate or timing rerun.",
+  "checks": {
+    "gates": {
+      "darwin-v1": {
+        "status": "FAIL",
+        "actual": {
+          "platform": "darwin",
+          "arch": "arm64"
+        },
+        "phaseCounts": {
+          "PASS": 11,
+          "FAIL": 62,
+          "SKIPPED_DEPENDENCY_FAILED": 1
+        },
+        "phaseCount": 74,
+        "compiledFixturePhases": 54,
+        "compiledFixtureStatusCounts": {
+          "PASS": 0,
+          "FAIL": 54
+        },
+        "deno": {
+          "status": "FAIL",
+          "testSummary": null,
+          "runtimeAssertionsExecuted": false
+        },
+        "rustTests": {
+          "passed": 105,
+          "failed": 0
+        },
+        "rustBuild": "PASS",
+        "sourceBeforeCount": 1910,
+        "sourceAfterCount": 1910,
+        "sourceAuditMatch": true,
+        "archiveInputCount": 1920,
+        "archiveUnavailableContextCount": 0
+      },
+      "darwin-v2": {
+        "status": "FAIL",
+        "actual": {
+          "platform": "darwin",
+          "arch": "arm64"
+        },
+        "phaseCounts": {
+          "PASS": 70,
+          "FAIL": 3,
+          "SKIPPED_DEPENDENCY_FAILED": 1
+        },
+        "phaseCount": 74,
+        "compiledFixturePhases": 54,
+        "compiledFixtureStatusCounts": {
+          "PASS": 54,
+          "FAIL": 0
+        },
+        "deno": {
+          "status": "FAIL",
+          "testSummary": null,
+          "runtimeAssertionsExecuted": false
+        },
+        "rustTests": {
+          "passed": 105,
+          "failed": 0
+        },
+        "rustBuild": "PASS",
+        "sourceBeforeCount": 1910,
+        "sourceAfterCount": 1910,
+        "sourceAuditMatch": true,
+        "archiveInputCount": 1920,
+        "archiveUnavailableContextCount": 0
+      },
+      "darwin-v3": {
+        "status": "FAIL",
+        "actual": {
+          "platform": "darwin",
+          "arch": "arm64"
+        },
+        "phaseCounts": {
+          "PASS": 73,
+          "FAIL": 1,
+          "SKIPPED_DEPENDENCY_FAILED": 0
+        },
+        "phaseCount": 74,
+        "compiledFixturePhases": 54,
+        "compiledFixtureStatusCounts": {
+          "PASS": 54,
+          "FAIL": 0
+        },
+        "deno": {
+          "status": "FAIL",
+          "testSummary": {
+            "passed": 1222,
+            "failed": 1
+          },
+          "runtimeAssertionsExecuted": true
+        },
+        "rustTests": {
+          "passed": 105,
+          "failed": 0
+        },
+        "rustBuild": "PASS",
+        "sourceBeforeCount": 1910,
+        "sourceAfterCount": 1910,
+        "sourceAuditMatch": true,
+        "archiveInputCount": 1920,
+        "archiveUnavailableContextCount": 0
+      },
+      "darwin-v4": {
+        "status": "PASS",
+        "actual": {
+          "platform": "darwin",
+          "arch": "arm64"
+        },
+        "phaseCounts": {
+          "PASS": 74,
+          "FAIL": 0,
+          "SKIPPED_DEPENDENCY_FAILED": 0
+        },
+        "phaseCount": 74,
+        "compiledFixturePhases": 54,
+        "compiledFixtureStatusCounts": {
+          "PASS": 54,
+          "FAIL": 0
+        },
+        "deno": {
+          "status": "PASS",
+          "testSummary": {
+            "passed": 1223,
+            "failed": 0
+          },
+          "runtimeAssertionsExecuted": true
+        },
+        "rustTests": {
+          "passed": 105,
+          "failed": 0
+        },
+        "rustBuild": "PASS",
+        "sourceBeforeCount": 1910,
+        "sourceAfterCount": 1910,
+        "sourceAuditMatch": true,
+        "archiveInputCount": 1920,
+        "archiveUnavailableContextCount": 0
+      }
+    },
+    "preservedFailureInterpretation": {
+      "launcher": {
+        "classification": "launcher failure before product gate",
+        "command": "env PATH=... CI=true CARGO_HOME=... CARGO_BUILD_JOBS=1 -u CARGO_TARGET_DIR -u CARGO_BUILD_TARGET -u npm_config_store_dir python3 implementation/2026-10-20-closed-collection-rows/run-bounded.py ...",
+        "exitCode": 127,
+        "stderr": "env: -u: No such file or directory",
+        "note": "Corrected env option ordering; this did not start the bounded supervisor or product gate."
+      },
+      "darwinV1": {
+        "syntaxFailure": true,
+        "denoTestSummary": null,
+        "compiled54ImportSyntaxFailure": true,
+        "rust105": {
+          "passed": 105,
+          "failed": 0
+        }
+      },
+      "darwinV2": {
+        "regionIndexTypeFailure": true,
+        "denoTestSummary": null
+      },
+      "darwinV3": {
+        "denoTestSummary": {
+          "passed": 1222,
+          "failed": 1
+        },
+        "failedAssertionLine102": true,
+        "correctedDiagnosis": true
+      },
+      "darwinV4": {
+        "denoTestSummary": {
+          "passed": 1223,
+          "failed": 0
+        },
+        "allCompiled54Pass": true,
+        "packagingValidation": "PASS"
+      }
+    },
+    "proof": {
+      "v1LaunchOnlyFailure": {
+        "status": "INCOMPLETE",
+        "contextsStarted": 0,
+        "sourceBeforeMatches": 12396,
+        "sourceAfterCount": 0,
+        "chromeSigabrtEpRem": true,
+        "noTimingPhase": true
+      },
+      "proofV2": {
+        "status": "PASS_R3F_FRAME_BASELINES_CANVAS_UNTIMED_PROOF",
+        "sameBuildProofBytesAsV1": true,
+        "sameInputLockBytesAsV1": true,
+        "buildProofSha256": "80a023c234118105631c743697bf55004c6f14162f9df1ec82f1c102f915193f",
+        "inputLockSha256": "ceab39d8daf3b6d98318d8122e7d4ef00c4a6f64f10272d68f959e4a721c6ecd",
+        "proofSha256": "0ba628b683a3573df8321a9fbffd3493eee6e8d198e372c8b2487a67c3f2d2f1",
+        "referencesOriginalV1Assets": true,
+        "contexts": 6,
+        "closedContexts": 6,
+        "baselineArms": [
+          "native",
+          "react",
+          "react-frame",
+          "imperative"
+        ],
+        "deliveryArms": [
+          "native-minified",
+          "native-rebundled"
+        ],
+        "perSampleOutputsMatch": true,
+        "resourceExpected": 3072,
+        "resourceDisposed": 3072,
+        "duplicateDisposals": 0,
+        "sourceBefore": {
+          "count": 12396,
+          "matched": 12396
+        },
+        "sourceAfter": {
+          "count": 12396,
+          "matched": 12396
+        },
+        "compiledDelivery": {
+          "status": "PASS_VERIFIED_SCALAR_DELIVERY",
+          "variants": [
+            "baseline",
+            "minified",
+            "rebundled"
+          ],
+          "csp": "unsafe-eval blocked; only the explicit negative probe violates policy"
+        },
+        "deliveryCsp": {
+          "native-minified": {
+            "blocked": true,
+            "violations": [
+              "eval"
+            ]
+          },
+          "native-rebundled": {
+            "blocked": true,
+            "violations": [
+              "eval"
+            ]
+          }
+        },
+        "frameCompiler": "PASS",
+        "motionCompiled": {
+          "Position": true,
+          "Rotation": true
+        },
+        "all257RowsVerifiedAndWarmAfterFirstFrame": true,
+        "finalNativeCounters": {
+          "native": {
+            "store.owned-data.verified-rows": 18504,
+            "store.owned-data.batches": 72,
+            "store.bound-input.reused-rows": 18247,
+            "store.mounted-scalar.warm-rows": 18249,
+            "store.mounted-scalar.cold-rows": 255
+          },
+          "native-minified": {
+            "store.owned-data.verified-rows": 18504,
+            "store.owned-data.batches": 72,
+            "store.bound-input.reused-rows": 18247,
+            "store.mounted-scalar.warm-rows": 18249,
+            "store.mounted-scalar.cold-rows": 255
+          },
+          "native-rebundled": {
+            "store.owned-data.verified-rows": 18504,
+            "store.owned-data.batches": 72,
+            "store.bound-input.reused-rows": 18247,
+            "store.mounted-scalar.warm-rows": 18249,
+            "store.mounted-scalar.cold-rows": 255
+          }
+        },
+        "errorCounts": {
+          "errors": 0,
+          "pageErrors": 0,
+          "consoleErrors": 0,
+          "blockedRequests": 0,
+          "requestFailures": 0,
+          "cleanupErrors": 0
+        },
+        "browserClosed": true
+      }
+    },
+    "timing": {
+      "status": "PASS_R3F_FRAME_BASELINES_CANVAS_DESCRIPTIVE_TIMING",
+      "supervisorExit": 0,
+      "supervisorStop": null,
+      "supervisorWallSeconds": 11.444458791986108,
+      "authorizationSha256": "912f86ae46cdf930679d4f15110483ee579e1ced77fa7c7626d94a9404a89982",
+      "authorizationStatus": "APPROVED_FOR_ONE_R3F_FRAME_BASELINES_CANVAS_TIMING_COMPARISON",
+      "timingRecordSha256": "fc4b3ef88778723d4e65de2e62a5caa4a6e63c676bb601c7539434cfb7387a23",
+      "buildProofSha256": "80a023c234118105631c743697bf55004c6f14162f9df1ec82f1c102f915193f",
+      "inputLockSha256": "ceab39d8daf3b6d98318d8122e7d4ef00c4a6f64f10272d68f959e4a721c6ecd",
+      "priorProofSha256": "0ba628b683a3573df8321a9fbffd3493eee6e8d198e372c8b2487a67c3f2d2f1",
+      "authorizedBindingsMatch": true,
+      "contexts": 4,
+      "armOrder": [
+        "native",
+        "react",
+        "react-frame",
+        "imperative"
+      ],
+      "allContextsClosed": true,
+      "deliveryContexts": 0,
+      "all12Warmup60MeasuredNullCounter": true,
+      "metricsMs": {
+        "native": {
+          "publishMs": {
+            "n": 60,
+            "median": 7.3499999940395355,
+            "p95NearestRank": 8.099999994039536
+          },
+          "updateThroughDrawMs": {
+            "n": 60,
+            "median": 9.599999994039536,
+            "p95NearestRank": 10.5
+          },
+          "stateAgeMs": {
+            "n": 60,
+            "median": 7.4000000059604645,
+            "p95NearestRank": 8.100000023841858
+          },
+          "callbackMs": {
+            "n": 60,
+            "median": 9.599999994039536,
+            "p95NearestRank": 10.5
+          },
+          "rafIntervalMs": {
+            "n": 60,
+            "median": 16.699999999999932,
+            "p95NearestRank": 16.700000000000045
+          }
+        },
+        "react": {
+          "publishMs": {
+            "n": 60,
+            "median": 0.800000011920929,
+            "p95NearestRank": 0.9000000059604645
+          },
+          "updateThroughDrawMs": {
+            "n": 60,
+            "median": 3.5999999940395355,
+            "p95NearestRank": 4.199999988079071
+          },
+          "stateAgeMs": {
+            "n": 60,
+            "median": 0.800000011920929,
+            "p95NearestRank": 1
+          },
+          "callbackMs": {
+            "n": 60,
+            "median": 3.5999999940395355,
+            "p95NearestRank": 4.199999988079071
+          },
+          "rafIntervalMs": {
+            "n": 60,
+            "median": 16.699999999999932,
+            "p95NearestRank": 16.700000000000045
+          }
+        },
+        "react-frame": {
+          "publishMs": {
+            "n": 60,
+            "median": 3.100000023841858,
+            "p95NearestRank": 3.5
+          },
+          "updateThroughDrawMs": {
+            "n": 60,
+            "median": 5.800000011920929,
+            "p95NearestRank": 6.299999982118607
+          },
+          "stateAgeMs": {
+            "n": 60,
+            "median": 3.199999988079071,
+            "p95NearestRank": 3.5
+          },
+          "callbackMs": {
+            "n": 60,
+            "median": 5.800000011920929,
+            "p95NearestRank": 6.299999982118607
+          },
+          "rafIntervalMs": {
+            "n": 60,
+            "median": 16.699999999999932,
+            "p95NearestRank": 16.700000000000045
+          }
+        },
+        "imperative": {
+          "publishMs": {
+            "n": 60,
+            "median": 0.0,
+            "p95NearestRank": 0.19999998807907104
+          },
+          "updateThroughDrawMs": {
+            "n": 60,
+            "median": 3.0999999940395355,
+            "p95NearestRank": 4
+          },
+          "stateAgeMs": {
+            "n": 60,
+            "median": 0.09999999403953552,
+            "p95NearestRank": 0.20000001788139343
+          },
+          "callbackMs": {
+            "n": 60,
+            "median": 3.0999999940395355,
+            "p95NearestRank": 4
+          },
+          "rafIntervalMs": {
+            "n": 60,
+            "median": 16.699999999999932,
+            "p95NearestRank": 16.700000000000045
+          }
+        }
+      },
+      "nativeReactParity": {
+        "status": "FAIL",
+        "checks": {
+          "publishMs": {
+            "nativeMedianAtOrBelowReact": false,
+            "nativeP95AtOrBelowReact": false
+          },
+          "updateThroughDrawMs": {
+            "nativeMedianAtOrBelowReact": false,
+            "nativeP95AtOrBelowReact": false
+          }
+        }
+      },
+      "summaryDocumentMatchesRaw": true,
+      "sourceBefore": {
+        "count": 12396,
+        "matched": 12396
+      },
+      "sourceAfter": {
+        "count": 12396,
+        "matched": 12396
+      },
+      "resourcesExpected": 2048,
+      "resourcesDisposed": 2048,
+      "duplicateDisposals": 0,
+      "errorCounts": {
+        "errors": 0,
+        "pageErrors": 0,
+        "consoleErrors": 0,
+        "blockedRequests": 0,
+        "requestFailures": 0,
+        "cleanupErrors": 0
+      }
+    },
+    "currentVersusGateInventory": {
+      "gateV4Inputs": 1910,
+      "currentMismatches": [
+        "README.md",
+        "implementation/2026-10-22-bound-scalar-execution/source-review.md"
+      ],
+      "missing": [],
+      "mismatchSetIsDocumentationOnly": true,
+      "contextArchiveInputs": 1920,
+      "contextualDocChangesSinceArchive": [
+        "README.md",
+        "implementation/2026-10-22-bound-scalar-execution/source-review.md",
+        "final-master-plan.md",
+        "implementation-checkpoint.md",
+        "HANDOFF-PROMPT.txt",
+        "RESEARCH-GUIDE.md",
+        "docs/native-authoring-reference.md"
+      ],
+      "contextMissing": [],
+      "knownContextDocChangeSet": true,
+      "overallCurrentRepositoryInventoryMatch": false,
+      "claimWholeCurrentInventoryMatch": false,
+      "supplementalOrOutsideSnapshot": [
+        "paper.md",
+        "research.ipynb",
+        "implementation/2026-10-22-bound-scalar-execution/results.md",
+        "implementation/2026-10-22-bound-scalar-execution/evidence/timing-summary.json",
+        "implementation/2026-10-22-bound-scalar-execution/verification/browser-launch-recovery.json"
+      ]
+    },
+    "consumerAndWrapperPreservation": {
+      "initialCopyEntryCount": 31,
+      "intentionalToolDifferences": [
+        "implementation/2026-10-22-bound-scalar-execution/consumer/prepare.mjs",
+        "implementation/2026-10-22-bound-scalar-execution/consumer/verify.mjs"
+      ],
+      "otherConsumerSourcePackageOrWorkloadDifferences": [],
+      "buildScriptUnchanged": true,
+      "allOtherCopiedInputsUnchanged": true,
+      "generatedTrackedWrappersArchivedAndRestored": true,
+      "wrapperCount": 4
+    },
+    "documentationAndNotebook": {
+      "checkedDocuments": {
+        "README.md": {
+          "hasBoundScalarSection": true,
+          "hasNegativeParityDisposition": true,
+          "containsNativeReactResult": true,
+          "numericSummaryExpected": true
+        },
+        "RESEARCH-GUIDE.md": {
+          "hasBoundScalarSection": true,
+          "hasNegativeParityDisposition": true,
+          "containsNativeReactResult": true,
+          "numericSummaryExpected": true
+        },
+        "HANDOFF-PROMPT.txt": {
+          "hasBoundScalarSection": true,
+          "hasNegativeParityDisposition": true,
+          "containsNativeReactResult": true,
+          "numericSummaryExpected": false
+        },
+        "final-master-plan.md": {
+          "hasBoundScalarSection": true,
+          "hasNegativeParityDisposition": true,
+          "containsNativeReactResult": true,
+          "numericSummaryExpected": false
+        },
+        "implementation-checkpoint.md": {
+          "hasBoundScalarSection": true,
+          "hasNegativeParityDisposition": true,
+          "containsNativeReactResult": true,
+          "numericSummaryExpected": false
+        },
+        "docs/native-authoring-reference.md": {
+          "hasBoundScalarSection": false,
+          "hasNegativeParityDisposition": true,
+          "containsNativeReactResult": false,
+          "numericSummaryExpected": false
+        },
+        "paper.md": {
+          "hasBoundScalarSection": true,
+          "hasNegativeParityDisposition": true,
+          "containsNativeReactResult": true,
+          "numericSummaryExpected": true
+        }
+      },
+      "resultsAndReviewClaims": {
+        "resultsHasCorrectFinalDisposition": true,
+        "resultsIncludesV1ToV4History": true,
+        "resultsIncludesCorrectedV3Assertion": true,
+        "resultsIncludesOpenLimits": true,
+        "sourceReviewCorrectsV3Assertion": true,
+        "sourceReviewStatesParityFail": true,
+        "numericSummaryDocsMatchRawMedian": true
+      },
+      "notebook": {
+        "headCellCount": 245,
+        "currentCellCount": 246,
+        "oldPrefixUnchanged": true,
+        "newCellCount": 1,
+        "newCellHasFinalGateAndParity": true
+      },
+      "remainingQualificationGaps": [
+        "full-plan HMR delivery",
+        "broader structural/reveal behavior",
+        "cold/setup/retained-memory qualification",
+        "independent-device qualification",
+        "human maintenance evidence"
+      ],
+      "inventoryCaveat": "Documentation, paper, notebook and post-gate recovery/proof artifacts are supplemental; current whole-repository inventory is not claimed to match the gate snapshot."
+    }
+  },
+  "findings": []
+}

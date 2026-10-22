@@ -362,11 +362,13 @@ try {
     "compiled_ranged_owner_kernel_test", "compiled_retained_store_clock_test",
     "compiled_structural_owner_scope_test", "compiled_store_numeric_kernel_test",
     "compiled_mixed_numeric_inputs_test", "compiled_closed_store_contraction_test",
-    "compiled_owned_store_execution_test"];
+    "compiled_owned_store_execution_test", "compiled_mounted_scalar_execution_test"];
   for (const [index, fixture] of fixtures.entries()) {
     const name = `compiled-${String(index + 1).padStart(2, "0")}`;
     const before = await compilerHash();
-    await runStep(name, process.execPath, ["--experimental-transform-types", `compiler/${fixture}.mjs`],
+    await runStep(name, process.execPath, ["--experimental-transform-types",
+      ...(fixture === "compiled_mounted_scalar_execution_test" ? ["--expose-gc"] : []),
+      `compiler/${fixture}.mjs`],
       { depends: ["install", "cargo-debug", "compiler-info"], deadlineMs: 300_000,
         env: fixture === "compiled_publication_callbacks_execution_test"
           ? { R3ACT_CAPTURED_COMPILER_SHA256: before ?? "" } : {} });

@@ -1,6 +1,7 @@
 import {
   canRetireOwnedWorldOwner,
   captureOwnedClosedWorldInputs,
+  bindOwnedClosedWorldInputRequest,
   createClosedWorldCellCut,
   validateClosedWorldCellCut,
   validateCanonicalClosedWorldPhase,
@@ -280,6 +281,50 @@ Deno.test("owned World capture retains exact cell and lineage and declines overr
   assertEquals(captureOwnedClosedWorldInputs(new Proxy(world, {}), [
     { owner: child, sites: ["position"] },
   ]), null);
+});
+
+Deno.test("bound World descriptions retain order but capture fresh cells", () => {
+  const world = new OwnerStateWorld();
+  const owner = world.resolveOwner(null, "bound-world");
+  const [, firstDispatch] = world.useState(owner, "first", 2);
+  world.useState(owner, "second", 4);
+  const sites = ["second", "first"];
+  const bound = bindOwnedClosedWorldInputRequest({ owner, sites });
+  if (!bound) throw new Error("World binding declined");
+  sites.reverse();
+  const first = captureOwnedClosedWorldInputs(world, [bound]);
+  if (!first) throw new Error("bound World capture declined");
+  assertEquals(first[0].cells.map((cell) => cell.value), [4, 2]);
+  firstDispatch(7);
+  const next = captureOwnedClosedWorldInputs(world, [bound]);
+  if (!next) throw new Error("updated bound World capture declined");
+  assertEquals(next[0].cells.map((cell) => cell.value), [4, 7]);
+  assertEquals(next[0].cells[1].version, first[0].cells[1].version + 1);
+  assertEquals(captureOwnedClosedWorldInputs(world, [new Proxy(bound, {})]), null);
+  assertEquals(captureOwnedClosedWorldInputs(world,
+    [Object.freeze({}) as unknown as typeof bound]), null);
+  let constructorForged = false;
+  try {
+    const Constructor = bound.constructor as unknown as new (...args: unknown[]) => typeof bound;
+    new Constructor(Symbol("forged"), { owner, sites: ["first"] });
+    constructorForged = true;
+  } catch { /* expected */ }
+  assertEquals(constructorForged, false);
+  const ReceiptClass = bound.constructor as unknown as {
+    unwrap: (...args: unknown[]) => unknown;
+  };
+  assertEquals(ReceiptClass.unwrap(Symbol("forged"), bound), null);
+  const originalUnwrap = ReceiptClass.unwrap;
+  ReceiptClass.unwrap = () => { throw new Error("public unwrap replacement ran"); };
+  try {
+    assertEquals(captureOwnedClosedWorldInputs(world, [bound])?.[0].cells[1].value, 7);
+  } finally { ReceiptClass.unwrap = originalUnwrap; }
+  const stale = bindOwnedClosedWorldInputRequest({ owner, sites: ["missing"] });
+  if (!stale) throw new Error("missing-site binding declined");
+  assertEquals(captureOwnedClosedWorldInputs(world, [stale]), null);
+  world.ownerLineage = (() => { throw new Error("bound capture called override"); }) as
+    typeof world.ownerLineage;
+  assertEquals(captureOwnedClosedWorldInputs(world, [bound]), null);
 });
 
 Deno.test("direct World capture entry cannot inspect caller requests", () => {

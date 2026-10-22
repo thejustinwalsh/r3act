@@ -43,7 +43,8 @@ Deno.test("closed Store wrapper updates props while retaining an independently c
       inputs: [{ storeUseSiteId: storeSite, storeProp: "clock", paths: [[]] }],
       host: { tag: "group", key: "motion", child: null,
         props: [["rotation-y", { kind: "input", index: 0 }]] },
-    } });
+    }, closedStoreExecution: { schemaVersion: 1, kind: "owned-data",
+      componentProgramId: motionSite, moduleRevision: revision } });
   class ReentrantHost extends MemoryVDOMHost {
     onWrite: (() => void) | undefined;
     override setProp(node: MemoryNode, name: string, value: unknown,
@@ -54,8 +55,10 @@ Deno.test("closed Store wrapper updates props while retaining an independently c
   }
   const host = new ReentrantHost();
   const container = host.createContainer();
+  const frames: Record<string, number>[] = [];
   const root = new ComponentStateRoot(host, container,
-    { rootId: "retained-store-child", scheduleCommit() {} });
+    { rootId: "retained-store-child", scheduleCommit() {},
+      profileCounter: (counters) => frames.push(counters) });
   try {
     root.mount(jsx(Motion, { key: "motion-owner", clock,
       children: jsx(Child, { key: "child-owner" }) }));
@@ -83,6 +86,10 @@ Deno.test("closed Store wrapper updates props while retaining an independently c
     assertEquals(motionRenders, 1);
     assertEquals(childRenders, 1);
     assertEquals(childCleanup, 0);
+    clock.dispatch(3);
+    assertEquals(root.flush(), true);
+    assertEquals(group.props["rotation-y"], 3);
+    assertStrictEquals(group.children[0], child);
     assert(setChild);
     setChild(3);
     root.flush();
@@ -94,6 +101,12 @@ Deno.test("closed Store wrapper updates props while retaining an independently c
     assertEquals(child.props.x, 3);
     assertEquals(group.props["rotation-y"], 4);
     assertEquals(childCleanup, 0);
+    const total = (name: string) => frames.reduce((sum, frame) =>
+      sum + (frame[name] ?? 0), 0);
+    assert(total("store.bound-input.reused-rows") >= 1);
+    assert(total("store.mounted-scalar.warm-rows") >= 1);
+    assert(total("store.mounted-scalar.cold-rows") >= 2,
+      "retained-child replacement kept the previous mounted recipe");
     clock.dispatch(5);
     const stale = root.prepareStores([clock]);
     assert(stale, "interleaving setup cut declined");

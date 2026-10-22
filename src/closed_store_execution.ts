@@ -9,11 +9,14 @@ import {
   type ClosedStoreHostOutput, type ClosedStoreHostProgram,
 } from "./closed_store_host_program.ts";
 import {
-  readOwnedClosedProjectionBatch, type AnyAsyncStore, type OwnedClosedProjectionRequest,
+  bindOwnedClosedProjectionRequest, readOwnedClosedProjectionBatch,
+  type AnyAsyncStore, type BoundClosedProjectionRequest,
+  type OwnedClosedProjectionRequest,
   type StoreRenderTransaction,
 } from "./async_store_runtime.ts";
 import {
-  captureOwnedClosedWorldInputs, type OwnedClosedWorldInputCell,
+  bindOwnedClosedWorldInputRequest, captureOwnedClosedWorldInputs,
+  type OwnedClosedWorldInputCell, type OwnedClosedWorldInputRequest,
   type OwnerStateWorld,
 } from "./owner_state_world.ts";
 import { snapshotScopedHostProp } from "./scoped_host_values.ts";
@@ -333,13 +336,82 @@ type NormalizedRequest = Readonly<{
   owner: number;
   hostKey: string;
   inputs: readonly Readonly<{ store: AnyAsyncStore; readerId: string }>[];
+  worldRequest?: OwnedClosedWorldInputRequest;
+  projectionRequests?: readonly BoundClosedProjectionRequest[];
 }>;
+
+const normalizeOwnedOutputRequest = (raw: unknown): NormalizedRequest | null => {
+  const request = closedDataRecord(raw);
+  if (!request || !exactClosedFields(request,
+    ["execution", "owner", "hostKey", "inputs"])) return null;
+  const facts = typeof request.execution === "object" && request.execution !== null
+    ? associations.get(request.execution) : undefined;
+  if (!facts || !Number.isSafeInteger(request.owner) ||
+    typeof request.hostKey !== "string" || !request.hostKey) return null;
+  const rawInputs = closedDataArray(request.inputs, 8);
+  if (!rawInputs || rawInputs.length !== facts.inputCount) return null;
+  const inputs: { store: AnyAsyncStore; readerId: string }[] = [];
+  for (const rawInput of rawInputs) {
+    const input = closedDataRecord(rawInput);
+    if (!input || !exactClosedFields(input, ["store", "readerId"]) ||
+      typeof input.readerId !== "string" || !input.readerId ||
+      typeof input.store !== "object" || input.store === null) return null;
+    inputs.push({ store: input.store as AnyAsyncStore, readerId: input.readerId });
+  }
+  return { facts, owner: request.owner as number,
+    hostKey: request.hostKey, inputs };
+};
+
+const closedOutputBindingKey = Symbol("closed-output-binding");
+class PrivateBoundClosedStoreOutputRequest {
+  readonly #request: NormalizedRequest;
+  private constructor(key: symbol, request: NormalizedRequest) {
+    if (key !== closedOutputBindingKey) throw new TypeError("Invalid output binding");
+    this.#request = request;
+    Object.freeze(this);
+  }
+  static bind(raw: OwnedClosedStoreOutputRequest): PrivateBoundClosedStoreOutputRequest | null {
+    try {
+      const request = normalizeOwnedOutputRequest(raw);
+      if (!request) return null;
+      const worldRequest = bindOwnedClosedWorldInputRequest({
+        owner: request.owner, sites: request.facts.stateSites,
+      });
+      if (!worldRequest) return null;
+      const projectionRequests: BoundClosedProjectionRequest[] = [];
+      for (let index = 0; index < request.inputs.length; index++) {
+        const input = request.inputs[index];
+        const bound = bindOwnedClosedProjectionRequest({
+          store: input.store, readerId: input.readerId,
+          paths: request.facts.paths[index],
+        });
+        if (!bound) return null;
+        projectionRequests.push(bound);
+      }
+      return new PrivateBoundClosedStoreOutputRequest(closedOutputBindingKey, Object.freeze({
+        ...request, inputs: Object.freeze(request.inputs.map((input) => Object.freeze(input))),
+        worldRequest, projectionRequests: Object.freeze(projectionRequests),
+      }));
+    } catch {
+      return null;
+    }
+  }
+  static unwrap(key: symbol, value: unknown): NormalizedRequest | null {
+    if (key !== closedOutputBindingKey) return null;
+    return typeof value === "object" && value !== null &&
+      #request in value ? value.#request : null;
+  }
+}
+
+export type BoundClosedStoreOutputRequest = PrivateBoundClosedStoreOutputRequest;
+export const bindOwnedClosedStoreOutputRequest = PrivateBoundClosedStoreOutputRequest.bind;
+const canonicalUnwrapClosedStoreOutputRequest = PrivateBoundClosedStoreOutputRequest.unwrap;
 
 /** Enclose passive captures and finite evaluation for ordered owned scalar rows. */
 export const prepareOwnedClosedStoreOutputs = (
   world: OwnerStateWorld,
   transaction: StoreRenderTransaction,
-  orderedRequests: readonly OwnedClosedStoreOutputRequest[],
+  orderedRequests: readonly (OwnedClosedStoreOutputRequest | BoundClosedStoreOutputRequest)[],
 ): { kind: "ready"; rows: readonly OwnedClosedStoreOutputRow[] } |
   { kind: "public-required" } | null => {
   try {
@@ -347,33 +419,20 @@ export const prepareOwnedClosedStoreOutputs = (
     if (!rawRequests || rawRequests.length === 0) return null;
     const normalized: NormalizedRequest[] = [];
     for (const raw of rawRequests) {
-      const request = closedDataRecord(raw);
-      if (!request || !exactClosedFields(request,
-        ["execution", "owner", "hostKey", "inputs"])) return null;
-      const facts = typeof request.execution === "object" && request.execution !== null
-        ? associations.get(request.execution) : undefined;
-      if (!facts || !Number.isSafeInteger(request.owner) ||
-        typeof request.hostKey !== "string" || !request.hostKey) return null;
-      const rawInputs = closedDataArray(request.inputs, 8);
-      if (!rawInputs || rawInputs.length !== facts.inputCount) return null;
-      const inputs: { store: AnyAsyncStore; readerId: string }[] = [];
-      for (const rawInput of rawInputs) {
-        const input = closedDataRecord(rawInput);
-        if (!input || !exactClosedFields(input, ["store", "readerId"]) ||
-          typeof input.readerId !== "string" || !input.readerId ||
-          typeof input.store !== "object" || input.store === null) return null;
-        inputs.push({ store: input.store as AnyAsyncStore, readerId: input.readerId });
-      }
-      normalized.push({ facts, owner: request.owner as number,
-        hostKey: request.hostKey, inputs });
+      const request = canonicalUnwrapClosedStoreOutputRequest(closedOutputBindingKey, raw) ??
+        normalizeOwnedOutputRequest(raw);
+      if (!request) return null;
+      normalized.push(request);
     }
     const worldRows = captureOwnedClosedWorldInputs(world,
-      normalized.map(({ owner, facts }) => ({ owner, sites: facts.stateSites })));
+      normalized.map(({ owner, facts, worldRequest }) =>
+        worldRequest ?? { owner, sites: facts.stateSites }));
     if (!worldRows) return { kind: "public-required" };
-    const projectionRequests: OwnedClosedProjectionRequest[] = [];
+    const projectionRequests: (OwnedClosedProjectionRequest | BoundClosedProjectionRequest)[] = [];
     for (const row of normalized) {
       for (let index = 0; index < row.inputs.length; index++) {
-        projectionRequests.push({ ...row.inputs[index], paths: row.facts.paths[index] });
+        projectionRequests.push(row.projectionRequests?.[index] ??
+          { ...row.inputs[index], paths: row.facts.paths[index] });
       }
     }
     const projections = readOwnedClosedProjectionBatch(transaction, projectionRequests);

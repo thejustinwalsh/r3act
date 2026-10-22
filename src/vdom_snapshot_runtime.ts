@@ -191,28 +191,93 @@ export interface PreparedStorePropDelta {
   readonly [storePropDeltaBrand]: never;
 }
 
+const mountedScalarPlanBrand: unique symbol = Symbol();
+const mountedScalarRecipeSecret = Symbol();
+/** Opaque successor of one privately prepared mounted scalar target. */
+export interface MountedScalarStorePlan {
+  readonly [mountedScalarPlanBrand]: never;
+}
+
+type StoreTargetBase<H> = {
+  node: MountedNode<H>;
+  vnode: VElement;
+  handle: H;
+  parent: MountedNode<H> | null;
+  parentIndex: number;
+  bucket: KeyedRegionBuckets<MountedNode<H>> | undefined;
+  next: VElement;
+  componentOwner?: number;
+  children?: readonly MountedNode<H>[];
+  retainedChildren?: readonly MountedNode<H>[];
+  childVNodes?: readonly VNode[];
+  nextChildVNodes?: readonly VNode[];
+};
+
+type StoreTarget<H> = StoreTargetBase<H> & (
+  { kind: "generic"; writes: readonly (readonly [string, ClosedHostOutputValue,
+    ClosedHostOutputValue])[] } |
+  { kind: "scalar"; output: readonly (readonly [string, ClosedHostOutputValue])[];
+    previousProps: Readonly<Record<string, unknown>>;
+    priorRecipe?: ScalarPlanFields<H> }
+);
+
+type ScalarPlanFields<H> = Readonly<{
+  root: object;
+  node: MountedNode<H>;
+  vnode: VElement;
+  handle: H;
+  key: string;
+  tag: string;
+  componentOwner: number | undefined;
+  scopedSourceProps: undefined;
+  members: readonly (readonly [WeakRef<MountedNode<H>>, number | undefined])[];
+  propNames: readonly string[];
+  outputNames: readonly string[];
+  outputSlots: readonly number[];
+  constantValues: readonly ClosedHostOutputValue[];
+  children: readonly MountedNode<H>[];
+  childVNodes: readonly VNode[];
+}>;
+
+class MountedScalarStoreRecipe<H> implements MountedScalarStorePlan {
+  readonly [mountedScalarPlanBrand]!: never;
+  #fields: ScalarPlanFields<H>;
+  private constructor(secret: symbol, fields: ScalarPlanFields<H>) {
+    if (secret !== mountedScalarRecipeSecret) throw new TypeError("Invalid scalar recipe");
+    this.#fields = fields;
+  }
+  static create<H>(secret: symbol, fields: ScalarPlanFields<H>):
+    MountedScalarStoreRecipe<H> {
+    if (secret !== mountedScalarRecipeSecret) throw new TypeError("Invalid scalar recipe");
+    const recipe = new MountedScalarStoreRecipe(secret, fields);
+    Object.freeze(recipe);
+    return recipe;
+  }
+  static fields<H>(secret: symbol, plan: MountedScalarStorePlan | null | undefined):
+    ScalarPlanFields<H> | null {
+    if (secret !== mountedScalarRecipeSecret) throw new TypeError("Invalid scalar recipe");
+    if (!plan) return null;
+    try { return (plan as MountedScalarStoreRecipe<H>).#fields; }
+    catch { return null; }
+  }
+}
+
+const mintMountedScalarRecipe = MountedScalarStoreRecipe.create.bind(
+  MountedScalarStoreRecipe, mountedScalarRecipeSecret,
+) as <H>(fields: ScalarPlanFields<H>) => MountedScalarStoreRecipe<H>;
+const readMountedScalarRecipe = MountedScalarStoreRecipe.fields.bind(
+  MountedScalarStoreRecipe, mountedScalarRecipeSecret,
+) as <H>(plan: MountedScalarStorePlan | null | undefined) =>
+  ScalarPlanFields<H> | null;
+
 type StorePropDeltaRecord<H> = {
   readonly ownedScalar: boolean;
   readonly buckets: readonly {
     key: string;
     members: readonly (readonly [MountedNode<H>, number | undefined])[];
   }[];
-  readonly targets: readonly {
-    node: MountedNode<H>;
-    vnode: VElement;
-    handle: H;
-    parent: MountedNode<H> | null;
-    parentIndex: number;
-    bucket: KeyedRegionBuckets<MountedNode<H>> | undefined;
-    ownedScalar: boolean;
-    writes: readonly (readonly [string, ClosedHostOutputValue, ClosedHostOutputValue])[];
-    next: VElement;
-    componentOwner?: number;
-    children?: readonly MountedNode<H>[];
-    retainedChildren?: readonly MountedNode<H>[];
-    childVNodes?: readonly VNode[];
-    nextChildVNodes?: readonly VNode[];
-  }[];
+  readonly targets: readonly StoreTarget<H>[];
+  scalarPlans?: readonly (MountedScalarStorePlan | null)[];
   readonly texts: readonly {
     node: MountedNode<H>;
     vnode: VText;
@@ -524,6 +589,7 @@ export type PreparedKeyedVDOMProgram = {
 
 export type PreparedScopedKeyedRetainedProgram = PreparedKeyedVDOMProgram & {
   readonly readSources: readonly ScalarSource[];
+  readonly storeScalarPlans?: readonly (MountedScalarStorePlan | null)[];
 };
 
 const elementKey = (element: RuntimeElement): string | null => {
@@ -3467,6 +3533,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     updates: readonly (readonly [ScalarSource, number])[],
     storeRegions: readonly StorePropDelta[],
     replacements: readonly { key: string; tree: RuntimeNode }[] = [],
+    scalarPlans?: readonly (MountedScalarStorePlan | null)[],
   ): PreparedScopedKeyedRetainedProgram | null {
     const hasDeltas = deltas.length > 0;
     const hasUpdates = updates.length > 0;
@@ -3475,7 +3542,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     if (!hasDeltas && !hasUpdates && !hasStore && !hasReplacements) return null;
     const retained = hasUpdates ? this.prepareRetainedSourceDelta(updates) : null;
     if (hasUpdates && !retained) return null;
-    const store = hasStore ? this.prepareStorePropDelta(storeRegions) : null;
+    const store = hasStore ? this.prepareStorePropDelta(storeRegions,
+      !hasDeltas && !hasUpdates && !hasReplacements ? scalarPlans : undefined) : null;
     if (hasStore && !store) return null;
     const ownedStoreOnly = !!store && !hasDeltas && !hasUpdates &&
       !hasReplacements && this.#storePropDeltas.get(store)?.ownedScalar === true;
@@ -3508,10 +3576,13 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     }
     let state: "prepared" | "committed" | "discarded" = "prepared";
     let admittedCommit = false;
+    const thisRoot = this;
     const program: PreparedScopedKeyedRetainedProgram = {
       scoped: true,
       structuralVersionDelta: structural.length ? 1 : 0,
       readSources: retained?.readSources ?? [],
+      get storeScalarPlans() { return store
+        ? thisRoot.#storePropDeltas.get(store)?.scalarPlans : undefined; },
       overlapsRetainedTargets: (delta) => structural.some((plan) =>
         plan.overlapsRetainedTargets(delta)),
       overlapsStoreTargets: (delta) => structural.some((plan) =>
@@ -3577,6 +3648,13 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       discard: () => {
         if (state === "discarded") return;
         if (state === "prepared") state = "discarded";
+        if (store) {
+          const record = this.#storePropDeltas.get(store);
+          if (record) {
+            record.scalarPlans = undefined;
+            this.#storePropDeltas.delete(store);
+          }
+        }
         keyed?.discard();
         replacement?.discard();
       },
@@ -4014,6 +4092,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
   /** Prepare closed prop writes on exact mounted, globally keyed host leaves. */
   prepareStorePropDelta(
     regions: readonly StorePropDelta[],
+    scalarPlans?: readonly (MountedScalarStorePlan | null)[],
   ): PreparedStorePropDelta | null {
     if (this.#publicationToken || this.#publicationFailed ||
       this.#compiledGraph !== null ||
@@ -4023,12 +4102,16 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     const seen = new Set<MountedNode<H>>();
     const buckets = new Map<string, {
       members: readonly (readonly [MountedNode<H>, number | undefined])[];
-      owners: ReadonlyMap<number, MountedNode<H> | null>;
+      owners?: ReadonlyMap<number, MountedNode<H> | null>;
     }>();
     const targets: StorePropDeltaRecord<H>["targets"][number][] = [];
     const texts: StorePropDeltaRecord<H>["texts"][number][] = [];
     let allOwnedScalar = true;
-    for (const region of regions) {
+    let warmRows = 0;
+    const warmEligible = scalarPlans?.length === regions.length &&
+      regions.every((region) => isOwnedScalarStorePropDelta(region));
+    for (let regionIndex = 0; regionIndex < regions.length; regionIndex++) {
+      const region = regions[regionIndex];
       const ownedScalar = isOwnedScalarStorePropDelta(region);
       allOwnedScalar &&= ownedScalar;
       if (!region.key || !region.tag ||
@@ -4038,24 +4121,60 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         (region.retainedChildren === true && region.componentOwner === undefined) ||
         (region.retainedChildren === true && region.children !== undefined) ||
         (region.children === undefined && region.props.length === 0)) return null;
+      const hinted = warmEligible
+        ? readMountedScalarRecipe<H>(scalarPlans?.[regionIndex]) : null;
+      const matches = this.#nodesByKey.get(region.key);
       let bucket = buckets.get(region.key);
+      const earlyWarm = hinted && matches &&
+        hinted.root === this && hinted.key === region.key &&
+        hinted.tag === region.tag &&
+        hinted.componentOwner === region.componentOwner &&
+        hinted.node.vnode.kind === "element" &&
+        hinted.vnode === hinted.node.vnode &&
+        hinted.handle === hinted.node.handle &&
+        hinted.members.length === matches.size &&
+        (!bucket || (bucket.members.length === hinted.members.length &&
+          bucket.members.every(([member, owner], index) =>
+            hinted.members[index][0].deref() === member &&
+            hinted.members[index][1] === owner))) &&
+        hinted.members.every(([memberRef, owner]) => {
+          const member = memberRef.deref();
+          return member !== undefined && matches.has(member) &&
+            member.vnode.componentOwner === owner;
+        }) &&
+        matches.has(hinted.node) &&
+        hinted.children.length === hinted.node.children.length &&
+        hinted.childVNodes.length === hinted.vnode.children.length &&
+        hinted.children.every((child, index) =>
+          hinted.node.children[index] === child && !child.hostDisposed &&
+          child.parent === hinted.node && child.parentIndex === index &&
+          child.vnode === hinted.childVNodes[index]) &&
+        hinted.node.vnode.scopedSourceProps === hinted.scopedSourceProps &&
+        region.props.length === hinted.outputNames.length &&
+        region.props.every(([name], index) => name === hinted.outputNames[index]);
       if (!bucket) {
-        const matches = this.#nodesByKey.get(region.key);
         if (!matches?.size) return null;
-        const members: Array<readonly [MountedNode<H>, number | undefined]> = [];
-        const owners = new Map<number, MountedNode<H> | null>();
-        for (const candidate of matches) {
-          const owner = candidate.vnode.componentOwner;
-          members.push([candidate, owner]);
-          if (owner !== undefined) owners.set(owner,
-            owners.has(owner) ? null : candidate);
-        }
-        bucket = { members, owners };
+        bucket = { members: earlyWarm && hinted
+          ? hinted.members.map(([memberRef, owner]) =>
+            [memberRef.deref()!, owner] as const)
+          : [...matches].map((candidate) =>
+            [candidate, candidate.vnode.componentOwner] as const) };
         buckets.set(region.key, bucket);
       }
-      const node: MountedNode<H> | null | undefined = region.componentOwner === undefined
+      let owners = bucket.owners;
+      if (!earlyWarm && region.componentOwner !== undefined && !owners) {
+        const indexed = new Map<number, MountedNode<H> | null>();
+        for (const [candidate, owner] of bucket.members) {
+          if (owner !== undefined) indexed.set(owner,
+            indexed.has(owner) ? null : candidate);
+        }
+        bucket.owners = indexed;
+        owners = indexed;
+      }
+      const node: MountedNode<H> | null | undefined = earlyWarm && hinted
+        ? hinted.node : region.componentOwner === undefined
         ? bucket.members.length === 1 ? bucket.members[0][0] : null
-        : bucket.owners.get(region.componentOwner);
+        : owners?.get(region.componentOwner);
       if (!node) return null;
       if (seen.has(node)) return null;
       seen.add(node);
@@ -4089,6 +4208,35 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           }
         }
       }
+      if (earlyWarm && hinted) {
+        const nextProps: Record<string, ClosedHostOutputValue> = {};
+        for (let index = 0; index < hinted.propNames.length; index++) {
+          const slot = hinted.outputSlots[index];
+          nextProps[hinted.propNames[index]] = slot < 0
+            ? hinted.constantValues[index] : region.props[slot][1];
+        }
+        const next = Object.freeze(cloneMountedElementVNode(vnode, {
+          props: Object.freeze(nextProps),
+          children: vnode.children,
+        }));
+        targets.push({ kind: "scalar", node, vnode, handle: node.handle,
+          parent: node.parent, parentIndex: node.parentIndex,
+          bucket: node.parent?.keyedChildren, output: region.props,
+          previousProps: vnode.props, priorRecipe: hinted, next,
+          ...(region.componentOwner === undefined ? {} :
+            { componentOwner: region.componentOwner }),
+          ...(region.retainedChildren === true ? {
+            retainedChildren: hinted.children,
+            childVNodes: hinted.childVNodes,
+          } : {}),
+          ...(region.children === undefined ? {} : {
+            children: hinted.children,
+            childVNodes: hinted.childVNodes,
+          }),
+        });
+        warmRows++;
+        continue;
+      }
       let descriptors: Record<string, PropertyDescriptor>;
       try { descriptors = Object.getOwnPropertyDescriptors(vnode.props); }
       catch { return null; }
@@ -4119,6 +4267,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       const names = new Set<string>();
       const writes: Array<readonly [string, ClosedHostOutputValue,
         ClosedHostOutputValue]> = [];
+      const previousProps = ownedScalar ? Object.freeze({ ...nextProps }) : null;
       for (const [name, proposed] of region.props) {
         const prior = descriptors[name];
         if (names.has(name) || !prior || !("value" in prior)) return null;
@@ -4130,21 +4279,24 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         const next = captured.value as ClosedHostOutputValue;
         const previous = nextProps[name] as ClosedHostOutputValue;
         nextProps[name] = next;
-        writes.push([name, next, previous]);
+        if (!ownedScalar) writes.push([name, next, previous]);
       }
       const parent = node.parent;
       const frozenProps = Object.freeze(nextProps);
       const next = ownedScalar
-        ? cloneMountedElementVNode(vnode, { props: frozenProps,
+        ? Object.freeze(cloneMountedElementVNode(vnode, { props: frozenProps,
           children: region.retainedChildren === true
-            ? node.children.map((child) => child.vnode) : vnode.children })
+            ? Object.freeze(node.children.map((child) => child.vnode)) :
+              Object.freeze([...vnode.children]) }))
         : { ...vnode, props: frozenProps };
       targets.push({
+        ...(ownedScalar
+          ? { kind: "scalar" as const, output: region.props,
+            previousProps: previousProps! }
+          : { kind: "generic" as const, writes }),
         node, vnode, handle: node.handle, parent,
         parentIndex: node.parentIndex,
         bucket: parent?.keyedChildren,
-        ownedScalar,
-        writes,
         next,
         ...(region.componentOwner === undefined ? {} :
           { componentOwner: region.componentOwner }),
@@ -4172,7 +4324,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       const nextVNode = (target: StorePropDeltaRecord<H>["targets"][number]): VElement => {
         const existing = completed.get(target.node);
         if (existing) return existing;
-        const next = target.ownedScalar ? target.next : target.retainedChildren
+        const next = target.kind === "scalar" ? target.next : target.retainedChildren
           ? cloneMountedElementVNode(target.next, {
             children: target.retainedChildren.map((child) => child.vnode),
           })
@@ -4189,6 +4341,44 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     for (const target of targets) {
       if (target.children) target.nextChildVNodes = target.next.children;
     }
+    const successors: (MountedScalarStorePlan | null)[] = targets.map((target) => {
+      if (!allOwnedScalar || texts.length || target.kind !== "scalar" ||
+        target.next.scopedSourceProps !== undefined ||
+        !Object.isFrozen(target.next.props)) return null;
+      const prior = target.priorRecipe;
+      const names = prior?.propNames ?? Object.freeze(Object.keys(target.next.props));
+      const outputNames = prior?.outputNames ??
+        Object.freeze(target.output.map(([name]) => name));
+      const slots = prior?.outputSlots ??
+        Object.freeze(names.map((name) => outputNames.indexOf(name)));
+      if (!prior && (outputNames.some((name) => !names.includes(name)) ||
+        names.some((name) => {
+          if (name === "__proto__" || name === "prototype" ||
+            name === "constructor") return true;
+          const value = target.next.props[name];
+          return value !== null && value !== undefined &&
+            typeof value !== "string" && typeof value !== "number" &&
+            typeof value !== "boolean";
+        }))) return null;
+      const bucket = buckets.get(target.vnode.key!);
+      if (!bucket) return null;
+      return mintMountedScalarRecipe<H>(Object.freeze({
+        root: this, node: target.node, vnode: target.next,
+        handle: target.handle, key: target.vnode.key!, tag: target.vnode.tag,
+        componentOwner: target.componentOwner, scopedSourceProps: undefined,
+        members: prior?.members ?? Object.freeze(bucket.members.map(([node, owner]) =>
+          Object.freeze([new WeakRef(node), owner] as const))),
+        propNames: names,
+        outputNames,
+        outputSlots: slots,
+        constantValues: prior?.constantValues ?? Object.freeze(names.map((name) =>
+          target.next.props[name] as ClosedHostOutputValue)),
+        children: prior?.children ??
+          Object.freeze([...(target.retainedChildren ?? target.children ?? [])]),
+        childVNodes: prior?.childVNodes ??
+          Object.freeze([...(target.childVNodes ?? [])]),
+      }));
+    });
     const textWriter = texts.length ? hostTextWriter(this.host) : null;
     if (texts.length && !textWriter) return null;
     const token = Object.freeze({}) as PreparedStorePropDelta;
@@ -4196,10 +4386,18 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       ownedScalar: allOwnedScalar,
       buckets: [...buckets].map(([key, bucket]) => ({ key,
         members: bucket.members })),
-      targets, texts, writer, textWriter, applied: false, publicationToken: null,
+      targets, texts, writer, textWriter,
+      scalarPlans: Object.freeze(successors),
+      applied: false, publicationToken: null,
       appliedVersion: null,
     });
     if (!this.isStorePropDeltaCurrent(token)) return null;
+    if (allOwnedScalar && this.#profileCounter) {
+      if (warmRows) this.#profileCounter({ "store.mounted-scalar.warm-rows": warmRows });
+      if (regions.length > warmRows) this.#profileCounter({
+        "store.mounted-scalar.cold-rows": regions.length - warmRows,
+      });
+    }
     return token;
   }
 
@@ -4305,14 +4503,22 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     const publicationAtApply = this.#publicationToken;
     for (const target of record.targets) {
       this.#acceptedJournal?.capture(target.node);
-      for (const [name, next, previous] of target.writes) {
-        if (!Object.is(previous, next)) {
+      if (target.kind === "scalar") {
+        for (const [name, next] of target.output) {
+          const previous = target.previousProps[name] as ClosedHostOutputValue;
+          if (Object.is(previous, next)) continue;
           if (record.ownedScalar &&
             !this.#isStoreTargetReady(target, record.writer, versionAtApply,
               publicationAtApply)) {
             throw new Error("Prepared Store prop delta changed during host application");
           }
           record.writer.call(this.host, target.handle, name, next, previous);
+        }
+      } else {
+        for (const [name, next, previous] of target.writes) {
+          if (!Object.is(previous, next)) {
+            record.writer.call(this.host, target.handle, name, next, previous);
+          }
         }
       }
     }

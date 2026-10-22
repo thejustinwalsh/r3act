@@ -1,5 +1,6 @@
 import {
   AsyncStore, captureCanonicalStoreReaderReceipt, createAsyncStore,
+  bindOwnedClosedProjectionRequest,
   inspectCanonicalStoreReaderReceipt, readOwnedClosedProjectionBatch,
   StoreRenderTransaction,
   validateCanonicalClosedStorePhase,
@@ -113,6 +114,72 @@ Deno.test("owned batch stages distinct readers and leaves failed paths unstaged"
   transaction.preparePublication();
   transaction.publishAccepted();
   equal(store.diagnostics().readers, 2, "accepted reader histories were shared");
+});
+
+Deno.test("bound Store projections preserve independent readers across fresh roots", () => {
+  const paths = normalizeClosedProjectionPaths([["phase"]])!;
+  const store = createAsyncStore(storeRecord({ phase: 2 }));
+  const first = bindOwnedClosedProjectionRequest({ store, readerId: "first", paths });
+  const second = bindOwnedClosedProjectionRequest({ store, readerId: "second", paths });
+  assert(first && second, "projection binding declined");
+  const rootA = new StoreRenderTransaction("bound-store-a");
+  const initial = readOwnedClosedProjectionBatch(rootA, [first, second]);
+  assert(initial, "bound Store batch declined");
+  equal(initial[0][0], 2, "first root value");
+  equal(initial[1][0], 2, "second reader value");
+  assert(initial[0] === initial[1],
+    "separately bound readers lost shared Store/path projection identity");
+  equal(rootA.readers.size, 2, "shared projection collapsed first-root readers");
+  rootA.preparePublication();
+  rootA.publishAccepted();
+  store.dispatch(storeRecord({ phase: 5 }));
+  const rootB = new StoreRenderTransaction("bound-store-b");
+  const later = readOwnedClosedProjectionBatch(rootB, [first, second]);
+  assert(later, "reused Store binding declined");
+  equal(later[0][0], 5, "fresh root value");
+  assert(later[0] === later[1],
+    "reused bindings lost shared Store/path projection identity");
+  equal(initial[0][0], 2, "saved projection changed");
+  equal(rootB.readers.size, 2, "independent readers collapsed");
+  rootB.preparePublication();
+  rootB.publishAccepted();
+  equal(readOwnedClosedProjectionBatch(new StoreRenderTransaction("forged"),
+    [new Proxy(first, {})]), null, "Proxy receipt was trusted");
+  let constructorForged = false;
+  try {
+    const Constructor = first.constructor as unknown as new (...args: unknown[]) => typeof first;
+    new Constructor(Symbol("forged"), { store, readerId: "forged", paths });
+    constructorForged = true;
+  } catch { /* expected */ }
+  equal(constructorForged, false, "runtime constructor minted a receipt");
+  const ReceiptClass = first.constructor as unknown as {
+    unwrap: (...args: unknown[]) => unknown;
+  };
+  equal(ReceiptClass.unwrap(Symbol("forged"), first), null,
+    "public unwrap exposed private projection data");
+  const originalUnwrap = ReceiptClass.unwrap;
+  ReceiptClass.unwrap = () => { throw new Error("public unwrap replacement ran"); };
+  try {
+    const unaffected = new StoreRenderTransaction("bound-static-replacement");
+    equal(readOwnedClosedProjectionBatch(unaffected, [first])?.[0][0], 5,
+      "batch called replaced unwrap");
+    unaffected.discard();
+  } finally { ReceiptClass.unwrap = originalUnwrap; }
+  const missing = bindOwnedClosedProjectionRequest({
+    store, readerId: "missing", paths: [["missing"]],
+  });
+  assert(missing, "valid static missing path was rejected at binding");
+  const missingRoot = new StoreRenderTransaction("bound-missing");
+  equal(readOwnedClosedProjectionBatch(missingRoot, [missing]), null,
+    "missing current data was accepted");
+  equal(missingRoot.readers.size, 0, "failed capture staged readers");
+  const replaced = new StoreRenderTransaction("bound-override");
+  replaced.readClosedProjections = (() => {
+    throw new Error("bound capture called public override");
+  }) as typeof replaced.readClosedProjections;
+  equal(readOwnedClosedProjectionBatch(replaced, [first]), null,
+    "bound receipt bypassed replaced method audit");
+  equal(replaced.readers.size, 0, "override decline staged readers");
 });
 
 Deno.test("owned batch reuses one projection per Store and branded path identity", () => {

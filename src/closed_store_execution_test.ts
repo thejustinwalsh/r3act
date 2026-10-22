@@ -1,5 +1,6 @@
 import {
   createOwnedScalarStorePropDelta, evaluateClosedStoreDataExecution,
+  bindOwnedClosedStoreOutputRequest,
   inspectClosedStoreDataExecution, isOwnedScalarStorePropDelta,
   normalizeClosedStoreDataExecution,
   prepareOwnedClosedStoreOutputs, type ClosedStoreDataExecution,
@@ -287,6 +288,65 @@ Deno.test("enclosed outputs preserve ordered projection, state and alternating p
   equal(result.rows[0].cells[0].value, 3);
   equal(result.rows[1].cells[0].value, 4);
   transaction.discard();
+});
+
+Deno.test("bound scalar request reuses static inputs with fresh World and Store values", () => {
+  const world = new OwnerStateWorld();
+  const owner = world.resolveOwner(null, "bound-execution");
+  const [, dispatchOffset] = world.useState(owner, "offset", 3);
+  const store = createAsyncStore(storeRecord({ phase: 2, epoch: -0 }));
+  const execution = normalizeClosedStoreDataExecution(marker(),
+    normalizeClosedStoreHostProgram(mixed())!)!;
+  const input = { store, readerId: "original-reader" };
+  const raw = { execution, owner, hostKey: "original-key", inputs: [input] };
+  const bound = bindOwnedClosedStoreOutputRequest(raw);
+  if (!bound) throw new Error("scalar binding declined");
+  raw.hostKey = "changed-key";
+  input.readerId = "changed-reader";
+  const firstTransaction = new StoreRenderTransaction("bound-first");
+  const first = prepareOwnedClosedStoreOutputs(world, firstTransaction, [bound]);
+  if (!first || first.kind !== "ready") throw new Error("first bound output declined");
+  equal(first.rows[0].region.key, "original-key");
+  equal(first.rows[0].region.props[0][1], 7);
+  equal(Object.is(first.rows[0].region.props[1][1], -0), true);
+  equal(firstTransaction.readers.has("original-reader"), true);
+  firstTransaction.discard();
+  dispatchOffset(4);
+  store.dispatch(storeRecord({ phase: 5, epoch: 6 }));
+  const secondTransaction = new StoreRenderTransaction("bound-second");
+  const second = prepareOwnedClosedStoreOutputs(world, secondTransaction, [bound]);
+  if (!second || second.kind !== "ready") throw new Error("reused bound output declined");
+  equal(second.rows[0].region.props[0][1], 14);
+  equal(second.rows[0].region.props[1][1], 6);
+  equal(first.rows[0].region.props[0][1], 7);
+  equal(Object.isFrozen(first.rows[0].region.props), true);
+  equal(second.rows[0].cells[0].version, first.rows[0].cells[0].version + 1);
+  secondTransaction.discard();
+  const forged = Object.freeze({}) as unknown as typeof bound;
+  equal(prepareOwnedClosedStoreOutputs(world, new StoreRenderTransaction("forged"),
+    [forged]), null);
+  equal(prepareOwnedClosedStoreOutputs(world, new StoreRenderTransaction("proxy"),
+    [new Proxy(bound, {})]), null);
+  let constructorForged = false;
+  try {
+    const Constructor = bound.constructor as unknown as new (...args: unknown[]) => typeof bound;
+    new Constructor(Symbol("forged"), { owner, hostKey: "forged" });
+    constructorForged = true;
+  } catch { /* expected */ }
+  equal(constructorForged, false);
+  const ReceiptClass = bound.constructor as unknown as {
+    unwrap: (...args: unknown[]) => unknown;
+  };
+  equal(ReceiptClass.unwrap(Symbol("forged"), bound), null);
+  const originalUnwrap = ReceiptClass.unwrap;
+  ReceiptClass.unwrap = () => { throw new Error("public unwrap replacement ran"); };
+  try {
+    const unaffected = new StoreRenderTransaction("bound-static-replacement");
+    equal(prepareOwnedClosedStoreOutputs(world, unaffected, [bound])?.kind, "ready");
+    unaffected.discard();
+  } finally { ReceiptClass.unwrap = originalUnwrap; }
+  equal(bindOwnedClosedStoreOutputRequest({ ...raw,
+    execution: Object.freeze({ ...execution }) as typeof execution }), null);
 });
 
 Deno.test("verified enclosed rows reuse scratch across alternating independent inputs", () => {

@@ -1,6 +1,6 @@
 import {
   captureClosedProjectionValues, captureOwnedClosedProjectionValues,
-  isOwnedClosedProjectionPaths,
+  isOwnedClosedProjectionPaths, normalizeClosedProjectionPaths,
 } from "./owned_store_record.ts";
 export { storeRecord } from "./owned_store_record.ts";
 
@@ -1288,6 +1288,47 @@ export type OwnedClosedProjectionRequest = Readonly<{
   paths: readonly (readonly string[])[];
 }>;
 
+const closedProjectionBindingKey = Symbol("closed-projection-binding");
+class PrivateBoundClosedProjectionRequest {
+  readonly #request: OwnedClosedProjectionRequest;
+  private constructor(key: symbol, request: OwnedClosedProjectionRequest) {
+    if (key !== closedProjectionBindingKey) throw new TypeError("Invalid projection binding");
+    this.#request = request;
+    Object.freeze(this);
+  }
+  static bind(request: OwnedClosedProjectionRequest): PrivateBoundClosedProjectionRequest | null {
+    try {
+      const store = Object.getOwnPropertyDescriptor(request, "store");
+      const readerId = Object.getOwnPropertyDescriptor(request, "readerId");
+      const paths = Object.getOwnPropertyDescriptor(request, "paths");
+      if (!store || !("value" in store) ||
+        typeof store.value !== "object" || store.value === null ||
+        !readerId || !("value" in readerId) ||
+        typeof readerId.value !== "string" || !readerId.value ||
+        !paths || !("value" in paths)) return null;
+      const ownedPaths = isOwnedClosedProjectionPaths(paths.value)
+        ? paths.value : normalizeClosedProjectionPaths(paths.value);
+      if (!ownedPaths) return null;
+      return new PrivateBoundClosedProjectionRequest(closedProjectionBindingKey, Object.freeze({
+        store: store.value as AnyAsyncStore, readerId: readerId.value,
+        paths: ownedPaths,
+      }));
+    } catch (error) {
+      if (error instanceof TypeError) return null;
+      throw error;
+    }
+  }
+  static unwrap(key: symbol, value: unknown): OwnedClosedProjectionRequest | null {
+    if (key !== closedProjectionBindingKey) return null;
+    return typeof value === "object" && value !== null &&
+      #request in value ? value.#request : null;
+  }
+}
+
+export type BoundClosedProjectionRequest = PrivateBoundClosedProjectionRequest;
+export const bindOwnedClosedProjectionRequest = PrivateBoundClosedProjectionRequest.bind;
+const canonicalUnwrapClosedProjectionRequest = PrivateBoundClosedProjectionRequest.unwrap;
+
 /** Opaque savepoint owned by the transaction that created it. */
 declare const storeRenderCheckpointBrand: unique symbol;
 export type StoreRenderCheckpoint = {
@@ -2026,7 +2067,7 @@ export function validateCanonicalClosedStorePhase(
 
 export function readOwnedClosedProjectionBatch(
   transaction: StoreRenderTransaction,
-  requests: readonly OwnedClosedProjectionRequest[],
+  requests: readonly (OwnedClosedProjectionRequest | BoundClosedProjectionRequest)[],
 ): readonly (readonly number[])[] | null {
   let copied: OwnedClosedProjectionRequest[];
   try {
@@ -2036,6 +2077,12 @@ export function readOwnedClosedProjectionBatch(
     for (let index = 0; index < length; index++) {
       const request = Object.getOwnPropertyDescriptor(requests, String(index));
       if (!request || !("value" in request) || !request.value) return null;
+      const bound = canonicalUnwrapClosedProjectionRequest(
+        closedProjectionBindingKey, request.value);
+      if (bound) {
+        copied.push(bound);
+        continue;
+      }
       const store = Object.getOwnPropertyDescriptor(request.value, "store");
       const readerId = Object.getOwnPropertyDescriptor(request.value, "readerId");
       const paths = Object.getOwnPropertyDescriptor(request.value, "paths");
