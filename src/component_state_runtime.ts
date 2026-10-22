@@ -3316,11 +3316,26 @@ export class ComponentStateRoot<H, Parent = H> {
     };
     const passiveRows: PassiveRow[] = [];
     const passiveByReader = new Set<string>();
+    const ownValue = (object: object, name: string) => {
+      const descriptor = Object.getOwnPropertyDescriptor(object, name);
+      return descriptor && "value" in descriptor ? descriptor.value : undefined;
+    };
+    const ownedShape = (
+      cache: ComponentCache, program: ClosedStoreHostProgram, owner: OwnerId,
+      hostKey: string,
+    ): ClosedStoreOutputShape | undefined => {
+      const shape = cache.output.shape;
+      if (!shape || shape.program !== program || shape.owner !== owner ||
+        shape.cacheProps !== cache.props || shape.hostKey !== hostKey ||
+        shape.tag !== program.host.tag) return undefined;
+      return shape;
+    };
     let passiveEligible = newlyStaged.size === 0 && retiredPendingReaders.size === 0;
     if (passiveEligible) {
       const candidates = new Set<OwnerId>();
       for (const [id, membership] of this.#liveStoreReaders) {
         if (![...membership].some((store) => selectedStores.has(store))) continue;
+        passiveByReader.add(id);
         const split = id.indexOf("\u0000");
         const owner = Number(id.slice(0, split));
         if (split <= 0 || !Number.isSafeInteger(owner)) {
@@ -3357,52 +3372,65 @@ export class ComponentStateRoot<H, Parent = H> {
               !this.#liveEffectKeysByOwner.get(owner)?.has(effectKey(owner, site))))) {
           passiveEligible = false; break;
         }
-        const rowInputs: PassiveRow["inputs"][number][] = [];
-        for (const input of closedStoreHostInputs(program)) {
-          const id = `${owner}\u0000${input.storeUseSiteId}`;
-          const store = Object.getOwnPropertyDescriptor(cache.props,
-            input.storeProp)?.value;
-          const membership = this.#liveStoreReaders.get(id);
-          if ((typeof store !== "object" || store === null) ||
-            !selectedStores.has(store as AnyAsyncStore) ||
-            !membership || membership.size !== 1 ||
-            !membership.has(store as AnyAsyncStore)) {
-            passiveEligible = false; break;
+        const programInputs = closedStoreHostInputs(program);
+        const hostKey = cache.scopeExplicitHostKeys === true
+          ? `${String(cache.hostKeyScope)}\u0000${program.host.key}` : program.host.key;
+        const shape = ownedShape(cache, program, owner, hostKey);
+        const priorInputs = shape?.boundInputs;
+        const reusable = !!shape?.boundRequest &&
+          shape.boundExecution === metadata.closedStoreExecution &&
+          priorInputs?.length === programInputs.length &&
+          priorInputs.every((prior, index) => {
+            const input = programInputs[index];
+            const id = `${owner}\u0000${input.storeUseSiteId}`;
+            const store = ownValue(cache.props, input.storeProp);
+            const membership = this.#liveStoreReaders.get(id);
+            return prior.id === id && prior.prop === input.storeProp &&
+              prior.source === store && prior.store === store &&
+              prior.membership === membership && membership?.size === 1 &&
+              membership.has(store as AnyAsyncStore) &&
+              selectedStores.has(store as AnyAsyncStore);
+          });
+        let rowInputs: PassiveRow["inputs"];
+        if (reusable && priorInputs && shape?.boundRequest) {
+          rowInputs = priorInputs;
+        } else {
+          const freshInputs: StoreInput[] = [];
+          for (const input of programInputs) {
+            const id = `${owner}\u0000${input.storeUseSiteId}`;
+            const store = ownValue(cache.props, input.storeProp);
+            const membership = this.#liveStoreReaders.get(id);
+            if ((typeof store !== "object" || store === null) ||
+              !selectedStores.has(store as AnyAsyncStore) ||
+              !membership || membership.size !== 1 ||
+              !membership.has(store as AnyAsyncStore)) {
+              passiveEligible = false; break;
+            }
+            freshInputs.push(Object.freeze({ id, prop: input.storeProp,
+              source: store as AnyAsyncStore, store: store as AnyAsyncStore,
+              membership }));
+            if (this.#activeCounters) this.#count("store.bound-input.allocated-records");
           }
-          passiveByReader.add(id);
-          rowInputs.push(Object.freeze({ id, prop: input.storeProp,
-            source: store as AnyAsyncStore, store: store as AnyAsyncStore,
-            membership }));
+          rowInputs = Object.freeze(freshInputs);
         }
-        if (passiveEligible) passiveRows.push({ owner, cache, program,
-          dataExecution: metadata.closedStoreExecution,
-          inputs: Object.freeze(rowInputs), stateInputs: emptyStateInputs,
-          regionIndex: -1 });
+        if (passiveEligible) {
+          for (const input of rowInputs) {
+            passiveByReader.delete(input.id);
+            seen.add(input.store);
+          }
+          passiveRows.push({ owner, cache, program,
+            dataExecution: metadata.closedStoreExecution,
+            inputs: rowInputs, stateInputs: emptyStateInputs,
+            ...(reusable && shape?.boundRequest ? { boundRequest: shape.boundRequest } : {}),
+            regionIndex: -1 });
+        }
       }
-      if ([...this.#liveStoreReaders].some(([id, membership]) =>
-        [...membership].some((store) => selectedStores.has(store)) &&
-        !passiveByReader.has(id))) passiveEligible = false;
-      if ([...selectedStores].some((store) =>
-        !passiveRows.some((row) => row.inputs.some((input) => input.store === store)))) {
-        passiveEligible = false;
-      }
+      if (passiveByReader.size !== 0 ||
+        [...selectedStores].some((store) => !seen.has(store))) passiveEligible = false;
     }
+    if (!passiveEligible) seen.clear();
     let passive: readonly OwnedClosedStoreOutputRow[] | null = null;
     let acceptedScalarPlans: readonly (import("./vdom_snapshot_runtime.ts").MountedScalarStorePlan | null)[] = [];
-    const ownValue = (object: object, name: string) => {
-      const descriptor = Object.getOwnPropertyDescriptor(object, name);
-      return descriptor && "value" in descriptor ? descriptor.value : undefined;
-    };
-    const ownedShape = (
-      cache: ComponentCache, program: ClosedStoreHostProgram, owner: OwnerId,
-      hostKey: string,
-    ): ClosedStoreOutputShape | undefined => {
-      const shape = cache.output.shape;
-      if (!shape || shape.program !== program || shape.owner !== owner ||
-        shape.cacheProps !== cache.props || shape.hostKey !== hostKey ||
-        shape.tag !== program.host.tag) return undefined;
-      return shape;
-    };
     const nextShape = (
       cache: ComponentCache, program: ClosedStoreHostProgram, owner: OwnerId,
       hostKey: string,
@@ -3932,23 +3960,12 @@ export class ComponentStateRoot<H, Parent = H> {
       if (passiveEligible) {
         const requests = passiveRows.map((row): OwnedClosedStoreOutputRequest | BoundClosedStoreOutputRequest => {
           const { owner, cache, program, dataExecution, inputs } = row;
+          if (row.boundRequest) {
+            if (this.#activeCounters) this.#count("store.bound-input.reused-rows");
+            return row.boundRequest;
+          }
           const hostKey = cache.scopeExplicitHostKeys === true
             ? `${String(cache.hostKeyScope)}\u0000${program.host.key}` : program.host.key;
-          const shape = ownedShape(cache, program, owner, hostKey);
-          const priorInputs = shape?.boundInputs;
-          const reusable = shape?.boundRequest && shape.boundExecution === dataExecution &&
-            priorInputs?.length === inputs.length &&
-            priorInputs.every((input, index) => input.id === inputs[index].id &&
-              input.prop === inputs[index].prop &&
-              input.source === inputs[index].source &&
-              input.store === inputs[index].store &&
-              input.membership === inputs[index].membership);
-          if (reusable && shape?.boundRequest && priorInputs) {
-            row.boundRequest = shape.boundRequest;
-            row.inputs = priorInputs;
-            if (this.#activeCounters) this.#count("store.bound-input.reused-rows");
-            return shape.boundRequest;
-          }
           const request: OwnedClosedStoreOutputRequest = {
             execution: dataExecution, owner, hostKey,
             inputs: inputs.map(({ store, id }) => ({ store, readerId: id })),
@@ -3961,12 +3978,16 @@ export class ComponentStateRoot<H, Parent = H> {
           return bound ?? request;
         });
         const scalarCounts: OwnedScalarOutputCounts | undefined = this.#activeCounters
-          ? { frames: 0, rootMaterializations: 0, propMaterializations: 0 }
+          ? { frames: 0, rootMaterializations: 0, propMaterializations: 0,
+            directCaptures: 0 }
           : undefined;
         const batch = prepareOwnedClosedStoreOutputs(this.world, stores, requests,
           scalarCounts);
         if (scalarCounts) this.#count("store.scalar-output.frames", scalarCounts.frames);
+        if (scalarCounts?.directCaptures) this.#count(
+          "store.scalar-output.direct-captures", scalarCounts.directCaptures);
         if (batch === null) throw new SparseCandidateIneligible();
+        if (batch.kind !== "ready") seen.clear();
         if (batch.kind === "ready") {
           if (batch.rows.length !== passiveRows.length) throw new SparseCandidateIneligible();
           passive = batch.rows;

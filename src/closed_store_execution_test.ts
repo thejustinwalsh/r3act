@@ -156,6 +156,32 @@ Deno.test("verified scalar keeps nonnumeric schema-five literals in one output",
   equal(Object.isFrozen(output[2]), true);
 });
 
+Deno.test("verified scalar maps interleaved numeric and nonnumeric literals exactly", () => {
+  const host = normalizeClosedStoreHostProgram({
+    schemaVersion: 5, componentProgramId: "mixed-literals", moduleRevision: "rev",
+    inputs: [{ storeUseSiteId: "clock", storeProp: "clock", paths: [["phase"]] }],
+    host: { tag: "group", key: "marker", children: [], props: [
+      ["name", { kind: "literal", value: "anchor" }],
+      ["position-x", { kind: "input", index: 0 }],
+      ["visible", { kind: "literal", value: true }],
+      ["position-y", { kind: "literal", value: -0 }],
+      ["scale-x", { kind: "literal", value: null }],
+      ["position-z", { kind: "literal", value: 3 }],
+    ] },
+  })!;
+  const execution = normalizeClosedStoreDataExecution(scalarMarker(
+    (inputs, outputs) => { outputs[0] = inputs[0]; outputs[1] = -0; outputs[2] = 3; },
+    "mixed-literals"), host)!;
+  equal(inspectClosedStoreDataExecution(execution)?.mode, "verified-scalar");
+  const output = evaluateClosedStoreDataExecution(execution, [7])!;
+  equal(output[0][1], "anchor");
+  equal(output[1][1], 7);
+  equal(output[2][1], true);
+  equal(Object.is(output[3][1], -0), true);
+  equal(output[4][1], null);
+  equal(output[5][1], 3);
+});
+
 Deno.test("verified scalar retains grouping, signed zero and nonfinite intermediates", () => {
   const input = { kind: "input", index: 0 };
   const literal = (value: number) => ({ kind: "literal", value });
@@ -412,6 +438,8 @@ Deno.test("alternating verified row widths retain earlier outputs and reader cut
   equal(inspectClosedStoreDataExecution(short)?.mode, "verified-scalar");
   equal(inspectClosedStoreDataExecution(wide)?.mode, "verified-scalar");
   const transaction = new StoreRenderTransaction("alternating-widths");
+  const counts = { frames: 0, rootMaterializations: 0,
+    propMaterializations: 0, directCaptures: 0 };
   const result = prepareOwnedClosedStoreOutputs(world, transaction, [
     { execution: short, owner: firstOwner, hostKey: "first",
       inputs: [{ store: firstStore, readerId: "short-first-reader" }] },
@@ -419,10 +447,12 @@ Deno.test("alternating verified row widths retain earlier outputs and reader cut
       inputs: [{ store: wideStore, readerId: "wide-reader" }] },
     { execution: short, owner: lastOwner, hostKey: "last",
       inputs: [{ store: lastStore, readerId: "short-last-reader" }] },
-  ]);
+  ], counts);
   if (!result || result.kind !== "ready") throw new Error("alternating widths declined");
   equal(Object.is(materializeOwnedScalarStorePropDelta(result.rows[0]).props[0][1], -0), true);
   equal(materializeOwnedScalarStorePropDelta(result.rows[1]).props[0][1], 14);
+  equal(counts.frames, 3);
+  equal(counts.directCaptures, 3);
   equal(materializeOwnedScalarStorePropDelta(result.rows[1]).props[1][1], 6);
   equal(materializeOwnedScalarStorePropDelta(result.rows[2]).props[0][1], 9);
   equal(Object.is(materializeOwnedScalarStorePropDelta(result.rows[0]).props[0][1], -0), true);

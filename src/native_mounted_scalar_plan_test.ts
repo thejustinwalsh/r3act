@@ -51,6 +51,8 @@ Deno.test("bound scalar Store updates retain the literal and accepted snapshots"
     clock.dispatch(() => storeRecord({ phase: 1 }));
     assertEquals(root.flush(), true);
     const first = root.snapshot;
+    const allocatedAfterCold = frames.reduce((sum, frame) =>
+      sum + (frame["store.bound-input.allocated-records"] ?? 0), 0);
     assertStrictEquals(container.children[0], node);
     assertEquals(node.props.name, "anchor");
     assertEquals(node.props["position-x"], 2);
@@ -66,6 +68,8 @@ Deno.test("bound scalar Store updates retain the literal and accepted snapshots"
     const total = (name: string) => frames.reduce((sum, frame) => sum + (frame[name] ?? 0), 0);
     assertEquals(total("store.bound-input.new-rows"), 1);
     assertEquals(total("store.bound-input.reused-rows"), 1);
+    assertEquals(allocatedAfterCold, 1);
+    assertEquals(total("store.bound-input.allocated-records"), 1);
     assertEquals(total("store.scalar-output.frames"), 3);
     assertEquals(total("store.scalar-output.root-materializations"), 0);
     assertEquals(total("store.mounted-scalar.cold-rows"), 1);
@@ -124,4 +128,56 @@ Deno.test("independent roots keep separate bound Store histories", () => {
     assertEquals(containerB.children[0].props["position-x"], 2);
     assertEquals(renders, 2);
   } finally { rootA.dispose(); rootB.dispose(); }
+});
+
+Deno.test("two selected reader sites share a Store and retain exact warm coverage", () => {
+  const sourceFile = "mounted-scalar/two-readers.tsx";
+  const revision = "mounted-scalar-two-readers-v1";
+  registerPlan(sourceFile, revision);
+  const clock = createAsyncStore(storeRecord({ phase: 0 }));
+  const site = `${sourceFile}#component:Motion`;
+  const leftSite = `${site}#store:0`;
+  const rightSite = `${site}#store:1`;
+  let renders = 0;
+  const Motion = defineComponent(site, (props: { clock: typeof clock }) => {
+    renders++;
+    const left = useStoreAt(leftSite, props.clock).phase;
+    const right = useStoreAt(rightSite, props.clock).phase;
+    return jsx("group", { key: "motion", "position-x": left + right });
+  }, { propOnlySites: [], closedStoreHostProgram: {
+    schemaVersion: 5, componentProgramId: site, moduleRevision: revision,
+    inputs: [
+      { storeUseSiteId: leftSite, storeProp: "clock", paths: [["phase"]] },
+      { storeUseSiteId: rightSite, storeProp: "clock", paths: [["phase"]] },
+    ],
+    host: { tag: "group", key: "motion", children: [], props: [
+      ["position-x", { kind: "binary", operator: "+",
+        left: { kind: "input", index: 0 }, right: { kind: "input", index: 1 } }],
+    ] },
+  }, closedStoreExecution: { schemaVersion: 1, kind: "owned-data",
+    componentProgramId: site, moduleRevision: revision } });
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const reports: Record<string, number>[] = [];
+  const root = new ComponentStateRoot(host, container, {
+    rootId: "mounted-scalar-two-readers", scheduleCommit() {},
+    profileCounter: (batch) => reports.push(batch),
+  });
+  const count = (name: string) => reports.reduce((sum, batch) =>
+    sum + (batch[name] ?? 0), 0);
+  try {
+    root.mount(jsx(Motion, { clock }));
+    reports.length = 0;
+    clock.dispatch(() => storeRecord({ phase: 1 }));
+    assertEquals(root.flush(), true);
+    assertEquals(container.children[0].props["position-x"], 2);
+    assertEquals(count("store.bound-input.allocated-records"), 2);
+    reports.length = 0;
+    clock.dispatch(() => storeRecord({ phase: 2 }));
+    assertEquals(root.flush(), true);
+    assertEquals(container.children[0].props["position-x"], 4);
+    assertEquals(count("store.bound-input.allocated-records"), 0);
+    assertEquals(count("store.bound-input.reused-rows"), 1);
+    assertEquals(renders, 1);
+  } finally { root.dispose(); }
 });

@@ -69,3 +69,64 @@ Deno.test("compact Store output stays framed until a generic Root observation", 
     assertEquals(renders, 2);
   } finally { root.dispose(); }
 });
+
+Deno.test("bound input reuse checks current props and Store source before allocation", () => {
+  const sourceFile = "compact-output/replacement.tsx";
+  const revision = "compact-output-replacement-v1";
+  registerCompiledSemanticPlan({ schema_version: 1, source_file: sourceFile,
+    module_revision: revision, owners: [], sources: [], sinks: [], operations: [],
+    graph: { coverage: "proven-sinks-only", source_to_sinks: {}, execution_order: [] } });
+  const firstClock = createAsyncStore(storeRecord({ phase: 0 }));
+  const secondClock = createAsyncStore(storeRecord({ phase: 10 }));
+  const site = `${sourceFile}#component:Motion`;
+  const useSite = `${site}#store:0`;
+  const Motion = defineComponent(site, (props: {
+    clock: typeof firstClock; marker?: number;
+  }) => jsx("group", { key: "motion",
+    "position-x": useStoreAt(useSite, props.clock).phase * 2 }), {
+    propOnlySites: [], closedStoreHostProgram: {
+      schemaVersion: 5, componentProgramId: site, moduleRevision: revision,
+      inputs: [{ storeUseSiteId: useSite, storeProp: "clock", paths: [["phase"]] }],
+      host: { tag: "group", key: "motion", children: [], props: [
+        ["position-x", { kind: "binary", operator: "*",
+          left: { kind: "input", index: 0 }, right: { kind: "literal", value: 2 } }],
+      ] },
+    }, closedStoreExecution: { schemaVersion: 1, kind: "owned-data",
+      componentProgramId: site, moduleRevision: revision },
+  });
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const reports: Record<string, number>[] = [];
+  const root = new ComponentStateRoot(host, container, {
+    rootId: "compact-output-replacement", scheduleCommit() {},
+    profileCounter: (batch) => reports.push(batch),
+  });
+  const count = (name: string) => reports.reduce((sum, batch) =>
+    sum + (batch[name] ?? 0), 0);
+  try {
+    root.mount(jsx(Motion, { clock: firstClock, marker: 0 }));
+    const node = container.children[0];
+    firstClock.dispatch(() => storeRecord({ phase: 1 }));
+    assertEquals(root.flush(), true);
+    assertEquals(count("store.bound-input.allocated-records"), 1);
+    reports.length = 0;
+    firstClock.dispatch(() => storeRecord({ phase: 2 }));
+    assertEquals(root.flush(), true);
+    assertEquals(count("store.bound-input.allocated-records"), 0);
+    assertEquals(count("store.bound-input.reused-rows"), 1);
+    const saved = root.snapshot;
+    reports.length = 0;
+    root.render(jsx(Motion, { clock: firstClock, marker: 1 }));
+    firstClock.dispatch(() => storeRecord({ phase: 3 }));
+    assertEquals(root.flush(), true);
+    assertEquals(count("store.bound-input.allocated-records"), 1);
+    assertStrictEquals(container.children[0], node);
+    reports.length = 0;
+    root.render(jsx(Motion, { clock: secondClock, marker: 2 }));
+    secondClock.dispatch(() => storeRecord({ phase: 11 }));
+    assertEquals(root.flush(), true);
+    assertEquals(count("store.bound-input.allocated-records"), 1);
+    assertEquals(node.props["position-x"], 22);
+    assertEquals((saved[0] as { props: Record<string, unknown> }).props["position-x"], 4);
+  } finally { root.dispose(); }
+});

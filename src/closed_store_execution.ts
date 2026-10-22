@@ -126,6 +126,7 @@ export const normalizeClosedStoreDataExecution = (
       host.host.props.map(([, expression]) => expression.kind === "literal" &&
           isClosedHostPrimitive(expression.value)
         ? expression.value : undefined),
+      scalarProof?.kind === "verified" ? scalarProof.numericPropIndices : undefined,
     );
     associations.set(normalized, Object.freeze({
       host, layout,
@@ -192,18 +193,15 @@ const evaluateOwnedFrame = (
 ): OwnedScalarFrame | null => {
   const proof = facts.scalarProof;
   const numericIndices = proof?.kind === "verified" ? proof.numericPropIndices : null;
-  let outputs: number[] | null = null;
   if (proof?.kind === "verified" && numericIndices) {
-    outputs = outputScratch ?? denseNumericScratch(numericIndices.length);
+    const outputs = outputScratch ?? denseNumericScratch(numericIndices.length);
     for (let index = 0; index < numericIndices.length; index++) outputs[index] = NaN;
     intrinsicApply(proof.kernel, undefined, [values, outputs]);
+    return OwnedScalarFrame.captureVerifiedNumericResults(facts.layout, outputs, counts);
   }
   const props: OwnedScalarValue[] = [];
-  let numericIndex = 0;
   for (const [, expression] of facts.host.host.props) {
-    const value = outputs && numericIndices && numericIndex < numericIndices.length &&
-        numericIndices[numericIndex] === props.length
-      ? outputs[numericIndex++] : evaluateClosedHostValue(expression, values);
+    const value = evaluateClosedHostValue(expression, values);
     if (!isClosedHostPrimitive(value)) return null;
     intrinsicDefineProperty(props, props.length, { value, writable: true,
       enumerable: true, configurable: true });
