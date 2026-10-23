@@ -1,0 +1,7 @@
+# Installed process lifecycle consumer
+
+This consumer carries the frozen 18 October 2026 lifecycle episode into fresh installed packages. `contract.ts` and `native_arm.tsx` are byte-identical to the reviewed workload; `react_arm.tsx` has only the guarded JSX pragma and Deno comment adaptation. Each page imports only its selected arm through `native.ts` or `react.ts`; `entry.ts` supplies the same `window.__authoredLifecycle` driver API and rejects mounting the other arm. The selected entry mounts automatically, checks the initial 256 rows, then exposes `window.__r3actStartupReady` with `arm`, `ready`, `entryBodyStartedAtMs`, and `mountedAtMs`.
+
+The episode remains 256 keyed rows, a local row click, 60 all-row Store updates, a generic remove/insert/move edit, two independently revealed resources, and disposal with balanced lifetimes. `inspect()` reads actual DOM rows, styles, text, identity, resource state, and controller diagnostics without flushing. The browser protocol determines timing and heap collection outside this source.
+
+The entry-body timestamp begins after static dependency evaluation; the host process-to-ready interval includes dependency evaluation and browser interception. The installed React arm uses actual ReactDOM declarations: two historical Deno-only suppression comments are removed and an explicit React JSX pragma is added. The prepare guard permits only those exact comment changes; Native and contract bytes remain identical to the historical source.

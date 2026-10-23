@@ -1,0 +1,66 @@
+(node:91959) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: accepted plans retained a removed target
++ actual - expected
+
++ <ref *1> {
++   children: [
++     {
++       children: [],
++       id: 3,
++       kind: 'element',
++       parent: [Circular *1],
++       props: {
++         name: 'retained-b'
++       },
++       tag: 'mesh',
++       text: null
++     }
++   ],
++   id: 2,
++   kind: 'element',
++   parent: null,
++   payload: {
++     tag: 'removed-mounted-payload'
++   },
++   props: {
++     'position-x': 30
++   },
++   tag: 'group',
++   text: null
++ }
+- undefined
+
+    at file:///Volumes/Depot/Developer/r3act/compiler/compiled_mounted_scalar_execution_test.mjs:215:10 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: <ref *1> {
+    id: 2,
+    kind: 'element',
+    tag: 'group',
+    text: null,
+    props: { 'position-x': 30 },
+    children: [
+      {
+        id: 3,
+        kind: 'element',
+        tag: 'mesh',
+        text: null,
+        props: { name: 'retained-b' },
+        children: [],
+        parent: [Circular *1]
+      }
+    ],
+    parent: null,
+    payload: { tag: 'removed-mounted-payload' }
+  },
+  expected: undefined,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.18.0

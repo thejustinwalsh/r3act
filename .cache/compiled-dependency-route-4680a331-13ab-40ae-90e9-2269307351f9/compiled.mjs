@@ -1,0 +1,722 @@
+import { registerCompiledSemanticPlan as __registerNativeSemanticPlan, invalidateCompiledSemanticPlan as __invalidateNativeSemanticPlan } from "file:///Volumes/Depot/Developer/r3act/src/native_runtime_api.ts";
+__registerNativeSemanticPlan({
+	"schema_version": 1,
+	"source_file": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx",
+	"module_revision": "native-v1-d9481742d787ed81",
+	"owners": [
+		{
+			"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationApp",
+			"repeated_scope": "runtime-keyed-owner"
+		},
+		{
+			"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationView",
+			"repeated_scope": "runtime-keyed-owner"
+		},
+		{
+			"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsApp",
+			"repeated_scope": "runtime-keyed-owner"
+		},
+		{
+			"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsView",
+			"repeated_scope": "runtime-keyed-owner"
+		},
+		{
+			"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeApp",
+			"repeated_scope": "runtime-keyed-owner"
+		},
+		{
+			"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeNavigation",
+			"repeated_scope": "runtime-keyed-owner"
+		}
+	],
+	"sources": [
+		{
+			"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationApp#store:0",
+			"owner_site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationApp",
+			"kind": "use-input",
+			"provenance": "opaque"
+		},
+		{
+			"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationView#store:0",
+			"owner_site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationView",
+			"kind": "use-input",
+			"provenance": "opaque"
+		},
+		{
+			"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsApp#store:0",
+			"owner_site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsApp",
+			"kind": "use-input",
+			"provenance": "opaque"
+		},
+		{
+			"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsView#store:0",
+			"owner_site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsView",
+			"kind": "use-input",
+			"provenance": "opaque"
+		},
+		{
+			"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeNavigation#store:0",
+			"owner_site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeNavigation",
+			"kind": "use-input",
+			"provenance": "opaque"
+		},
+		{
+			"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeNavigation#store:1",
+			"owner_site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeNavigation",
+			"kind": "use-input",
+			"provenance": "opaque"
+		}
+	],
+	"sinks": [],
+	"operations": [
+		{
+			"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationApp#store:0",
+			"owner_site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationApp",
+			"kind": "use-store-or-resource",
+			"provenance": "opaque",
+			"source_sites": []
+		},
+		{
+			"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationView#store:0",
+			"owner_site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationView",
+			"kind": "use-store-or-resource",
+			"provenance": "opaque",
+			"source_sites": []
+		},
+		{
+			"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsApp#store:0",
+			"owner_site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsApp",
+			"kind": "use-store-or-resource",
+			"provenance": "opaque",
+			"source_sites": []
+		},
+		{
+			"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsView#store:0",
+			"owner_site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsView",
+			"kind": "use-store-or-resource",
+			"provenance": "opaque",
+			"source_sites": []
+		},
+		{
+			"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeNavigation#store:0",
+			"owner_site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeNavigation",
+			"kind": "use-store-or-resource",
+			"provenance": "opaque",
+			"source_sites": []
+		},
+		{
+			"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeNavigation#store:1",
+			"owner_site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeNavigation",
+			"kind": "use-store-or-resource",
+			"provenance": "opaque",
+			"source_sites": []
+		},
+		{
+			"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#async-task:profile",
+			"owner_site_id": null,
+			"kind": "async-task",
+			"provenance": "opaque",
+			"source_sites": ["$provider", "$query"]
+		},
+		{
+			"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#async-task:permissions",
+			"owner_site_id": null,
+			"kind": "async-task",
+			"provenance": "opaque",
+			"source_sites": ["$provider", "$query"]
+		},
+		{
+			"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#async-task:projects",
+			"owner_site_id": null,
+			"kind": "async-task",
+			"provenance": "opaque",
+			"source_sites": ["$provider", "profile"]
+		},
+		{
+			"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#async-task:navigation",
+			"owner_site_id": null,
+			"kind": "async-task",
+			"provenance": "opaque",
+			"source_sites": [
+				"permissions",
+				"profile",
+				"projects"
+			]
+		},
+		{
+			"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#async-task:recommendations",
+			"owner_site_id": null,
+			"kind": "async-task",
+			"provenance": "opaque",
+			"source_sites": ["$provider", "$query"]
+		}
+	],
+	"graph": {
+		"coverage": "proven-sinks-only",
+		"source_to_sinks": {},
+		"execution_order": [
+			".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#async-task:profile",
+			".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#async-task:permissions",
+			".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#async-task:recommendations",
+			".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#async-task:projects",
+			".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#async-task:navigation"
+		]
+	}
+});
+if (import.meta.hot) {
+	const __onNativeModuleRevision = (event) => {
+		if (event?.sourceFile === ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx" && event.previousRevision === "native-v1-d9481742d787ed81" && event.previousInstance === "native-v1-d9481742d787ed81") __invalidateNativeSemanticPlan(".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx", "native-v1-d9481742d787ed81");
+	};
+	import.meta.hot.on("r3act:invalidate-native-module", __onNativeModuleRevision);
+	import.meta.hot.dispose(() => import.meta.hot?.off("r3act:invalidate-native-module", __onNativeModuleRevision));
+}
+/** @jsxRuntime classic */
+/** @jsx jsx */
+// @native-ui
+import { asyncTask, jsx, Suspense } from "file:///Volumes/Depot/Developer/r3act/src/native_runtime_api.ts";
+import { defineComponent as __nativeDefineComponent, useAt as __nativeUseAt } from "file:///Volumes/Depot/Developer/r3act/src/native_runtime_api.ts";
+__nativeDefineComponent(".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationApp", NavigationApp, { propOnlySites: [] });
+__nativeDefineComponent(".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationView", NavigationView, { propOnlySites: [] });
+__nativeDefineComponent(".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsApp", RecommendationsApp, { propOnlySites: [] });
+__nativeDefineComponent(".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsView", RecommendationsView, {
+	propOnlySites: [],
+	closedStoreHostProgram: {
+		"componentProgramId": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsView",
+		"host": {
+			"children": [{
+				"expression": {
+					"index": 1,
+					"kind": "input"
+				},
+				"kind": "text"
+			}],
+			"key": "recommendations",
+			"props": [["data-recommendations", {
+				"index": 0,
+				"kind": "input"
+			}], ["data-recommendation-label", {
+				"index": 1,
+				"kind": "input"
+			}]],
+			"tag": "output"
+		},
+		"inputs": [{
+			"paths": [["query"], ["label"]],
+			"storeProp": "resource",
+			"storeUseSiteId": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsView#store:0"
+		}],
+		"moduleRevision": "native-v1-d9481742d787ed81",
+		"schemaVersion": 5
+	}
+});
+__nativeDefineComponent(".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeApp", ThreeApp, { propOnlySites: [] });
+__nativeDefineComponent(".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeNavigation", ThreeNavigation, { propOnlySites: [] });
+export const deriveNavigation = (profile, permissions, projects) => Object.freeze({
+	query: profile.query,
+	label: `${profile.name} · ${permissions.level}`,
+	projectCount: projects.titles.length
+});
+export const profileTask = asyncTask("profile", ["$provider", "$query"], async (values, signal) => {
+	const query = String(values.get("$query"));
+	const provider = values.get("$provider");
+	return provider.profile(query, signal);
+}, {
+	"controlInputs": ["provider", "query"],
+	"discovery": "candidate-local",
+	"hardPrerequisites": [],
+	"moduleRevision": "native-v1-d9481742d787ed81",
+	"siteId": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#async-task:profile",
+	"sourceFile": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx"
+});
+export const permissionsTask = asyncTask("permissions", ["$provider", "$query"], async (values, signal) => {
+	const query = String(values.get("$query"));
+	const provider = values.get("$provider");
+	return provider.permissions(query, signal);
+}, {
+	"controlInputs": ["provider", "query"],
+	"discovery": "candidate-local",
+	"hardPrerequisites": [],
+	"moduleRevision": "native-v1-d9481742d787ed81",
+	"siteId": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#async-task:permissions",
+	"sourceFile": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx"
+});
+export const projectsTask = asyncTask("projects", ["$provider", "profile"], async (values, signal) => {
+	const profile = values.get("profile");
+	const provider = values.get("$provider");
+	return provider.projects(profile.accountId, signal);
+}, {
+	"controlInputs": ["provider"],
+	"discovery": "candidate-local",
+	"hardPrerequisites": ["profile"],
+	"moduleRevision": "native-v1-d9481742d787ed81",
+	"siteId": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#async-task:projects",
+	"sourceFile": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx"
+});
+export const navigationTask = asyncTask("navigation", [
+	"permissions",
+	"profile",
+	"projects"
+], (values) => {
+	const profile = values.get("profile");
+	const permissions = values.get("permissions");
+	const projects = values.get("projects");
+	return deriveNavigation(profile, permissions, projects);
+}, {
+	"controlInputs": [],
+	"discovery": "candidate-local",
+	"hardPrerequisites": [
+		"permissions",
+		"profile",
+		"projects"
+	],
+	"moduleRevision": "native-v1-d9481742d787ed81",
+	"siteId": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#async-task:navigation",
+	"sourceFile": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx"
+});
+export const recommendationsTask = asyncTask("recommendations", ["$provider", "$query"], async (values, signal) => {
+	const query = String(values.get("$query"));
+	const provider = values.get("$provider");
+	return provider.recommendations(query, signal);
+}, {
+	"controlInputs": ["provider", "query"],
+	"discovery": "candidate-local",
+	"hardPrerequisites": [],
+	"moduleRevision": "native-v1-d9481742d787ed81",
+	"siteId": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#async-task:recommendations",
+	"sourceFile": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx"
+});
+export const routeTasks = [
+	profileTask,
+	permissionsTask,
+	projectsTask,
+	navigationTask,
+	recommendationsTask
+];
+export function NavigationView(props) {
+	const navigation = __nativeUseAt(".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationView#store:0", props.resource);
+	return /* @__PURE__ */ jsx("output", {
+		key: "navigation",
+		"data-navigation": navigation.query,
+		"data-label": navigation.label,
+		"data-project-count": navigation.projectCount
+	}, navigation.label, " · ", navigation.projectCount, " projects");
+}
+export function NavigationApp(props) {
+	const urgent = __nativeUseAt(".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationApp#store:0", props.urgent);
+	return /* @__PURE__ */ jsx("section", {
+		key: "navigation-root",
+		"data-root": "navigation"
+	}, /* @__PURE__ */ jsx("output", { "data-urgent": urgent }, urgent), /* @__PURE__ */ jsx(Suspense, {
+		fallback: /* @__PURE__ */ jsx("output", {
+			key: "navigation",
+			"data-navigation": "pending"
+		}, "Loading navigation"),
+		__nativeBoundarySite: ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#boundary:0"
+	}, /* @__PURE__ */ jsx(NavigationView, { resource: props.resource })));
+}
+export function RecommendationsView(props) {
+	const recommendations = __nativeUseAt(".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsView#store:0", props.resource);
+	return /* @__PURE__ */ jsx("output", {
+		key: "recommendations",
+		"data-recommendations": recommendations.query,
+		"data-recommendation-label": recommendations.label
+	}, recommendations.label);
+}
+export function RecommendationsApp(props) {
+	const urgent = __nativeUseAt(".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsApp#store:0", props.urgent);
+	return /* @__PURE__ */ jsx("section", {
+		key: "recommendations-root",
+		"data-root": "recommendations"
+	}, /* @__PURE__ */ jsx("output", { "data-urgent": urgent }, urgent), /* @__PURE__ */ jsx(Suspense, {
+		fallback: /* @__PURE__ */ jsx("output", {
+			key: "recommendations",
+			"data-recommendations": "pending"
+		}, "Loading recommendations"),
+		__nativeBoundarySite: ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#boundary:1"
+	}, /* @__PURE__ */ jsx(RecommendationsView, { resource: props.resource })));
+}
+export function ThreeNavigation(props) {
+	const navigation = __nativeUseAt(".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeNavigation#store:0", props.resource);
+	const urgent = __nativeUseAt(".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeNavigation#store:1", props.urgent);
+	return jsx("group", {
+		key: "three-navigation",
+		name: `navigation-${navigation.query}-${navigation.projectCount}-urgent-${urgent}`
+	});
+}
+export function ThreeApp(props) {
+	return jsx(Suspense, {
+		fallback: jsx("group", {
+			key: "three-navigation",
+			name: "navigation-pending"
+		}),
+		children: jsx(ThreeNavigation, props)
+	});
+}
+export const compiledNativeComponentPlan = {
+	"schema_version": 2,
+	"module_revision": "native-v1-d9481742d787ed81",
+	"semantic_plan": {
+		"schema_version": 1,
+		"source_file": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx",
+		"module_revision": "native-v1-d9481742d787ed81",
+		"owners": [
+			{
+				"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationApp",
+				"repeated_scope": "runtime-keyed-owner"
+			},
+			{
+				"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationView",
+				"repeated_scope": "runtime-keyed-owner"
+			},
+			{
+				"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsApp",
+				"repeated_scope": "runtime-keyed-owner"
+			},
+			{
+				"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsView",
+				"repeated_scope": "runtime-keyed-owner"
+			},
+			{
+				"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeApp",
+				"repeated_scope": "runtime-keyed-owner"
+			},
+			{
+				"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeNavigation",
+				"repeated_scope": "runtime-keyed-owner"
+			}
+		],
+		"sources": [
+			{
+				"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationApp#store:0",
+				"owner_site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationApp",
+				"kind": "use-input",
+				"provenance": "opaque"
+			},
+			{
+				"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationView#store:0",
+				"owner_site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationView",
+				"kind": "use-input",
+				"provenance": "opaque"
+			},
+			{
+				"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsApp#store:0",
+				"owner_site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsApp",
+				"kind": "use-input",
+				"provenance": "opaque"
+			},
+			{
+				"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsView#store:0",
+				"owner_site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsView",
+				"kind": "use-input",
+				"provenance": "opaque"
+			},
+			{
+				"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeNavigation#store:0",
+				"owner_site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeNavigation",
+				"kind": "use-input",
+				"provenance": "opaque"
+			},
+			{
+				"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeNavigation#store:1",
+				"owner_site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeNavigation",
+				"kind": "use-input",
+				"provenance": "opaque"
+			}
+		],
+		"sinks": [],
+		"operations": [
+			{
+				"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationApp#store:0",
+				"owner_site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationApp",
+				"kind": "use-store-or-resource",
+				"provenance": "opaque",
+				"source_sites": []
+			},
+			{
+				"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationView#store:0",
+				"owner_site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationView",
+				"kind": "use-store-or-resource",
+				"provenance": "opaque",
+				"source_sites": []
+			},
+			{
+				"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsApp#store:0",
+				"owner_site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsApp",
+				"kind": "use-store-or-resource",
+				"provenance": "opaque",
+				"source_sites": []
+			},
+			{
+				"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsView#store:0",
+				"owner_site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsView",
+				"kind": "use-store-or-resource",
+				"provenance": "opaque",
+				"source_sites": []
+			},
+			{
+				"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeNavigation#store:0",
+				"owner_site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeNavigation",
+				"kind": "use-store-or-resource",
+				"provenance": "opaque",
+				"source_sites": []
+			},
+			{
+				"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeNavigation#store:1",
+				"owner_site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeNavigation",
+				"kind": "use-store-or-resource",
+				"provenance": "opaque",
+				"source_sites": []
+			},
+			{
+				"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#async-task:profile",
+				"owner_site_id": null,
+				"kind": "async-task",
+				"provenance": "opaque",
+				"source_sites": ["$provider", "$query"]
+			},
+			{
+				"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#async-task:permissions",
+				"owner_site_id": null,
+				"kind": "async-task",
+				"provenance": "opaque",
+				"source_sites": ["$provider", "$query"]
+			},
+			{
+				"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#async-task:projects",
+				"owner_site_id": null,
+				"kind": "async-task",
+				"provenance": "opaque",
+				"source_sites": ["$provider", "profile"]
+			},
+			{
+				"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#async-task:navigation",
+				"owner_site_id": null,
+				"kind": "async-task",
+				"provenance": "opaque",
+				"source_sites": [
+					"permissions",
+					"profile",
+					"projects"
+				]
+			},
+			{
+				"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#async-task:recommendations",
+				"owner_site_id": null,
+				"kind": "async-task",
+				"provenance": "opaque",
+				"source_sites": ["$provider", "$query"]
+			}
+		],
+		"graph": {
+			"coverage": "proven-sinks-only",
+			"source_to_sinks": {},
+			"execution_order": [
+				".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#async-task:profile",
+				".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#async-task:permissions",
+				".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#async-task:recommendations",
+				".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#async-task:projects",
+				".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#async-task:navigation"
+			]
+		}
+	},
+	"source_file": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx",
+	"helper_module": "file:///Volumes/Depot/Developer/r3act/src/native_runtime_api.ts",
+	"tasks": [
+		{
+			"id": "profile",
+			"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#async-task:profile",
+			"depends_on": ["$provider", "$query"],
+			"hard_prerequisites": [],
+			"control_inputs": ["provider", "query"],
+			"discovery": "candidate-local",
+			"span": {
+				"start": 1304,
+				"end": 1504
+			}
+		},
+		{
+			"id": "permissions",
+			"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#async-task:permissions",
+			"depends_on": ["$provider", "$query"],
+			"hard_prerequisites": [],
+			"control_inputs": ["provider", "query"],
+			"discovery": "candidate-local",
+			"span": {
+				"start": 1538,
+				"end": 1746
+			}
+		},
+		{
+			"id": "projects",
+			"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#async-task:projects",
+			"depends_on": ["$provider", "profile"],
+			"hard_prerequisites": ["profile"],
+			"control_inputs": ["provider"],
+			"discovery": "candidate-local",
+			"span": {
+				"start": 1777,
+				"end": 1997
+			}
+		},
+		{
+			"id": "navigation",
+			"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#async-task:navigation",
+			"depends_on": [
+				"permissions",
+				"profile",
+				"projects"
+			],
+			"hard_prerequisites": [
+				"permissions",
+				"profile",
+				"projects"
+			],
+			"control_inputs": [],
+			"discovery": "candidate-local",
+			"span": {
+				"start": 2030,
+				"end": 2300
+			}
+		},
+		{
+			"id": "recommendations",
+			"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#async-task:recommendations",
+			"depends_on": ["$provider", "$query"],
+			"hard_prerequisites": [],
+			"control_inputs": ["provider", "query"],
+			"discovery": "candidate-local",
+			"span": {
+				"start": 2338,
+				"end": 2554
+			}
+		}
+	],
+	"task_order": [
+		0,
+		1,
+		4,
+		2,
+		3
+	],
+	"component_module": "/** @jsxRuntime classic */\n/** @jsx jsx */\n// @native-ui\nimport { asyncTask, jsx, Suspense, use } from \"file:///Volumes/Depot/Developer/r3act/src/native_runtime_api.ts\";\nimport { defineComponent as __nativeDefineComponent, useStateAt as __nativeUseStateAt, useEffectAt as __nativeUseEffectAt, useStoreAt as __nativeUseStoreAt, bindStatePropsAt as __nativeBindStatePropsAt, renderCollectionAt as __nativeRenderCollectionAt, useAt as __nativeUseAt, bindStatePropAt as __nativeBindStatePropAt } from \"file:///Volumes/Depot/Developer/r3act/src/native_runtime_api.ts\";\n__nativeDefineComponent(\".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationApp\", NavigationApp, { propOnlySites: [] });\n__nativeDefineComponent(\".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationView\", NavigationView, { propOnlySites: [] });\n__nativeDefineComponent(\".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsApp\", RecommendationsApp, { propOnlySites: [] });\n__nativeDefineComponent(\".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsView\", RecommendationsView, { propOnlySites: [], closedStoreHostProgram: {\"componentProgramId\":\".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsView\",\"host\":{\"children\":[{\"expression\":{\"index\":1,\"kind\":\"input\"},\"kind\":\"text\"}],\"key\":\"recommendations\",\"props\":[[\"data-recommendations\",{\"index\":0,\"kind\":\"input\"}],[\"data-recommendation-label\",{\"index\":1,\"kind\":\"input\"}]],\"tag\":\"output\"},\"inputs\":[{\"paths\":[[\"query\"],[\"label\"]],\"storeProp\":\"resource\",\"storeUseSiteId\":\".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsView#store:0\"}],\"moduleRevision\":\"native-v1-d9481742d787ed81\",\"schemaVersion\":5} });\n__nativeDefineComponent(\".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeApp\", ThreeApp, { propOnlySites: [] });\n__nativeDefineComponent(\".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeNavigation\", ThreeNavigation, { propOnlySites: [] });\nimport type { AsyncResource, StoreSource } from \"file:///Volumes/Depot/Developer/r3act/src/native_runtime_api.ts\";\n\nexport type Profile = Readonly<{ query: string; accountId: string; name: string }>;\nexport type Permissions = Readonly<{ query: string; level: string }>;\nexport type Projects = Readonly<{ accountId: string; titles: readonly string[] }>;\nexport type Navigation = Readonly<{\n  query: string; label: string; projectCount: number;\n}>;\nexport type Recommendations = Readonly<{ query: string; label: string }>;\n\nexport type RouteProvider = Readonly<{\n  profile(query: string, signal: AbortSignal): Promise<Profile>;\n  permissions(query: string, signal: AbortSignal): Promise<Permissions>;\n  projects(accountId: string, signal: AbortSignal): Promise<Projects>;\n  recommendations(query: string, signal: AbortSignal): Promise<Recommendations>;\n}>;\n\nexport const deriveNavigation = (profile: Profile, permissions: Permissions,\n  projects: Projects): Navigation => Object.freeze({\n  query: profile.query,\n  label: `${profile.name} · ${permissions.level}`,\n  projectCount: projects.titles.length,\n});\n\nexport const profileTask = asyncTask(\"profile\", async (values, signal) => {\n  const query = String(values.get(\"$query\"));\n  const provider = values.get(\"$provider\") as RouteProvider;\n  return provider.profile(query, signal);\n});\n\nexport const permissionsTask = asyncTask(\"permissions\", async (values, signal) => {\n  const query = String(values.get(\"$query\"));\n  const provider = values.get(\"$provider\") as RouteProvider;\n  return provider.permissions(query, signal);\n});\n\nexport const projectsTask = asyncTask(\"projects\", async (values, signal) => {\n  const profile = values.get(\"profile\") as Profile;\n  const provider = values.get(\"$provider\") as RouteProvider;\n  return provider.projects(profile.accountId, signal);\n});\n\nexport const navigationTask = asyncTask(\"navigation\", (values) => {\n  const profile = values.get(\"profile\") as Profile;\n  const permissions = values.get(\"permissions\") as Permissions;\n  const projects = values.get(\"projects\") as Projects;\n  return deriveNavigation(profile, permissions, projects);\n});\n\nexport const recommendationsTask = asyncTask(\"recommendations\", async (values, signal) => {\n  const query = String(values.get(\"$query\"));\n  const provider = values.get(\"$provider\") as RouteProvider;\n  return provider.recommendations(query, signal);\n});\n\nexport const routeTasks = [profileTask, permissionsTask, projectsTask,\n  navigationTask, recommendationsTask] as const;\n\nexport function NavigationView(props: { resource: AsyncResource<Navigation> }) {\n  const navigation = __nativeUseAt(\".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationView#store:0\", props.resource);\n  return <output key=\"navigation\" data-navigation={navigation.query}\n    data-label={navigation.label} data-project-count={navigation.projectCount}>\n    {navigation.label} · {navigation.projectCount} projects\n  </output>;\n}\n\nexport function NavigationApp(props: { resource: AsyncResource<Navigation>;\n  urgent: StoreSource<number> }) {\n  const urgent = __nativeUseAt(\".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationApp#store:0\", props.urgent);\n  return <section key=\"navigation-root\" data-root=\"navigation\">\n    <output data-urgent={urgent}>{urgent}</output>\n    <Suspense fallback={<output key=\"navigation\" data-navigation=\"pending\">Loading navigation</output>} __nativeBoundarySite=\".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#boundary:0\">\n      <NavigationView resource={props.resource} />\n    </Suspense>\n  </section>;\n}\n\nexport function RecommendationsView(props: { resource: AsyncResource<Recommendations> }) {\n  const recommendations = __nativeUseAt(\".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsView#store:0\", props.resource);\n  return <output key=\"recommendations\" data-recommendations={recommendations.query}\n    data-recommendation-label={recommendations.label}>\n    {recommendations.label}\n  </output>;\n}\n\nexport function RecommendationsApp(props: { resource: AsyncResource<Recommendations>;\n  urgent: StoreSource<number> }) {\n  const urgent = __nativeUseAt(\".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsApp#store:0\", props.urgent);\n  return <section key=\"recommendations-root\" data-root=\"recommendations\">\n    <output data-urgent={urgent}>{urgent}</output>\n    <Suspense fallback={<output key=\"recommendations\" data-recommendations=\"pending\">Loading recommendations</output>} __nativeBoundarySite=\".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#boundary:1\">\n      <RecommendationsView resource={props.resource} />\n    </Suspense>\n  </section>;\n}\n\nexport function ThreeNavigation(props: { resource: AsyncResource<Navigation>;\n  urgent: StoreSource<number> }) {\n  const navigation = __nativeUseAt(\".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeNavigation#store:0\", props.resource);\n  const urgent = __nativeUseAt(\".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeNavigation#store:1\", props.urgent);\n  return jsx(\"group\", { key: \"three-navigation\",\n    name: `navigation-${navigation.query}-${navigation.projectCount}-urgent-${urgent}` });\n}\n\nexport function ThreeApp(props: { resource: AsyncResource<Navigation>;\n  urgent: StoreSource<number> }) {\n  return jsx(Suspense, { fallback: jsx(\"group\", { key: \"three-navigation\",\n    name: \"navigation-pending\" }),\n    children: jsx(ThreeNavigation, props) });\n}\n",
+	"components": [
+		{
+			"name": "NavigationApp",
+			"component_site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationApp",
+			"prop_only_sites": [],
+			"host_leaf_output": false,
+			"state_sites": [],
+			"effect_sites": [],
+			"store_sites": [{
+				"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationApp#store:0",
+				"source_expression": "props.urgent"
+			}],
+			"collection_sites": [],
+			"numeric_sinks": [],
+			"opaque_sinks": []
+		},
+		{
+			"name": "NavigationView",
+			"component_site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationView",
+			"prop_only_sites": [],
+			"host_leaf_output": false,
+			"state_sites": [],
+			"effect_sites": [],
+			"store_sites": [{
+				"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:NavigationView#store:0",
+				"source_expression": "props.resource"
+			}],
+			"collection_sites": [],
+			"numeric_sinks": [],
+			"opaque_sinks": []
+		},
+		{
+			"name": "RecommendationsApp",
+			"component_site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsApp",
+			"prop_only_sites": [],
+			"host_leaf_output": false,
+			"state_sites": [],
+			"effect_sites": [],
+			"store_sites": [{
+				"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsApp#store:0",
+				"source_expression": "props.urgent"
+			}],
+			"collection_sites": [],
+			"numeric_sinks": [],
+			"opaque_sinks": []
+		},
+		{
+			"name": "RecommendationsView",
+			"component_site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsView",
+			"prop_only_sites": [],
+			"host_leaf_output": false,
+			"state_sites": [],
+			"effect_sites": [],
+			"store_sites": [{
+				"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsView#store:0",
+				"source_expression": "props.resource"
+			}],
+			"closedStoreHostProgram": {
+				"componentProgramId": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsView",
+				"host": {
+					"children": [{
+						"expression": {
+							"index": 1,
+							"kind": "input"
+						},
+						"kind": "text"
+					}],
+					"key": "recommendations",
+					"props": [["data-recommendations", {
+						"index": 0,
+						"kind": "input"
+					}], ["data-recommendation-label", {
+						"index": 1,
+						"kind": "input"
+					}]],
+					"tag": "output"
+				},
+				"inputs": [{
+					"paths": [["query"], ["label"]],
+					"storeProp": "resource",
+					"storeUseSiteId": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:RecommendationsView#store:0"
+				}],
+				"moduleRevision": "native-v1-d9481742d787ed81",
+				"schemaVersion": 5
+			},
+			"collection_sites": [],
+			"numeric_sinks": [],
+			"opaque_sinks": []
+		},
+		{
+			"name": "ThreeApp",
+			"component_site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeApp",
+			"prop_only_sites": [],
+			"host_leaf_output": false,
+			"state_sites": [],
+			"effect_sites": [],
+			"store_sites": [],
+			"collection_sites": [],
+			"numeric_sinks": [],
+			"opaque_sinks": []
+		},
+		{
+			"name": "ThreeNavigation",
+			"component_site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeNavigation",
+			"prop_only_sites": [],
+			"host_leaf_output": false,
+			"state_sites": [],
+			"effect_sites": [],
+			"store_sites": [{
+				"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeNavigation#store:0",
+				"source_expression": "props.resource"
+			}, {
+				"site_id": ".cache/compiled-dependency-route-4680a331-13ab-40ae-90e9-2269307351f9/authored.tsx#component:ThreeNavigation#store:1",
+				"source_expression": "props.urgent"
+			}],
+			"collection_sites": [],
+			"numeric_sinks": [],
+			"opaque_sinks": []
+		}
+	]
+};

@@ -1,0 +1,5 @@
+# Preserved v1 failure and bounded repair
+
+Darwin-v1 completes in 217.33 seconds with 80/81 phases passing, 1316 Deno tests passing and one new Deno fixture failing. Rust107 and all61compiled fixtures plus packages/consumer checks pass. Source audit MATCH; 2436 archived files available. The new manual schema1 fixture incorrectly expected owned-scalar canonical preparation; schema1 legitimately retains conservative StorePropDelta preparation. The repair changes tests only: assert conservative fallback, test authentic owned scalar candidate accessors, and require actual compiler-produced group preparation in the compiled fixture.
+
+No production runtime changes follow v1. Verify the repaired Deno suite and modified actual compiled fixture, with before/after source hashes and unchanged runtime/package provenance; do not repeat unchanged passing Rust/package work. Timing harness changes after v1 implement the human’s p90 and balanced-order steers before fresh installed build/proof. No timing run has happened. Both unminified historical results and the first failing receipt remain unchanged.

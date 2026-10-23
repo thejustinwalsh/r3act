@@ -1,0 +1,13 @@
+# Next implementation source basis
+
+The completed slice is verified and remains slower than React Compiler. No more timing of unchanged source is authorized by this unit. The full-plan goal remains active.
+
+A bounded Sol source review identified the next concrete compiler-first integration: numeric Store leaf kernels for existing schemas 1/2/3/6, including flattened projected schema-6 inputs. Aggregate styles/tuples and fixed subtrees keep their existing evaluator until separately proven. This is a proposal pending the next unit's complete-guide review and contract, not an implemented ABI or attributed speed budget.
+
+Rust already proves ordered Store input paths and host expressions in `compiler/oxc-spike/src/main.rs` (closed Store lowering). `owner_update_program.rs` rewrites existing numeric inputs to buffer accesses, calls `numeric_expression_dag::lower_case`, and emits ranged execution over whole-cut buffers. Reuse that AST/DAG lowering for Store computations instead of creating another expression language or owner registry.
+
+The proposed kernel metadata must match its existing component program ID, module revision, flattened input order and prop order. Root keeps StoreRenderTransaction projection reads, accepted reader histories, ownership, reentry and exact acknowledgement; it may gather numeric inputs and execute original-order same-program ranges, then stage the same StorePropDelta and cache results. VDOM target qualification/publication stays authoritative. Unsupported shapes retain the current evaluator or generic path. Preserve JavaScript grouping, consuming branches, signed zero, finite-output rejection and exception/cleanup order; do not use host writes as speculative execution.
+
+The named retired work is `evaluateClosedStoreHostProgram` through `evaluateClosedHostValue` and recursive `evaluateClosedNumericExpression` for eligible props. Source locations: `src/closed_store_host_program.ts`, `src/closed_host_value.ts`, `src/closed_numeric_expression.ts`, and Root `#stageClosedStoreOutputs`. Source review also observes repeated ancestor-cache invalidation during publication, but this note supplies no measured cost or approval to accumulate unrelated caches.
+
+Falsifiers include disagreement with the current evaluator, changed projection capture order, stale/mismatched revision admission, source or child lifetime loss, consumed newer actions, changed accepted fork history, or host writes/history publication after a declined cut. Only a fresh integrated boundary may evaluate performance; the 3.10/3.80 versus 0.20/0.20 ms result remains scoped to this completed source.

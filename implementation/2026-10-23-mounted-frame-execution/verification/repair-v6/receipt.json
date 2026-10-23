@@ -1,0 +1,184 @@
+{
+  "status": "PASS",
+  "startedAt": "2026-10-23T20:44:47.841Z",
+  "sourceFreeze": "source-review-v6.json",
+  "sourceCount": 72,
+  "sourceAuditBefore": "MATCH",
+  "changed": [
+    "src/vdom_mounted_frame_execution_test.ts",
+    "src/vdom_snapshot_runtime.ts"
+  ],
+  "toolchain": {
+    "node": "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+    "version": "v24.18.0",
+    "pathFirst": "/Users/mini/.local/share/mise/installs/node/24.18.0/bin",
+    "rustc": "1.97.1",
+    "cargo": "1.97.1",
+    "cargoHome": "/Volumes/Depot/Developer/r3act/.cache/cargo",
+    "jobs": 1
+  },
+  "carried": "carried-prerequisites.json",
+  "steps": [
+    {
+      "name": "deno-full",
+      "status": "PASS",
+      "command": [
+        "deno",
+        "test",
+        "--config",
+        "deno.browser.json",
+        "--frozen",
+        "--lock=implementation/2026-10-16-publication/verification/deno-runtime.lock",
+        "src"
+      ],
+      "startedAt": "2026-10-23T20:44:47.842Z",
+      "durationMs": 20511,
+      "timeoutMs": 900000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/deno-full.log"
+    },
+    {
+      "name": "native-tooling",
+      "status": "PASS",
+      "command": [
+        "pnpm",
+        "check:native-tooling"
+      ],
+      "startedAt": "2026-10-23T20:45:08.354Z",
+      "durationMs": 1218,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/native-tooling.log"
+    },
+    {
+      "name": "compiled-54",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "--expose-gc",
+        "compiler/compiled_mounted_scalar_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T20:45:09.572Z",
+      "durationMs": 2056,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-54.log"
+    },
+    {
+      "name": "compiled-56",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "--expose-gc",
+        "compiler/compiled_compact_scalar_output_test.mjs"
+      ],
+      "startedAt": "2026-10-23T20:45:11.630Z",
+      "durationMs": 1182,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-56.log"
+    },
+    {
+      "name": "compiled-57",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "--expose-gc",
+        "compiler/compiled_owned_scalar_capture_test.mjs"
+      ],
+      "startedAt": "2026-10-23T20:45:12.813Z",
+      "durationMs": 2669,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-57.log"
+    },
+    {
+      "name": "compiled-58",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "--expose-gc",
+        "compiler/compiled_owned_frame_transaction_test.mjs"
+      ],
+      "startedAt": "2026-10-23T20:45:15.482Z",
+      "durationMs": 542,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-58.log"
+    },
+    {
+      "name": "compiled-59",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "--expose-gc",
+        "compiler/compiled_store_batch_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T20:45:16.025Z",
+      "durationMs": 633,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-59.log"
+    },
+    {
+      "name": "compiled-63",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_mounted_frame_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T20:45:16.658Z",
+      "durationMs": 1160,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-63.log"
+    },
+    {
+      "name": "package-build",
+      "status": "PASS",
+      "command": [
+        "pnpm",
+        "package:r3act"
+      ],
+      "startedAt": "2026-10-23T20:45:17.819Z",
+      "durationMs": 3634,
+      "timeoutMs": 900000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/package-build.log"
+    },
+    {
+      "name": "package-consumer",
+      "status": "PASS",
+      "command": [
+        "pnpm",
+        "check:r3act-packages"
+      ],
+      "startedAt": "2026-10-23T20:45:21.454Z",
+      "durationMs": 6573,
+      "timeoutMs": 900000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/package-consumer.log"
+    }
+  ],
+  "sourceAuditAfter": {
+    "status": "MATCH",
+    "count": 72
+  },
+  "finishedAt": "2026-10-23T20:45:28.046Z"
+}

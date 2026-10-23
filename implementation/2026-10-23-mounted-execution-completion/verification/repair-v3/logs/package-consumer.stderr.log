@@ -1,0 +1,24 @@
+$ node scripts/verify_r3act_packages.mjs
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: pnpm exec tsgo -p custom-host/tsconfig.json
+
+custom-host/retained_host.ts(238,5): error TS2741: Property 'mayReenter' is missing in type '{ valuePolicy: "copy" | "retain" | "scalar" | "unknown"; targetResource: null; valueResource: { object: Brush; ownership: "borrowed" | "shared-owned"; } | null; mayThrow: true; }' but required in type 'Readonly<{ valuePolicy: "unknown" | HostValuePolicy; targetResource: Readonly<{ object: object; ownership: HostResourceOwnership; }> | null; valueResource: Readonly<...> | null; mayThrow: true; mayReenter: true; }>'.
+
+
+
+1 !== 0
+
+    at run (file:///Volumes/Depot/Developer/r3act/scripts/verify_r3act_packages.mjs:16:10)
+    at file:///Volumes/Depot/Developer/r3act/scripts/verify_r3act_packages.mjs:290:5 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 1,
+  expected: 0,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v26.9.0

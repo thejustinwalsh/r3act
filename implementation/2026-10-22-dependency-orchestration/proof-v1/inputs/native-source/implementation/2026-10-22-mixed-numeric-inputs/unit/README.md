@@ -1,0 +1,1 @@
+Initial audit output layout retained as historical diagnostic output. The authoritative corrected audit is ../verification/final-audit.json and summary is ../summary.json. No product measurement was repeated during the audit correction.

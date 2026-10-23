@@ -1,0 +1,208 @@
+import * as THREE from 'three';
+
+export const OBJECTS = 256;
+export const WARMUP = 12;
+export const MEASURED = 60;
+export const WIDTH = 640;
+export const HEIGHT = 480;
+export type Arm = { scene: THREE.Scene; camera: THREE.OrthographicCamera; renderer: THREE.WebGLRenderer;
+  controlProof(): void; update(epoch: number): { published: boolean; counters?: Record<string, number> };
+  dispose(): Promise<Record<string, unknown>> | Record<string, unknown> };
+export const value = (epoch: number) => epoch;
+export const gridX = (id: number) => (id % 16 - 7.5) * .45;
+export const gridY = (id: number) => (Math.floor(id / 16) - 7.5) * .45;
+export function applyCommonRendererSettings(renderer: THREE.WebGLRenderer) {
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.NoToneMapping;
+}
+export function createView() {
+  const canvas = document.getElementById('surface') as HTMLCanvasElement;
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(1);
+  renderer.setSize(WIDTH, HEIGHT, false);
+  applyCommonRendererSettings(renderer);
+  const scene = new THREE.Scene(); scene.background = new THREE.Color('#000000');
+  const camera = Object.assign(new THREE.OrthographicCamera(-4, 4, 4, -4, .1, 100), { manual: true as const });
+  camera.position.z = 10; camera.updateProjectionMatrix();
+  scene.add(camera);
+  return { scene, camera, renderer };
+}
+export const makeObject = (id: number) => {
+  const object = new THREE.Group(); object.name = `object-${id}`; object.userData.id = id;
+  object.position.x = gridX(id); object.position.y = gridY(id);
+  const motion = new THREE.Group();
+  const child = new THREE.Group(); child.name = `child-${id}`;
+  child.add(new THREE.Mesh(new THREE.BoxGeometry(.12, .12, .12), new THREE.MeshBasicMaterial({ color: 'orange' })));
+  motion.add(child); object.add(motion);
+  return object;
+};
+function expectedTransform(id: number, epoch: number): [number, number, number] {
+  return id % 2 === 0
+    ? [value(epoch) * .01, value(epoch) * .005, value(epoch) * .0001]
+    : [value(epoch) * .0025, value(epoch) * .0075, value(epoch) * .0002];
+}
+export function inspect(scene: THREE.Scene, epoch: number, references: THREE.Object3D[], children: THREE.Object3D[]) {
+  const objects = scene.getObjectByName('objects')?.children ?? [];
+  if (objects.length !== OBJECTS) throw new Error(`membership ${objects.length}`);
+  let checksum = 0;
+  for (let id = 0; id < OBJECTS; id++) {
+    const object = objects[id];
+    if (object !== references[id] || object.name !== `object-${id}`) throw new Error(`identity ${id}`);
+    if (Math.abs(object.position.x - gridX(id)) > 1e-10 || Math.abs(object.position.y - gridY(id)) > 1e-10)
+      throw new Error(`grid position ${id}`);
+    const motion = object.children[0];
+    if (!motion || motion.children[0] !== children[id] || children[id].name !== `child-${id}`)
+      throw new Error(`retained child identity ${id}`);
+    const mesh = children[id].children[0];
+    if (!(mesh instanceof THREE.Mesh) || !(mesh.geometry instanceof THREE.BoxGeometry) ||
+      !(mesh.material instanceof THREE.MeshBasicMaterial)) throw new Error(`retained resource ${id}`);
+    const expected = expectedTransform(id, epoch);
+    const actual = [motion.position.x, motion.position.y, motion.rotation.z];
+    for (let field = 0; field < 3; field++) {
+      if (!Number.isFinite(actual[field]) || Math.abs(actual[field] - expected[field]) > 1e-9 * Math.max(1, Math.abs(expected[field])))
+        throw new Error(`stale scene value ${id}/${field}: ${actual[field]} != ${expected[field]}`);
+      checksum += actual[field] * (id + 1) * (field + 1);
+    }
+  }
+  return { epoch, checksum, count: objects.length, retained: true };
+}
+export function draw(view: Pick<Arm, 'scene' | 'camera' | 'renderer'>) {
+  view.renderer.render(view.scene, view.camera);
+  const pixels = new Uint8Array(WIDTH * HEIGHT * 4);
+  const gl = view.renderer.getContext();
+  gl.readPixels(0, 0, WIDTH, HEIGHT, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+  let hash = 2166136261;
+  for (let index = 0; index < pixels.length; index += 97)
+    hash = Math.imul(hash ^ pixels[index], 16777619) >>> 0;
+  let litPixels = 0;
+  for (let index = 0; index < pixels.length; index += 4)
+    if (pixels[index] || pixels[index + 1] || pixels[index + 2]) litPixels++;
+  return { pixelChecksum: hash, litPixels };
+}
+export function start(arm: Arm) {
+  if (arm.renderer.outputColorSpace !== THREE.SRGBColorSpace ||
+    arm.renderer.toneMapping !== THREE.NoToneMapping || arm.renderer.getPixelRatio() !== 1)
+    throw new Error('Common WebGL renderer settings drifted');
+  if ((arm.camera as THREE.OrthographicCamera & { manual?: boolean }).manual !== true ||
+    arm.camera.left !== -4 || arm.camera.right !== 4 ||
+    arm.camera.top !== 4 || arm.camera.bottom !== -4)
+    throw new Error('Manual orthographic camera bounds drifted');
+  const gl = arm.renderer.getContext();
+  const debug = gl.getExtension('WEBGL_debug_renderer_info');
+  const rendererInfo = { version: String(gl.getParameter(gl.VERSION)),
+    renderer: String(gl.getParameter(gl.RENDERER)),
+    unmaskedRenderer: debug ? String(gl.getParameter(debug.UNMASKED_RENDERER_WEBGL)) : null,
+    outputColorSpace: arm.renderer.outputColorSpace, toneMapping: arm.renderer.toneMapping,
+    pixelRatio: arm.renderer.getPixelRatio(), antialias: gl.getContextAttributes()?.antialias,
+    preserveDrawingBuffer: gl.getContextAttributes()?.preserveDrawingBuffer,
+    drawingBuffer: [gl.drawingBufferWidth, gl.drawingBufferHeight],
+    camera: { manual: true, left: arm.camera.left, right: arm.camera.right,
+      top: arm.camera.top, bottom: arm.camera.bottom, near: arm.camera.near, far: arm.camera.far,
+      projectionMatrix: Array.from(arm.camera.projectionMatrix.elements) } };
+  const references = [...(arm.scene.getObjectByName('objects')?.children ?? [])];
+  const children = references.map(object => object.children[0]?.children[0]);
+  if (children.some(child => !child)) throw new Error('Retained child missing at mount');
+  const resources = new Set<object>();
+  const disposalEvents = new Map<object, number>();
+  let signalDisposed: (() => void) | null = null;
+  const allDisposed = new Promise<void>(resolve => { signalDisposed = resolve; });
+  for (const child of children) {
+    const mesh = child!.children[0] as THREE.Mesh;
+    for (const resource of [mesh.geometry, mesh.material as THREE.Material]) {
+      resources.add(resource);
+      resource.addEventListener('dispose', () => {
+        disposalEvents.set(resource, (disposalEvents.get(resource) ?? 0) + 1);
+        if (disposalEvents.size === resources.size) signalDisposed?.();
+      });
+    }
+  }
+  arm.controlProof();
+  const mount = inspect(arm.scene, 0, references, children as THREE.Object3D[]);
+  let quantumMs = Infinity, lastClock = performance.now();
+  for (let index = 0; index < 10_000; index++) {
+    const now = performance.now();
+    if (now > lastClock) quantumMs = Math.min(quantumMs, now - lastClock);
+    lastClock = now;
+  }
+  const samples: Record<string, unknown>[] = [], warmupSamples: Record<string, unknown>[] = [];
+  let frame = 0, priorRaf = 0, stopped = false, resolved = false;
+  let resolveDone!: (result: Record<string, unknown>) => void;
+  let rejectDone!: (error: unknown) => void;
+  const done = new Promise<Record<string, unknown>>((resolve, reject) => { resolveDone = resolve; rejectDone = reject; });
+  let raf = 0;
+  const stop = async () => {
+    if (stopped) return { stopped: true };
+    stopped = true; cancelAnimationFrame(raf);
+    const teardownStart = performance.now();
+    let cleanup: Record<string, unknown>;
+    try {
+      cleanup = await arm.dispose();
+      let timeout: ReturnType<typeof setTimeout> | undefined;
+      try {
+        await Promise.race([allDisposed, new Promise<void>((_, reject) => {
+          timeout = setTimeout(() => reject(new Error('Resource disposal deadline')), 10_000);
+        })]);
+      } finally { clearTimeout(timeout); }
+      await new Promise<void>(resolve => {
+        if (typeof requestIdleCallback === 'function') requestIdleCallback(() => resolve(), { timeout: 1000 });
+        else setTimeout(resolve, 0);
+      });
+      if (disposalEvents.size !== resources.size ||
+        [...disposalEvents.values()].some(count => count !== 1))
+        throw new Error('Resource disposal must occur exactly once per geometry and material');
+      return { stopped: true, cleanup, resourcesExpected: resources.size,
+        resourcesDisposed: disposalEvents.size,
+        duplicateDisposalEvents: [...disposalEvents.values()].filter(count => count !== 1).length,
+        teardownMs: performance.now() - teardownStart };
+    } finally { arm.renderer.dispose(); }
+  };
+  const tick = async (rafNow: number) => {
+    if (stopped) return;
+    try {
+      frame++;
+      const callbackEntry = performance.now();
+      const updateStart = performance.now();
+      const publication = arm.update(frame);
+      const publishEnd = performance.now();
+      if (!publication.published) throw new Error(`publication deferred at ${frame}`);
+      const validationStart = performance.now();
+      if (arm.camera.left !== -4 || arm.camera.right !== 4 ||
+        arm.camera.top !== 4 || arm.camera.bottom !== -4 ||
+        gl.drawingBufferWidth !== WIDTH || gl.drawingBufferHeight !== HEIGHT ||
+        arm.camera.projectionMatrix.elements.some((entry, index) =>
+          !Object.is(entry, rendererInfo.camera.projectionMatrix[index])))
+        throw new Error(`camera projection drift at ${frame}`);
+      const state = inspect(arm.scene, frame, references, children as THREE.Object3D[]);
+      const validationEnd = performance.now();
+      const drawStart = performance.now();
+      const { pixelChecksum, litPixels } = draw(arm);
+      if (litPixels === 0) throw new Error('WebGL output is empty');
+      const drawEnd = performance.now();
+      const callbackEnd = performance.now();
+      const frameState = { ...state, updateStart, publishEnd, drawStart, drawEnd,
+        pixelChecksum, litPixels,
+        publishMs: publishEnd - updateStart, drawMs: drawEnd - drawStart,
+        validationMs: validationEnd - validationStart,
+        webglRenderAndReadbackMs: drawEnd - drawStart,
+        updateThroughDrawMs: drawEnd - updateStart,
+        callbackMs: callbackEnd - callbackEntry,
+        stateAgeMs: drawStart - updateStart, rafIntervalMs: priorRaf ? rafNow - priorRaf : null,
+        deadlineMissAt60HzReference: callbackEnd - rafNow > 1000 / 60,
+        counters: publication.counters ?? null };
+      priorRaf = rafNow;
+      if (frame > WARMUP) samples.push(frameState);
+      else warmupSamples.push(frameState);
+      if (frame === WARMUP + MEASURED) {
+        resolved = true;
+        const teardown = await stop();
+        resolveDone({ mount, rendererInfo, firstUpdate: warmupSamples[0], warmupSamples, samples,
+          timerQuantumMs: Number.isFinite(quantumMs) ? quantumMs : null,
+          teardown, warmup: WARMUP, measured: MEASURED,
+          rendering: 'Shared WebGLRenderer render/readPixels after Three Object3D graph validation; no presentation claim' });
+      } else raf = requestAnimationFrame(tick);
+    } catch (error) { try { await stop(); } catch (cleanupError) { rejectDone(new AggregateError([error, cleanupError])); return; } rejectDone(error); }
+  };
+  raf = requestAnimationFrame(tick);
+  window.addEventListener('pagehide', () => { void stop(); }, { once: true });
+  (window as Window & { realtimeHarness?: unknown }).realtimeHarness = { done, stop, get resolved() { return resolved; } };
+}

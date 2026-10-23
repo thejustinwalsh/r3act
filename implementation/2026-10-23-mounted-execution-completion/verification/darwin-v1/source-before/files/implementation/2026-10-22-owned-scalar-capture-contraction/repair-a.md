@@ -1,0 +1,9 @@
+# Interleaved scalar fixture repair
+
+The first consolidated Darwin gate preserved 76 passing phases out of 77, 1,255 passing Deno tests with two failures, and 57 passing actual compiled fixtures. One failure was the new `verified scalar maps interleaved numeric and nonnumeric literals exactly` test: its mode assertion expected `verified-scalar` and received `undefined`. This note records a source-only repair; it does not claim a passing rerun.
+
+The fixture's schema-5 Store input used `paths: [[]]`. `normalizeClosedStoreHostProgram` requires at least one nonempty projection for schema 5, so it returned `null`. The fixture's `!` hid that null from TypeScript, and `normalizeClosedStoreDataExecution` then returned `null`; optional inspection produced `undefined` before kernel proof ran. The same fixture also named its null-valued group prop `empty`, which `isClosedHostPropertyName` disallows. Both descriptor defects are independent of the emitted numeric kernel.
+
+The fixture now uses `paths: [["phase"]]`, matching the nearby successful schema-5 mixed-literal fixture, and names the null-valued prop `scale-x`, an allowed group prop. The normalized input still supplies one numeric slot. Numeric output positions remain dense and ordered: dynamic `position-x` at output 0, signed-zero `position-y` at output 1, and literal `position-z` at output 2. The string, boolean and null props remain interleaved around those slots. The kernel's direct assignments use exactly the existing verifier's supported source grammar and expected normalized expressions; neither runtime eligibility nor the verifier was broadened.
+
+The oracle remains the test's `verified-scalar` mode assertion followed by exact output checks for the dynamic value, string, boolean, null, numeric literal and `Object.is` signed zero. A future consolidated gate should rerun this fixture and the full source-locked slice; no gate was run during this repair.

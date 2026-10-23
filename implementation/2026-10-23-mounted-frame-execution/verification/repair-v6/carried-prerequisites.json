@@ -1,0 +1,24 @@
+{
+  "status": "CARRIED_FORWARD_BY_SOURCE_AND_ARTIFACT_HASH",
+  "from": "verification/repair-v4/receipt.json",
+  "rationale": "The v5-to-v6 freeze diff changes only VDOM mounted frame preparation and its mounted-frame regression test. The v4 correctness gate already passed; v5 changes were companion-only and excluded from this correctness slice. Rust108, install, compiler artifact, compiler metadata, plugins, all fixtures outside 54/56/57/58/59/63, and prior GC checks are carried; dependent VDOM runtime/compiled fixtures and source/package checks rerun.",
+  "changedSinceV4": [
+    "src/vdom_mounted_frame_execution_test.ts",
+    "src/vdom_snapshot_runtime.ts"
+  ],
+  "sourceFreeze": "source-review-v6.json",
+  "sourceEntries": 72,
+  "carriedSteps": [],
+  "debugCompiler": {
+    "path": "/Volumes/Depot/Developer/r3act/compiler/oxc-spike/target/debug/ui-graph-compiler-spike",
+    "sha256": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+    "carriedFrom": "verification/darwin-v3/receipt.json",
+    "sourceReceiptStep": "compiled-63"
+  },
+  "environment": {
+    "nodePathFirst": "/Users/mini/.local/share/mise/installs/node/24.18.0/bin",
+    "cargoHome": "/Volumes/Depot/Developer/r3act/.cache/cargo",
+    "cargoBuildJobs": "1",
+    "ci": "true"
+  }
+}

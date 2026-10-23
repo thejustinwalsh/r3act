@@ -1,0 +1,27 @@
+# Compiled owned Store batches
+
+Selected at5b9daa048a71503f117513eef859822aad3864c1 after primary read the complete Astra successor report/orchestration and verified all64source/evidence hashes (0missing/mismatch). The completed owned-frame boundary passes correctness/delivery/HMR but misses realtime parity3/4: Native update2.40/2.90ms versus ReactCompiler/R3F0.95/1.80, throughdraw5.00/6.10versus4.20/6.40. These are predecessor observations, not a removable budget or a qualification of new source. Full master scope and historic evidence limits remain; goal active.
+
+## Replacement and authority
+
+Implement the single vertical migration in ../2026-10-22-astra-current-speed-gap/report-v2.md and orchestration-v2.md. Retire ordinary request-array adapters/repeated descriptor copies, owner-sized projection-result references, per-owner combined-input gathering/kernel dispatch/output scratch reset and transfer on the selected route. Actual Store projection numeric arrays are already shared; do not claim their repeated allocation. Add one ephemeral owned schedule, shared/varying columns and verified batch calls into final per-row arrays. No new history/identity/version/publication registry, traversal layout, VDOM writer or worker.
+
+Keep World cell/lineage/cut, Store transaction/distinct reader histories, Root accepted outputs/action ledgers and VDOM admission/journal/resources authoritative. Original row/host order, immutable old snapshots, exact acknowledgements/newer actions, forks, generic progress, full admitted pre-write/final scans and per-write guards remain. Batch execution is preparation-only; rejected/malformed/nonfinite output reaches no host. Preserve public callback exception behavior. No post-host replay/re-evaluation.
+
+## Ownership and shared seam
+
+Sol medium A exclusively owns compiler store_numeric_kernel.rs/numeric_expression_dag.rs/narrow main.rs emitter expectations, closed_scalar_kernel_proof.ts, new closed_store_batch_kernel_proof.ts and its test. B exclusively owns closed_store_execution.ts/closed_scalar_output.ts/async_store_runtime.ts/owner_state_world.ts, new owned_closed_frame_input.ts and capture test. C starts only after primary reviews A/B actual types; it owns Root and new Deno/actual compiled integration fixtures. Primary owns runner, old compiled expectation integration, evidence/proof tooling and checkpoints. No implementation agent runs tests/builds/benchmarks. Luna idle until combined boundary.
+
+Execution schema3 is owned-data plus optional batchKernel(sharedInputs:readonly number[], varyingInputs:readonly number[], outputs:number[][], rowCount:number):void. Derive shared/varying counts and full prop indices from normalized host metadata. This namespace is distinct from host schema3 and legacy range schema1. New emit uses batch-only, not scalar+batch. Keep execution1/2/legacy compatibility and safe interpretation on absent/rejected proof.
+
+A exports proveClosedStoreBatchKernel(candidate,host) and the proof types. The verified result is a privately authentic capability tied to the exact normalized host layout/expression proof; structural kind fields cannot mint trust. A and B agree a captured canonical execution operation for this capability; B supplies only producer-owned authentic input/final arrays. No caller hooks, untrusted arrays or replaceable method invocation may enter the passive execution interval. Final exact TypeScript shape is reviewed by primary before C consumes it; no uncertainty is permission to bypass this seam.
+
+B supplies OwnedClosedFrameRequests: append authentic bound output requests, seal once, consume once. Producer unwraps once into candidate-local groups by exact normalized execution and ordered actual Store/path identities, scoped to one transaction/root capture. Equal values never group sources/local state. World/Store internal column entries share canonical capture/audit bodies with defensive supplied-array routes. World fills varying columns during capture/cut; Store stages every reader and supplies shared vectors once/group. Old/new/mixed/empty rows retain specified fallback and ordering.
+
+Frame authority allocates final full-width row arrays with literal slots initialized. Verified batch writes required numeric slots; validate finite final values/constants/Object.is then freeze/adopt privately. No public/scratch adoption; no frame retains matrix/peer/Root/mounted handle. Preserve exact expression grouping, signed zero and finite-final expressions with nonfinite intermediates. Runtime row bounds and finite source grammar required. No arbitrary Math/helper language expansion.
+
+## Evaluation and falsifiers
+
+All64baseline hashes are in before-source.json. Implement integrated A/B/C, source-review and freeze before one consolidated Luna gate, fresh installed six-context CSP/mechanism proof, current Portless HMR lifecycle and ONE unchanged four-arm12/60 comparison. No helper timing/diagnostic campaign. Proof expects3batchcalls/257rows,0scalarcalls on new scene, all old controls; source review verifies gather/transfer deletion, not just counters. Preserve failures; no favorable repeat.
+
+Semantic failure, hidden adapters/copies, forged trust, wrong arithmetic/source/host order, lost history/newer actions, resource/snapshot regression or retained whole-batch graphs blocks acceptance. Savings/share/new cold/memory/JIT/grouping costs remain unknown. If mechanism passes but parity fails, close this candidate without automatic threshold/container/writer tuning. Full product obligations remain.

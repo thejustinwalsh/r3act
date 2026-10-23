@@ -1,0 +1,40 @@
+{
+  "kind": "r3act-public-native-frame-source-basis",
+  "productCommit": "9759a0bb3",
+  "currentHeadAtAudit": "30c39ffa8",
+  "productAndConsumerDiffFromProductCommit": "none",
+  "researchOnly": true,
+  "executedTestsBuildsBrowsersBenchmarks": false,
+  "installedProof": {
+    "directory": "implementation/2026-10-22-native-frame-publication/proof-canvas-v3",
+    "proofStatus": "PASS",
+    "frameCount": 72,
+    "perFrameMechanismCounterLimit": "Archived per-frame counters establish grouped commit, draw callback and accepted root version; batch and VDOM sweep counters are absent from the public enqueueStores frame snapshots. Terminal mechanism counters include a later direct root.flush control and cannot be allocated to the 72 frames.",
+    "consumerSha256": "5345395d4cbdb8e66f4fbd0ef6fd00697a7cef05a705c06b8c2ec6b07da5ea51",
+    "harnessSha256": "784a8f2f6af4abbe8ecae1d93297e72b68993483818d96efc7bc838ff4423a05",
+    "proofSha256": "ae253c8646e4b822823eb75c35bf89be278e3897f074360460d623a81054313a",
+    "inputLockSha256": "93cd65f4360332aba2a18a527ba973b669bc5e625c55a9fbaf0826e66d0de3fc",
+    "buildProofSha256": "c390be4ef9170c82dae9da67069e2cf2557164bfdddb595cfd4b915e70691b46"
+  },
+  "sourceSha256": {
+    "src/native_frame_loop.ts": "5cb4efad265797f24421fd83c21314b03c864c17f26b60625e70380413515038",
+    "src/native_root_work_queue.ts": "64292b8656a5e11d1d753d352e9f68334fe723bd76a5fadb41506c66d12c789b",
+    "src/root_work_queue.ts": "e6241b6f1c72d98c322ab47e005cd17d5423b1ba8806d2ea4df5cbfdfb6dbdeb",
+    "src/component_state_runtime.ts": "eaeeac7534a4a9a5113ea4b54812cf752a0d9ea4dd621f1933d81c89fa0396d1",
+    "src/closed_store_execution.ts": "8db9f6efb61f661dbcc8ddf865447c09bee08763d91f948c26cdfaaad3d35a76",
+    "src/owned_closed_frame_input.ts": "660a78e472eeff13f9ffb5e915c538702b3bb595c05837f28bd8c2f608fd097d",
+    "src/owner_state_world.ts": "c9a67deb99c24bf4c24044c85e49a2d151bf6ce14b8b300e38e8e48d6dac297b",
+    "src/async_store_runtime.ts": "e5435b4d758efe545db64896d63531f2be87d7b8cd54afc83f1bf7ad501d7344",
+    "src/closed_scalar_output.ts": "e1d83f3beeb5f2f997cbdac8c6a4b49f453204e996cbe97fa5b709c7860c68ef",
+    "src/vdom_snapshot_runtime.ts": "eb2142418cd603cc4ccd44d56af8ec888c84922016dbe9f6c9d3affdbc9d2ec8",
+    "src/closed_store_batch_kernel_proof.ts": "45e04628f4f7669c40d01c50cea46b2ed453c53e3708b28357715a4d66e76c98"
+  },
+  "route": {
+    "entry": "NativeFrameLoopController.advance -> update Store.dispatch -> NativeRootWorkQueue.enqueueStores",
+    "candidate": "ComponentStateRoot.prepareStores -> #prepareClosedStoreCandidate(selected, false, lease, true) -> #prepareClosedInputCandidate(internalCellCapture=false, groupContinuation=true)",
+    "producer": "#stageClosedStoreOutputs -> prepareOwnedClosedStoreOutputs -> prepareOwnedFrameSchedule -> canonical World and Store cuts -> verified batch kernel -> frozen final frames, if passive eligibility succeeds",
+    "host": "VDOM prepared Store deltas -> queue all-member admission -> checked host writes -> repeated post-host validation -> grouped acceptance",
+    "completion": "runEffects -> canonical Store reader notification acknowledgement -> frame loop accepted-version check -> draw callback -> shared harness WebGL render/readPixels",
+    "internalImmediateRouteIsDifferent": true
+  }
+}

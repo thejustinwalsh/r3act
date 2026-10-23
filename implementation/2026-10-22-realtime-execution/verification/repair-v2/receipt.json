@@ -1,0 +1,1329 @@
+{
+  "schemaVersion": 1,
+  "status": "FAIL",
+  "executionKind": "bounded-repair",
+  "startedAtUtc": "2026-10-23T01:46:41.836529+00:00",
+  "reviewSha256": "bb9deac33c0685c2f2a7f35b2710824b6e7f60d8bf99172dc913e598cdfc115c",
+  "priorReceiptSha256": "654f0fd4a72b99f48218c0284774ed26b12882d72a5da74464ade4ad1d0befcc",
+  "expectedSourceChanges": [
+    "compiler/compiled_native_frame_publication_test.mjs",
+    "compiler/compiled_owned_frame_transaction_test.mjs",
+    "compiler/compiled_store_batch_execution_test.mjs",
+    "src/closed_scalar_output_test.ts",
+    "src/component_state_runtime.ts",
+    "src/native_frame_loop_test.ts",
+    "src/prepared_owner_row_program_test.ts",
+    "src/vdom_compact_scalar_output_test.ts"
+  ],
+  "actualSourceChanges": [
+    "compiler/compiled_native_frame_publication_test.mjs",
+    "compiler/compiled_owned_frame_transaction_test.mjs",
+    "compiler/compiled_store_batch_execution_test.mjs",
+    "src/closed_scalar_output_test.ts",
+    "src/component_state_runtime.ts",
+    "src/native_frame_loop_test.ts",
+    "src/prepared_owner_row_program_test.ts",
+    "src/vdom_compact_scalar_output_test.ts"
+  ],
+  "beforeInputCount": 2505,
+  "carriedForward": {
+    "v1ReceiptSha256": "654f0fd4a72b99f48218c0284774ed26b12882d72a5da74464ade4ad1d0befcc",
+    "v1SourceArchiveManifestSha256": "3ea44b1fd6c2d6b5e006be4f6898128765002f1c20872a1b2099c3db4ed5cd26",
+    "unchangedSourceSet": [
+      "native-inputs-contract",
+      "install",
+      "cargo-test",
+      "cargo-debug",
+      "compiler-info",
+      "artifact-conformance",
+      "hmr-revision-plugin",
+      "react-composition-plugin",
+      "runtime-origin-plugin"
+    ],
+    "compiler": {
+      "path": "compiler/oxc-spike/target/debug/ui-graph-compiler-spike",
+      "expectedSha256": "76784c5d19a3ce3fefc6696fd398a77596271996e2c388c6c92ead5c8ba186f4",
+      "actualSha256": "76784c5d19a3ce3fefc6696fd398a77596271996e2c388c6c92ead5c8ba186f4"
+    },
+    "node": {
+      "path": "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+      "expectedSha256": "ee6fb0e015284d83a91e8ec5213f43a157f8a392b58555301682892ba928c04a",
+      "actualSha256": "ee6fb0e015284d83a91e8ec5213f43a157f8a392b58555301682892ba928c04a"
+    },
+    "packageCacheBefore": {
+      "matchesV1PostGate": true,
+      "fileCount": 232
+    },
+    "manifests": {
+      "package.json": "c4239767475f2ec34675ad3f3212986aa868533216ab70f542d743502ba45ecb",
+      "pnpm-lock.yaml": "5a19df0719ad431f42263dff94bbf71e9891ecfdd771058a7fbf61c8e6e235b3",
+      "pnpm-workspace.yaml": "d115dc6c83ba283a7d17146ad456056f3f70b003edb8c312a52880b48b034001",
+      "compiler/oxc-spike/Cargo.toml": "e1c76d44cc35e61828ffaadd473189334fe61f49aa5e3b28fdfaae1f58fd604c",
+      "compiler/oxc-spike/Cargo.lock": "a17f9726fff8c140b72e451361d793a3fcade85c1929dda7955ef12df487e69f"
+    }
+  },
+  "steps": [
+    {
+      "name": "deno-full",
+      "status": "FAIL",
+      "command": [
+        "deno",
+        "test",
+        "--config",
+        "deno.browser.json",
+        "--frozen",
+        "--lock=implementation/2026-10-16-publication/verification/deno-runtime.lock",
+        "src"
+      ],
+      "startedAtUtc": "2026-10-23T01:46:41.836715+00:00",
+      "finishedAtUtc": "2026-10-23T01:46:59.435249+00:00",
+      "durationMs": 17598,
+      "deadlineMs": 900000,
+      "exitCode": 1,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/deno-full.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/deno-full.stderr.log"
+    },
+    {
+      "name": "native-tooling",
+      "status": "PASS",
+      "command": [
+        "pnpm",
+        "check:native-tooling"
+      ],
+      "startedAtUtc": "2026-10-23T01:46:59.435960+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:00.560860+00:00",
+      "durationMs": 1125,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/native-tooling.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/native-tooling.stderr.log"
+    },
+    {
+      "name": "compiled-01",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_direct_intent_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:00.561327+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:01.487564+00:00",
+      "durationMs": 926,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-01.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-01.stderr.log"
+    },
+    {
+      "name": "compiled-02",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_urgent_retained_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:01.489108+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:03.716354+00:00",
+      "durationMs": 2227,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-02.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-02.stderr.log"
+    },
+    {
+      "name": "compiled-03",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_urgent_retained_three_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:03.717044+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:04.190948+00:00",
+      "durationMs": 474,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-03.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-03.stderr.log"
+    },
+    {
+      "name": "compiled-04",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_boundary_workset_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:04.191443+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:04.568845+00:00",
+      "durationMs": 377,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-04.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-04.stderr.log"
+    },
+    {
+      "name": "compiled-05",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_boundary_reveal_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:04.569329+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:06.695238+00:00",
+      "durationMs": 2126,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-05.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-05.stderr.log"
+    },
+    {
+      "name": "compiled-06",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_resource_execution_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:06.696061+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:07.736378+00:00",
+      "durationMs": 1040,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-06.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-06.stderr.log"
+    },
+    {
+      "name": "compiled-07",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_joint_transaction_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:07.736864+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:08.131805+00:00",
+      "durationMs": 395,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-07.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-07.stderr.log"
+    },
+    {
+      "name": "compiled-08",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_scoped_collection_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:08.132237+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:08.837753+00:00",
+      "durationMs": 705,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-08.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-08.stderr.log"
+    },
+    {
+      "name": "compiled-09",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_retained_transaction_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:08.838419+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:11.139522+00:00",
+      "durationMs": 2301,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-09.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-09.stderr.log"
+    },
+    {
+      "name": "compiled-10",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_owner_row_execution_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:11.140436+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:11.545596+00:00",
+      "durationMs": 405,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-10.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-10.stderr.log"
+    },
+    {
+      "name": "compiled-11",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_owner_row_three_execution_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:11.546099+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:11.970837+00:00",
+      "durationMs": 425,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-11.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-11.stderr.log"
+    },
+    {
+      "name": "compiled-12",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_store_host_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:11.971297+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:13.062324+00:00",
+      "durationMs": 1091,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-12.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-12.stderr.log"
+    },
+    {
+      "name": "compiled-13",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_joint_store_host_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:13.063743+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:15.210203+00:00",
+      "durationMs": 2146,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-13.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-13.stderr.log"
+    },
+    {
+      "name": "compiled-14",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_joint_input_transaction_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:15.210717+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:15.756064+00:00",
+      "durationMs": 545,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-14.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-14.stderr.log"
+    },
+    {
+      "name": "compiled-15",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_resource_subtree_reveal_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:15.756510+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:16.261820+00:00",
+      "durationMs": 505,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-15.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-15.stderr.log"
+    },
+    {
+      "name": "compiled-16",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_resource_host_values_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:16.263370+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:18.951284+00:00",
+      "durationMs": 2688,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-16.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-16.stderr.log"
+    },
+    {
+      "name": "compiled-17",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_store_host_values_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:18.952546+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:19.464034+00:00",
+      "durationMs": 511,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-17.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-17.stderr.log"
+    },
+    {
+      "name": "compiled-18",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_store_host_subtree_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:19.464687+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:19.863399+00:00",
+      "durationMs": 399,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-18.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-18.stderr.log"
+    },
+    {
+      "name": "compiled-19",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_store_projection_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:19.864135+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:22.241351+00:00",
+      "durationMs": 2377,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-19.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-19.stderr.log"
+    },
+    {
+      "name": "compiled-20",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_joint_async_inputs_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:22.242204+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:23.161830+00:00",
+      "durationMs": 920,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-20.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-20.stderr.log"
+    },
+    {
+      "name": "compiled-21",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_component_forwarding_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:23.162484+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:23.700545+00:00",
+      "durationMs": 538,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-21.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-21.stderr.log"
+    },
+    {
+      "name": "compiled-22",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_authored_lifecycle_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:23.701311+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:27.020763+00:00",
+      "durationMs": 3319,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-22.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-22.stderr.log"
+    },
+    {
+      "name": "compiled-23",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_resource_transaction_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:27.021510+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:27.784115+00:00",
+      "durationMs": 763,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-23.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-23.stderr.log"
+    },
+    {
+      "name": "compiled-24",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_async_recovery_execution_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:27.784806+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:28.625936+00:00",
+      "durationMs": 841,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-24.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-24.stderr.log"
+    },
+    {
+      "name": "compiled-25",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_forked_transition_execution_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:28.627477+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:31.087649+00:00",
+      "durationMs": 2460,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-25.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-25.stderr.log"
+    },
+    {
+      "name": "compiled-26",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_custom_host_execution_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:31.088474+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:31.615869+00:00",
+      "durationMs": 527,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-26.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-26.stderr.log"
+    },
+    {
+      "name": "compiled-27",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_arrow_components_execution_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:31.616651+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:32.108435+00:00",
+      "durationMs": 492,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-27.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-27.stderr.log"
+    },
+    {
+      "name": "compiled-28",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_publication_callbacks_execution_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:32.109236+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:34.871596+00:00",
+      "durationMs": 2762,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-28.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-28.stderr.log"
+    },
+    {
+      "name": "compiled-29",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_held_reader_progress_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:34.873175+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:35.356529+00:00",
+      "durationMs": 483,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-29.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-29.stderr.log"
+    },
+    {
+      "name": "compiled-30",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_closed_arrow_authoring_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:35.358093+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:35.799786+00:00",
+      "durationMs": 442,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-30.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-30.stderr.log"
+    },
+    {
+      "name": "compiled-31",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_numeric_owner_effects_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:35.800323+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:37.994820+00:00",
+      "durationMs": 2194,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-31.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-31.stderr.log"
+    },
+    {
+      "name": "compiled-32",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_collection_owner_effects_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:37.996924+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:39.063588+00:00",
+      "durationMs": 1067,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-32.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-32.stderr.log"
+    },
+    {
+      "name": "compiled-33",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_collection_execution_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:39.064176+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:39.654374+00:00",
+      "durationMs": 590,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-33.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-33.stderr.log"
+    },
+    {
+      "name": "compiled-34",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_host_value_diff_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:39.654918+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:41.487451+00:00",
+      "durationMs": 1832,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-34.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-34.stderr.log"
+    },
+    {
+      "name": "compiled-35",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_reentrant_replacement_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:41.489576+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:42.915639+00:00",
+      "durationMs": 1426,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-35.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-35.stderr.log"
+    },
+    {
+      "name": "compiled-36",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_runtime_origin_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:42.916243+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:43.323327+00:00",
+      "durationMs": 407,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-36.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-36.stderr.log"
+    },
+    {
+      "name": "compiled-37",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_root_queue_execution_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:43.324189+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:46.723500+00:00",
+      "durationMs": 3399,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-37.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-37.stderr.log"
+    },
+    {
+      "name": "compiled-38",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_task_transition_execution_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:46.724735+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:51.536501+00:00",
+      "durationMs": 4812,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-38.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-38.stderr.log"
+    },
+    {
+      "name": "compiled-39",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_promise_store_race_execution_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:51.538388+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:56.096555+00:00",
+      "durationMs": 4558,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-39.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-39.stderr.log"
+    },
+    {
+      "name": "compiled-40",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/numeric_state_layout_execution_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:56.098259+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:57.602535+00:00",
+      "durationMs": 1504,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-40.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-40.stderr.log"
+    },
+    {
+      "name": "compiled-41",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_three_resource_lifetime_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:57.604676+00:00",
+      "finishedAtUtc": "2026-10-23T01:47:59.500982+00:00",
+      "durationMs": 1896,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-41.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-41.stderr.log"
+    },
+    {
+      "name": "compiled-42",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_host_publication_domain_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:47:59.501947+00:00",
+      "finishedAtUtc": "2026-10-23T01:48:00.815651+00:00",
+      "durationMs": 1314,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-42.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-42.stderr.log"
+    },
+    {
+      "name": "compiled-43",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_group_host_admission_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:48:00.816766+00:00",
+      "finishedAtUtc": "2026-10-23T01:48:02.612923+00:00",
+      "durationMs": 1796,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-43.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-43.stderr.log"
+    },
+    {
+      "name": "compiled-44",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_closed_collection_rows_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:48:02.613791+00:00",
+      "finishedAtUtc": "2026-10-23T01:48:03.168012+00:00",
+      "durationMs": 554,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-44.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-44.stderr.log"
+    },
+    {
+      "name": "compiled-45",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_namespace_three_execution_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:48:03.168583+00:00",
+      "finishedAtUtc": "2026-10-23T01:48:07.161894+00:00",
+      "durationMs": 3993,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-45.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-45.stderr.log"
+    },
+    {
+      "name": "compiled-46",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_numeric_expression_dag_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:48:07.162588+00:00",
+      "finishedAtUtc": "2026-10-23T01:48:09.229719+00:00",
+      "durationMs": 2067,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-46.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-46.stderr.log"
+    },
+    {
+      "name": "compiled-47",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_ranged_owner_kernel_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:48:09.230716+00:00",
+      "finishedAtUtc": "2026-10-23T01:48:11.092585+00:00",
+      "durationMs": 1862,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-47.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-47.stderr.log"
+    },
+    {
+      "name": "compiled-48",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_retained_store_clock_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:48:11.094340+00:00",
+      "finishedAtUtc": "2026-10-23T01:48:12.416335+00:00",
+      "durationMs": 1322,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-48.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-48.stderr.log"
+    },
+    {
+      "name": "compiled-49",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_structural_owner_scope_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:48:12.417321+00:00",
+      "finishedAtUtc": "2026-10-23T01:48:12.866677+00:00",
+      "durationMs": 449,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-49.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-49.stderr.log"
+    },
+    {
+      "name": "compiled-50",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_store_numeric_kernel_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:48:12.867454+00:00",
+      "finishedAtUtc": "2026-10-23T01:48:13.298739+00:00",
+      "durationMs": 431,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-50.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-50.stderr.log"
+    },
+    {
+      "name": "compiled-51",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_mixed_numeric_inputs_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:48:13.299765+00:00",
+      "finishedAtUtc": "2026-10-23T01:48:16.022952+00:00",
+      "durationMs": 2723,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-51.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-51.stderr.log"
+    },
+    {
+      "name": "compiled-52",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_closed_store_contraction_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:48:16.023644+00:00",
+      "finishedAtUtc": "2026-10-23T01:48:16.528806+00:00",
+      "durationMs": 505,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-52.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-52.stderr.log"
+    },
+    {
+      "name": "compiled-53",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_owned_store_execution_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:48:16.529450+00:00",
+      "finishedAtUtc": "2026-10-23T01:48:16.880894+00:00",
+      "durationMs": 351,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-53.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-53.stderr.log"
+    },
+    {
+      "name": "compiled-54",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "--expose-gc",
+        "compiler/compiled_mounted_scalar_execution_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:48:16.881646+00:00",
+      "finishedAtUtc": "2026-10-23T01:48:19.462357+00:00",
+      "durationMs": 2581,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-54.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-54.stderr.log"
+    },
+    {
+      "name": "compiled-55",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_realtime_store_progress_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:48:19.464939+00:00",
+      "finishedAtUtc": "2026-10-23T01:48:20.186378+00:00",
+      "durationMs": 721,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-55.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-55.stderr.log"
+    },
+    {
+      "name": "compiled-56",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "--expose-gc",
+        "compiler/compiled_compact_scalar_output_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:48:20.187057+00:00",
+      "finishedAtUtc": "2026-10-23T01:48:20.728001+00:00",
+      "durationMs": 541,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-56.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-56.stderr.log"
+    },
+    {
+      "name": "compiled-57",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "--expose-gc",
+        "compiler/compiled_owned_scalar_capture_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:48:20.728644+00:00",
+      "finishedAtUtc": "2026-10-23T01:48:23.644499+00:00",
+      "durationMs": 2916,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-57.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-57.stderr.log"
+    },
+    {
+      "name": "compiled-58",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "--expose-gc",
+        "compiler/compiled_owned_frame_transaction_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:48:23.645882+00:00",
+      "finishedAtUtc": "2026-10-23T01:48:24.753343+00:00",
+      "durationMs": 1107,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-58.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-58.stderr.log"
+    },
+    {
+      "name": "compiled-59",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "--expose-gc",
+        "compiler/compiled_store_batch_execution_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:48:24.754284+00:00",
+      "finishedAtUtc": "2026-10-23T01:48:28.289847+00:00",
+      "durationMs": 3536,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-59.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-59.stderr.log"
+    },
+    {
+      "name": "compiled-60",
+      "status": "FAIL",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_native_frame_publication_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:48:28.290969+00:00",
+      "finishedAtUtc": "2026-10-23T01:48:28.917068+00:00",
+      "durationMs": 626,
+      "deadlineMs": 300000,
+      "exitCode": 1,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-60.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-60.stderr.log"
+    },
+    {
+      "name": "compiled-61",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_owned_store_proof_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:48:28.917873+00:00",
+      "finishedAtUtc": "2026-10-23T01:48:29.284053+00:00",
+      "durationMs": 366,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-61.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-61.stderr.log"
+    },
+    {
+      "name": "three-host-7",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "--test",
+        "compiler/three_host_capability_test.mjs",
+        "compiler/three_property_copy_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:48:29.284717+00:00",
+      "finishedAtUtc": "2026-10-23T01:48:30.950279+00:00",
+      "durationMs": 1666,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/three-host-7.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/three-host-7.stderr.log"
+    },
+    {
+      "name": "direct-intent-gc",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "--expose-gc",
+        "scripts/verify_direct_intent_retention.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:48:30.952075+00:00",
+      "finishedAtUtc": "2026-10-23T01:48:32.223349+00:00",
+      "durationMs": 1271,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/direct-intent-gc.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/direct-intent-gc.stderr.log"
+    },
+    {
+      "name": "native-candidate-gc",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "--expose-gc",
+        "scripts/verify_native_candidate_retention.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:48:32.224046+00:00",
+      "finishedAtUtc": "2026-10-23T01:48:32.531534+00:00",
+      "durationMs": 307,
+      "deadlineMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/native-candidate-gc.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/native-candidate-gc.stderr.log"
+    },
+    {
+      "name": "compiled-collection-gc",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "--expose-gc",
+        "compiler/compiled_collection_owner_retention_test.mjs"
+      ],
+      "startedAtUtc": "2026-10-23T01:48:32.532573+00:00",
+      "finishedAtUtc": "2026-10-23T01:48:33.124197+00:00",
+      "durationMs": 592,
+      "deadlineMs": 90000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-collection-gc.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/compiled-collection-gc.stderr.log"
+    },
+    {
+      "name": "package-build",
+      "status": "PASS",
+      "command": [
+        "pnpm",
+        "package:r3act"
+      ],
+      "startedAtUtc": "2026-10-23T01:48:33.124833+00:00",
+      "finishedAtUtc": "2026-10-23T01:48:44.379906+00:00",
+      "durationMs": 11255,
+      "deadlineMs": 900000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/package-build.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/package-build.stderr.log"
+    },
+    {
+      "name": "package-consumer",
+      "status": "PASS",
+      "command": [
+        "pnpm",
+        "check:r3act-packages"
+      ],
+      "startedAtUtc": "2026-10-23T01:48:44.380902+00:00",
+      "finishedAtUtc": "2026-10-23T01:48:51.532058+00:00",
+      "durationMs": 7151,
+      "deadlineMs": 900000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "stdout": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/package-consumer.stdout.log",
+      "stderr": "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-realtime-execution/verification/repair-v2/logs/package-consumer.stderr.log"
+    }
+  ],
+  "errors": [],
+  "afterInputCount": 2505,
+  "sourceBeforeAfterMatch": true,
+  "changedDuringRepair": [],
+  "failedSteps": [
+    "deno-full",
+    "compiled-60"
+  ],
+  "finishedAtUtc": "2026-10-23T01:48:52.255936+00:00"
+}

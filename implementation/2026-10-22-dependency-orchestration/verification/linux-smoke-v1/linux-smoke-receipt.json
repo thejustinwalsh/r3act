@@ -1,0 +1,98 @@
+{
+  "status": "FAIL_LINUX_PACKAGED_CORE_SMOKE",
+  "scope": "one disposable linux/arm64 Node 24.18 container; packaged core API/store/task/provider lease/basic host; compiler artifact target inspection only",
+  "vmInitiallyStopped": true,
+  "machine": "r3act-dev",
+  "machineStartReceipt": "podman-machine-start.json",
+  "machineStop": {
+    "exitCode": 0,
+    "stdout": "Machine \"r3act-dev\" stopped successfully\n",
+    "stderr": "",
+    "timeoutSeconds": 45
+  },
+  "containerCommand": [
+    "podman",
+    "run",
+    "--pull=never",
+    "--name",
+    "r3act-linux-smoke-v1",
+    "--rm",
+    "--network=none",
+    "--memory=1536m",
+    "--cpus=1",
+    "-v",
+    "/Volumes/Depot:/Volumes/Depot:ro",
+    "-w",
+    "/Volumes/Depot/Developer/r3act",
+    "node:24.18.0-bookworm",
+    "sh",
+    "/Volumes/Depot/Developer/r3act/implementation/2026-10-22-dependency-orchestration/verification/linux-smoke-v1/container-smoke.sh"
+  ],
+  "containerTimeoutSeconds": 75,
+  "containerTimedOut": false,
+  "containerExitCode": 1,
+  "containerStdout": "container-smoke.stdout.log",
+  "containerStderr": "container-smoke.stderr.log",
+  "imageInspect": {
+    "exitCode": 0,
+    "stdout": "f1158c7f34cf35a047bf0513c38282bb2fa253529e5ae404b32c6d93697410be linux/arm64 1155650300",
+    "stderr": ""
+  },
+  "packageHashesBefore": {
+    "/Volumes/Depot/Developer/r3act/.cache/r3act-package-build/report.json": {
+      "sha256": "15113c77914fb936d1fe568a3eaf7117052e8236c9e5fed71a5c3f224fa22b7a",
+      "bytes": 25023
+    },
+    "/Volumes/Depot/Developer/r3act/.cache/r3act-package-build/tarballs/r3act-core.tgz": {
+      "sha256": "18a92d002edaf665e3c905f68cc354bb52cc465bdb4d85a9bef5baad0573848c",
+      "bytes": 1439984
+    },
+    "/Volumes/Depot/Developer/r3act/.cache/r3act-package-build/tarballs/r3act-host-dom.tgz": {
+      "sha256": "cd9b9ca857b1ea8ba96a6dedd7c7a8a8f379a5dd5e83db19582d3d07b9ab3e34",
+      "bytes": 1252
+    },
+    "/Volumes/Depot/Developer/r3act/.cache/r3act-package-build/tarballs/r3act-host-three.tgz": {
+      "sha256": "a25bf2dadeb96f88d51da7a31a396e1cb78e7d330045d3c644d1946cdcd1b7fd",
+      "bytes": 1437
+    },
+    "/Volumes/Depot/Developer/r3act/.cache/r3act-package-build/tarballs/r3act-react-bridge.tgz": {
+      "sha256": "4f228cac55b141a2e3b1df6d20c1f38359ca93b769bf2f03f94c85cf577e0c4c",
+      "bytes": 1411
+    },
+    "/Volumes/Depot/Developer/r3act/.cache/r3act-package-build/tarballs/r3act-vite.tgz": {
+      "sha256": "2bde1264b801e4c8dce42e477d7dd4c14f8402fa8f1944d89a169906aded69e9",
+      "bytes": 1376711
+    }
+  },
+  "packageHashesAfter": {
+    "/Volumes/Depot/Developer/r3act/.cache/r3act-package-build/report.json": {
+      "sha256": "15113c77914fb936d1fe568a3eaf7117052e8236c9e5fed71a5c3f224fa22b7a",
+      "bytes": 25023
+    },
+    "/Volumes/Depot/Developer/r3act/.cache/r3act-package-build/tarballs/r3act-core.tgz": {
+      "sha256": "18a92d002edaf665e3c905f68cc354bb52cc465bdb4d85a9bef5baad0573848c",
+      "bytes": 1439984
+    },
+    "/Volumes/Depot/Developer/r3act/.cache/r3act-package-build/tarballs/r3act-host-dom.tgz": {
+      "sha256": "cd9b9ca857b1ea8ba96a6dedd7c7a8a8f379a5dd5e83db19582d3d07b9ab3e34",
+      "bytes": 1252
+    },
+    "/Volumes/Depot/Developer/r3act/.cache/r3act-package-build/tarballs/r3act-host-three.tgz": {
+      "sha256": "a25bf2dadeb96f88d51da7a31a396e1cb78e7d330045d3c644d1946cdcd1b7fd",
+      "bytes": 1437
+    },
+    "/Volumes/Depot/Developer/r3act/.cache/r3act-package-build/tarballs/r3act-react-bridge.tgz": {
+      "sha256": "4f228cac55b141a2e3b1df6d20c1f38359ca93b769bf2f03f94c85cf577e0c4c",
+      "bytes": 1411
+    },
+    "/Volumes/Depot/Developer/r3act/.cache/r3act-package-build/tarballs/r3act-vite.tgz": {
+      "sha256": "2bde1264b801e4c8dce42e477d7dd4c14f8402fa8f1944d89a169906aded69e9",
+      "bytes": 1376711
+    }
+  },
+  "packageHashesUnchanged": true,
+  "containerCleanup": {
+    "remainingContainerIdsBeforeRm": []
+  },
+  "elapsedSeconds": 1.6
+}

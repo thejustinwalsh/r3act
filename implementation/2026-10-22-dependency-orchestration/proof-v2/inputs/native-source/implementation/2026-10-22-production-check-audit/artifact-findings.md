@@ -1,0 +1,9 @@
+# Production artifact audit
+
+Both benchmark arms were built in Vite production mode. The React arm used React 19.3.0’s production reconciler and production JSX runtime, confirmed in the exact loaded asset by `react.production.js` and `react-jsx-runtime.production.js` markers and the absence of development reconciler/JSX markers. This rules out a DEV-React versus production-Native mismatch.
+
+The comparison still used **unminified production assets**: the shared baseline build sets `minify: false`. The separate delivery receipt covers a Native minified artifact only, so these measurements do not establish matched minified-release performance.
+
+The timed runner sets `window.__realtimeProof` false and asserts null counters for every warmup and measured frame. DevTools’ added User Timing measure starts at the original `updateStart` and ends at the original `publishEnd`; insertion is after the end timestamp. The Native production bundle retains currentness, prototype-canonicality, and per-write Store readiness checks. The traces sample those semantic paths, so production mode does not erase their runtime cost. The optional profile-counter callback is absent when diagnostics are off, although disabled counter guard branches remain in the bundle and their residual cost is not isolated.
+
+Evidence: [build script](../2026-10-22-native-frame-publication/consumer/build.mjs), [timing receipt](../2026-10-22-native-frame-publication/proof-canvas-v3/canvas-timing-one-shot.json), [React capture](../2026-10-22-native-frame-publication/proof-canvas-v3/capture-react.json), [DevTools trace receipt](../2026-10-22-native-devtools-profile/evidence/devtools-profile-v3/receipt.json), and [offline trace analysis](../2026-10-22-native-devtools-profile/evidence/devtools-profile-v3/analysis-v2.json). Source and asset SHA-256 bindings are in the companion JSON.

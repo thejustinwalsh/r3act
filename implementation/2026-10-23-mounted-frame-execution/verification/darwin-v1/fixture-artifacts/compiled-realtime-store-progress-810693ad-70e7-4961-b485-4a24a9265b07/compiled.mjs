@@ -1,0 +1,526 @@
+import { registerCompiledSemanticPlan as __registerNativeSemanticPlan, invalidateCompiledSemanticPlan as __invalidateNativeSemanticPlan } from "file:///Volumes/Depot/Developer/r3act/src/native_runtime_api.ts";
+__registerNativeSemanticPlan({
+	"schema_version": 1,
+	"source_file": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx",
+	"module_revision": "native-v1-d17b82fc219f58cd",
+	"owners": [
+		{
+			"site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Alternate",
+			"repeated_scope": "runtime-keyed-owner"
+		},
+		{
+			"site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Marker",
+			"repeated_scope": "runtime-keyed-owner"
+		},
+		{
+			"site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Motion",
+			"repeated_scope": "runtime-keyed-owner"
+		},
+		{
+			"site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Scene",
+			"repeated_scope": "runtime-keyed-owner"
+		}
+	],
+	"sources": [
+		{
+			"site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Alternate#store:0",
+			"owner_site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Alternate",
+			"kind": "use-input",
+			"provenance": "opaque"
+		},
+		{
+			"site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Marker#store:0",
+			"owner_site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Marker",
+			"kind": "use-input",
+			"provenance": "opaque"
+		},
+		{
+			"site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Motion#store:0",
+			"owner_site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Motion",
+			"kind": "use-input",
+			"provenance": "opaque"
+		},
+		{
+			"site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Scene#store:0",
+			"owner_site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Scene",
+			"kind": "use-input",
+			"provenance": "opaque"
+		}
+	],
+	"sinks": [],
+	"operations": [
+		{
+			"site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Alternate#store:0",
+			"owner_site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Alternate",
+			"kind": "use-store-or-resource",
+			"provenance": "opaque",
+			"source_sites": []
+		},
+		{
+			"site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Marker#store:0",
+			"owner_site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Marker",
+			"kind": "use-store-or-resource",
+			"provenance": "opaque",
+			"source_sites": []
+		},
+		{
+			"site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Motion#store:0",
+			"owner_site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Motion",
+			"kind": "use-store-or-resource",
+			"provenance": "opaque",
+			"source_sites": []
+		},
+		{
+			"site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Scene#store:0",
+			"owner_site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Scene",
+			"kind": "use-store-or-resource",
+			"provenance": "opaque",
+			"source_sites": []
+		}
+	],
+	"graph": {
+		"coverage": "proven-sinks-only",
+		"source_to_sinks": {},
+		"execution_order": []
+	}
+});
+if (import.meta.hot) {
+	const __onNativeModuleRevision = (event) => {
+		if (event?.sourceFile === ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx" && event.previousRevision === "native-v1-d17b82fc219f58cd" && event.previousInstance === "native-v1-d17b82fc219f58cd") __invalidateNativeSemanticPlan(".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx", "native-v1-d17b82fc219f58cd");
+	};
+	import.meta.hot.on("r3act:invalidate-native-module", __onNativeModuleRevision);
+	import.meta.hot.dispose(() => import.meta.hot?.off("r3act:invalidate-native-module", __onNativeModuleRevision));
+}
+/** @jsxRuntime classic */
+/** @jsx jsx */
+// @native-ui
+import { createStore, storeRecord, jsx } from "file:///Volumes/Depot/Developer/r3act/src/native_runtime_api.ts";
+import { defineComponent as __nativeDefineComponent, useAt as __nativeUseAt } from "file:///Volumes/Depot/Developer/r3act/src/native_runtime_api.ts";
+__nativeDefineComponent(".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Alternate", Alternate, {
+	propOnlySites: [],
+	closedStoreHostProgram: {
+		"componentProgramId": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Alternate",
+		"host": {
+			"child": null,
+			"key": "motion",
+			"props": [["position-x", {
+				"kind": "binary",
+				"left": {
+					"index": 0,
+					"kind": "input"
+				},
+				"operator": "*",
+				"right": {
+					"kind": "literal",
+					"value": 3
+				}
+			}]],
+			"tag": "group"
+		},
+		"inputs": [{
+			"paths": [["phase"]],
+			"storeProp": "clock",
+			"storeUseSiteId": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Alternate#store:0"
+		}],
+		"moduleRevision": "native-v1-d17b82fc219f58cd",
+		"retainedChildProp": "children",
+		"schemaVersion": 6
+	},
+	closedStoreExecution: {
+		"componentProgramId": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Alternate",
+		"kind": "owned-data",
+		"moduleRevision": "native-v1-d17b82fc219f58cd",
+		"schemaVersion": 3,
+		"batchKernel": (sharedInputs, varyingInputs, outputs, rowCount) => {
+			const $r3actDag0 = sharedInputs[0] * 3;
+			for (let row = 0; row < rowCount; row++) {
+				const rowOutput = outputs[row];
+				rowOutput[0] = $r3actDag0;
+			}
+		}
+	}
+});
+__nativeDefineComponent(".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Marker", Marker, {
+	propOnlySites: [],
+	closedStoreHostProgram: {
+		"componentProgramId": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Marker",
+		"host": {
+			"children": [],
+			"key": "frame-marker",
+			"props": [["name", {
+				"kind": "literal",
+				"value": "accepted-frame"
+			}], ["position-x", {
+				"index": 0,
+				"kind": "input"
+			}]],
+			"tag": "group"
+		},
+		"inputs": [{
+			"paths": [["phase"]],
+			"storeProp": "clock",
+			"storeUseSiteId": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Marker#store:0"
+		}],
+		"moduleRevision": "native-v1-d17b82fc219f58cd",
+		"schemaVersion": 5
+	},
+	closedStoreExecution: {
+		"componentProgramId": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Marker",
+		"kind": "owned-data",
+		"moduleRevision": "native-v1-d17b82fc219f58cd",
+		"schemaVersion": 3,
+		"batchKernel": (sharedInputs, varyingInputs, outputs, rowCount) => {
+			for (let row = 0; row < rowCount; row++) {
+				const rowOutput = outputs[row];
+				rowOutput[1] = sharedInputs[0];
+			}
+		}
+	}
+});
+__nativeDefineComponent(".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Motion", Motion, {
+	propOnlySites: [],
+	closedStoreHostProgram: {
+		"componentProgramId": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Motion",
+		"host": {
+			"child": null,
+			"key": "motion",
+			"props": [["position-x", {
+				"kind": "binary",
+				"left": {
+					"index": 0,
+					"kind": "input"
+				},
+				"operator": "*",
+				"right": {
+					"kind": "literal",
+					"value": 2
+				}
+			}]],
+			"tag": "group"
+		},
+		"inputs": [{
+			"paths": [["phase"]],
+			"storeProp": "clock",
+			"storeUseSiteId": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Motion#store:0"
+		}],
+		"moduleRevision": "native-v1-d17b82fc219f58cd",
+		"retainedChildProp": "children",
+		"schemaVersion": 6
+	},
+	closedStoreExecution: {
+		"componentProgramId": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Motion",
+		"kind": "owned-data",
+		"moduleRevision": "native-v1-d17b82fc219f58cd",
+		"schemaVersion": 3,
+		"batchKernel": (sharedInputs, varyingInputs, outputs, rowCount) => {
+			const $r3actDag0 = sharedInputs[0] * 2;
+			for (let row = 0; row < rowCount; row++) {
+				const rowOutput = outputs[row];
+				rowOutput[0] = $r3actDag0;
+			}
+		}
+	}
+});
+__nativeDefineComponent(".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Scene", Scene, { propOnlySites: [] });
+export const clock = createStore(storeRecord({ phase: 0 }));
+export const control = createStore(storeRecord({ ids: [
+	"a",
+	"b",
+	"c"
+] }));
+export function Motion(props) {
+	const frame = __nativeUseAt(".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Motion#store:0", props.clock);
+	return /* @__PURE__ */ jsx("group", {
+		key: "motion",
+		"position-x": frame.phase * 2
+	}, props.children);
+}
+export function Alternate(props) {
+	const frame = __nativeUseAt(".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Alternate#store:0", props.clock);
+	return /* @__PURE__ */ jsx("group", {
+		key: "motion",
+		"position-x": frame.phase * 3
+	}, props.children);
+}
+export function Marker(props) {
+	const frame = __nativeUseAt(".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Marker#store:0", props.clock);
+	return /* @__PURE__ */ jsx("group", {
+		key: "frame-marker",
+		name: "accepted-frame",
+		"position-x": frame.phase
+	});
+}
+export function Scene(props) {
+	const state = __nativeUseAt(".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Scene#store:0", props.control);
+	return /* @__PURE__ */ jsx("group", { key: "scene" }, /* @__PURE__ */ jsx(Marker, {
+		key: "marker-owner",
+		clock: props.clock
+	}), state.ids.map((id) => /* @__PURE__ */ jsx("section", {
+		key: "slot-" + id,
+		name: "slot-" + id
+	}, id === "b" || id === "d" ? /* @__PURE__ */ jsx(Alternate, {
+		key: "owner-" + id,
+		clock: props.clock
+	}, /* @__PURE__ */ jsx("mesh", {
+		key: "child-" + id,
+		name: "retained-" + id
+	})) : /* @__PURE__ */ jsx(Motion, {
+		key: "owner-" + id,
+		clock: props.clock
+	}, /* @__PURE__ */ jsx("mesh", {
+		key: "child-" + id,
+		name: "retained-" + id
+	})))));
+}
+export const compiledNativeComponentPlan = {
+	"schema_version": 2,
+	"module_revision": "native-v1-d17b82fc219f58cd",
+	"semantic_plan": {
+		"schema_version": 1,
+		"source_file": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx",
+		"module_revision": "native-v1-d17b82fc219f58cd",
+		"owners": [
+			{
+				"site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Alternate",
+				"repeated_scope": "runtime-keyed-owner"
+			},
+			{
+				"site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Marker",
+				"repeated_scope": "runtime-keyed-owner"
+			},
+			{
+				"site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Motion",
+				"repeated_scope": "runtime-keyed-owner"
+			},
+			{
+				"site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Scene",
+				"repeated_scope": "runtime-keyed-owner"
+			}
+		],
+		"sources": [
+			{
+				"site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Alternate#store:0",
+				"owner_site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Alternate",
+				"kind": "use-input",
+				"provenance": "opaque"
+			},
+			{
+				"site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Marker#store:0",
+				"owner_site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Marker",
+				"kind": "use-input",
+				"provenance": "opaque"
+			},
+			{
+				"site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Motion#store:0",
+				"owner_site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Motion",
+				"kind": "use-input",
+				"provenance": "opaque"
+			},
+			{
+				"site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Scene#store:0",
+				"owner_site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Scene",
+				"kind": "use-input",
+				"provenance": "opaque"
+			}
+		],
+		"sinks": [],
+		"operations": [
+			{
+				"site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Alternate#store:0",
+				"owner_site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Alternate",
+				"kind": "use-store-or-resource",
+				"provenance": "opaque",
+				"source_sites": []
+			},
+			{
+				"site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Marker#store:0",
+				"owner_site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Marker",
+				"kind": "use-store-or-resource",
+				"provenance": "opaque",
+				"source_sites": []
+			},
+			{
+				"site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Motion#store:0",
+				"owner_site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Motion",
+				"kind": "use-store-or-resource",
+				"provenance": "opaque",
+				"source_sites": []
+			},
+			{
+				"site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Scene#store:0",
+				"owner_site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Scene",
+				"kind": "use-store-or-resource",
+				"provenance": "opaque",
+				"source_sites": []
+			}
+		],
+		"graph": {
+			"coverage": "proven-sinks-only",
+			"source_to_sinks": {},
+			"execution_order": []
+		}
+	},
+	"source_file": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx",
+	"helper_module": "",
+	"tasks": [],
+	"task_order": [],
+	"component_module": "/** @jsxRuntime classic */\n/** @jsx jsx */\n// @native-ui\nimport { createStore, storeRecord, use, jsx } from \"file:///Volumes/Depot/Developer/r3act/src/native_runtime_api.ts\";\nimport { defineComponent as __nativeDefineComponent, useStateAt as __nativeUseStateAt, useEffectAt as __nativeUseEffectAt, useStoreAt as __nativeUseStoreAt, bindStatePropsAt as __nativeBindStatePropsAt, renderCollectionAt as __nativeRenderCollectionAt, useAt as __nativeUseAt, bindStatePropAt as __nativeBindStatePropAt } from \"file:///Volumes/Depot/Developer/r3act/src/native_runtime_api.ts\";\n__nativeDefineComponent(\".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Alternate\", Alternate, { propOnlySites: [], closedStoreHostProgram: {\"componentProgramId\":\".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Alternate\",\"host\":{\"child\":null,\"key\":\"motion\",\"props\":[[\"position-x\",{\"kind\":\"binary\",\"left\":{\"index\":0,\"kind\":\"input\"},\"operator\":\"*\",\"right\":{\"kind\":\"literal\",\"value\":3.0}}]],\"tag\":\"group\"},\"inputs\":[{\"paths\":[[\"phase\"]],\"storeProp\":\"clock\",\"storeUseSiteId\":\".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Alternate#store:0\"}],\"moduleRevision\":\"native-v1-d17b82fc219f58cd\",\"retainedChildProp\":\"children\",\"schemaVersion\":6}, closedStoreExecution: {\"componentProgramId\":\".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Alternate\",\"kind\":\"owned-data\",\"moduleRevision\":\"native-v1-d17b82fc219f58cd\",\"schemaVersion\":3,\"batchKernel\":(sharedInputs, varyingInputs, outputs, rowCount) => {const $r3actDag0 = ((sharedInputs[0] * 3.0));for (let row = 0; row < rowCount; row++) {const rowOutput = outputs[row];rowOutput[0] = $r3actDag0;}}} });\n__nativeDefineComponent(\".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Marker\", Marker, { propOnlySites: [], closedStoreHostProgram: {\"componentProgramId\":\".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Marker\",\"host\":{\"children\":[],\"key\":\"frame-marker\",\"props\":[[\"name\",{\"kind\":\"literal\",\"value\":\"accepted-frame\"}],[\"position-x\",{\"index\":0,\"kind\":\"input\"}]],\"tag\":\"group\"},\"inputs\":[{\"paths\":[[\"phase\"]],\"storeProp\":\"clock\",\"storeUseSiteId\":\".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Marker#store:0\"}],\"moduleRevision\":\"native-v1-d17b82fc219f58cd\",\"schemaVersion\":5}, closedStoreExecution: {\"componentProgramId\":\".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Marker\",\"kind\":\"owned-data\",\"moduleRevision\":\"native-v1-d17b82fc219f58cd\",\"schemaVersion\":3,\"batchKernel\":(sharedInputs, varyingInputs, outputs, rowCount) => {for (let row = 0; row < rowCount; row++) {const rowOutput = outputs[row];rowOutput[1] = sharedInputs[0];}}} });\n__nativeDefineComponent(\".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Motion\", Motion, { propOnlySites: [], closedStoreHostProgram: {\"componentProgramId\":\".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Motion\",\"host\":{\"child\":null,\"key\":\"motion\",\"props\":[[\"position-x\",{\"kind\":\"binary\",\"left\":{\"index\":0,\"kind\":\"input\"},\"operator\":\"*\",\"right\":{\"kind\":\"literal\",\"value\":2.0}}]],\"tag\":\"group\"},\"inputs\":[{\"paths\":[[\"phase\"]],\"storeProp\":\"clock\",\"storeUseSiteId\":\".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Motion#store:0\"}],\"moduleRevision\":\"native-v1-d17b82fc219f58cd\",\"retainedChildProp\":\"children\",\"schemaVersion\":6}, closedStoreExecution: {\"componentProgramId\":\".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Motion\",\"kind\":\"owned-data\",\"moduleRevision\":\"native-v1-d17b82fc219f58cd\",\"schemaVersion\":3,\"batchKernel\":(sharedInputs, varyingInputs, outputs, rowCount) => {const $r3actDag0 = ((sharedInputs[0] * 2.0));for (let row = 0; row < rowCount; row++) {const rowOutput = outputs[row];rowOutput[0] = $r3actDag0;}}} });\n__nativeDefineComponent(\".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Scene\", Scene, { propOnlySites: [] });\nexport const clock = createStore(storeRecord({ phase: 0 }));\nexport const control = createStore(storeRecord({ ids: [\"a\", \"b\", \"c\"] }));\nexport function Motion(props) {\n  const frame = __nativeUseAt(\".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Motion#store:0\", props.clock);\n  return <group key=\"motion\" position-x={frame.phase * 2}>{props.children}</group>;\n}\nexport function Alternate(props) {\n  const frame = __nativeUseAt(\".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Alternate#store:0\", props.clock);\n  return <group key=\"motion\" position-x={frame.phase * 3}>{props.children}</group>;\n}\nexport function Marker(props) {\n  const frame = __nativeUseAt(\".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Marker#store:0\", props.clock);\n  return <group key=\"frame-marker\" name=\"accepted-frame\" position-x={frame.phase} />;\n}\nexport function Scene(props) {\n  const state = __nativeUseAt(\".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Scene#store:0\", props.control);\n  return <group key=\"scene\">\n    <Marker key=\"marker-owner\" clock={props.clock} />\n    {state.ids.map(id => <section key={\"slot-\" + id} name={\"slot-\" + id}>\n      {id === \"b\" || id === \"d\"\n        ? <Alternate key={\"owner-\" + id} clock={props.clock}>\n            <mesh key={\"child-\" + id} name={\"retained-\" + id} />\n          </Alternate>\n        : <Motion key={\"owner-\" + id} clock={props.clock}>\n            <mesh key={\"child-\" + id} name={\"retained-\" + id} />\n          </Motion>}\n    </section>)}\n  </group>;\n}",
+	"components": [
+		{
+			"name": "Alternate",
+			"component_site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Alternate",
+			"prop_only_sites": [],
+			"host_leaf_output": false,
+			"state_sites": [],
+			"effect_sites": [],
+			"store_sites": [{
+				"site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Alternate#store:0",
+				"source_expression": "props.clock"
+			}],
+			"closedStoreHostProgram": {
+				"componentProgramId": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Alternate",
+				"host": {
+					"child": null,
+					"key": "motion",
+					"props": [["position-x", {
+						"kind": "binary",
+						"left": {
+							"index": 0,
+							"kind": "input"
+						},
+						"operator": "*",
+						"right": {
+							"kind": "literal",
+							"value": 3
+						}
+					}]],
+					"tag": "group"
+				},
+				"inputs": [{
+					"paths": [["phase"]],
+					"storeProp": "clock",
+					"storeUseSiteId": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Alternate#store:0"
+				}],
+				"moduleRevision": "native-v1-d17b82fc219f58cd",
+				"retainedChildProp": "children",
+				"schemaVersion": 6
+			},
+			"closedStoreExecution": {
+				"componentProgramId": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Alternate",
+				"kind": "owned-data",
+				"moduleRevision": "native-v1-d17b82fc219f58cd",
+				"schemaVersion": 3
+			},
+			"collection_sites": [],
+			"numeric_sinks": [],
+			"opaque_sinks": []
+		},
+		{
+			"name": "Marker",
+			"component_site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Marker",
+			"prop_only_sites": [],
+			"host_leaf_output": false,
+			"state_sites": [],
+			"effect_sites": [],
+			"store_sites": [{
+				"site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Marker#store:0",
+				"source_expression": "props.clock"
+			}],
+			"closedStoreHostProgram": {
+				"componentProgramId": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Marker",
+				"host": {
+					"children": [],
+					"key": "frame-marker",
+					"props": [["name", {
+						"kind": "literal",
+						"value": "accepted-frame"
+					}], ["position-x", {
+						"index": 0,
+						"kind": "input"
+					}]],
+					"tag": "group"
+				},
+				"inputs": [{
+					"paths": [["phase"]],
+					"storeProp": "clock",
+					"storeUseSiteId": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Marker#store:0"
+				}],
+				"moduleRevision": "native-v1-d17b82fc219f58cd",
+				"schemaVersion": 5
+			},
+			"closedStoreExecution": {
+				"componentProgramId": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Marker",
+				"kind": "owned-data",
+				"moduleRevision": "native-v1-d17b82fc219f58cd",
+				"schemaVersion": 3
+			},
+			"collection_sites": [],
+			"numeric_sinks": [],
+			"opaque_sinks": []
+		},
+		{
+			"name": "Motion",
+			"component_site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Motion",
+			"prop_only_sites": [],
+			"host_leaf_output": false,
+			"state_sites": [],
+			"effect_sites": [],
+			"store_sites": [{
+				"site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Motion#store:0",
+				"source_expression": "props.clock"
+			}],
+			"closedStoreHostProgram": {
+				"componentProgramId": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Motion",
+				"host": {
+					"child": null,
+					"key": "motion",
+					"props": [["position-x", {
+						"kind": "binary",
+						"left": {
+							"index": 0,
+							"kind": "input"
+						},
+						"operator": "*",
+						"right": {
+							"kind": "literal",
+							"value": 2
+						}
+					}]],
+					"tag": "group"
+				},
+				"inputs": [{
+					"paths": [["phase"]],
+					"storeProp": "clock",
+					"storeUseSiteId": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Motion#store:0"
+				}],
+				"moduleRevision": "native-v1-d17b82fc219f58cd",
+				"retainedChildProp": "children",
+				"schemaVersion": 6
+			},
+			"closedStoreExecution": {
+				"componentProgramId": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Motion",
+				"kind": "owned-data",
+				"moduleRevision": "native-v1-d17b82fc219f58cd",
+				"schemaVersion": 3
+			},
+			"collection_sites": [],
+			"numeric_sinks": [],
+			"opaque_sinks": []
+		},
+		{
+			"name": "Scene",
+			"component_site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Scene",
+			"prop_only_sites": [],
+			"host_leaf_output": false,
+			"state_sites": [],
+			"effect_sites": [],
+			"store_sites": [{
+				"site_id": ".cache/compiled-realtime-store-progress-810693ad-70e7-4961-b485-4a24a9265b07/authored.tsx#component:Scene#store:0",
+				"source_expression": "props.control"
+			}],
+			"collection_sites": [],
+			"numeric_sinks": [],
+			"opaque_sinks": []
+		}
+	]
+};

@@ -152,16 +152,37 @@ export const tasks = [
 		const value = String(values.get("$query"));
 		starts.push("search:" + value);
 		return value === "old" ? old.promise : fresh.promise;
+	}, {
+		"controlInputs": ["query"],
+		"discovery": "candidate-local",
+		"hardPrerequisites": [],
+		"moduleRevision": "native-v1-2ff28be216137650",
+		"siteId": ".cache/native-task-transition.tsx#async-task:search",
+		"sourceFile": ".cache/native-task-transition.tsx"
 	}),
 	asyncTask("catalog", ["$request"], async (values) => {
 		const request = values.get("$request");
 		starts.push("catalog");
 		return request.locale;
+	}, {
+		"controlInputs": ["request"],
+		"discovery": "candidate-local",
+		"hardPrerequisites": [],
+		"moduleRevision": "native-v1-2ff28be216137650",
+		"siteId": ".cache/native-task-transition.tsx#async-task:catalog",
+		"sourceFile": ".cache/native-task-transition.tsx"
 	}),
 	asyncTask("panel", ["catalog", "search"], async (values) => ({
 		search: String(values.get("search")),
 		catalog: String(values.get("catalog"))
-	}))
+	}), {
+		"controlInputs": [],
+		"discovery": "candidate-local",
+		"hardPrerequisites": ["catalog", "search"],
+		"moduleRevision": "native-v1-2ff28be216137650",
+		"siteId": ".cache/native-task-transition.tsx#async-task:panel",
+		"sourceFile": ".cache/native-task-transition.tsx"
+	})
 ];
 export function Model({ resource }) {
 	const model = __nativeUseAt(".cache/native-task-transition.tsx#component:Model#store:0", resource);
@@ -311,6 +332,9 @@ export const compiledNativeComponentPlan = {
 			"id": "search",
 			"site_id": ".cache/native-task-transition.tsx#async-task:search",
 			"depends_on": ["$query"],
+			"hard_prerequisites": [],
+			"control_inputs": ["query"],
+			"discovery": "candidate-local",
 			"span": {
 				"start": 485,
 				"end": 646
@@ -320,6 +344,9 @@ export const compiledNativeComponentPlan = {
 			"id": "catalog",
 			"site_id": ".cache/native-task-transition.tsx#async-task:catalog",
 			"depends_on": ["$request"],
+			"hard_prerequisites": [],
+			"control_inputs": ["request"],
+			"discovery": "candidate-local",
 			"span": {
 				"start": 649,
 				"end": 788
@@ -329,6 +356,9 @@ export const compiledNativeComponentPlan = {
 			"id": "panel",
 			"site_id": ".cache/native-task-transition.tsx#async-task:panel",
 			"depends_on": ["catalog", "search"],
+			"hard_prerequisites": ["catalog", "search"],
+			"control_inputs": [],
+			"discovery": "candidate-local",
 			"span": {
 				"start": 791,
 				"end": 902

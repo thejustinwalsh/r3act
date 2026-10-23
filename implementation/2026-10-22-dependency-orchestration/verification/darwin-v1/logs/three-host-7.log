@@ -1,0 +1,46 @@
+(node:90327) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+file:///Volumes/Depot/Developer/r3act/src/async_task_demand.ts:89
+    /** Execute an explicit definition without sharing when a scope is full. */
+  > export const runDemandUnshared = <T>(definition: DemandDefinition<T>,
+  >   captures: readonly DemandCapture[], signal: AbortSignal): Promise<Awaited<T>> => {
+      if (!isDemandDefinition(definition))
+
+SyntaxError [ERR_INVALID_TYPESCRIPT_SYNTAX]: An arrow function is not allowed here
+    at parseTypeScript (node:internal/modules/typescript:72:36)
+    at processTypeScriptCode (node:internal/modules/typescript:146:42)
+    at stripTypeScriptModuleTypes (node:internal/modules/typescript:209:22)
+    at ModuleLoader.<anonymous> (node:internal/modules/esm/translators:680:29)
+    at #translate (node:internal/modules/esm/loader:434:20)
+    at afterLoad (node:internal/modules/esm/loader:502:29)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:507:12)
+    at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:560:36)
+    at afterResolve (node:internal/modules/esm/loader:607:52)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:613:12) {
+  code: 'ERR_INVALID_TYPESCRIPT_SYNTAX'
+}
+
+Node.js v24.18.0
+✖ compiler/three_host_capability_test.mjs (1230.273459ms)
+(node:90328) ExperimentalWarning: Transform Types is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Three copy capture freezes mutable inputs for the actual writer (3.2935ms)
+✔ Three copy capture declines accessor and unrelated objects (0.264042ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 2
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1235.353625
+
+✖ failing tests:
+
+test at compiler/three_host_capability_test.mjs:1:1
+✖ compiler/three_host_capability_test.mjs (1230.273459ms)
+  'test failed'

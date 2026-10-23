@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "status": "STATIC_INVENTORY_READY_FOR_PRIMARY_PROTOCOL_REVIEW",
+  "scope": "Read-only review of existing native-frame-publication v3 timing, build/source bindings, pinned CDP types, and a small set of prior profiles. No workload, browser, build, test, server, or new profile was run.",
+  "workspace": {
+    "headAtInspection": "30c39ffa87e92d79df855494bb1c9b6d6d8c9804",
+    "worktreeObservation": "Only the assigned research directory was untracked at inspection; the v3 product consumer and built proof artifacts were read-only inputs.",
+    "latestProductSource": "implementation/2026-10-22-native-frame-publication",
+    "currentDocumentationAndProductSourceAreNotOneImmutableSnapshot": true,
+    "protocol": "Do not claim a complete old lock over current docs. Any future study should explicitly bind product source/build/installed assets to the existing v3 build and input lock, record documentation/context deltas separately, and abort if any product/build binding changes."
+  },
+  "existingCurrentComparison": {
+    "receipt": "implementation/2026-10-22-native-frame-publication/proof-canvas-v3/canvas-timing-one-shot.json",
+    "status": "PASS_R3F_FRAME_BASELINES_CANVAS_DESCRIPTIVE_TIMING",
+    "interpretation": "This is a successful bounded descriptive comparison, but not parity or quiet-machine qualification.",
+    "authorization": "implementation/2026-10-22-native-frame-publication/proof-canvas-v3/canvas-timing-authorization.json",
+    "buildProofSha256": "c390be4ef9170c82dae9da67069e2cf2557164bfdddb595cfd4b915e70691b46",
+    "inputLockSha256": "93cd65f4360332aba2a18a527ba973b669bc5e625c55a9fbaf0826e66d0de3fc",
+    "timingReceiptSha256": "262dcea2dd572a9c92a7f61f95f8b39bd73ebaa5f9fa24ea23c76a4e41d2b315",
+    "browser": "Chromium 153.0.8010.12, headless with GPU; ANGLE Metal / Apple M4; WebGL2, 640x480, DPR 1, antialias false, common renderer/readback.",
+    "workloadAndSampleCount": {
+      "retainedObjects": 256,
+      "warmupFramesPerArm": 12,
+      "measuredFramesPerArm": 60,
+      "armOrder": ["native", "react", "react-frame", "imperative"],
+      "totalMeasuredSamples": 240,
+      "totalWarmupSamples": 48,
+      "counters": "null for all timing samples"
+    },
+    "measuredBoundaries": {
+      "publishMs": "performance.now() at updateStart through publishEnd around arm.update(frame). Native means Store dispatch through accepted publication; React means external Store dispatch through declarative commit; react-frame means passive phase assignment and explicit R3F scheduler advance through hook writes; imperative means manual Three writes.",
+      "updateThroughDrawMs": "updateStart through drawEnd; includes post-update scene validation, WebGL render, readPixels and pixel inspection. This is not physical presentation.",
+      "precisePerFrameMarks": "Each sample retains updateStart, publishEnd, drawStart, drawEnd and the derived durations, so the browser-side update interval is known exactly in its own performance.now clock."
+    },
+    "primaryReviewedStatisticsMs": {
+      "native": {"publishMedian": 4.1, "publishP95NearestRank": 4.8, "throughDrawMedian": 6.6, "throughDrawP95NearestRank": 7.8},
+      "reactDeclarativeR3f": {"publishMedian": 1.1, "publishP95NearestRank": 1.6, "throughDrawMedian": 4.8, "throughDrawP95NearestRank": 5.8},
+      "reactUseFrame": {"publishMedian": 3.5, "publishP95NearestRank": 3.9, "throughDrawMedian": 6.4, "throughDrawP95NearestRank": 7.2},
+      "imperative": {"publishMedian": 0.1, "publishP95NearestRank": 0.3, "throughDrawMedian": 4.6, "throughDrawP95NearestRank": 6.6}
+    },
+    "existingDecision": "Realtime parity FAIL: Native loses all four median/p95 metrics versus declarative React/R3F. Preserve that result. The timing episode overlapped read-only Git inventory for about 10.2 seconds, with interference size unknown; it remains descriptive and is not a quiet-machine qualification. Do not rerun or recast it as causal attribution.",
+    "cleanupAndSourceChecks": "Receipt records browser closed, empty page/console/cleanup errors, sourceBefore/sourceAfter checks and null counters. The v3 source list count is 12,440 rows on each side and the existing receipt reports matches.",
+    "sourceBindings": {
+      "buildProof": "implementation/2026-10-22-native-frame-publication/proof-canvas-v3/build-proof.json",
+      "inputLock": "implementation/2026-10-22-native-frame-publication/proof-canvas-v3/input-lock.json",
+      "nativeBundle": "bbdf70d9a56b64ed506966512f28689341095a26d738bbb43d8931e8ef9f9ef0",
+      "reactBundle": "6d67971492a2766a8e770d21cc101b0b595df0ec5db291c0f4829acbdca6a832",
+      "reactFrameBundle": "c7377b2a42da4db0d5cf9c9bbc7d38bafad8a0dfc9970089e65517fc25bef8d1",
+      "threeCoreChunkSharedByReactArms": "cd1b65c0cea3c02258fb6e453c2f967b91fb1f63d24b5cbe32dcf720f3846368",
+      "assets": "The complete per-arm asset URL/hash inventory is in build-proof.json; use it as the source of truth. The latest proof-canvas-v3/dist tree contains no .map files."
+    }
+  },
+  "profileClockFeasibility": {
+    "pinnedBrowser": "Chromium 153.0.8010.12 in the build/timing receipt.",
+    "pinnedProtocolSource": "node_modules/.pnpm/playwright-core@1.63.0-beta-1788477194000/node_modules/playwright-core/types/protocol.d.ts, Profiler.Profile. It defines profile startTime/endTime in microseconds and timeDeltas as intervals between adjacent samples, with the first relative to profile.startTime. Profiler.setSamplingInterval accepts microseconds and must be configured before profiling starts.",
+    "clockMappingConclusion": "UNPROVEN. The profile API timestamps are in V8's profiler clock, whereas scene sample marks are document performance.now values. The inspected pinned protocol declarations do not define a bridge from Profile.startTime/sample timestamps to document timeOrigin or performance.now. Do not filter profile samples to the 60 updateStart/publishEnd windows until an authoritative pinned-Chromium mapping and a measured mapping uncertainty are established.",
+    "why_not_assume_alignment": "V8 and Blink use monotonic TimeTicks-derived clocks, but common origin/offset, process/thread domain, and any conversion or precision error are the facts that must be proven for this pinned browser/protocol. Similar units or monotonicity do not establish a valid offset.",
+    "do_not_do": [
+      "Do not infer an update fraction from old whole-page CPU profile percentages.",
+      "Do not inject timing marks into production/product source or wrap the workload runtime to establish a favorable attribution.",
+      "Do not treat profiler-on data as qualification timing or compare profiled latency directly to the unprofiled 60-sample result.",
+      "Do not silently exclude profile samples near an interval boundary or GC/idle/unclassified samples."
+    ]
+  },
+  "recommendedBoundedDiagnosticProtocolForReview": {
+    "purpose": "Explain where React's lower measured update interval may be spent on the existing named Native versus declarative React/R3F workload. This is mechanism research, not a performance qualification, parity decision, or product-change authorization.",
+    "workload": "Reuse the exact existing v3 built assets, 256-object scene, and 12 warmup + 60 measured update sequence. Do not rebuild. Verify the old build/input-lock hashes and every loaded asset hash before and after. Explicitly record that current documentation/context bytes differ from the historical build lock; product source and runtime assets must remain hash-identical to v3.",
+    "design": "One finite episode: 8 fresh headless browser contexts arranged as two counterbalanced blocks, each containing Native and declarative React once with CPU profiling off and once on. Use different counterbalanced arm/profile ordering in block two. No favorable repeats, early selection, or further follow-up episode. Primary must release this exact diagnostic protocol before any workload is run.",
+    "controls": "Unprofiled contexts preserve the existing null-counter update timings as fresh controls. Profiled contexts use CDP Profiler at 100 microseconds, configured before Profiler.start. Record profiler-on update timings separately to disclose overhead; never substitute them for the unprofiled controls.",
+    "clockSafeAttribution": "Until the clock bridge is proven, attribute samples only by call-stack ancestry beneath the exact authored arm.update callsite in its exact hashed generated bundle URL/offset. Resolve that generated location against the immutable bundle bytes; do not rely on a minified function name by itself. Label this as sampled CPU ancestry for the whole invocation and report that it covers all 72 update calls including 12 warmups, not just the 60 measured interval windows.",
+    "profileReporting": "Preserve complete raw profiles. Report profile-wide counts separately from samples classified beneath Native or React arm.update ancestry; retain and report idle, GC, JS, unknown and non-arm classifications. If classification by exact generated callsite is ambiguous, leave samples unclassified. Report inclusive and exclusive sampled counts by URL/line/column/function metadata, with profile sampling resolution and uncertainty; do not claim wall-time percentages or exact attribution of time in unsampled intervals.",
+    "potentialWindowFiltering": "Only a later primary-reviewed protocol may filter to updateStart/publishEnd windows, and only after exact pinned-browser clock mapping is source-proven, independently exercised against the same browser, and accompanied by a bounded maximum timestamp alignment error plus explicit boundary-sample exclusion counts. That clock validation itself is not part of the workload currently authorized.",
+    "interpretationLimits": [
+      "CPU sampling is a diagnostic sample of synchronous execution, not a causal decomposition of publishMs and not a substitute for wall-clock timings.",
+      "Profiles include warmup and measured calls, scheduling/driver code, and possibly asynchronous/background work; only exact update-call ancestry is attributable to the call invocation.",
+      "No source maps are emitted for current React/R3F assets, so React, reconciler and Three internals will often have minified or generated offsets. The app's compiler capture records source-level CompileSuccess for Position/Rotation/App but does not provide source maps or reliable names for all runtime internals.",
+      "The `useFrame` arm is a separate comparator and excluded from this narrower Native-versus-declarative research question."
+    ]
+  },
+  "priorEvidenceAndComparability": [
+    {
+      "artifact": ".cache/current-kernel-cpu-diagnostic-stage/primary-verification.json",
+      "scope": "Two whole-page CPU diagnostics from a 1,024-owner DOM workload, native and React arms, 3,459 and 3,407 samples over 6,851 and 6,227 ms respectively.",
+      "finding": "The reports are dominated by idle/program samples and include mount, warmup, measured updates, inspection and teardown. They are not current Three frame/update profiles and cannot be reinterpreted as update fractions."
+    },
+    {
+      "artifact": ".cache/current-owner-kernel-headless-20261013-v1/first-pair-primary-verification.json",
+      "scope": "Partial 128-owner historical pair; current-owner study was incomplete (1 of 15 pairs).",
+      "finding": "Different source/workload and incomplete evidence; do not use as current React-versus-Native phase attribution. Existing Recording A is exhausted and must not be repeated."
+    },
+    {
+      "artifact": "implementation/2026-10-22-r3f-frame-baseline/results.md and proof-canvas-v3 timing",
+      "scope": "Similar 256-object Three workload and same 12/60 manual frame structure, but earlier source/runtime/compiler basis and separately captured assets.",
+      "finding": "The earlier report also shows Native slower than declarative React/R3F on its source basis. The current v3 products changed and v3 has concurrent Git-inventory interference. Neither source version nor context is exchangeable for the proposed profile episode. Retain as historical descriptive evidence only."
+    },
+    {
+      "artifact": ".cache/dense-causal-ledger-v1/runs/ (historical DOM ledger)",
+      "scope": "Separate 1,024/10,000 all-dirty DOM workload with dedicated count and profile conditions.",
+      "finding": "Not this Three scene, not its arm.update interval, and not a reason to repeat Recording A."
+    }
+  ],
+  "releaseBoundary": "No CPU profile collection or other workload is authorized by this inventory. Send the proposed attribution protocol for primary review first. The clock-window-filtering approach is currently rejected as unproven; the stack-ancestry fallback is a narrower, honest mechanism diagnostic if primary accepts its 72-call scope and limitations."
+}

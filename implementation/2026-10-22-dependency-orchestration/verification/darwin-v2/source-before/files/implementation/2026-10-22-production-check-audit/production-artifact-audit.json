@@ -1,0 +1,197 @@
+{
+  "schemaVersion": 1,
+  "scope": "Read-only audit of existing Native-vs-React timing artifacts; no builds, tests, browsers, or profiles were run for this audit.",
+  "conclusion": {
+    "runtime_mode": "Both baseline arms use Vite production build mode and production replacements. React is not a development reconciler.",
+    "minification": "Both compared baseline assets are unminified (minify:false). This is a production-mode, unminified comparison, not a minified-release benchmark. A separate Native minified delivery artifact exists; there is no matched React minified arm in this timing comparison.",
+    "native_checks": "Native currentness, prototype-canonicality and per-target readiness checks are present in the production asset; the DevTools trace samples these paths. They are semantic/runtime work, not proof-only counters.",
+    "diagnostics": "Timing runner sets window.__realtimeProof=false and asserts every warmup/measured sample has counters:null. Native profileCounter callback is therefore absent. Counter guard branches remain in shipped source and their residual branch cost is unquantified."
+  },
+  "build_mode_evidence": {
+    "build_call": "consumer/build.mjs calls Vite build() without mode override; baseline sets minify:false.",
+    "vite": "Vite 8.3.1 build configuration defaults to mode=production, NODE_ENV=production, isProduction=true; source replacement sets DEV=false and PROD=true and selects production JSX transform.",
+    "react_package": "React 19.3.0 package entry conditions select react.production.js and react-jsx-runtime.production.js under production NODE_ENV.",
+    "actual_loaded_react_markers": [
+      "react.production.js",
+      "react-jsx-runtime.production.js",
+      "Minified React error #"
+    ],
+    "absent_development_markers": [
+      "react.development.js",
+      "react-jsx-runtime.development.js",
+      "jsxDEV",
+      "jsxDEVImpl",
+      "development JSX validator message"
+    ],
+    "native_hmr": "Transformed development capture contains import.meta.hot, while the built Native distribution asset does not; Vite removes that development-only branch from the production output.",
+    "vite_source_archive": "implementation/2026-10-22-native-frame-publication/proof-canvas-v3/inputs/installed-store/vite@8.3.1_@types+node@24.19.2/node_modules/vite/dist/node/chunks/node.js"
+  },
+  "artifact_identity": {
+    "inputLockSha256": "93cd65f4360332aba2a18a527ba973b669bc5e625c55a9fbaf0826e66d0de3fc",
+    "nativeUninstrumentedSha256": "bbdf70d9a56b64ed506966512f28689341095a26d738bbb43d8931e8ef9f9ef0",
+    "reactUninstrumentedSha256": "6d67971492a2766a8e770d21cc101b0b595df0ec5db291c0f4829acbdca6a832",
+    "nativeDevToolsServedSha256": "e2225e9d7965a9cff171d4f8850e96c5d2a497942679ffaca9cadc200819788f",
+    "reactDevToolsServedSha256": "d7444e68c00b7245908c343eb2db73ded77c0fe7f42a92265d6b709f7a77c071",
+    "devToolsInsertedMeasure": "Inserted immediately after each original publishEnd timestamp; measures updateStart..publishEnd and does not add work inside that interval."
+  },
+  "timing_receipt": {
+    "status": "PASS_R3F_FRAME_BASELINES_CANVAS_DESCRIPTIVE_TIMING",
+    "order": [
+      "native",
+      "react",
+      "react-frame",
+      "imperative"
+    ],
+    "browserClosed": true,
+    "errors": [],
+    "inputLockSha256": "93cd65f4360332aba2a18a527ba973b669bc5e625c55a9fbaf0826e66d0de3fc",
+    "captures": {
+      "reactCompilerEvents": 4,
+      "allCompileSuccess": true
+    },
+    "devToolsReceiptStatus": "CAPTURE_COMPLETE_PENDING_OFFLINE_ANALYSIS",
+    "devToolsOfflineAnalysisStatus": "PASS_TRACE_ALIGNMENT_AND_OFFLINE_PROFILE_ANALYSIS",
+    "devToolsSourceRows": 13004,
+    "devToolsSourceRowsMatch": 13002,
+    "frameCounterAssertion": "verify.mjs asserts all warmup and measured samples have counters:null when phase=timing.",
+    "proofInstrumentationFlag": "verify.mjs sets window.__realtimeProof to phase === proof; timing therefore sets false.",
+    "devToolsNonProductLockRows": 2
+  },
+  "production_runtime_observations": {
+    "nativeAssetMarkers": {
+      "closedNumericPrototypeIsCanonical": "present, 4 occurrences",
+      "currentness": "current() path present",
+      "isStoreTargetReady": "present, 3 occurrences"
+    },
+    "traceSampleWeights": "Native DevTools analysis attributes samples to prototype-canonicality and currentness in both Native contexts; weights are sampling estimates, not exact CPU time.",
+    "readiness": "Per-write Store target readiness is present and sampled at low frequency in the two Native contexts.",
+    "scope": "No heap/allocation claim is made; CPU tracing does not measure allocation bytes."
+  },
+  "hashed_files": [
+    {
+      "path": "implementation/2026-10-22-native-frame-publication/consumer/build.mjs",
+      "bytes": 13241,
+      "sha256": "0b07b3e5892ab36c87279f418d147d6f2955f0042d68b7d8c134649d7751de35"
+    },
+    {
+      "path": "implementation/2026-10-22-native-frame-publication/consumer/native.tsx",
+      "bytes": 7688,
+      "sha256": "5345395d4cbdb8e66f4fbd0ef6fd00697a7cef05a705c06b8c2ec6b07da5ea51"
+    },
+    {
+      "path": "implementation/2026-10-22-native-frame-publication/consumer/verify.mjs",
+      "bytes": 18667,
+      "sha256": "6929fc2655347855ae77712c6dfa9d12117987620eed7592fe6de36111252977"
+    },
+    {
+      "path": "implementation/2026-10-22-native-frame-publication/proof-canvas-v3/build-proof.json",
+      "bytes": 3552058,
+      "sha256": "c390be4ef9170c82dae9da67069e2cf2557164bfdddb595cfd4b915e70691b46"
+    },
+    {
+      "path": "implementation/2026-10-22-native-frame-publication/proof-canvas-v3/input-lock.json",
+      "bytes": 3530952,
+      "sha256": "93cd65f4360332aba2a18a527ba973b669bc5e625c55a9fbaf0826e66d0de3fc"
+    },
+    {
+      "path": "implementation/2026-10-22-native-frame-publication/proof-canvas-v3/capture-native.json",
+      "bytes": 1599,
+      "sha256": "7c455b0dbafa1c9123b05d0ed3eb859faf6e6236d586c8d6387916c6bb07494b"
+    },
+    {
+      "path": "implementation/2026-10-22-native-frame-publication/proof-canvas-v3/capture-react.json",
+      "bytes": 3246,
+      "sha256": "cdfc10aa6c68ce38166c53dc5cbf7a397cec5adc244457f08e262ef47c7bc0ae"
+    },
+    {
+      "path": "implementation/2026-10-22-native-frame-publication/proof-canvas-v3/canvas-timing-one-shot.json",
+      "bytes": 10896138,
+      "sha256": "262dcea2dd572a9c92a7f61f95f8b39bd73ebaa5f9fa24ea23c76a4e41d2b315"
+    },
+    {
+      "path": "implementation/2026-10-22-native-frame-publication/proof-canvas-v3/canvas-timing-authorization.json",
+      "bytes": 982,
+      "sha256": "e82f2cd5390ff534fe40ea4e005dbb5b49e1a9d31e99409d6f14e223e9303f5e"
+    },
+    {
+      "path": "implementation/2026-10-22-native-frame-publication/proof-canvas-v3/delivery-minified.json",
+      "bytes": 985,
+      "sha256": "48ebf7409391760504aed9be66ca5f12975519c13fc09dc8ef2fd14e0c97dc0a"
+    },
+    {
+      "path": "implementation/2026-10-22-native-frame-publication/proof-canvas-v3/dist/native/assets/native-B0ltTLHF.js",
+      "bytes": 2984990,
+      "sha256": "bbdf70d9a56b64ed506966512f28689341095a26d738bbb43d8931e8ef9f9ef0"
+    },
+    {
+      "path": "implementation/2026-10-22-native-frame-publication/proof-canvas-v3/dist/react/assets/react-Dn0IWIE6.js",
+      "bytes": 1022384,
+      "sha256": "6d67971492a2766a8e770d21cc101b0b595df0ec5db291c0f4829acbdca6a832"
+    },
+    {
+      "path": "implementation/2026-10-22-native-frame-publication/proof-canvas-v3/transforms/native/native.tsx.js",
+      "bytes": 45210,
+      "sha256": "26501f801d51b4fa46043d97aced5b459da6ee0318d6fd1ff456ee683aa9b8a6"
+    },
+    {
+      "path": "implementation/2026-10-22-native-devtools-profile/evidence/devtools-profile-v3/receipt.json",
+      "bytes": 12288216,
+      "sha256": "64082bcd49db6689925c673cd326a36a2992bc958f281cf1560a025a8715824a"
+    },
+    {
+      "path": "implementation/2026-10-22-native-devtools-profile/evidence/devtools-profile-v3/analysis-v2.json",
+      "bytes": 30571618,
+      "sha256": "d22d1d9c57a1083a323491abab886ff80ca9607ea98fbb8b80c1d97f271c957e"
+    },
+    {
+      "path": "implementation/2026-10-22-native-devtools-profile/source-map.json",
+      "bytes": 3670,
+      "sha256": "c38379bfbb03a93a51c528978934a7c53f9e454966234359dae873888a253cca"
+    },
+    {
+      "path": "implementation/2026-10-22-native-devtools-profile/native-cost-map.md",
+      "bytes": 10327,
+      "sha256": "59477dbf0782e74118362d9055267580848421662537bf12729209062e24e0d1"
+    },
+    {
+      "path": "implementation/2026-10-22-native-frame-publication/proof-canvas-v3/inputs/installed-store/react@19.3.0/node_modules/react/cjs/react-jsx-runtime.development.js",
+      "bytes": 13032,
+      "sha256": "706e324b21fcd94fb728da71b374694d0727d0baee4126011cea583f54e09106"
+    },
+    {
+      "path": "implementation/2026-10-22-native-frame-publication/proof-canvas-v3/inputs/installed-store/react@19.3.0/node_modules/react/cjs/react-jsx-runtime.production.js",
+      "bytes": 976,
+      "sha256": "1e46f15002696985e80c61d47aaa30dabb03c954270a690f5f7dfbbacfa9002b"
+    },
+    {
+      "path": "implementation/2026-10-22-native-frame-publication/proof-canvas-v3/inputs/installed-store/react@19.3.0/node_modules/react/cjs/react.development.js",
+      "bytes": 49165,
+      "sha256": "97bef56f30daa05320514ea220d7d03eb765635519ff2d5650c4887772aa5767"
+    },
+    {
+      "path": "implementation/2026-10-22-native-frame-publication/proof-canvas-v3/inputs/installed-store/react@19.3.0/node_modules/react/cjs/react.production.js",
+      "bytes": 18040,
+      "sha256": "6b28feb9dbe9781ab1e1b64dea7b29a7c70f03d2dc10eaa966363053d8a9b4e5"
+    },
+    {
+      "path": "implementation/2026-10-22-native-frame-publication/proof-canvas-v3/inputs/installed-store/react@19.3.0/node_modules/react/index.js",
+      "bytes": 186,
+      "sha256": "60caffdecbdc5db3bc4ec4e83df9488345ccb271d07533b9210bf5750918d97e"
+    },
+    {
+      "path": "implementation/2026-10-22-native-frame-publication/proof-canvas-v3/inputs/installed-store/react@19.3.0/node_modules/react/jsx-runtime.js",
+      "bytes": 210,
+      "sha256": "b392951a77d0a2e6a6bd017e49d768481ae5b63c4109c6c31f622cf7b2433edc"
+    },
+    {
+      "path": "implementation/2026-10-22-native-frame-publication/proof-canvas-v3/inputs/installed-store/react@19.3.0/node_modules/react/package.json",
+      "bytes": 1242,
+      "sha256": "6e003e4e9ed25afa7fdd55613f8aa877cefa9b359d9c13f81ee704030248e24e"
+    },
+    {
+      "path": "implementation/2026-10-22-native-frame-publication/proof-canvas-v3/inputs/installed-store/vite@8.3.1_@types+node@24.19.2/node_modules/vite/dist/node/chunks/node.js",
+      "bytes": 1381647,
+      "sha256": "5a604cb8f97126675dbdf9044c919b0fd1fe1280bfa4077de225e6adfa213e4a"
+    }
+  ]
+}

@@ -1,0 +1,116 @@
+import type * as THREE from 'three'
+import { getThree } from '../three'
+import type { Dpr, Size, ThreeCamera } from '#types'
+import { isOrthographicCamera } from './is'
+
+//* Three.js Utilities ==============================
+// Three.js-specific utility functions
+
+/**
+ * Calculates the device pixel ratio for rendering.
+ * Handles array DPR ranges [min, max] to clamp devicePixelRatio.
+ *
+ * @param dpr - Target DPR value or [min, max] range
+ * @returns Calculated DPR value
+ *
+ * @example
+ * calculateDpr(2) // => 2
+ * calculateDpr([1, 2]) // => clamps window.devicePixelRatio between 1 and 2
+ */
+export function calculateDpr(dpr: Dpr): number {
+  // Err on the side of progress by assuming 2x dpr if we can't detect it
+  // This will happen in workers where window is defined but dpr isn't.
+  const target = typeof window !== 'undefined' ? (window.devicePixelRatio ?? 2) : 1
+  return Array.isArray(dpr) ? Math.min(Math.max(dpr[0], target), dpr[1]) : dpr
+}
+
+/**
+ * Extracts the first segment of a UUID string (before the first hyphen).
+ * Used for creating unique material names when duplicates exist.
+ *
+ * @param uuid - UUID string to extract prefix from
+ * @returns First segment of the UUID
+ *
+ * @example
+ * getUuidPrefix('a1b2c3d4-e5f6-g7h8-i9j0') // => 'a1b2c3d4'
+ */
+export function getUuidPrefix(uuid: string): string {
+  return uuid.split('-')[0]
+}
+
+/**
+ * Updates camera projection based on viewport size.
+ * Adjusts aspect ratio for perspective cameras or bounds for orthographic cameras.
+ * Respects camera.manual flag - manual cameras are not modified.
+ *
+ * @param camera - Camera to update
+ * @param size - Current viewport size
+ */
+export function updateCamera(camera: ThreeCamera, size: Size): void {
+  // Do not mess with the camera if it belongs to the user
+  // https://github.com/pmndrs/react-three-fiber/issues/92
+  if (camera.manual) return
+
+  if (isOrthographicCamera(camera)) {
+    camera.left = size.width / -2
+    camera.right = size.width / 2
+    camera.top = size.height / 2
+    camera.bottom = size.height / -2
+  } else {
+    camera.aspect = size.width / size.height
+  }
+
+  camera.updateProjectionMatrix()
+}
+
+// Reusable matrix for frustum calculations (avoids allocation per frame). Created on first use:
+// core has no three at module scope, only once a root has loaded a renderer.
+let frustumMatrix: THREE.Matrix4 | undefined
+
+/**
+ * Updates a frustum from a camera's projection and world matrices.
+ * If no target frustum is provided, creates and returns a new one.
+ *
+ * @param camera - Camera to extract frustum from
+ * @param frustum - Optional existing frustum to update (creates new if not provided)
+ * @returns The updated or newly created frustum
+ *
+ * @example
+ * // Create new frustum
+ * const frustum = updateFrustum(camera)
+ *
+ * // Update existing frustum (no allocation)
+ * updateFrustum(camera, existingFrustum)
+ *
+ * // Use for visibility checks
+ * if (frustum.containsPoint(point)) { ... }
+ * if (frustum.intersectsObject(mesh)) { ... }
+ */
+export function updateFrustum(camera: ThreeCamera, frustum?: THREE.Frustum): THREE.Frustum {
+  const target = frustum ?? new (getThree().Frustum)()
+  frustumMatrix ??= camera.projectionMatrix.clone()
+  frustumMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse)
+  target.setFromProjectionMatrix(frustumMatrix)
+  return target
+}
+
+export function computeInitialSize(canvas: HTMLCanvasElement | OffscreenCanvas, size?: Size): Size {
+  if (
+    !size &&
+    typeof HTMLCanvasElement !== 'undefined' &&
+    canvas instanceof HTMLCanvasElement &&
+    canvas.parentElement
+  ) {
+    const { width, height, top, left } = canvas.parentElement.getBoundingClientRect()
+    return { width, height, top, left }
+  } else if (!size && typeof OffscreenCanvas !== 'undefined' && canvas instanceof OffscreenCanvas) {
+    return {
+      width: canvas.width,
+      height: canvas.height,
+      top: 0,
+      left: 0,
+    }
+  }
+
+  return { width: 0, height: 0, top: 0, left: 0, ...size }
+}
