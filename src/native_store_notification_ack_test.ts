@@ -27,7 +27,7 @@ function fixture(id: string, scheduleCommit?: (commit: () => void) => void) {
     storeUseSiteId: clockUseSite, storeProp: "clock",
     host: { tag: "output", key: "clock", child: null,
       props: [["data-clock", { kind: "input", index: 0 }]] },
-  }, closedStoreExecution: { schemaVersion: 1, kind: "owned-data",
+  }, closedStoreExecution: { schemaVersion: 3, kind: "owned-data",
     componentProgramId: clockSite, moduleRevision: revision } });
   const studioSite = `${file}#component:Studio`;
   const Studio = defineComponent(studioSite, (props: { studio: typeof studio }) => {

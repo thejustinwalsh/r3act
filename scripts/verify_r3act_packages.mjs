@@ -348,7 +348,7 @@ export const invalidDialogChild = <RadixDialog {...dialogProps} children={validI
   const pairRoot = app.mountResourcePair(host, pairContainer, pairA, pairB);
   const pairQueue = new core.NativeRootWorkQueue();
   try {
-    const pairWork = pairQueue.enqueueResources({ id: "installed-resource-pair",
+    const pairWork = pairQueue.enqueueTransaction({ id: "installed-resource-pair",
       roots: [{ root: pairRoot, resources: [pairA, pairB] }] });
     assert.equal(pairWork.status, "pending");
     assert.equal(text(pairContainer.children[0]), "a-loadingb-loading");

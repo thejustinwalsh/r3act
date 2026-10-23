@@ -117,7 +117,7 @@ Deno.test("joint transaction snapshots selection while independent same-root wor
     selectedCells.length = 0;
     selectedCollections.length = 0;
     const health = f.set("health", 9);
-    const independent = queue.enqueueRetained({
+    const independent = queue.enqueueTransaction({
       id: "independent-health",
       roots: [{ root: f.root, cells: [health] }],
     });

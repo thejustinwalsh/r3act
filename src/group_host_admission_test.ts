@@ -211,7 +211,7 @@ Deno.test("retained group keeps newer actions after a late admission callback", 
     const cells = [...handles];
     const before = fixtures.map(({ host }) => host.writeCount);
     let callbacks = 0;
-    const stale = queue.enqueueRetained({
+    const stale = queue.enqueueTransaction({
       id: "admission-retained-stale",
       roots: fixtures.map(({ root }, index) => ({ root, cells: [cells[index]] })),
       validateWork: () => {
@@ -320,7 +320,7 @@ Deno.test("late scalar value accessor declines grouped retained work without inv
     const versions = fixtures.map(({ root }) => root.publicationVersion);
     let callbacks = 0;
     let getterCalls = 0;
-    const stale = queue.enqueueRetained({
+    const stale = queue.enqueueTransaction({
       id: "admission-late-scalar-accessor",
       roots: fixtures.map(({ root }, index) => ({ root, cells: [cells[index]] })),
       validateWork: () => {
@@ -343,7 +343,7 @@ Deno.test("late scalar value accessor declines grouped retained work without inv
     assertEquals(fixtures.map(({ container }) => container.children[0].props.value), [0, 0]);
     Object.defineProperty(source, "value", original);
     original = undefined;
-    const healthy = queue.enqueueRetained({
+    const healthy = queue.enqueueTransaction({
       id: "admission-restored-scalar",
       roots: [{ root: fixtures[0].root, cells: [cells[0]] }],
     });
@@ -418,7 +418,7 @@ Deno.test("private admission does not call overridable World methods", () => {
     for (const fixture of fixtures) assertEquals(fixture.set(1), true);
     assertEquals(cells.length, 2);
     let callbacks = 0;
-    const committed = queue.enqueueRetained({
+    const committed = queue.enqueueTransaction({
       id: "admission-world-private",
       roots: fixtures.map(({ root }, index) => ({ root, cells: [cells[index]] })),
       validateWork: () => {
@@ -517,7 +517,7 @@ Deno.test("keyed host descriptor callback revokes a later retained member before
     assertEquals(container.children[0].children.map((node) => node.props["data-key"]), ["a", "b"]);
     assertEquals(peer.container.children[0].props.value, 0);
     assertEquals(peer.root.diagnostics().pendingChangeCount > 0, true);
-    const healthy = queue.enqueueRetained({
+    const healthy = queue.enqueueTransaction({
       id: "admission-keyed-peer-healthy",
       roots: [{ root: peer.root, cells: [cell] }],
     });

@@ -1,7 +1,8 @@
+import { readOwnedClosedProjectionBatch } from "./closed_projection_schedule_test_helper.ts";
 import {
   captureCanonicalBlockedStoreReaderReceipt, createAsyncStore, createStoreSelector,
   prepareCanonicalClosedStorePublication,
-  readOwnedClosedProjectionBatch, readOwnedClosedStoreCaptureCounts,
+  readOwnedClosedStoreCaptureCounts,
   StoreRenderTransaction,
 } from "./async_store_runtime.ts";
 import { normalizeClosedProjectionPaths, storeRecord } from "./owned_store_record.ts";

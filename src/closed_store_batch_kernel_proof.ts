@@ -8,7 +8,7 @@ import {
   closedNumericPrecedence, fail, hostNode, isClosedNumericIdentifier,
   isClosedNumericOperator,
   lex, type Token,
-} from "./closed_scalar_kernel_proof.ts";
+} from "./closed_numeric_kernel_proof_common.ts";
 
 export type ClosedStoreBatchNumericKernel = (
   sharedInputs: readonly number[], varyingInputs: readonly number[],

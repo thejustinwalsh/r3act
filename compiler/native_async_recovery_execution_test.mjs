@@ -145,7 +145,7 @@ try {
     rootId: `recovery-scoped-${randomUUID()}` });
   scoped.mount(jsx(app.ScopedRoot, { resource: scopedResource }));
   assert.equal(find(scopedContainer, (node) => node.props?.["data-pending"] === "true")?.tag, "output");
-  const selected = queue.enqueueResources({ id: `rejected-selected-${randomUUID()}`,
+  const selected = queue.enqueueTransaction({ id: `rejected-selected-${randomUUID()}`,
     roots: [{ root: scoped, resources: [scopedResource] }] });
   assert.equal(selected.status, "pending");
   scopedProvider.reject("scoped-failure");

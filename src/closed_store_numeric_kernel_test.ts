@@ -312,7 +312,7 @@ Deno.test("owned Store data evaluates in one passive batch and retains host iden
     storeUseSiteId: useSite, storeProp: "clock",
     host: { tag: "group", key: "motion", child: null,
       props: [["position-x", { kind: "input", index: 0 }]] },
-  }, closedStoreExecution: { schemaVersion: 1, kind: "owned-data",
+  }, closedStoreExecution: { schemaVersion: 3, kind: "owned-data",
     componentProgramId: site, moduleRevision: revision } });
   const host = new MemoryVDOMHost(), container = host.createContainer();
   const observed: Record<string, number> = {};
@@ -362,11 +362,8 @@ Deno.test("empty schema-5 data groups with one host key retain distinct owners",
       ["position-x", { kind: "binary", operator: "*",
         left: { kind: "input", index: 0 }, right: { kind: "literal", value: 2 } }],
     ] },
-  }, closedStoreExecution: { schemaVersion: 2, kind: "owned-data",
-    componentProgramId: site, moduleRevision: revision,
-    numericKernel: (inputs: readonly number[], outputs: number[]) => {
-      outputs[0] = (inputs[0] * 2);
-    } } });
+  }, closedStoreExecution: { schemaVersion: 3, kind: "owned-data",
+    componentProgramId: site, moduleRevision: revision } });
   const host = new MemoryVDOMHost(), container = host.createContainer();
   const counters: Record<string, number> = {};
   const root = new ComponentStateRoot(host, container, { rootId: "owned-empty-groups",
@@ -404,7 +401,7 @@ Deno.test("ordinary owned-data flush preserves preflight owner order and accepte
       storeUseSiteId: useSite, storeProp: "clock",
       host: { tag: "output", key: name, child: null,
         props: [["data-value", { kind: "input", index: 0 }]] },
-    }, closedStoreExecution: { schemaVersion: 1, kind: "owned-data",
+    }, closedStoreExecution: { schemaVersion: 3, kind: "owned-data",
       componentProgramId: site, moduleRevision: revision } });
   };
   const First = make("First"), Last = make("Last");
@@ -457,7 +454,7 @@ Deno.test("schema-7 metadata rejects simultaneous data and callback execution", 
   let rejected = false;
   try {
     defineComponent(site, render, { propOnlySites: [], closedStoreHostProgram: host,
-      closedStoreExecution: { schemaVersion: 1, kind: "owned-data",
+      closedStoreExecution: { schemaVersion: 3, kind: "owned-data",
         componentProgramId: site, moduleRevision: revision },
       closedStoreNumericKernel: { schemaVersion: 1, componentProgramId: site,
         moduleRevision: revision, inputCount: 2, propNames: ["data-value"],
@@ -491,7 +488,7 @@ Deno.test("mixed owned data and callback kernel keep original owner order", () =
         return rows;
       },
     } } : { closedStoreExecution: {
-      schemaVersion: 1 as const, kind: "owned-data" as const,
+      schemaVersion: 3 as const, kind: "owned-data" as const,
       componentProgramId: site, moduleRevision: revision,
     } }) });
   };
@@ -538,7 +535,7 @@ Deno.test("late World publication overrides cannot run after Store acceptance", 
     storeUseSiteId: useSite, storeProp: "clock",
     host: { tag: "group", key: "motion", child: null,
       props: [["position-x", { kind: "input", index: 0 }]] },
-  }, closedStoreExecution: { schemaVersion: 1, kind: "owned-data",
+  }, closedStoreExecution: { schemaVersion: 3, kind: "owned-data",
     componentProgramId: site, moduleRevision: revision } });
   const host = new MemoryVDOMHost(), container = host.createContainer();
   const root = new ComponentStateRoot(host, container,
@@ -591,7 +588,7 @@ Deno.test("owned mixed cut acknowledges its old cell version and retains host-ti
       ["position-x", { kind: "binary", operator: "+",
         left: { kind: "input", index: 0 }, right: { kind: "input", index: 1 } }],
     ] },
-  }, closedStoreExecution: { schemaVersion: 1, kind: "owned-data",
+  }, closedStoreExecution: { schemaVersion: 3, kind: "owned-data",
     componentProgramId: site, moduleRevision: revision } });
   class InterleavingHost extends MemoryVDOMHost {
     onWrite: (() => void) | undefined;

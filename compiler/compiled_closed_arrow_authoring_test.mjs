@@ -241,7 +241,7 @@ try {
     numericBefore, "numeric arrow lost its keyed host while resources wait");
   queue = new NativeRootWorkQueue();
   const observations = [];
-  const work = queue.enqueueResources({ id: "held-a-dom-three", roots: [
+  const work = queue.enqueueTransaction({ id: "held-a-dom-three", roots: [
     { root: dom, resources: [app.detail] }, { root: three.root, resources: [app.signal] },
   ], onSettled(outcome) {
     if (outcome.status !== "committed") throw outcome.error ??
@@ -317,7 +317,7 @@ try {
   assert.ok(choiceFallback, "A-controlled choice did not suspend");
   choiceQueue = new NativeRootWorkQueue();
   const choiceSettled = [];
-  const choiceWork = choiceQueue.enqueueResources({ id: "selected-detail", roots: [
+  const choiceWork = choiceQueue.enqueueTransaction({ id: "selected-detail", roots: [
     { root: choiceRoot, resources: [choiceDetail] },
   ], onSettled(outcome) { choiceSettled.push(outcome); } });
   assert.equal(choiceWork.status, "pending", "old selected resource group was not admitted");
@@ -367,7 +367,7 @@ try {
   assert.equal(typeof localSetter, "function", "compiled local setter missing");
   localQueue = new NativeRootWorkQueue();
   const localSettled = [];
-  const localWork = localQueue.enqueueResources({ id: "selected-local-detail", roots: [
+  const localWork = localQueue.enqueueTransaction({ id: "selected-local-detail", roots: [
     { root: localRoot, resources: [localDetail] },
   ], onSettled(outcome) { localSettled.push(outcome); } });
   assert.equal(localWork.status, "pending", "old local resource group was not admitted");
@@ -410,7 +410,7 @@ try {
   assert.ok(positiveFallback, "unchanged choice did not suspend");
   positiveQueue = new NativeRootWorkQueue();
   const positiveSettled = [];
-  const positiveWork = positiveQueue.enqueueResources({ id: "unchanged-selected-detail", roots: [
+  const positiveWork = positiveQueue.enqueueTransaction({ id: "unchanged-selected-detail", roots: [
     { root: positiveRoot, resources: [positiveDetail] },
   ], onSettled(outcome) { positiveSettled.push(outcome); } });
   assert.equal(positiveWork.status, "pending", "unchanged choice group was not admitted");
@@ -444,7 +444,7 @@ try {
   const retiredFallback = find(retireContainer, (node) => node.props?.["data-choice"] === "waiting");
   assert.ok(retiredFallback);
   retireQueue = new NativeRootWorkQueue();
-  const retiring = retireQueue.enqueueResources({ id: "arrow-revision-pending", roots: [
+  const retiring = retireQueue.enqueueTransaction({ id: "arrow-revision-pending", roots: [
     { root: retireRoot, resources: [retiringDetail] },
   ] });
   assert.equal(retiring.status, "pending");

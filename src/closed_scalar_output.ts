@@ -13,13 +13,11 @@ export type OwnedScalarOutputCounts = {
   directCaptures?: number;
   batchCalls?: number;
   batchRows?: number;
-  scalarKernelCalls?: number;
 };
 const layoutKey = Symbol("owned-scalar-layout");
 const frameKey = Symbol("owned-scalar-frame");
 const intrinsicDefineProperty = Object.defineProperty;
 const intrinsicIsArray = Array.isArray;
-const intrinsicHasOwn = Object.hasOwn;
 const intrinsicIs = Object.is;
 const intrinsicFreeze = Object.freeze;
 const intrinsicIsSafeInteger = Number.isSafeInteger;
@@ -45,7 +43,6 @@ export class OwnedScalarLayout {
   readonly #slots: readonly number[];
   readonly #constantSlots: readonly (OwnedScalarValue | undefined)[];
   readonly #verifiedNumericResults: boolean;
-  readonly #numericResultCount: number;
 
   private constructor(key: symbol, names: readonly string[],
     constantSlots: readonly (OwnedScalarValue | undefined)[],
@@ -64,7 +61,6 @@ export class OwnedScalarLayout {
     this.#slots = Object.freeze(slots);
     this.#constantSlots = Object.freeze(constantSlots);
     this.#verifiedNumericResults = numericPropIndices !== undefined;
-    this.#numericResultCount = nextSlot;
     Object.freeze(this);
   }
 
@@ -108,7 +104,6 @@ export class OwnedScalarLayout {
     return this.#constantSlots[index];
   }
   get verifiedNumericResults(): boolean { return this.#verifiedNumericResults; }
-  get numericResultCount(): number { return this.#numericResultCount; }
 }
 
 export class OwnedScalarFrame {
@@ -143,42 +138,6 @@ export class OwnedScalarFrame {
     }
     const frame = new OwnedScalarFrame(frameKey, layout, copiedValues);
     if (counts) counts.frames++;
-    return frame;
-  }
-
-  /** Capture a verified kernel's dense prefix into one private final frame array. */
-  static captureVerifiedNumericResults(layout: OwnedScalarLayout,
-    results: readonly number[], counts?: OwnedScalarOutputCounts): OwnedScalarFrame {
-    if (!isOwnedScalarLayout(layout) || !layout.verifiedNumericResults ||
-      !intrinsicIsArray(results)) throw new TypeError("Invalid verified scalar capture");
-    const length = results.length;
-    if (!Number.isSafeInteger(length) || length < layout.numericResultCount || length > 32)
-      throw new TypeError("Scalar numeric result width mismatch");
-    const captured: OwnedScalarValue[] = [];
-    for (let index = 0; index < layout.length; index++) {
-      const slot = layout.slotAt(index);
-      if (slot >= 0 && !intrinsicHasOwn(results, slot))
-        throw new TypeError("Missing scalar numeric result");
-      const value = slot >= 0 ? results[slot] : layout.constantAt(index);
-      if (slot >= 0) {
-        if (typeof value !== "number" || !Number.isFinite(value))
-          throw new TypeError("Invalid scalar numeric result");
-      } else if (value !== null && typeof value !== "string" &&
-        typeof value !== "boolean" &&
-        !(typeof value === "number" && Number.isFinite(value))) {
-        throw new TypeError("Invalid scalar value");
-      }
-      const constant = layout.constantAt(index);
-      if (constant !== undefined && !intrinsicIs(value, constant))
-        throw new TypeError("Scalar constant mismatch");
-      intrinsicDefineProperty(captured, index, { value, enumerable: true,
-        writable: true, configurable: true });
-    }
-    const frame = new OwnedScalarFrame(frameKey, layout, captured);
-    if (counts) {
-      counts.frames++;
-      counts.directCaptures = (counts.directCaptures ?? 0) + 1;
-    }
     return frame;
   }
 

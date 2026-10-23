@@ -42,7 +42,7 @@ function fixture(id: string, leftHost = new MemoryVDOMHost()) {
   const left = new ComponentStateRoot(leftHost, leftContainer, options("left"));
   const right = new ComponentStateRoot(rightHost, rightContainer, options("right"));
   const queue = new NativeRootWorkQueue();
-  let activeGroup: ReturnType<NativeRootWorkQueue["enqueueResources"]> | null = null;
+  let activeGroup: ReturnType<NativeRootWorkQueue["enqueueTransaction"]> | null = null;
   const trace = { effects: 0, cleanups: 0, attaches: 0, detaches: 0, callbacks: 0,
     observations: [] as Array<[string, string]> };
   let setLocal: ((value: number) => boolean) | null = null;
@@ -105,7 +105,7 @@ function fixture(id: string, leftHost = new MemoryVDOMHost()) {
     assertEquals(scheduled.length, 0, "generic work did not quiesce");
   };
   const group = () => {
-    const work = queue.enqueueResources({ id: `${id}-detail-signal`, roots: [
+    const work = queue.enqueueTransaction({ id: `${id}-detail-signal`, roots: [
       { root: left, resources: [detail] }, { root: right, resources: [signal] },
     ], onSettled(outcome) {
       if (outcome.status === "cancelled") return;

@@ -1,5 +1,21 @@
 # Implementation checkpoint
 
+## Slice 1 closed; integrated realtime slice active — 22 October 2026
+
+The authorized cleanup retires superseded queue wrappers, execution schemas1/2/scalar proof adapters, raw Store preparation/projection routes and the standalone synchronous graph prototype. Static native task preparation is shared across input generations; current schema3 interpreted/batch paths and host schemas1–7 remain. Exact history/acknowledgement, newer actions, forks, ownership, resources, failure quarantine and generic fallback remain authoritative. No backwards compatibility layer was added.
+
+Consolidated correctness passes1,278Deno after one fixture-only schema correction; Rust107,62actualcompiled fixtures and package checks passed in the preserved original gate. All2,471archive hashes verify. Installed6context output/resource/snapshot/CSP proof and actual Portless HMR pass. The sole18.42s balanced minified-production comparison still loses: React update median/p900.60/0.70ms; Native later contexts2.60–2.70/2.90–3.00, first context5.35/7.20. Median adjacent pair ratios4.50×/4.21×update and1.86×/1.82×throughdraw. The slow first context remains; no cause or favorable rerun. [Results and raw failure/evidence](implementation/2026-10-22-architecture-slices/results.md).
+
+Release Slice2 as an integrated migration: immutable batch accepted pages, existing mounted-plan integration and ordinary one-root frame publication/numeric acceptance through the same candidate lifecycle. Full live sweeps/per-write checks stay; the per-key owner map remains because eliminating it without another maintained authority risks quadratic scans or missed duplicates. [Concrete contracts](implementation/2026-10-22-realtime-execution/design.md). No per-helper timing. Luna is idle until the combined slice is reviewed/frozen. The three-slice dependency graph and full product/lifecycle/evidence finish line remain in force.
+
+## Three architecture slices authorized — 22 October 2026
+
+The human authorized three integrated slices with cleanup first and explicitly removed backwards compatibility as a constraint. Superseded runtime APIs, schemas and prototype paths may be deleted; historical evidence remains immutable. The maintainability-review skill workflow is set aside at the human's request. [Task ownership, dependency graph and slice contracts](implementation/2026-10-22-architecture-slices/plan.md).
+
+Slice1 is active: three Sol-medium agents reduce publication wrappers, obsolete Store execution/proof adapters, and duplicate task preparation/the standalone synchronous graph prototype. The primary integrates exports, current examples/docs and delivery callers. Slice2 connects batch-owned immutable accepted values, mounted bindings/invalidation and ordinary-frame publication through the existing lifecycle. Slice3 connects compiler dependency relations, shared resource/derived demand and independent ready/reveal work to that authority. Successors follow the graph; Luna runs consolidated gates only after each reviewed source freeze.
+
+No cleanup speed claim, no helper timing/reversion loop and no new version/publication registry. Exact acknowledgement, newer actions, per-root histories/forks, immutable old snapshots, live ownership/code/writer checks, resources, quarantine and generic fallback remain product semantics. One bounded balanced minified-production comparison per completed slice uses median+p90, with raw p95/max preserved. Current measured realtime parity still fails; cold/memory, independent-device and full product obligations remain open. This authorization supersedes the earlier prospective planning-only status below.
+
 ## Architecture reassessment: planning only — 22 October 2026
 
 The human requested a deep architecture planning phase after the integrated Store boundary. No implementation/test/benchmark/server work is selected by this reassessment. Current source remains `46babf10c`; measured realtime parity still fails. [Architecture proposal and finite migration](implementation/2026-10-22-architecture-reassessment/proposal.md), [realtime source review](implementation/2026-10-22-architecture-reassessment/realtime-review.md), [DAG source review](implementation/2026-10-22-architecture-reassessment/dag-review.md).

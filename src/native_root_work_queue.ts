@@ -76,12 +76,8 @@ export type NativeRootWork = {
   readonly onSettled?: (resolution: RootWorkSettled) => void;
 };
 
-export type NativeRetainedRootWork = {
+type NativeScopedRootWork = {
   readonly id: string;
-  readonly roots: readonly {
-    readonly root: NativeRoot;
-    readonly cells: readonly StateCellHandle[];
-  }[];
   readonly pending?: readonly string[];
   readonly key?: string;
   readonly validateWork?: () => boolean;
@@ -89,35 +85,19 @@ export type NativeRetainedRootWork = {
   readonly onSettled?: (resolution: RootWorkSettled) => void;
 };
 
-/** An explicit transaction over supported pending edits in selected collections. */
-export type NativeCollectionRootWork = Omit<NativeRetainedRootWork, "roots"> & {
-  readonly roots: readonly {
-    readonly root: NativeRoot;
-    readonly collections: readonly KeyedCollection<any>[];
-  }[];
-};
-
 /** A declared joint cut over retained cells, collection edits, and Stores. */
-export type NativeTransactionRootWork = Omit<NativeRetainedRootWork, "roots"> & {
+export type NativeTransactionRootWork = NativeScopedRootWork & {
   readonly roots: readonly {
     readonly root: NativeRoot;
-    readonly cells: readonly StateCellHandle[];
-    readonly collections: readonly KeyedCollection<any>[];
+    readonly cells?: readonly StateCellHandle[];
+    readonly collections?: readonly KeyedCollection<any>[];
     readonly stores?: readonly AnyAsyncStore[];
     readonly resources?: readonly AsyncResource<any>[];
   }[];
 };
 
-/** A declared joint reveal of the closed readers of selected resources. */
-export type NativeResourceRootWork = Omit<NativeRetainedRootWork, "roots"> & {
-  readonly roots: readonly {
-    readonly root: NativeRoot;
-    readonly resources: readonly AsyncResource<any>[];
-  }[];
-};
-
 /** A declared publication cut covering every closed reader of selected Stores. */
-export type NativeStoreRootWork = Omit<NativeRetainedRootWork, "roots"> & {
+export type NativeStoreRootWork = NativeScopedRootWork & {
   readonly roots: readonly {
     readonly root: NativeRoot;
     readonly stores: readonly AnyAsyncStore[];
@@ -180,20 +160,6 @@ export class NativeRootWorkQueue {
     );
   }
 
-  enqueueRetained(work: NativeRetainedRootWork): NativeRootWorkHandle {
-    return this.#enqueuePrepared(
-      work,
-      work.roots.map(({ root, cells }) => ({
-        root,
-        cells: Object.freeze([...cells]),
-      })),
-      ({ root, cells }, _transitions, lease) => root.prepareRetained(cells, lease),
-      ({ root, cells }) => root.holdTransactionPublications({
-        resources: [], cells, collections: [], stores: [],
-      }),
-    );
-  }
-
   enqueueStores(work: NativeStoreRootWork): NativeRootWorkHandle {
     return this.#enqueuePrepared(
       work,
@@ -205,43 +171,13 @@ export class NativeRootWorkQueue {
     );
   }
 
-  enqueueCollections(work: NativeCollectionRootWork): NativeRootWorkHandle {
-    return this.#enqueuePrepared(
-      work,
-      work.roots.map(({ root, collections }) => ({
-        root,
-        collections: Object.freeze([...collections]),
-      })),
-      ({ root, collections }, _transitions, lease) =>
-        root.prepareCollections(collections, lease),
-      ({ root, collections }) => root.holdTransactionPublications({
-        resources: [], cells: [], collections, stores: [],
-      }),
-    );
-  }
-
-  enqueueResources(work: NativeResourceRootWork): NativeRootWorkHandle {
-    return this.#enqueuePrepared(
-      work,
-      work.roots.map(({ root, resources }) => ({
-        root,
-        resources: Object.freeze([...resources]),
-      })),
-      ({ root, resources }, _transitions, resourceLease) =>
-        root.prepareResources(resources, resourceLease),
-      ({ root, resources }) => root.holdTransactionPublications({
-        resources, cells: [], collections: [], stores: [],
-      }),
-    );
-  }
-
   enqueueTransaction(work: NativeTransactionRootWork): NativeRootWorkHandle {
     return this.#enqueuePrepared(
       work,
       work.roots.map(({ root, cells, collections, stores, resources }) => ({
         root,
-        cells: Object.freeze([...cells]),
-        collections: Object.freeze([...collections]),
+        cells: Object.freeze([...(cells ?? [])]),
+        collections: Object.freeze([...(collections ?? [])]),
         stores: Object.freeze([...(stores ?? [])]),
         resources: Object.freeze([...(resources ?? [])]),
       })),
@@ -253,7 +189,7 @@ export class NativeRootWorkQueue {
   }
 
   #enqueuePrepared<Entry extends { readonly root: NativeRoot }>(
-    work: NativeRootWork | NativeRetainedRootWork | NativeCollectionRootWork | NativeTransactionRootWork | NativeStoreRootWork | NativeResourceRootWork,
+    work: NativeRootWork | NativeTransactionRootWork | NativeStoreRootWork,
     entries: readonly Entry[],
     prepareCandidate: (
       entry: Entry,

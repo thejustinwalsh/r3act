@@ -144,7 +144,7 @@ try {
   const bAccepted = JSON.stringify(b.root.snapshot);
   assert.match(bAccepted, /B waiting/, "baseline B snapshot lacks accepted fallback");
   queue = new NativeRootWorkQueue();
-  const work = queue.enqueueResources({ id: `publication-callbacks-${randomUUID()}`,
+  const work = queue.enqueueTransaction({ id: `publication-callbacks-${randomUUID()}`,
     roots: [
       { root: a.root, resources: [app.resourceA] },
       { root: b.root, resources: [app.resourceB] },
@@ -199,7 +199,7 @@ try {
     c.root.mount(jsx(app.AppB, { child: conformingChild }));
     assert.equal(treeText(c.container), "B waiting");
     const cBefore = c.root.publicationVersion;
-    const conforming = queue.enqueueResources({ id: `publication-factory-${randomUUID()}`,
+    const conforming = queue.enqueueTransaction({ id: `publication-factory-${randomUUID()}`,
       roots: [{ root: c.root, resources: [app.resourceC] }] });
     assert.equal(conforming.status, "pending");
     app.pendingC.resolve("ready-c");

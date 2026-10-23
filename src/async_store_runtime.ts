@@ -1799,9 +1799,9 @@ export class StoreRenderTransaction {
     this.#capturedTransitions = this.options.transitions!;
   }
 
-  _readOwnedClosedProjectionBatch(
+  _readOwnedClosedProjectionSchedule(
     key: symbol,
-    requests: readonly OwnedClosedProjectionRequest[] | OwnedClosedFrameSchedule,
+    schedule: OwnedClosedFrameSchedule,
   ): readonly (readonly number[])[] | null {
     if (typeof this !== "object" || this === null || !(#snapshots in this)) return null;
     if (key !== ownedBatchKey || this.#closed || this.#preparedPublication ||
@@ -1828,22 +1828,18 @@ export class StoreRenderTransaction {
       !transitions || !("value" in transitions) ||
       transitions.value !== this.#capturedTransitions) return null;
     if (!closedNumericPrototypeIsCanonical()) return null;
-    const schedule = canonicalOwnedClosedFrameScheduleOwns(requests) &&
-      requests.sealed ? requests : null;
-    const requestCount = schedule ? schedule.projectionCount :
-      (requests as readonly OwnedClosedProjectionRequest[]).length;
+    if (!canonicalOwnedClosedFrameScheduleOwns(schedule) || !schedule.sealed) return null;
+    const requestCount = schedule.projectionCount;
     if (requestCount === 0) return Object.freeze([]);
     const stores = new Set<AnyAsyncStore>();
     const readerSources = new Map<string, AnyAsyncStore>();
     for (let row = 0; row < requestCount; row++) {
-      const column = schedule
-        ? canonicalOwnedClosedFrameScheduleProjectionAt.call(schedule, row) : null;
-      const request = column
-        ? canonicalUnwrapClosedProjectionRequest(closedProjectionBindingKey, column.bound)
-        : (requests as readonly OwnedClosedProjectionRequest[])[row];
+      const column = canonicalOwnedClosedFrameScheduleProjectionAt.call(schedule, row);
+      const request = canonicalUnwrapClosedProjectionRequest(
+        closedProjectionBindingKey, column.bound);
       if (!request) return null;
       if (!request.readerId || !isOwnedClosedProjectionPaths(request.paths)) return null;
-      if (column && column.input !== null &&
+      if (column.input !== null &&
         (!OwnedClosedFrameInput.owns(column.input) ||
           !Number.isSafeInteger(column.sharedOffset) ||
           column.sharedOffset < 0)) return null;
@@ -1864,13 +1860,10 @@ export class StoreRenderTransaction {
       captures.set(store, capture);
     }
     const projectionValues = new Map<AnyAsyncStore, Map<readonly (readonly string[])[], readonly number[]>>();
-    const result: (readonly number[])[] = [];
     for (let row = 0; row < requestCount; row++) {
-      const column = schedule
-        ? canonicalOwnedClosedFrameScheduleProjectionAt.call(schedule, row) : null;
-      const request = column
-        ? canonicalUnwrapClosedProjectionRequest(closedProjectionBindingKey, column.bound)
-        : (requests as readonly OwnedClosedProjectionRequest[])[row];
+      const column = canonicalOwnedClosedFrameScheduleProjectionAt.call(schedule, row);
+      const request = canonicalUnwrapClosedProjectionRequest(
+        closedProjectionBindingKey, column.bound);
       if (!request) return null;
       let byPath = projectionValues.get(request.store);
       if (!byPath) projectionValues.set(request.store, byPath = new Map());
@@ -1880,14 +1873,13 @@ export class StoreRenderTransaction {
         if (!values) return null;
         byPath.set(request.paths, values);
       }
-      if (column?.input && column.fillShared) {
+      if (column.input && column.fillShared) {
         if (column.sharedOffset + values.length > column.input.sharedCount) return null;
         for (let index = 0; index < values.length; index++)
           column.input.setShared(column.sharedOffset + index, values[index]);
       }
-      if (column?.fallbackValues)
+      if (column.fallbackValues)
         canonicalApply(canonicalArrayPush, column.fallbackValues, [values as number[]]);
-      if (!schedule) canonicalApply(canonicalArrayPush, result, [values]);
     }
     const snapshots = new Map<AnyAsyncStore, StoreRenderSnapshot<any, any>>();
     for (const [store, capture] of captures) {
@@ -1904,11 +1896,9 @@ export class StoreRenderTransaction {
     }
     const directRows = new Map<string, OwnedDirectReader>();
     for (let index = 0; index < requestCount; index++) {
-      const column = schedule
-        ? canonicalOwnedClosedFrameScheduleProjectionAt.call(schedule, index) : null;
-      const request = column
-        ? canonicalUnwrapClosedProjectionRequest(closedProjectionBindingKey, column.bound)
-        : (requests as readonly OwnedClosedProjectionRequest[])[index];
+      const column = canonicalOwnedClosedFrameScheduleProjectionAt.call(schedule, index);
+      const request = canonicalUnwrapClosedProjectionRequest(
+        closedProjectionBindingKey, column.bound);
       if (!request) return null;
       const { store, readerId } = request;
       const snapshot = snapshots.get(store)!;
@@ -1916,7 +1906,7 @@ export class StoreRenderTransaction {
     }
     this.#readerStorage = { kind: "owned-direct", rows: directRows };
     this.#ownedDirectRows += directRows.size;
-    return Object.freeze(result);
+    return Object.freeze([]);
   }
   #promoteDirectReaders(): void {
     if (this.#readerStorage.kind !== "owned-direct") return;
@@ -2428,8 +2418,8 @@ export class StoreRenderTransaction {
   }
 }
 
-const canonicalReadOwnedClosedProjectionBatch =
-  StoreRenderTransaction.prototype._readOwnedClosedProjectionBatch;
+const canonicalReadOwnedClosedProjectionSchedule =
+  StoreRenderTransaction.prototype._readOwnedClosedProjectionSchedule;
 const canonicalCaptureBlockedReaderReceipt =
   StoreRenderTransaction.prototype._captureCanonicalBlockedReaderReceipt;
 const canonicalValidateStorePhase =
@@ -2528,38 +2518,6 @@ export function validateCanonicalClosedStorePhase(
   }
 }
 
-export function readOwnedClosedProjectionBatch(
-  transaction: StoreRenderTransaction,
-  requests: readonly (OwnedClosedProjectionRequest | BoundClosedProjectionRequest)[],
-): readonly (readonly number[])[] | null {
-  let copied: OwnedClosedProjectionRequest[];
-  try {
-    const length = Object.getOwnPropertyDescriptor(requests, "length")?.value;
-    if (!Number.isSafeInteger(length) || length < 0 || length > 65536) return null;
-    copied = [];
-    for (let index = 0; index < length; index++) {
-      const request = Object.getOwnPropertyDescriptor(requests, String(index));
-      if (!request || !("value" in request) || !request.value) return null;
-      const bound = canonicalUnwrapClosedProjectionRequest(
-        closedProjectionBindingKey, request.value);
-      if (bound) {
-        copied.push(bound);
-        continue;
-      }
-      const store = Object.getOwnPropertyDescriptor(request.value, "store");
-      const readerId = Object.getOwnPropertyDescriptor(request.value, "readerId");
-      const paths = Object.getOwnPropertyDescriptor(request.value, "paths");
-      if (!store || !("value" in store) || !readerId || !("value" in readerId) ||
-        typeof readerId.value !== "string" || !paths || !("value" in paths)) return null;
-      copied.push({ store: store.value, readerId: readerId.value, paths: paths.value });
-    }
-  } catch (error) {
-    if (error instanceof TypeError) return null;
-    throw error;
-  }
-  return canonicalReadOwnedClosedProjectionBatch.call(transaction, ownedBatchKey, copied);
-}
-
 /** Stage distinct direct readers while filling one shared vector per group. */
 export function readOwnedClosedProjectionSchedule(
   transaction: StoreRenderTransaction,
@@ -2568,7 +2526,7 @@ export function readOwnedClosedProjectionSchedule(
   try {
     if (!canonicalOwnedClosedFrameScheduleOwns(schedule) || !schedule.sealed ||
       schedule.projectionCount > 65536) return false;
-    return canonicalReadOwnedClosedProjectionBatch.call(
+    return canonicalReadOwnedClosedProjectionSchedule.call(
       transaction, ownedBatchKey, schedule,
     ) !== null;
   } catch (error) {

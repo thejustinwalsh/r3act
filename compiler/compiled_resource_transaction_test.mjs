@@ -237,7 +237,7 @@ try {
     callbacks++;
   } });
   let resourceCallbacks = 0;
-  const resourceOnly = queue.enqueueResources({ id: `resource-only-${randomUUID()}`,
+  const resourceOnly = queue.enqueueTransaction({ id: `resource-only-${randomUUID()}`,
     roots: [{ root: forkRoot, resources: [app.resourceA, app.resourceB] }],
     onSettled(outcome) {
       assert.equal(outcome.status, "committed");

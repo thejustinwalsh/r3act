@@ -6,8 +6,10 @@ import {
 } from "./async_store_runtime.ts";
 import { type AuthoredAsyncTask } from "./async_task_plan.ts";
 import {
-  createTaskExecution,
+  createTaskExecutionFromDefinition,
   type NativeTaskExecution,
+  type PreparedNativeTaskDefinition,
+  prepareNativeTaskDefinition,
 } from "./native_task_execution.ts";
 import { ComponentStateRoot } from "./component_state_runtime.ts";
 import { type RuntimeNode } from "./jsx_binding_runtime.ts";
@@ -89,6 +91,7 @@ type CapturedRoot<Tasks extends readonly AuthoredAsyncTask[]> = {
 type Operation<Tasks extends readonly AuthoredAsyncTask[]> = {
   id: string;
   tasks: Tasks;
+  definition?: PreparedNativeTaskDefinition<Tasks>;
   options: NativeTaskTransitionOptions;
   roots: CapturedRoot<Tasks>[];
   rootDisposers: (() => void)[];
@@ -208,19 +211,15 @@ export class NativeTaskTransitionQueue {
     const completion = new Promise<RootWorkResolution>((resolve) => {
       resolveCompletion = resolve;
     });
-    const taskSnapshot = Object.freeze(tasks.map((task) =>
-      Object.freeze({
-        id: task.id,
-        dependsOn: Object.freeze([...task.dependsOn]),
-        run: task.run,
-      })
-    )) as unknown as Tasks;
+    const definition = prepareNativeTaskDefinition(tasks);
+    const taskSnapshot = definition.tasks;
     const descriptors = Object.freeze(
       roots.map(({ root, buildTree }) => Object.freeze({ root, buildTree })),
     );
     const operation: Operation<Tasks> = {
       id,
       tasks: taskSnapshot,
+      definition,
       options: {
         ...options,
         inputs: freezeRecord(options.inputs ?? {}),
@@ -460,8 +459,8 @@ export class NativeTaskTransitionQueue {
         } else if (priorMatches.length === 1) {
           const prior = priorMatches[0];
           const inputsChanged = changedKeys(prior.values, group.values);
-          group.execution = createTaskExecution(
-            operation.tasks,
+          group.execution = createTaskExecutionFromDefinition(
+            operation.definition!,
             group.values,
             {
               maxConcurrency: operation.options.maxConcurrency,
@@ -475,8 +474,8 @@ export class NativeTaskTransitionQueue {
             },
           );
         }
-        group.execution ??= createTaskExecution(
-          operation.tasks,
+        group.execution ??= createTaskExecutionFromDefinition(
+          operation.definition!,
           group.values,
           { maxConcurrency: operation.options.maxConcurrency },
         );
@@ -871,6 +870,7 @@ export class NativeTaskTransitionQueue {
     operation.execution = undefined;
     operation.executions.clear();
     operation.tasks = [] as unknown as Tasks;
+    operation.definition = undefined;
     operation.refreshRequested = false;
     operation.resolveCompletion(operation.resolution);
     return operation.resolution;

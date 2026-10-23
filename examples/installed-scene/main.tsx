@@ -138,13 +138,13 @@ export function mountInstalledScene(host: HTMLElement, portal: HTMLElement) {
   const tree = () => <App domain={domain} portal={portal} trace={trace} order={order}
     onOpenChange={onOpenChange} onMove={onMove} onReorder={onReorder}
     onLoadDetail={onLoadDetail} onLoadSignal={onLoadSignal} onLoadHealth={onLoadHealth} />;
-  let reveal!: ReturnType<NativeRootWorkQueue["enqueueResources"]>;
+  let reveal!: ReturnType<NativeRootWorkQueue["enqueueTransaction"]>;
   try {
     domRoot.mount(tree());
     three.root.mount(<ThreeApp domain={domain} geometry={borrowedGeometry} material={borrowedMaterial} />);
     dialogIdentity = host.querySelector('[data-dialog-slot="true"]');
     cursorIdentity = scene.getObjectByName("cursor") ?? null;
-    reveal = queue.enqueueResources({ id: "joint-dom-three-reveal", roots: [
+    reveal = queue.enqueueTransaction({ id: "joint-dom-three-reveal", roots: [
       { root: domRoot, resources: [domain.detail] },
       { root: three.root, resources: [domain.signal] },
     ], onSettled(outcome) {

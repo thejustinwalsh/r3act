@@ -421,7 +421,7 @@ try {
     value: storeRecord({ id: "a", value: 11 }) }]);
   assert.equal(stale.validate(), false, "newer same-source action did not revoke candidate");
   stale.discard();
-  const latest = queue.enqueueCollections({ id: `closed-latest-${randomUUID()}`,
+  const latest = queue.enqueueTransaction({ id: `closed-latest-${randomUUID()}`,
     roots: [{ root: domRoot, collections: [app.domRows] }],
   });
   assert.equal(latest.status, "committed");

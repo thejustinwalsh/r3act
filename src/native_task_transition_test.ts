@@ -759,3 +759,71 @@ Deno.test("input notifications arriving during a recapture are drained instead o
   queue.dispose();
   app.root.dispose();
 });
+
+Deno.test("queued task snapshots survive authored mutation through a live-input replacement", async () => {
+  const app = harness("task-transition-mutated-authoring");
+  const query = createAsyncStore("old");
+  const old = deferred<string>();
+  const loadDependencies = ["$query"];
+  const joinDependencies = ["load", "catalog"];
+  const starts: string[] = [];
+  let catalogRuns = 0, joinRuns = 0;
+  const load = asyncTask("load", loadDependencies, (values) => {
+    const value = String(values.get("$query"));
+    starts.push(value);
+    return value === "old" ? old.promise : "fresh";
+  });
+  const catalog = asyncTask("catalog", ["$locale"], () => {
+    catalogRuns++;
+    return "en";
+  });
+  const joined = asyncTask("joined", joinDependencies, (values) => {
+    joinRuns++;
+    return `${values.get("load")}:${values.get("catalog")}`;
+  });
+  const tasks = [load, catalog, joined];
+  const executions: any[] = [];
+  const View = defineComponent(
+    "task-transition-mutated-authoring-view",
+    ({ execution }: any) =>
+      jsx("b", {}, String(useAt("joined", execution.resource("joined")))),
+  );
+  const queue = new NativeTaskTransitionQueue();
+  const handle = queue.enqueue(tasks, [{
+    root: app.root,
+    buildTree: (execution) => {
+      if (!executions.includes(execution)) executions.push(execution);
+      return boundary(jsx(View, { execution }));
+    },
+  }], { inputs: { "$locale": "en" }, liveInputs: { "$query": query } });
+  const first = executions[0];
+  const oldResource = first.resource("load");
+  const catalogResource = first.resource("catalog");
+  if (catalogResource.status.status === "pending") {
+    await new Promise<void>((resolve) => catalogResource.subscribe(() => resolve()));
+  }
+  assertEquals(catalogResource.read(), "en");
+  assertEquals(first.resource("joined").status.status, "pending");
+
+  loadDependencies[0] = "$wrong";
+  joinDependencies.length = 0;
+  Object.assign(load, { id: "renamed", run: () => { throw new Error("mutated load ran"); } });
+  Object.assign(joined, { run: () => { throw new Error("mutated join ran"); } });
+  tasks.reverse();
+  query.dispatch("new");
+
+  assertEquals((await handle.completion).status, "committed");
+  assertEquals(starts, ["old", "new"]);
+  assertEquals([catalogRuns, joinRuns], [1, 1]);
+  assertEquals(handle.snapshot().reused, ["catalog"]);
+  assertEquals(app.text(), "fresh:en");
+  assertEquals(executions.length, 2);
+  const freshResource = executions[1].resource("load");
+  assertEquals(freshResource.read(), "fresh");
+  assertEquals(oldResource.status.status, "rejected");
+  old.resolve("stale");
+  await Promise.resolve();
+  assertEquals(app.text(), "fresh:en");
+  queue.dispose();
+  app.root.dispose();
+});

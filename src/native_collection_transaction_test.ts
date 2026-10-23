@@ -83,7 +83,7 @@ Deno.test("selected collection work publishes while same-root health work waits"
   try {
     f.setHealth(9);
     assert(healthCell);
-    const healthWork = queue.enqueueRetained({
+    const healthWork = queue.enqueueTransaction({
       id: "pending-health",
       roots: [{ root: f.root, cells: [healthCell] }],
       pending: ["health-ready"],
@@ -93,7 +93,7 @@ Deno.test("selected collection work publishes while same-root health work waits"
       f.rows.apply(f.rows.version, [{ type: "move", key: "c", beforeKey: "a" }])
         .ok,
     );
-    const moved = queue.enqueueCollections({
+    const moved = queue.enqueueTransaction({
       id: "move-position-row",
       roots: [{ root: f.root, collections: [f.rows] }],
     });
@@ -123,7 +123,7 @@ Deno.test("declared collection group snapshots selection and retires owners afte
       assert(f.rows.apply(f.rows.version, [{ type: "remove", key: "b" }]).ok);
     }
     const selected = [a.rows];
-    const group = queue.enqueueCollections({
+    const group = queue.enqueueTransaction({
       id: "remove-group",
       roots: [{ root: a.root, collections: selected }, {
         root: b.root,
@@ -164,7 +164,7 @@ Deno.test("unsupported collection insertion preserves work for the generic path"
         beforeKey: null,
       }]).ok,
     );
-    const work = queue.enqueueCollections({
+    const work = queue.enqueueTransaction({
       id: "unsupported-insert",
       roots: [{ root: f.root, collections: [f.rows] }],
     });

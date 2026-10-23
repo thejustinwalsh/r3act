@@ -67,13 +67,13 @@ Deno.test("declared retained group waits, then publishes both bound props", () =
     assertEquals(dirty.length, 3);
     const meshCells = [dirty[0]];
     const outlineCells = [dirty[1]];
-    const healthWork = queue.enqueueRetained({
+    const healthWork = queue.enqueueTransaction({
       id: "health-transaction",
       roots: [{ root: health.root, cells: [dirty[2]] }],
       pending: ["health-resource"],
     });
     const settled: string[] = [];
-    const group = queue.enqueueRetained({
+    const group = queue.enqueueTransaction({
       id: "position-transaction",
       roots: [
         { root: mesh.root, cells: meshCells },
@@ -148,7 +148,7 @@ Deno.test("retained preparation declines opaque projectors without invoking them
     const before = projectorCalls;
     const work = new NativeRootWorkQueue();
     try {
-      const result = work.enqueueRetained({
+      const result = work.enqueueTransaction({
         id: "opaque-projector",
         roots: [{ root, cells: [handle!] }],
       });
@@ -185,7 +185,7 @@ Deno.test("retained work does not fall back to a whole-tree candidate", () => {
   const unsubscribe = world.subscribeDirtyCells((next) => handle = next);
   try {
     assertEquals(setValue(3), true);
-    const work = queue.enqueueRetained({
+    const work = queue.enqueueTransaction({
       id: "unsupported-retained",
       roots: [{ root, cells: [handle!] }],
     });

@@ -1,6 +1,10 @@
 import { AsyncResource, type AsyncResourceStatus } from "./async_resource_runtime.ts";
 import { asyncTask, type AuthoredAsyncTask } from "./async_task_plan.ts";
-import { createTaskExecution } from "./native_task_execution.ts";
+import {
+  createTaskExecution,
+  createTaskExecutionFromDefinition,
+  prepareNativeTaskDefinition,
+} from "./native_task_execution.ts";
 
 const assertEquals = (
   actual: unknown,
@@ -256,6 +260,45 @@ Deno.test("native task execution validates inputs and cycles before any task sta
     cycleRejected = error instanceof Error && error.message.includes("cycle");
   }
   assertEquals([missingRejected, extraRejected, cycleRejected, started], [true, true, true, 0]);
+});
+
+Deno.test("prepared native task definitions keep exact input keys and candidate resource ownership", async () => {
+  const firstGate = deferred<string>();
+  const secondGate = deferred<string>();
+  const started: string[] = [];
+  const definition = prepareNativeTaskDefinition([
+    asyncTask("load", ["$query"] as const, (values) => {
+      const query = String(values.get("$query"));
+      started.push(query);
+      return query === "first" ? firstGate.promise : secondGate.promise;
+    }),
+  ] as const);
+  let missing = false, extra = false;
+  try { createTaskExecutionFromDefinition(definition, {}); }
+  catch (error) { missing = error instanceof Error && error.message.includes("missing"); }
+  try { createTaskExecutionFromDefinition(definition, { $query: "first", extra: true }); }
+  catch (error) { extra = error instanceof Error && error.message.includes("extra"); }
+  assertEquals([missing, extra, started], [true, true, []]);
+
+  const first = createTaskExecutionFromDefinition(definition, { $query: "first" });
+  const second = createTaskExecutionFromDefinition(definition, { $query: "second" });
+  const firstResource = first.resource("load");
+  const secondResource = second.resource("load");
+  assert(firstResource !== secondResource);
+  assertEquals(started, ["first", "second"]);
+  assertEquals([first.snapshot().started, second.snapshot().started], [["load"], ["load"]]);
+
+  const reason = new Error("first candidate superseded");
+  first.cancel(reason);
+  assertEquals((await first.completion).status, "aborted");
+  assertEquals(firstResource.status.status, "rejected");
+  if (firstResource.status.status === "rejected") assert(firstResource.status.reason === reason);
+  assertEquals(secondResource.status.status, "pending");
+  firstGate.resolve("late first");
+  secondGate.resolve("accepted second");
+  assertEquals((await second.completion).status, "complete");
+  assertEquals(secondResource.read(), "accepted second");
+  assertEquals(firstResource.status.status, "rejected");
 });
 
 Deno.test("native task execution disposal preserves held fulfilled resources and is idempotent", async () => {

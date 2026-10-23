@@ -43,7 +43,7 @@ Deno.test("closed Store wrapper updates props while retaining an independently c
       inputs: [{ storeUseSiteId: storeSite, storeProp: "clock", paths: [[]] }],
       host: { tag: "group", key: "motion", child: null,
         props: [["rotation-y", { kind: "input", index: 0 }]] },
-    }, closedStoreExecution: { schemaVersion: 1, kind: "owned-data",
+    }, closedStoreExecution: { schemaVersion: 3, kind: "owned-data",
       componentProgramId: motionSite, moduleRevision: revision } });
   class ReentrantHost extends MemoryVDOMHost {
     onWrite: (() => void) | undefined;

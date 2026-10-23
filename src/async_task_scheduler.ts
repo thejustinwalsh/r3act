@@ -40,20 +40,24 @@ export type AsyncTaskCompletionEvent = {
   reused: boolean;
 };
 
-/** Validate a task DAG without invoking any user-provided task function. */
-export type PreparedAsyncTaskPlan = {
+/** Immutable task relations that can be shared by executions with new input cuts. */
+export type PreparedAsyncTaskGraph = {
   taskSpecs: readonly AsyncTaskSpec[];
-  initialValues: Readonly<Record<string, unknown>>;
   taskById: ReadonlyMap<string, AsyncTaskSpec>;
   orderById: ReadonlyMap<string, number>;
   dependents: ReadonlyMap<string, readonly string[]>;
   unresolved: ReadonlyMap<string, number>;
+  externalInputs: ReadonlyMap<string, string>;
 };
 
-export const prepareAsyncTaskPlan = (
+export type PreparedAsyncTaskPlan = PreparedAsyncTaskGraph & {
+  initialValues: Readonly<Record<string, unknown>>;
+};
+
+/** Validate static task relations once, without invoking task callbacks. */
+export const prepareAsyncTaskGraph = (
   taskSpecs: readonly AsyncTaskSpec[],
-  initialValues: Readonly<Record<string, unknown>> = {},
-): PreparedAsyncTaskPlan => {
+): PreparedAsyncTaskGraph => {
   const taskById = new Map<string, AsyncTaskSpec>();
   const orderById = new Map<string, number>();
   for (let index = 0; index < taskSpecs.length; index++) {
@@ -63,15 +67,13 @@ export const prepareAsyncTaskPlan = (
         `Async task IDs must be unique and non-empty: ${task.id}`,
       );
     }
-    if (Object.hasOwn(initialValues, task.id)) {
-      throw new Error(`Task ID collides with initial value: ${task.id}`);
-    }
     taskById.set(task.id, task);
     orderById.set(task.id, index);
   }
 
   const dependents = new Map<string, string[]>();
   const unresolved = new Map<string, number>();
+  const externalInputs = new Map<string, string>();
   for (const task of taskSpecs) {
     const seen = new Set<string>();
     let taskPrerequisites = 0;
@@ -82,11 +84,9 @@ export const prepareAsyncTaskPlan = (
         );
       }
       seen.add(dependency);
-      if (Object.hasOwn(initialValues, dependency)) continue;
       if (!taskById.has(dependency)) {
-        throw new Error(
-          `Task ${task.id} depends on unknown value ${dependency}`,
-        );
+        if (!externalInputs.has(dependency)) externalInputs.set(dependency, task.id);
+        continue;
       }
       taskPrerequisites++;
       const children = dependents.get(dependency) ?? [];
@@ -115,12 +115,33 @@ export const prepareAsyncTaskPlan = (
   }
   return {
     taskSpecs,
-    initialValues,
     taskById,
     orderById,
     dependents,
     unresolved,
+    externalInputs,
   };
+};
+
+export const prepareAsyncTaskPlan = (
+  taskSpecs: readonly AsyncTaskSpec[],
+  initialValues: Readonly<Record<string, unknown>> = {},
+  graph: PreparedAsyncTaskGraph = prepareAsyncTaskGraph(taskSpecs),
+): PreparedAsyncTaskPlan => {
+  if (graph.taskSpecs !== taskSpecs) {
+    throw new Error("Prepared async task graph does not match task declarations");
+  }
+  for (const taskId of graph.taskById.keys()) {
+    if (Object.hasOwn(initialValues, taskId)) {
+      throw new Error(`Task ID collides with initial value: ${taskId}`);
+    }
+  }
+  for (const [dependency, taskId] of graph.externalInputs) {
+    if (!Object.hasOwn(initialValues, dependency)) {
+      throw new Error(`Task ${taskId} depends on unknown value ${dependency}`);
+    }
+  }
+  return { ...graph, initialValues };
 };
 
 /**
@@ -136,6 +157,8 @@ export const executeAsyncTaskPlan = async (
   initialValues: Readonly<Record<string, unknown>> = {},
   options: AsyncTaskExecutionOptions = {},
   prepared?: PreparedAsyncTaskPlan,
+  /** @internal Candidate-local live start ledger. */
+  startedSink?: string[],
 ): Promise<AsyncTaskExecution> => {
   const maxConcurrency = options.maxConcurrency ?? Number.POSITIVE_INFINITY;
   if (
@@ -323,6 +346,7 @@ export const executeAsyncTaskPlan = async (
 
       let output: unknown | Promise<unknown>;
       try {
+        startedSink?.push(taskId);
         output = task.run(taskInputs, controller.signal);
       } catch (error) {
         running--;

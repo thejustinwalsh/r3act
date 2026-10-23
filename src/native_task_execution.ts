@@ -2,9 +2,10 @@ import { AsyncResource } from "./async_resource_runtime.ts";
 import {
   type AsyncTaskExecution,
   type AsyncTaskReuse,
-  type AsyncTaskSpec,
   executeAsyncTaskPlan,
+  prepareAsyncTaskGraph,
   prepareAsyncTaskPlan,
+  type PreparedAsyncTaskGraph,
   type PreparedAsyncTaskPlan,
 } from "./async_task_scheduler.ts";
 import {
@@ -39,6 +40,11 @@ export type NativeTaskExecution<Tasks extends readonly AuthoredAsyncTask[]> = {
   dispose(): void;
 };
 
+export type PreparedNativeTaskDefinition<Tasks extends readonly AuthoredAsyncTask[]> = Readonly<{
+  tasks: Tasks;
+  graph: PreparedAsyncTaskGraph;
+}>;
+
 type Deferred<T> = {
   promise: Promise<T>;
   resolve(value: T | PromiseLike<T>): void;
@@ -58,43 +64,39 @@ const deferred = <T>(): Deferred<T> => {
 const freezeList = (values: readonly string[]): readonly string[] =>
   Object.freeze([...values]);
 
-/**
- * Start a typed task graph and expose one stable AsyncResource per task.
- * Resources are allocated before the scheduler can invoke any task callback.
- */
-export const createTaskExecution = <
+/** Snapshot and validate task relations once for all input generations. */
+export const prepareNativeTaskDefinition = <
   const Tasks extends readonly AuthoredAsyncTask[],
 >(
   tasks: Tasks,
-  initialValues: Readonly<Record<string, unknown>>,
-  options: NativeTaskExecutionOptions = {},
-): NativeTaskExecution<Tasks> => {
-  // Snapshot the plan and inputs before validation or task startup so caller
-  // mutations cannot change edges or external values after this call returns.
-  const taskIds = new Set<string>();
-  const taskSnapshot = Object.freeze(tasks.map((task) => {
-    if (!task.id || taskIds.has(task.id)) {
-      throw new Error(
-        `Async task IDs must be unique and non-empty: ${task.id}`,
-      );
-    }
-    taskIds.add(task.id);
-    return Object.freeze({
+): PreparedNativeTaskDefinition<Tasks> => {
+  const taskSnapshot = Object.freeze(tasks.map((task) =>
+    Object.freeze({
       id: task.id,
       dependsOn: Object.freeze([...task.dependsOn]),
       run: task.run,
-    });
-  }));
+    })
+  )) as unknown as Tasks;
+  return Object.freeze({
+    tasks: taskSnapshot,
+    graph: prepareAsyncTaskGraph(taskSnapshot),
+  });
+};
+
+/** Start one input cut with stable task resources and candidate-owned results. */
+export const createTaskExecutionFromDefinition = <
+  const Tasks extends readonly AuthoredAsyncTask[],
+>(
+  definition: PreparedNativeTaskDefinition<Tasks>,
+  initialValues: Readonly<Record<string, unknown>>,
+  options: NativeTaskExecutionOptions = {},
+): NativeTaskExecution<Tasks> => {
+  const { tasks: taskSnapshot, graph } = definition;
   const inputSnapshot = Object.freeze({ ...initialValues });
-  const declaredExternalInputs = new Set<string>();
-  for (const task of taskSnapshot) {
-    for (const dependency of task.dependsOn) {
-      if (!taskIds.has(dependency)) declaredExternalInputs.add(dependency);
-    }
-  }
+  const declaredExternalInputs = graph.externalInputs;
   const inputIds = Object.keys(inputSnapshot);
   const extraInputs = inputIds.filter((id) => !declaredExternalInputs.has(id));
-  const missingInputs = [...declaredExternalInputs].filter((id) =>
+  const missingInputs = [...declaredExternalInputs.keys()].filter((id) =>
     !Object.hasOwn(inputSnapshot, id)
   );
   if (extraInputs.length || missingInputs.length) {
@@ -105,22 +107,11 @@ export const createTaskExecution = <
     );
   }
 
-  const runtimeTasks: AsyncTaskSpec[] = [];
   const started: string[] = [];
-  for (const task of taskSnapshot) {
-    runtimeTasks.push({
-      id: task.id,
-      dependsOn: task.dependsOn,
-      run: (inputs, signal) => {
-        started.push(task.id);
-        return task.run(inputs, signal);
-      },
-    });
-  }
-  const frozenRuntimeTasks = Object.freeze(runtimeTasks);
   const prepared: PreparedAsyncTaskPlan = prepareAsyncTaskPlan(
-    frozenRuntimeTasks,
+    taskSnapshot,
     inputSnapshot,
+    graph,
   );
 
   const resources = new Map<string, AsyncResource<unknown>>();
@@ -172,7 +163,7 @@ export const createTaskExecution = <
     });}
 
   const completion = executeAsyncTaskPlan(
-    frozenRuntimeTasks,
+    taskSnapshot,
     inputSnapshot,
     {
       maxConcurrency: options.maxConcurrency,
@@ -203,6 +194,7 @@ export const createTaskExecution = <
       },
     },
     prepared,
+    started,
   ).then((result) => {
     if (!isDisposed) {
       if (status === "pending") status = result.status;
@@ -279,3 +271,15 @@ export const createTaskExecution = <
     dispose,
   };
 };
+
+/** Allocate one execution from externally authored task declarations. */
+export const createTaskExecution = <
+  const Tasks extends readonly AuthoredAsyncTask[],
+>(
+  tasks: Tasks,
+  initialValues: Readonly<Record<string, unknown>>,
+  options: NativeTaskExecutionOptions = {},
+): NativeTaskExecution<Tasks> =>
+  createTaskExecutionFromDefinition(
+    prepareNativeTaskDefinition(tasks), initialValues, options,
+  );

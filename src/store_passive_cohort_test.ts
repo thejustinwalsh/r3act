@@ -1,9 +1,10 @@
+import { readOwnedClosedProjectionBatch } from "./closed_projection_schedule_test_helper.ts";
 import { assert, assertEquals } from "jsr:@std/assert";
 import {
   acknowledgeCanonicalStoreReaderCohort, AsyncStore, createAsyncStore,
   inspectCanonicalClosedStorePublication,
   prepareCanonicalClosedStorePublicationAfterHost,
-  readOwnedClosedProjectionBatch, StoreRenderTransaction,
+  StoreRenderTransaction,
 } from "./async_store_runtime.ts";
 import { normalizeClosedProjectionPaths, storeRecord } from "./owned_store_record.ts";
 

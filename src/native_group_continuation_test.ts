@@ -38,7 +38,7 @@ function fixture(id: string, store: AsyncStore<number, number>, host = new Memor
       storeUseSiteId, storeProp: "store",
       host: { tag: "output", key: "value", child: null,
         props: [["data-value", { kind: "input", index: 0 }]] },
-    }, closedStoreExecution: { schemaVersion: 1, kind: "owned-data",
+    }, closedStoreExecution: { schemaVersion: 3, kind: "owned-data",
       componentProgramId, moduleRevision: revision } });
   root.mount(jsx(Value, { key: "owner", store }));
   return { root, host, container, sourceFile,
@@ -133,7 +133,7 @@ Deno.test("later Store member retains captured local input and leaves newer inpu
       ["position-x", { kind: "binary", operator: "+",
         left: { kind: "input", index: 0 }, right: { kind: "input", index: 1 } }],
     ] },
-  }, closedStoreExecution: { schemaVersion: 1, kind: "owned-data",
+  }, closedStoreExecution: { schemaVersion: 3, kind: "owned-data",
     componentProgramId: site, moduleRevision: revision } });
   const firstHost = new InterleavingHost(), secondHost = new MemoryVDOMHost();
   const firstContainer = firstHost.createContainer(), secondContainer = secondHost.createContainer();

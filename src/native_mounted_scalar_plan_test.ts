@@ -35,7 +35,7 @@ Deno.test("bound scalar Store updates retain the literal and accepted snapshots"
       ["position-x", { kind: "binary", operator: "*",
         left: { kind: "input", index: 0 }, right: { kind: "literal", value: 2 } }],
     ] },
-  }, closedStoreExecution: { schemaVersion: 1, kind: "owned-data",
+  }, closedStoreExecution: { schemaVersion: 3, kind: "owned-data",
     componentProgramId: site, moduleRevision: revision } });
   const host = new MemoryVDOMHost();
   const container = host.createContainer();
@@ -100,7 +100,7 @@ Deno.test("independent roots keep separate bound Store histories", () => {
     storeUseSiteId: useSite, storeProp: "clock",
     host: { tag: "group", key: "motion", child: null,
       props: [["position-x", { kind: "input", index: 0 }]] },
-  }, closedStoreExecution: { schemaVersion: 1, kind: "owned-data",
+  }, closedStoreExecution: { schemaVersion: 3, kind: "owned-data",
     componentProgramId: site, moduleRevision: revision } });
   const hostA = new MemoryVDOMHost(), hostB = new MemoryVDOMHost();
   const containerA = hostA.createContainer(), containerB = hostB.createContainer();
@@ -154,7 +154,7 @@ Deno.test("two selected reader sites share a Store and retain exact warm coverag
       ["position-x", { kind: "binary", operator: "+",
         left: { kind: "input", index: 0 }, right: { kind: "input", index: 1 } }],
     ] },
-  }, closedStoreExecution: { schemaVersion: 1, kind: "owned-data",
+  }, closedStoreExecution: { schemaVersion: 3, kind: "owned-data",
     componentProgramId: site, moduleRevision: revision } });
   const host = new MemoryVDOMHost();
   const container = host.createContainer();

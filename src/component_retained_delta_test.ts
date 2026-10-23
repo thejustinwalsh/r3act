@@ -293,7 +293,7 @@ Deno.test("second host failure quarantines a retained group without accepting ei
     const firstCell = first.set("position", 4);
     const secondCell = second.set("position", 4);
     armed = true;
-    const work = queue.enqueueRetained({
+    const work = queue.enqueueTransaction({
       id: "retained-second-host-failure",
       roots: [
         { root: first.root, cells: [firstCell] },

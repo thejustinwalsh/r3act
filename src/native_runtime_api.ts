@@ -62,9 +62,6 @@ export type {
   NativeTaskExecutionSnapshot,
 } from "./native_task_execution.ts";
 export type {
-  NativeCollectionRootWork,
-  NativeResourceRootWork,
-  NativeRetainedRootWork,
   NativeRootWork,
   NativeStoreRootWork,
   NativeTransactionRootWork,

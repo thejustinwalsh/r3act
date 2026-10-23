@@ -263,7 +263,7 @@ export type NativeRootCandidate<H, Parent = H> = {
   commitHost(): void;
   validatePostHost(): boolean;
   preparePublication(): void;
-  publish(privateWorld?: boolean): void;
+  publish(): void;
   installSubscriptions(): unknown[];
   runEffects(): void;
   discard(): void;
@@ -2400,13 +2400,13 @@ export class ComponentStateRoot<H, Parent = H> {
   }, resourceLease?: () => void): NativeRootCandidate<H, Parent> | null {
     const { cells, collections } = work;
     const selectedStores = work.stores ?? [];
-    if (!this.#leaseCoversSelection(resourceLease,
-      new Set(work.resources ?? []), { cells, stores: selectedStores, collections })) {
-      return null;
-    }
     if (work.resources?.length) {
       return this.prepareResources(work.resources, resourceLease,
         { cells, stores: selectedStores, collections });
+    }
+    if (!this.#leaseCoversSelection(resourceLease,
+      new Set(), { cells, stores: selectedStores, collections })) {
+      return null;
     }
     const holdWait = this.#resourceHoldWait(new Set(), resourceLease,
       { cells, stores: selectedStores, collections });
@@ -4025,70 +4025,62 @@ export class ComponentStateRoot<H, Parent = H> {
             break;
           }
         }
-        const requests: readonly (OwnedClosedStoreOutputRequest | BoundClosedStoreOutputRequest)[] |
-          ReturnType<typeof createOwnedClosedFrameRequests> = allBound && ownedRequests.seal()
-          ? ownedRequests : passiveRows.map((row) => {
-            if (row.boundRequest) return row.boundRequest;
-            const { owner, cache, program, dataExecution, inputs } = row;
-            const hostKey = cache.scopeExplicitHostKeys === true
-              ? `${String(cache.hostKeyScope)}\u0000${program.host.key}` : program.host.key;
-            return { execution: dataExecution, owner, hostKey,
-              inputs: inputs.map(({ store, id }) => ({ store, readerId: id })) };
-          });
-        const scalarCounts: OwnedScalarOutputCounts | undefined = this.#activeCounters
-          ? { frames: 0, rootMaterializations: 0, propMaterializations: 0,
-            directCaptures: 0 }
-          : undefined;
-        const batch = prepareOwnedClosedStoreOutputs(this.world, stores, requests,
-          scalarCounts);
-        if (scalarCounts) this.#count("store.scalar-output.frames", scalarCounts.frames);
-        if (scalarCounts?.directCaptures) this.#count(
-          "store.scalar-output.direct-captures", scalarCounts.directCaptures);
-        if (scalarCounts?.batchCalls) this.#count("store.batch.calls", scalarCounts.batchCalls);
-        if (scalarCounts?.batchRows) this.#count("store.batch.rows", scalarCounts.batchRows);
-        if (scalarCounts?.scalarKernelCalls) this.#count(
-          "store.scalar-kernel.calls", scalarCounts.scalarKernelCalls);
-        if (batch === null) throw new SparseCandidateIneligible();
-        if (batch.kind !== "ready") seen.clear();
-        if (batch.kind === "ready") {
-          producerCellCut = batch.cellCut;
-          if (batch.rows.length !== passiveRows.length) throw new SparseCandidateIneligible();
-          passive = batch.rows;
-          for (let index = 0; index < passiveRows.length; index++) {
-            const row = passiveRows[index], image = passive[index];
-            if (row.program.schemaVersion === 1 ||
-              row.program.schemaVersion === 2 ||
-              row.program.schemaVersion === 3) {
-              if (image.owner !== row.owner || image.tag !== row.program.host.tag ||
-                image.key !== row.program.host.key || image.cells.length !== 0 ||
-                image.retainedChildren === true || owners.has(row.owner)) {
-                throw new SparseCandidateIneligible();
-              }
-              for (const input of row.inputs) {
-                inputStores.add(input.store);
-                const wait = this.#resourceHoldWait(new Set(), resourceLease,
-                  { stores: [input.store] });
-                if (wait) throw new HeldPublicationWait(wait);
-                covered.add(input.id);
-                if (selectedStores.has(input.store)) seen.add(input.store);
-              }
-              const region = materializeOwnedScalarStorePropDelta(image, scalarCounts);
-              stageLeaf({ ...row, program: row.program,
-                boundExecution: row.dataExecution,
-                boundInputs: row.inputs }, region.props, region);
-            } else stagePassiveRow(row, image);
-            if (this.#activeCounters) {
-              this.#count("store.owned-data.rows");
-              if (inspectClosedStoreDataExecution(passiveRows[index].dataExecution)
-                ?.mode.startsWith("verified-")) {
-                this.#count("store.owned-data.verified-rows");
+        if (!allBound || !ownedRequests.seal()) {
+          seen.clear();
+        } else {
+          const scalarCounts: OwnedScalarOutputCounts | undefined = this.#activeCounters
+            ? { frames: 0, rootMaterializations: 0, propMaterializations: 0,
+              directCaptures: 0 }
+            : undefined;
+          const batch = prepareOwnedClosedStoreOutputs(this.world, stores, ownedRequests,
+            scalarCounts);
+          if (scalarCounts) this.#count("store.scalar-output.frames", scalarCounts.frames);
+          if (scalarCounts?.directCaptures) this.#count(
+            "store.scalar-output.direct-captures", scalarCounts.directCaptures);
+          if (scalarCounts?.batchCalls) this.#count("store.batch.calls", scalarCounts.batchCalls);
+          if (scalarCounts?.batchRows) this.#count("store.batch.rows", scalarCounts.batchRows);
+          if (batch === null) throw new SparseCandidateIneligible();
+          if (batch.kind !== "ready") seen.clear();
+          if (batch.kind === "ready") {
+            producerCellCut = batch.cellCut;
+            if (batch.rows.length !== passiveRows.length) throw new SparseCandidateIneligible();
+            passive = batch.rows;
+            for (let index = 0; index < passiveRows.length; index++) {
+              const row = passiveRows[index], image = passive[index];
+              if (row.program.schemaVersion === 1 ||
+                row.program.schemaVersion === 2 ||
+                row.program.schemaVersion === 3) {
+                if (image.owner !== row.owner || image.tag !== row.program.host.tag ||
+                  image.key !== row.program.host.key || image.cells.length !== 0 ||
+                  image.retainedChildren === true || owners.has(row.owner)) {
+                  throw new SparseCandidateIneligible();
+                }
+                for (const input of row.inputs) {
+                  inputStores.add(input.store);
+                  const wait = this.#resourceHoldWait(new Set(), resourceLease,
+                    { stores: [input.store] });
+                  if (wait) throw new HeldPublicationWait(wait);
+                  covered.add(input.id);
+                  if (selectedStores.has(input.store)) seen.add(input.store);
+                }
+                const region = materializeOwnedScalarStorePropDelta(image, scalarCounts);
+                stageLeaf({ ...row, program: row.program,
+                  boundExecution: row.dataExecution,
+                  boundInputs: row.inputs }, region.props, region);
+              } else stagePassiveRow(row, image);
+              if (this.#activeCounters) {
+                this.#count("store.owned-data.rows");
+                if (inspectClosedStoreDataExecution(passiveRows[index].dataExecution)
+                  ?.mode.startsWith("verified-")) {
+                  this.#count("store.owned-data.verified-rows");
+                }
               }
             }
+            if (scalarCounts?.propMaterializations) this.#count(
+              "store.scalar-output.prop-materializations",
+              scalarCounts.propMaterializations,
+            );
           }
-          if (scalarCounts?.propMaterializations) this.#count(
-            "store.scalar-output.prop-materializations",
-            scalarCounts.propMaterializations,
-          );
         }
       }
       if (!passive) for (const [id, membership] of this.#liveStoreReaders) {

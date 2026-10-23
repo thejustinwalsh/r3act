@@ -28,7 +28,7 @@ function fixture(id: string, store: AsyncStore<number, number>) {
       storeUseSiteId: useSite, storeProp: "store",
       host: { tag: "output", key: "value", child: null,
         props: [["data-value", { kind: "input", index: 0 }]] },
-    }, closedStoreExecution: { schemaVersion: 1, kind: "owned-data",
+    }, closedStoreExecution: { schemaVersion: 3, kind: "owned-data",
       componentProgramId: site, moduleRevision: revision },
   });
   const host = new MemoryVDOMHost();
@@ -55,7 +55,7 @@ function compactFixture(id: string,
       inputs: [{ storeUseSiteId: useSite, storeProp: "store", paths: [["phase"]] }],
       host: { tag: "group", key: "motion", children: [],
         props: [["position-x", { kind: "input", index: 0 }]] },
-    }, closedStoreExecution: { schemaVersion: 1, kind: "owned-data",
+    }, closedStoreExecution: { schemaVersion: 3, kind: "owned-data",
       componentProgramId: site, moduleRevision: revision },
   });
   const host = new MemoryVDOMHost(), container = host.createContainer();

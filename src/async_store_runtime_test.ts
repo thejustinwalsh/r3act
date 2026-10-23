@@ -1,7 +1,8 @@
+import { readOwnedClosedProjectionBatch } from "./closed_projection_schedule_test_helper.ts";
 import {
   AsyncStore, captureCanonicalStoreReaderReceipt, createAsyncStore,
   bindOwnedClosedProjectionRequest,
-  inspectCanonicalStoreReaderReceipt, readOwnedClosedProjectionBatch,
+  inspectCanonicalStoreReaderReceipt,
   StoreRenderTransaction,
   validateCanonicalClosedStorePhase,
 } from "./async_store_runtime.ts";

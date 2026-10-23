@@ -128,11 +128,11 @@ Deno.test("declared A/B reveal waits for both inputs while independent C publish
   try {
     const [a, b, c] = ["a", "b", "c"].map((name) => f.resources.get(name)!);
     const oldA = f.node("a"), oldB = f.node("b");
-    const joint = queue.enqueueResources({
+    const joint = queue.enqueueTransaction({
       id: "joint-ab",
       roots: [{ root: f.root, resources: [a, b] }],
     });
-    const independent = queue.enqueueResources({
+    const independent = queue.enqueueTransaction({
       id: "independent-c",
       roots: [{ root: f.root, resources: [c] }],
     });
@@ -166,12 +166,12 @@ Deno.test("equal key replaces a waiting resource intent and releases its hold", 
   const queue = new NativeRootWorkQueue();
   try {
     const a = f.resources.get("a")!, b = f.resources.get("b")!;
-    const old = queue.enqueueResources({
+    const old = queue.enqueueTransaction({
       id: "old-ab",
       key: "selection",
       roots: [{ root: f.root, resources: [a, b] }],
     });
-    const next = queue.enqueueResources({
+    const next = queue.enqueueTransaction({
       id: "new-a",
       key: "selection",
       roots: [{ root: f.root, resources: [a] }],
@@ -197,14 +197,14 @@ Deno.test("a second A-only group cannot publish ahead of an older A/B group", as
   const queue = new NativeRootWorkQueue();
   try {
     const a = left.resources.get("a")!, b = right.resources.get("b")!;
-    const group = queue.enqueueResources({
+    const group = queue.enqueueTransaction({
       id: "cross-root-ab",
       roots: [
         { root: left.root, resources: [a] },
         { root: right.root, resources: [b] },
       ],
     });
-    const later = queue.enqueueResources({
+    const later = queue.enqueueTransaction({
       id: "later-a",
       roots: [
         { root: left.root, resources: [a] },
@@ -234,7 +234,7 @@ Deno.test("direct marker updates publish while joint resource reveal stays held"
   const queue = new NativeRootWorkQueue();
   try {
     const oldA = f.node("a"), oldB = f.node("b");
-    const group = queue.enqueueResources({ id: "direct-ab", roots: [{ root: f.root,
+    const group = queue.enqueueTransaction({ id: "direct-ab", roots: [{ root: f.root,
       resources: [...f.resources.values()] }] });
     f.updateMarker("obsolete");
     f.updateMarker("latest");
@@ -264,7 +264,7 @@ Deno.test("cancellation releases intent without cancelling the resource provider
   const queue = new NativeRootWorkQueue();
   try {
     const a = f.resources.get("a")!, b = f.resources.get("b")!;
-    const work = queue.enqueueResources({ id: "cancelled-ab",
+    const work = queue.enqueueTransaction({ id: "cancelled-ab",
       roots: [{ root: f.root, resources: [a, b] }] });
     await f.settle("a");
     f.drain();
@@ -348,7 +348,7 @@ Deno.test("expired compiled code cannot publish a waiting resource group", async
     };
   }
   try {
-    const work = queue.enqueueResources({ id: "expired-ab", roots: [{ root: f.root,
+    const work = queue.enqueueTransaction({ id: "expired-ab", roots: [{ root: f.root,
       resources }] });
     const fallback = f.node("a");
     const accepted = f.root.publicationVersion;
@@ -386,7 +386,7 @@ Deno.test("second host failure preserves the original error and old accepted his
   const queue = new NativeRootWorkQueue();
   try {
     const versions = [left.root.publicationVersion, right.root.publicationVersion];
-    const work = queue.enqueueResources({ id: "failure-ab", roots: [
+    const work = queue.enqueueTransaction({ id: "failure-ab", roots: [
       { root: left.root, resources: [left.resources.get("a")!] },
       { root: right.root, resources: [right.resources.get("b")!] },
     ] });
@@ -418,7 +418,7 @@ Deno.test("settlement callback may dispose the queue and root after joint public
   const queue = new NativeRootWorkQueue();
   let settled = 0;
   try {
-    const work = queue.enqueueResources({ id: "callback-ab",
+    const work = queue.enqueueTransaction({ id: "callback-ab",
       roots: [{ root: f.root, resources: [...f.resources.values()] }],
       onSettled(resolution) {
         assertEquals(resolution.status, "committed");

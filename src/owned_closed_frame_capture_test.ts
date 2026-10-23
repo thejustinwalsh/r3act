@@ -66,14 +66,13 @@ Deno.test("owned schedule groups exact Store identity and returns original row o
   equal(builder.seal(), true);
   equal(builder.append({} as never), false);
   const counts = { frames: 0, rootMaterializations: 0, propMaterializations: 0,
-    directCaptures: 0, batchCalls: 0, batchRows: 0, scalarKernelCalls: 0 };
+    directCaptures: 0, batchCalls: 0, batchRows: 0 };
   const transaction = new StoreRenderTransaction("batch-root");
   const result = prepareOwnedClosedStoreOutputs(world, transaction, builder, counts);
   if (!result || result.kind !== "ready") throw new Error("owned batch declined");
   equal(result.rows.length, 4);
   equal(counts.batchCalls, 2);
   equal(counts.batchRows, 4);
-  equal(counts.scalarKernelCalls, 0);
   equal(counts.directCaptures, 4);
   for (let index = 0; index < 4; index++) {
     const region = materializeOwnedScalarStorePropDelta(result.rows[index]);
@@ -122,7 +121,7 @@ Deno.test("one cut supports mixed batch and interpreted rows", () => {
   world.useState(firstOwner, "offset", 3);
   world.useState(oldOwner, "offset", 4);
   const store = createAsyncStore(storeRecord({ phase: 5, epoch: 6 }));
-  const old = normalizeClosedStoreDataExecution({ schemaVersion: 1,
+  const old = normalizeClosedStoreDataExecution({ schemaVersion: 3,
     kind: "owned-data", componentProgramId: "capture-batch", moduleRevision: "rev",
   }, host())!;
   const builder = createOwnedClosedFrameRequests();
@@ -135,7 +134,7 @@ Deno.test("one cut supports mixed batch and interpreted rows", () => {
   if (!first || !second || !builder.append(first) || !builder.append(second) ||
     !builder.seal()) throw new Error("mixed binding declined");
   const counts = { frames: 0, rootMaterializations: 0, propMaterializations: 0,
-    directCaptures: 0, batchCalls: 0, batchRows: 0, scalarKernelCalls: 0 };
+    directCaptures: 0, batchCalls: 0, batchRows: 0 };
   const transaction = new StoreRenderTransaction("mixed-root");
   const result = prepareOwnedClosedStoreOutputs(world, transaction, builder, counts);
   if (!result || result.kind !== "ready") throw new Error("mixed cut declined");

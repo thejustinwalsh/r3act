@@ -28,7 +28,7 @@ Deno.test("compact Store output stays framed until a generic Root observation", 
       ["position-x", { kind: "binary", operator: "*",
         left: { kind: "input", index: 0 }, right: { kind: "literal", value: 2 } }],
     ] },
-  }, closedStoreExecution: { schemaVersion: 1, kind: "owned-data",
+  }, closedStoreExecution: { schemaVersion: 3, kind: "owned-data",
     componentProgramId: site, moduleRevision: revision } });
   const host = new MemoryVDOMHost();
   const container = host.createContainer();
@@ -91,7 +91,7 @@ Deno.test("bound input reuse checks current props and Store source before alloca
         ["position-x", { kind: "binary", operator: "*",
           left: { kind: "input", index: 0 }, right: { kind: "literal", value: 2 } }],
       ] },
-    }, closedStoreExecution: { schemaVersion: 1, kind: "owned-data",
+    }, closedStoreExecution: { schemaVersion: 3, kind: "owned-data",
       componentProgramId: site, moduleRevision: revision },
   });
   const host = new MemoryVDOMHost();
