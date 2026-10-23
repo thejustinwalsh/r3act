@@ -1,5 +1,14 @@
 # Implementation checkpoint
 
+## Direct RAF prop execution: confirmed product steer — 23 October 2026
+
+The human confirms that ordinary eligible realtime prop updates should execute direct host writes during RAF, without a React-style component scheduling round trip or a user-facing flushSync requirement. JSX establishes mounted structure, identities, dependency slots and writer bindings; ordinary frames capture changed inputs, evaluate retained kernels, batch direct host writes and publish accepted values. Structural reconciliation and async dependency work remain supported through the same state and publication authorities. Transition/fork/coherent-group coordination should be proportional to active requirements, with a cheap ordinary-frame route when those features are unused.
+
+This is a physical execution requirement, not permission to delete old-snapshot, exact acknowledgement, newer-action, liveness, resource or partial-failure semantics. Accepted value pages/lazy immutable observation and provably safe host writer batches are candidates for the remaining per-owner cache/VNode and reflection overhead. Arbitrary callback-bearing writers retain defensive handling. No second state universe or publisher is selected, and no new performance result is claimed.
+
+The existing1.90/2.10ms publication result measures a synchronous CPU interval against a React/R3F flushSync comparator. It does not establish normal React scheduling latency, native frame freshness or physical presentation. The relevant product proof must include natural RAF delivery with native declarative props, React/R3F declarative reactive props and idiomatic R3F useFrame/ref writes, observing requested/accepted/drawn epochs as well as CPU and frame deadlines. Latest frame/ref controls are untimed; full current-source qualification remains open. R3F's advice to avoid per-frame reactive component state is not falsified by the narrow0.60ms React CPU result. The compared Stores have different capabilities; their contribution to the gap is not isolated.
+
+
 ## Mounted frame execution wave verified; React parity remains open — 23 October 2026
 
 The [integrated Astra wave results](implementation/2026-10-23-mounted-frame-execution/results.md) close this mounted-region/cut migration and its sole performance episode. Root/Store/World/VDOM share mounted geometry and one authentic candidate cut through existing history/publication/lifetime authorities. Superseded owned transport is removed; actual prechange-to-final production accounting is1106 added/617 deleted lines across six files, excluding tests/evidence/generated output. The actual workbench accepted-child regression found during HMR was repaired with a structured-copy test; all failures and diagnostics remain preserved.
