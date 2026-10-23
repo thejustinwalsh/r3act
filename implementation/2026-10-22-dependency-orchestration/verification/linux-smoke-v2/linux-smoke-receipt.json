@@ -1,0 +1,54 @@
+{
+  "status": "SETUP_FAILED_SMOKE_NOT_RUN",
+  "variant": "linux-smoke-v2 harness-call repair",
+  "sourceChange": "only asyncTask call changed to explicit empty dependency list; v1 preserved",
+  "harnessDiff": [
+    "-const task = core.asyncTask('linux-smoke-task', async () => 7);",
+    "+const task = core.asyncTask('linux-smoke-task', [], async () => 7);"
+  ],
+  "startReceipt": "podman-machine-start.json",
+  "startExitCode": 0,
+  "startTimeoutSeconds": 90,
+  "startElapsedSeconds": 10.099,
+  "imageInspectAttempt": {
+    "command": [
+      "podman",
+      "image",
+      "inspect",
+      "node:24.18.0-bookworm",
+      "--format",
+      "{{.Id}} {{.Os}}/{{.Architecture}} {{.Size}}"
+    ],
+    "exitCode": 1,
+    "stdout": "",
+    "stderr": "Cannot connect to Podman. Please verify your connection to the Linux system using `podman system connection list`, or try `podman machine init` and `podman machine start` to manage a new Linux VM\nError: unable to connect to Podman socket: failed to connect: dial tcp 127.0.0.1:51927: connect: connection refused\n"
+  },
+  "smokeNotRun": true,
+  "noContainerCreated": true,
+  "containerExitCode": null,
+  "finalMachineState": {
+    "state": "stopped",
+    "lastUp": "2026-10-22T23:00:19.797648-04:00",
+    "observation": "podman machine inspect r3act-dev"
+  },
+  "machineConfig": {
+    "name": "r3act-dev",
+    "provider": "applehv",
+    "cpus": 1,
+    "memoryGiB": 2,
+    "diskGiB": 20,
+    "rawDiskPath": "/Volumes/Depot/Containers/podman/data/containers/podman/machine/applehv/r3act-dev-arm64.raw",
+    "depotMounted": "/Volumes/Depot via virtiofs"
+  },
+  "existingNodeImageFromV1Inspection": {
+    "tag": "node:24.18.0-bookworm",
+    "imageId": "f1158c7f34cf35a047bf0513c38282bb2fa253529e5ae404b32c6d93697410be",
+    "platform": "linux/arm64",
+    "bytes": 1155650300,
+    "note": "v2 image inspection was unavailable; values are from v1 preflight inspection"
+  },
+  "v1FailureReceipt": "../linux-smoke-v1/linux-smoke-receipt.json",
+  "v1PackageReportAndTarballHashesUnchanged": true,
+  "v2PackageHashes": "not checked; no container was launched",
+  "containerScriptSha256": "13590396c0bed29d6a675e502fae43c348b1bea3b4e4735d0ccb21e81711322a"
+}

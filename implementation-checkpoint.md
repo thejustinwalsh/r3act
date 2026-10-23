@@ -2,6 +2,8 @@
 
 ## Three architecture slices implemented; performance goals remain unmet — 22 October 2026
 
+The bounded Linux check supplies current packaged-core import/Store evidence only. Its expanded script failed on the inferred asyncTask overload, and the corrected attempt launched no container after Podman stopped. Raw failures remain; the Depot-backed2GiBVM is stopped, with no owned container left. Current Linux compiler/task/provider/host qualification remains open; no VM/architecture matrix or daemon/volume permission change was made.
+
 Slice3 passes consolidated correctness/delivery:1,302Deno,108Rust,63actualcompiled fixtures including collectionGC, tooling/host/GC, fresh package/consumer checks, six-context installed equal-preload proof and owned Portless HMR. Initial build, route-lifetime and delivery harness failures remain preserved. Parent cancellation now releases pending work from already-committed independent children, matching exact Operation identity while preserving accepted views and external leases. [Results](implementation/2026-10-22-dependency-orchestration/results.md).
 
 One24.17s balanced minified-production urgent-update comparison loses: Native median1.00–1.10ms/p901.20–1.40 versus React0.20/0.20–0.30; median adjacent ratios5.50×/5.17×. Raw timestamps/counts, primary quantile/pair/source recomputation and complete cleanup pass. No repeat. This deterministic pending-loader interaction is separate from Slice2's dense realtime loss; no new dense, network, thermal, presentation or universal speed claim follows.

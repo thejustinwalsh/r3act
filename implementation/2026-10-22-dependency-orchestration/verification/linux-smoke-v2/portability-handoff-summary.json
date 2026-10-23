@@ -1,0 +1,34 @@
+{
+  "status": "PORTABILITY_SMOKE_INCOMPLETE",
+  "machine": {
+    "name": "r3act-dev",
+    "provider": "applehv",
+    "cpus": 1,
+    "memoryGiB": 2,
+    "diskGiB": 20,
+    "rawDiskPath": "/Volumes/Depot/Containers/podman/data/containers/podman/machine/applehv/r3act-dev-arm64.raw",
+    "depotMounted": "/Volumes/Depot via virtiofs"
+  },
+  "previouslyObservedImage": {
+    "tag": "node:24.18.0-bookworm",
+    "imageId": "f1158c7f34cf35a047bf0513c38282bb2fa253529e5ae404b32c6d93697410be",
+    "platform": "linux/arm64",
+    "bytes": 1155650300,
+    "note": "v2 image inspection was unavailable; values are from v1 preflight inspection"
+  },
+  "v1": {
+    "status": "FAIL_LINUX_PACKAGED_CORE_SMOKE",
+    "reason": "smoke harness used compiler-only inferred asyncTask overload; imports/hash checks/compiler target/Store passed before throw; provider and host checks not reached",
+    "receipt": "../linux-smoke-v1/linux-smoke-receipt.json"
+  },
+  "v2": {
+    "status": "SETUP_FAILED_SMOKE_NOT_RUN",
+    "reason": "bounded machine start exited 0, then Podman image inspection failed with connection refused; no container created",
+    "receipt": "linux-smoke-receipt.json"
+  },
+  "finalMachineState": {
+    "state": "stopped",
+    "lastUp": "2026-10-22T23:00:19.797648-04:00",
+    "observation": "podman machine inspect r3act-dev"
+  }
+}

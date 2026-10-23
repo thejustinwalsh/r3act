@@ -37,6 +37,12 @@ Median adjacent Native/React ratios are **5.50× median** and **5.17× p90**: **
 
 Timer quantum is about0.1ms and no thermal telemetry was captured. No causal phase/thermal explanation, population tail, cold/setup/retained-memory, physical presentation or independent-device claim follows. This is a different interaction from Slice2's dense realtime comparison; its timings do not qualify that workload or establish a new dense speedup. Historical stable-binding wins and qualified dense losses remain scoped to their sources.
 
+## Bounded Linux compatibility smoke
+
+The existing Podman machine uses1CPU/2GiBRAM and a Depot-backed20GiBdisk. A single disposable, network-disabled Linux/arm64 Node24.18 container imported the fresh packaged core, verified all package hashes/compiler target metadata, and passed public-export/Store checks. The expanded smoke then failed because its script called the compiler-only inferred `asyncTask` overload; provider and custom-host checks were not reached. The corrected explicit-edge script's next attempt ran no container: Podman became unreachable after its start command reported success, and the machine was observed stopped. Both attempts remain in `verification/linux-smoke-v1/` and `linux-smoke-v2/`.
+
+This is partial Linux import/Store evidence, **not a passing complete portability gate**. The bundled compiler was correctly identified as Darwin Mach-O and never presented as executable on Linux. No new VM/image/toolchain was installed, no volume permissions or daemon configuration changed, the owned container was removed, package bytes stayed unchanged, and the2GiBmachine is stopped. No further VM diagnostic campaign was selected.
+
 ## Remaining finish line
 
 All three requested architecture slices have implementation and consolidated boundaries. **The performance objective remains unmet.** Full release still needs lifecycle/cold/retained-memory costs, current portability scope, independent-device evidence before broad performance claims, and remaining host/async/package conformance against the master plan. Zero human participants supplies no maintenance-advantage evidence; no such claim is made. Three completed slices do not redefine the product finish line.
