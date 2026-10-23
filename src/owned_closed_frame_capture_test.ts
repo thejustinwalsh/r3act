@@ -9,8 +9,9 @@ import { bindOwnedClosedProjectionRequest } from "./async_store_runtime.ts";
 import { bindOwnedClosedWorldInputRequest, OwnerStateWorld } from "./owner_state_world.ts";
 import { createOwnedClosedFrameSchedule } from "./owned_closed_frame_input.ts";
 import { createOwnedClosedFrameInput } from "./owned_closed_frame_input.ts";
-import { captureVerifiedOwnedScalarBatch, OwnedScalarFrame,
-  OwnedScalarLayout } from "./closed_scalar_output.ts";
+import { captureVerifiedOwnedScalarBatch, OwnedScalarBatchPage,
+  OwnedScalarLayout, isOwnedScalarImage, ownedScalarImageValueAt,
+} from "./closed_scalar_output.ts";
 import type { ClosedStoreBatchKernelProof } from "./closed_store_batch_kernel_proof.ts";
 import { storeRecord } from "./owned_store_record.ts";
 
@@ -66,14 +67,25 @@ Deno.test("owned schedule groups exact Store identity and returns original row o
   equal(builder.seal(), true);
   equal(builder.append({} as never), false);
   const counts = { frames: 0, rootMaterializations: 0, propMaterializations: 0,
-    directCaptures: 0, batchCalls: 0, batchRows: 0 };
+    pages: 0, batchCalls: 0, batchRows: 0 };
   const transaction = new StoreRenderTransaction("batch-root");
   const result = prepareOwnedClosedStoreOutputs(world, transaction, builder, counts);
   if (!result || result.kind !== "ready") throw new Error("owned batch declined");
   equal(result.rows.length, 4);
   equal(counts.batchCalls, 2);
   equal(counts.batchRows, 4);
-  equal(counts.directCaptures, 4);
+  equal(counts.pages, 2);
+  equal(counts.frames, 0);
+  equal(result.rows[0].kind, "page");
+  equal(result.rows[2].kind, "page");
+  if (result.rows[0].kind !== "page" || result.rows[1].kind !== "page" ||
+    result.rows[2].kind !== "page" || result.rows[3].kind !== "page")
+    throw new Error("Expected page rows");
+  equal(result.rows[0].page, result.rows[2].page);
+  equal(result.rows[0].page, result.rows[3].page);
+  equal(result.rows[1].page === result.rows[0].page, false);
+  equal(result.rows[0].rowIndex, 0);
+  equal(result.rows[2].rowIndex, 1);
   for (let index = 0; index < 4; index++) {
     const region = materializeOwnedScalarStorePropDelta(result.rows[index]);
     equal(region.key, `owner-${index}`);
@@ -86,8 +98,10 @@ Deno.test("owned schedule groups exact Store identity and returns original row o
   firstStore.dispatch(storeRecord({ phase: 7, epoch: 8 }));
   equal(materializeOwnedScalarStorePropDelta(result.rows[0]).props[0][1], 5);
   equal(result.rows[0].cells[0].value, 1);
-  equal(Object.isFrozen(result.rows[0].frame), true);
-  equal(Object.keys(result.rows[0].frame).length, 0);
+  equal(Object.isFrozen(result.rows[0].page), true);
+  equal(Object.keys(result.rows[0].page).length, 0);
+  equal(isOwnedScalarImage(result.rows[0]), true);
+  equal(ownedScalarImageValueAt(result.rows[0], 0), 5);
   transaction.discard();
 });
 
@@ -134,13 +148,16 @@ Deno.test("one cut supports mixed batch and interpreted rows", () => {
   if (!first || !second || !builder.append(first) || !builder.append(second) ||
     !builder.seal()) throw new Error("mixed binding declined");
   const counts = { frames: 0, rootMaterializations: 0, propMaterializations: 0,
-    directCaptures: 0, batchCalls: 0, batchRows: 0 };
+    pages: 0, batchCalls: 0, batchRows: 0 };
   const transaction = new StoreRenderTransaction("mixed-root");
   const result = prepareOwnedClosedStoreOutputs(world, transaction, builder, counts);
   if (!result || result.kind !== "ready") throw new Error("mixed cut declined");
   equal(counts.batchCalls, 1);
   equal(counts.batchRows, 1);
-  equal(counts.frames, 2);
+  equal(counts.frames, 1);
+  equal(counts.pages, 1);
+  equal(result.rows[0].kind, "page");
+  equal(result.rows[1].kind, "frame");
   equal(materializeOwnedScalarStorePropDelta(result.rows[0]).props[0][1], 13);
   equal(materializeOwnedScalarStorePropDelta(result.rows[1]).props[0][1], 14);
   equal(result.rows[0].cells[0].value, 3);
@@ -161,6 +178,46 @@ Deno.test("nonfinite final batch output rejects the whole prepared candidate", (
   if (!builder.append(bound) || !builder.seal()) throw new Error("overflow append declined");
   const transaction = new StoreRenderTransaction("overflow-root");
   equal(prepareOwnedClosedStoreOutputs(world, transaction, builder), null);
+  transaction.discard();
+});
+
+Deno.test("a later invalid batch row prevents publication of the entire page", () => {
+  const twoRowsHost = normalizeClosedStoreHostProgram({
+    schemaVersion: 7, componentProgramId: "whole-page", moduleRevision: "rev",
+    inputs: [{ storeUseSiteId: "frame", storeProp: "clock", paths: [["phase"]] }],
+    stateSites: ["offset"], effectSites: [], retainedChildProp: "children",
+    host: { tag: "group", key: "whole-page", child: null, props: [
+      ["position-x", { kind: "binary", operator: "+",
+        left: { kind: "input", index: 0 }, right: { kind: "input", index: 1 } }],
+    ] },
+  })!;
+  const twoRows = normalizeClosedStoreDataExecution({ schemaVersion: 3,
+    kind: "owned-data", componentProgramId: "whole-page", moduleRevision: "rev",
+    batchKernel: function(s: readonly number[], v: readonly number[],
+      o: number[][], n: number) {
+      for (let r = 0; r < n; r++) o[r][0] = s[0] + v[r];
+    },
+  }, twoRowsHost)!;
+  equal(inspectClosedStoreDataExecution(twoRows)?.mode, "verified-batch");
+  const world = new OwnerStateWorld();
+  const first = world.resolveOwner(null, "finite");
+  const second = world.resolveOwner(null, "nonfinite");
+  world.useState(first, "offset", -1e308);
+  world.useState(second, "offset", 1e308);
+  const store = createAsyncStore(storeRecord({ phase: 1e308 }));
+  const builder = createOwnedClosedFrameRequests();
+  for (const [owner, readerId] of [[first, "finite"], [second, "nonfinite"]] as const) {
+    const bound = bindOwnedClosedStoreOutputRequest({ execution: twoRows, owner,
+      hostKey: readerId, inputs: [{ store, readerId }] });
+    if (!bound || !builder.append(bound)) throw new Error("batch binding declined");
+  }
+  if (!builder.seal()) throw new Error("batch sealing declined");
+  const counts = { frames: 0, pages: 0, rootMaterializations: 0,
+    propMaterializations: 0, batchCalls: 0, batchRows: 0 };
+  const transaction = new StoreRenderTransaction("invalid-later-row");
+  equal(prepareOwnedClosedStoreOutputs(world, transaction, builder, counts), null);
+  equal(counts.pages, 0);
+  equal(counts.batchRows, 0);
   transaction.discard();
 });
 
@@ -254,16 +311,15 @@ Deno.test("schedule snapshots each bound projection reference once", () => {
   equal(schedule.projectionAt(0).bound, projection);
 });
 
-Deno.test("public frame authority exposes no mutable batch matrix or forged adoption", () => {
+Deno.test("public page authority exposes no mutable batch matrix or forged page", () => {
   const layout = OwnedScalarLayout.create(["position-x"], [undefined], [0]);
   const input = createOwnedClosedFrameInput(0, 0, 1);
-  equal("prepareVerifiedBatchRows" in OwnedScalarFrame, false);
-  let rejectedAdoption = false;
+  equal("rows" in OwnedScalarBatchPage.prototype, false);
+  let rejectedPage = false;
   try {
-    OwnedScalarFrame.adoptVerifiedBatchRow(Symbol("forged"), layout,
-      [3], undefined);
-  } catch { rejectedAdoption = true; }
-  equal(rejectedAdoption, true);
+    new OwnedScalarBatchPage(Symbol("forged"), layout, Object.freeze([Object.freeze([3])]));
+  } catch { rejectedPage = true; }
+  equal(rejectedPage, true);
   let rejected = false;
   try {
     captureVerifiedOwnedScalarBatch(layout,

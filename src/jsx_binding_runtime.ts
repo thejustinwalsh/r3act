@@ -2,7 +2,8 @@ import { type ClosedNumericExpression, evaluateClosedNumericExpression, normaliz
 import { type BindingEdge, CompiledBindings } from "./compiled_bindings.ts";
 import type { CompiledStateLayout } from "./compiled_state_layout.ts";
 import {
-  isOwnedScalarFrame, type OwnedScalarFrame, type OwnedScalarOutputCounts,
+  isOwnedScalarImage, ownedScalarImageLayout,
+  ownedScalarImageValueAt, type OwnedScalarImage, type OwnedScalarOutputCounts,
 } from "./closed_scalar_output.ts";
 
 export type RuntimeNode =
@@ -64,17 +65,18 @@ export const copyRuntimeElementFromEntries = (
 
 /** @internal Materialize one accepted scalar image as an ordinary owned JSX element. */
 export const materializeOwnedScalarRuntimeElement = (
-  frame: OwnedScalarFrame,
+  image: OwnedScalarImage,
   template: Readonly<{ tag: string; key: string; owner: number;
     children?: RuntimeNode }>,
   counts?: OwnedScalarOutputCounts,
 ): RuntimeElement => {
-  if (!isOwnedScalarFrame(frame) || !Number.isSafeInteger(template.owner)) {
+  if (!isOwnedScalarImage(image) || !Number.isSafeInteger(template.owner)) {
     throw new TypeError("Invalid owned scalar output");
   }
   const entries: (readonly [string, unknown])[] = [["key", template.key]];
-  for (let index = 0; index < frame.length; index++) {
-    entries.push([frame.layout.nameAt(index), frame.valueAt(index)]);
+  const layout = ownedScalarImageLayout(image);
+  for (let index = 0; index < layout.length; index++) {
+    entries.push([layout.nameAt(index), ownedScalarImageValueAt(image, index)]);
   }
   if (Object.hasOwn(template, "children")) entries.push(["children", template.children]);
   const element = copyRuntimeElementFromEntries(template.tag, entries, template.owner);

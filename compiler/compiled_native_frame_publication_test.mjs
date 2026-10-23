@@ -41,8 +41,12 @@ export function Child() {
   useEffect(() => { trace.childSetter = setCount; });
   return <button key="child" data-count={count} onClick={() => trace.clicks++}>child</button>;
 }
+export function FrameMarker(props) {
+  const frame = use(props.clock);
+  return <group key="frame-marker" name="accepted-frame" position-x={frame.epoch} />;
+}
 export function DomApp() {
-  return <section key="scene"><DomMotion clock={clock}><Child key="retained" /></DomMotion></section>;
+  return <section key="scene"><DomMotion clock={clock}><Child key="retained" /></DomMotion><FrameMarker key="marker" clock={clock} /></section>;
 }
 export function SceneChild() {
   trace.sceneChildRenders++;
@@ -93,7 +97,7 @@ const locate = (node, predicate) => {
 };
 const plugin = nativeModuleCompilerPlugin({ root: rootPath, compilerBinary: binary });
 const context = { addWatchFile() {}, error(message) { throw new Error(String(message)); } };
-let dom, fork, independent, resourceRoot, three, failed, frame, failedFrame, primaryError;
+let dom, fork, independent, resourceRoot, three, failed, frame, singleFrame, failedFrame, primaryError;
 let registeredSourceFile;
 try {
   await mkdir(artifact, { recursive: true });
@@ -130,6 +134,11 @@ try {
       `${name} compiled owned Store execution missing`);
     proofs.push({ name, id: registration.id, schemaVersion: literal(property(program, "schemaVersion")) });
   }
+  const markerRegistration = registrations.get("FrameMarker");
+  assert.ok(markerRegistration, "actual compiled frame marker registration missing");
+  assert.equal(literal(property(property(markerRegistration.metadata,
+    "closedStoreHostProgram"), "schemaVersion")), 5,
+    "one-root frame must include the current compiled leaf program");
   const sceneRegistration = registrations.get("ThreeApp");
   assert.ok(sceneRegistration, "actual compiled scene registration missing");
   assert.equal(property(sceneRegistration.metadata, "closedStoreHostProgram"), null,
@@ -159,13 +168,18 @@ try {
     }
   }
   const host = new ObservingHost(), container = host.createContainer();
-  const forkHost = new MemoryVDOMHost(), forkContainer = forkHost.createContainer();
+  const forkHost = new ObservingHost(), forkContainer = forkHost.createContainer();
+  const forkCounters = {};
   const otherHost = new MemoryVDOMHost(), otherContainer = otherHost.createContainer();
   const resourceHost = new MemoryVDOMHost(), resourceContainer = resourceHost.createContainer();
   dom = createNativeRoot(host, container,
     { rootId: `frame-dom-${randomUUID()}`, scheduleCommit() {} });
   fork = createNativeRoot(forkHost, forkContainer,
-    { rootId: `frame-fork-${randomUUID()}`, scheduleCommit() {} });
+    { rootId: `frame-fork-${randomUUID()}`, scheduleCommit() {},
+      profileCounter(batch) {
+        for (const [key, count] of Object.entries(batch))
+          forkCounters[key] = (forkCounters[key] ?? 0) + count;
+      } });
   independent = createNativeRoot(otherHost, otherContainer,
     { rootId: `frame-independent-${randomUUID()}`, scheduleCommit() {} });
   resourceRoot = createNativeRoot(resourceHost, resourceContainer,
@@ -296,6 +310,39 @@ try {
   assert.equal(forkMotion.props["data-phase"], 4,
     "fork did not independently accept latest Store state");
 
+  const savedForkSnapshot = fork.snapshot;
+  const savedForkBytes = JSON.stringify(savedForkSnapshot);
+  const soloBeforeVersion = fork.publicationVersion;
+  const soloDraws = [];
+  forkHost.onWrite = () => {
+    assert.equal(JSON.stringify(fork.snapshot), savedForkBytes,
+      "one-root host callback observed unaccepted page values");
+    app.clock.dispatch(() => storeRecord({ phase: 5, epoch: 4 }));
+  };
+  singleFrame = createNativeFrameLoop({
+    roots: [{ root: fork, stores: [app.clock] }],
+    update() { app.clock.dispatch(() => storeRecord({ phase: 4.5, epoch: 4 })); },
+    draw() {
+      soloDraws.push(forkMotion.props["data-phase"]);
+      assert.equal(motion.props["data-phase"], 4);
+      assert.equal(threeMotion.rotation.y, .5);
+    },
+  });
+  const solo = singleFrame.advance(4.5);
+  assert.equal(solo.status, "drawn");
+  assert.deepEqual(soloDraws, [4.5]);
+  assert.equal(fork.publicationVersion, soloBeforeVersion + 1);
+  assert.ok(forkCounters["publication.frame-immediate.runs"] > 0,
+    "actual compiled one-root frame did not select the immediate core");
+  assert.ok(forkCounters["store.scalar-output.pages"] > 0,
+    "actual compiled one-root frame did not publish batch page values");
+  assert.equal(app.clock.getState().phase, 5);
+  assert.equal(JSON.stringify(savedForkSnapshot), savedForkBytes);
+  assert.equal(fork.flush(), true, "one-root frame lost a newer host-time action");
+  assert.equal(forkMotion.props["data-phase"], 5);
+  assert.equal(JSON.stringify(savedForkSnapshot), savedForkBytes);
+  singleFrame.dispose(); singleFrame = null;
+
   let pendingInWriter;
   host.onWrite = () => { pendingInWriter = frame.advance(7); };
   app.clock.dispatch(() => storeRecord({ phase: 6, epoch: 3 }));
@@ -374,13 +421,14 @@ try {
       retainedChildAndThreeResources: true, managedOldSnapshots: true,
       independentDomAndResourceProgress: true, newerHostAction: true, forkHistory: true,
       opaqueSceneNotificationAcknowledgement: true, realStudioProgress: true,
+      immediateCompiledPageFrame: true, immediateNewerActionAndForkHistory: true,
       partialFailureQuarantine: true, codeRetirement: true, exactResourceDisposal: true },
     boundary: "No timing, presentation, or independent-device claim.",
   }, null, 2) + "\n", { flag: "wx" });
   console.log(`PASS compiled native frame publication; provenance: ${artifact}`);
 } catch (error) { primaryError = error; }
 const cleanupErrors = [];
-for (const dispose of [() => failedFrame?.dispose(), () => frame?.dispose(),
+for (const dispose of [() => failedFrame?.dispose(), () => singleFrame?.dispose(), () => frame?.dispose(),
   () => dom?.dispose(), () => fork?.dispose(), () => independent?.dispose(),
   () => resourceRoot?.dispose(), () => failed?.dispose(), () => three?.dispose(),
   () => registeredSourceFile && invalidateCompiledSemanticPlan(registeredSourceFile),

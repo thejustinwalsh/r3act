@@ -1,3 +1,4 @@
+import { executeNumericRowCut } from "./prepared_numeric_row_cut_test_support.ts";
 import {
   bindSources,
   jsx,
@@ -110,7 +111,7 @@ Deno.test("consecutive aliases share the immediately prior row record lookup", (
   row.columns[1].values[0] = 7;
   let result: boolean | null = null;
   const lookupCount = countWeakMapGets([token], () => {
-    result = root.executePreparedNumericRows(
+    result = executeNumericRowCut(root,
       [token],
       new Uint32Array([0, 0, 0]),
       new Uint32Array([0, 1, 0]),
@@ -120,7 +121,8 @@ Deno.test("consecutive aliases share the immediately prior row record lookup", (
   });
   same(result, true, "consecutive token entries execute as one valid cut");
   same(container.children[0].props["value-1001"], 12, "row publishes its combined value");
-  same(lookupCount, 1, "consecutive aliases reuse one invocation-local record lookup");
+  same(lookupCount, 7,
+    "preflight and admitted recheck are linear; execution reuses adjacent aliases");
   root.dispose();
 });
 
@@ -141,7 +143,7 @@ Deno.test("malformed, proxy, and foreign tokens still decline", () => {
     [foreignToken, "foreign"],
   ] as const;
   for (const [token, label] of rows) {
-    same(firstRoot.executePreparedNumericRows(
+    same(executeNumericRowCut(firstRoot,
       [token as PreparedNumericRowProgram],
       new Uint32Array([0]),
       new Uint32Array([0]),
@@ -171,7 +173,7 @@ Deno.test("nonconsecutive row tokens require a fresh lookup", () => {
   second.columns[0].values[0] = 6;
   let result: boolean | null = null;
   const lookupCount = countWeakMapGets([firstToken, secondToken], () => {
-    result = root.executePreparedNumericRows(
+    result = executeNumericRowCut(root,
       [firstToken, secondToken],
       new Uint32Array([0, 1, 0]),
       new Uint32Array([0, 0, 1]),
@@ -180,6 +182,7 @@ Deno.test("nonconsecutive row tokens require a fresh lookup", () => {
     );
   });
   same(result, true, "interleaved tokens execute the generic row plan");
-  same(lookupCount, 3, "nonconsecutive token sequence retains per-input lookups");
+  same(lookupCount, 9,
+    "nonconsecutive execution retains its per-input lookups after rechecks");
   root.dispose();
 });

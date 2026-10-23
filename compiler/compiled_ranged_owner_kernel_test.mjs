@@ -99,8 +99,10 @@ const context = {
   },
   error(message) { throw new Error(String(message)); },
 };
-const originalExecute = VDOMSnapshotRoot.prototype.executePreparedNumericRows;
+const originalPrepareCut = VDOMSnapshotRoot.prototype.prepareNumericRowCut;
+const originalExecuteCut = VDOMSnapshotRoot.prototype.executePreparedNumericRowCut;
 const cuts = [];
+const pendingCuts = new WeakMap();
 let native, three;
 let telemetryKey;
 try {
@@ -209,14 +211,22 @@ try {
   assert.deepEqual(defaultValues.slice(0, appended), values.slice(3, 3 + appended));
 
   const app = await import(pathToFileURL(emittedPath).href);
-  VDOMSnapshotRoot.prototype.executePreparedNumericRows = function (
+  VDOMSnapshotRoot.prototype.prepareNumericRowCut = function (
     tokens, changedRowIndices, changedSlots, inputValues, count,
   ) {
-    const cut = { count, slots: Array.from(changedSlots.slice(0, count)),
+    const recorded = { count, slots: Array.from(changedSlots.slice(0, count)),
       rows: Array.from(changedRowIndices.slice(0, count)) };
-    const result = originalExecute.call(this, tokens, changedRowIndices, changedSlots, inputValues, count);
-    cut.accepted = result !== null;
-    cuts.push(cut);
+    const cut = originalPrepareCut.call(this, tokens, changedRowIndices,
+      changedSlots, inputValues, count);
+    if (cut) pendingCuts.set(cut, recorded);
+    return cut;
+  };
+  VDOMSnapshotRoot.prototype.executePreparedNumericRowCut = function (cut) {
+    const result = originalExecuteCut.call(this, cut);
+    const recorded = pendingCuts.get(cut);
+    assert.ok(recorded, "executed ranged cut was prepared");
+    recorded.accepted = true;
+    cuts.push(recorded);
     return result;
   };
   const host = new MemoryVDOMHost();
@@ -321,7 +331,8 @@ try {
   }, null, 2) + "\n").catch(() => {});
   throw error;
 } finally {
-  VDOMSnapshotRoot.prototype.executePreparedNumericRows = originalExecute;
+  VDOMSnapshotRoot.prototype.prepareNumericRowCut = originalPrepareCut;
+  VDOMSnapshotRoot.prototype.executePreparedNumericRowCut = originalExecuteCut;
   if (telemetryKey) delete globalThis[telemetryKey];
   native?.dispose(); three?.dispose(); plugin.closeBundle?.call({});
 }

@@ -29,8 +29,12 @@ import {
 import type { ClosedHostOutputValue } from "./closed_host_value.ts";
 import {
   OwnedScalarFrame,
-  isOwnedScalarFrame,
-  materializeOwnedScalarPropRecord,
+  isOwnedScalarImage,
+  materializeOwnedScalarImagePropRecord,
+  ownedScalarImageLayout,
+  ownedScalarImageLength,
+  ownedScalarImageValueAt,
+  type OwnedScalarImage,
   type OwnedScalarLayout,
   type OwnedScalarValue,
 } from "./closed_scalar_output.ts";
@@ -71,7 +75,7 @@ type VNode = VText | VElement;
 const ownedScalarElementSecret = Symbol("owned-scalar-element");
 class OwnedScalarElement {
   readonly kind = "element" as const;
-  readonly #frame: OwnedScalarFrame;
+  readonly #image: OwnedScalarImage;
   readonly tag: string;
   readonly key: string | null;
   readonly componentOwner?: number;
@@ -79,11 +83,11 @@ class OwnedScalarElement {
   readonly children: readonly MountedVNode[];
 
   private constructor(secret: symbol, old: VElement | OwnedScalarElement,
-    frame: OwnedScalarFrame, children: readonly MountedVNode[]) {
-    if (secret !== ownedScalarElementSecret || !isOwnedScalarFrame(frame)) {
+    image: OwnedScalarImage, children: readonly MountedVNode[]) {
+    if (secret !== ownedScalarElementSecret || !isOwnedScalarImage(image)) {
       throw new TypeError("Invalid owned scalar element");
     }
-    this.#frame = frame;
+    this.#image = image;
     this.tag = old.tag;
     this.key = old.key;
     this.componentOwner = old.componentOwner;
@@ -92,15 +96,15 @@ class OwnedScalarElement {
     Object.freeze(this);
   }
 
-  static create(old: VElement | OwnedScalarElement, frame: OwnedScalarFrame,
+  static create(old: VElement | OwnedScalarElement, image: OwnedScalarImage,
     children: readonly MountedVNode[]): OwnedScalarElement {
-    return new OwnedScalarElement(ownedScalarElementSecret, old, frame, children);
+    return new OwnedScalarElement(ownedScalarElementSecret, old, image, children);
   }
-  static frame(value: OwnedScalarElement): OwnedScalarFrame {
-    return value.#frame;
+  static image(value: OwnedScalarElement): OwnedScalarImage {
+    return value.#image;
   }
   static owns(value: unknown): value is OwnedScalarElement {
-    try { return typeof value === "object" && value !== null && #frame in value; }
+    try { return typeof value === "object" && value !== null && #image in value; }
     catch { return false; }
   }
 }
@@ -116,7 +120,7 @@ const ordinaryMountedElement = (node: MountedElement,
     ...(node.componentOwner === undefined ? {} :
       { componentOwner: node.componentOwner }),
     keyedRegionId: node.keyedRegionId,
-    props: materializeMountedScalarProps(OwnedScalarElement.frame(node), count),
+    props: materializeMountedScalarProps(OwnedScalarElement.image(node), count),
     children: node.children.map((child) => ordinaryMountedVNode(child, count)),
   };
   return copy;
@@ -128,18 +132,18 @@ const mountedAcceptedCopyProps = (node: MountedVNode) =>
   node.kind === "element" && !OwnedScalarElement.owns(node)
     ? node.acceptedCopyProps : undefined;
 const materializeMountedScalarProps = (
-  frame: OwnedScalarFrame,
+  image: OwnedScalarImage,
   count?: RuntimeCounterCallback,
 ) => {
-  if (!count) return materializeOwnedScalarPropRecord(frame);
+  if (!count) return materializeOwnedScalarImagePropRecord(image);
   const counts = { frames: 0, rootMaterializations: 0, propMaterializations: 0 };
-  const props = materializeOwnedScalarPropRecord(frame, counts);
+  const props = materializeOwnedScalarImagePropRecord(image, counts);
   count({ "store.scalar-output.prop-materializations": counts.propMaterializations });
   return props;
 };
 const mountedElementProps = (node: MountedElement,
   count?: RuntimeCounterCallback) => OwnedScalarElement.owns(node)
-    ? materializeMountedScalarProps(OwnedScalarElement.frame(node), count)
+    ? materializeMountedScalarProps(OwnedScalarElement.image(node), count)
     : node.props;
 
 type AcceptedCopyValue = Readonly<{
@@ -265,9 +269,8 @@ export type StorePropDelta = Readonly<{
 }>;
 
 /** Internal compact row entering the existing Store delta lifecycle. */
-export type OwnedScalarStoreRegion = Readonly<Omit<StorePropDelta, "props"> & {
-  frame: OwnedScalarFrame;
-}>;
+export type OwnedScalarStoreRegion = Readonly<Omit<StorePropDelta, "props"> &
+  OwnedScalarImage>;
 
 /** Copy a scalar Store region into a privately owned, immutable data shape. */
 export { createOwnedScalarStorePropDelta };
@@ -305,7 +308,7 @@ type StoreTarget<H> = StoreTargetBase<H> & (
   { kind: "scalar"; output: readonly (readonly [string, ClosedHostOutputValue])[];
     previousProps: Readonly<Record<string, unknown>>;
     priorRecipe?: ScalarPlanFields<H> } |
-  { kind: "image"; oldFrame: OwnedScalarFrame; frame: OwnedScalarFrame;
+  { kind: "image"; oldImage: OwnedScalarImage; image: OwnedScalarImage;
     priorRecipe?: ScalarPlanFields<H> }
 );
 
@@ -411,6 +414,95 @@ const preparedNumericRowProgramBrand: unique symbol = Symbol();
 export interface PreparedNumericRowProgram {
   readonly [preparedNumericRowProgramBrand]: never;
 }
+
+const preparedNumericRowCutBrand: unique symbol = Symbol();
+const numericRowCutSecret = Symbol();
+/** One captured, root-bound numeric row cut admitted before publication. */
+export interface PreparedNumericRowCut {
+  readonly [preparedNumericRowCutBrand]: never;
+}
+
+class NumericRowCut implements PreparedNumericRowCut {
+  readonly [preparedNumericRowCutBrand]!: never;
+  readonly #root: object;
+  readonly #tokens: readonly (PreparedNumericRowProgram | undefined)[];
+  readonly #rows: Uint32Array;
+  readonly #slots: Uint32Array;
+  readonly #values: readonly number[];
+  readonly #count: number;
+  #state: "prepared" | "consumed" | "discarded" = "prepared";
+
+  private constructor(secret: symbol, root: object,
+    tokens: readonly (PreparedNumericRowProgram | undefined)[],
+    rows: Uint32Array, slots: Uint32Array,
+    values: readonly number[], count: number, tokenPrefixLength: number) {
+    if (secret !== numericRowCutSecret) throw new TypeError("Invalid numeric row cut");
+    this.#root = root;
+    const capturedTokens: (PreparedNumericRowProgram | undefined)[] = [];
+    for (let index = 0; index < tokenPrefixLength; index++) {
+      capturedTokens.push(tokens[index]);
+    }
+    this.#tokens = Object.freeze(capturedTokens);
+    this.#rows = rows.slice(0, count);
+    this.#slots = slots.slice(0, count);
+    const capturedValues: number[] = [];
+    for (let index = 0; index < count; index++) capturedValues.push(values[index]);
+    this.#values = Object.freeze(capturedValues);
+    this.#count = count;
+    Object.freeze(this);
+  }
+
+  static create(secret: symbol, root: object,
+    tokens: readonly (PreparedNumericRowProgram | undefined)[],
+    rows: Uint32Array, slots: Uint32Array,
+    values: readonly number[], count: number,
+    tokenPrefixLength: number): NumericRowCut {
+    return new NumericRowCut(secret, root, tokens, rows, slots, values, count,
+      tokenPrefixLength);
+  }
+
+  static fields(secret: symbol, value: PreparedNumericRowCut, root: object):
+    NumericRowCut | null {
+    if (secret !== numericRowCutSecret) throw new TypeError("Invalid numeric row cut");
+    try {
+      const cut = value as NumericRowCut;
+      return cut.#root === root && cut.#state === "prepared" ? cut : null;
+    } catch { return null; }
+  }
+
+  static data(secret: symbol, cut: NumericRowCut) {
+    if (secret !== numericRowCutSecret) throw new TypeError("Invalid numeric row cut");
+    return { tokens: cut.#tokens, rows: cut.#rows, slots: cut.#slots,
+      values: cut.#values, count: cut.#count };
+  }
+  static consume(secret: symbol, cut: NumericRowCut) {
+    if (secret !== numericRowCutSecret) throw new TypeError("Invalid numeric row cut");
+    cut.#state = "consumed";
+  }
+  static discard(secret: symbol, cut: NumericRowCut) {
+    if (secret !== numericRowCutSecret) throw new TypeError("Invalid numeric row cut");
+    cut.#state = "discarded";
+  }
+}
+
+const mintNumericRowCut = NumericRowCut.create.bind(
+  NumericRowCut, numericRowCutSecret,
+) as typeof NumericRowCut.create extends (secret: symbol, ...args: infer A) =>
+  NumericRowCut ? (...args: A) => NumericRowCut : never;
+const readNumericRowCut = NumericRowCut.fields.bind(
+  NumericRowCut, numericRowCutSecret,
+) as (value: PreparedNumericRowCut, root: object) => NumericRowCut | null;
+const numericRowCutData = NumericRowCut.data.bind(
+  NumericRowCut, numericRowCutSecret,
+) as (cut: NumericRowCut) => ReturnType<typeof NumericRowCut.data>;
+const consumeNumericRowCut = NumericRowCut.consume.bind(
+  NumericRowCut, numericRowCutSecret,
+) as (cut: NumericRowCut) => void;
+const markNumericRowCutDiscarded = NumericRowCut.discard.bind(
+  NumericRowCut, numericRowCutSecret,
+) as (cut: NumericRowCut) => void;
+Object.freeze(NumericRowCut.prototype);
+Object.freeze(NumericRowCut);
 
 type PreparedNumericRowProgramRecord<H> = {
   readonly token: PreparedNumericRowProgram;
@@ -852,7 +944,7 @@ function cloneMountedElementVNode(
       props: changes.props,
       children: changes.children.map((child) => ordinaryMountedVNode(child, count)),
     };
-    return OwnedScalarElement.create(vnode, OwnedScalarElement.frame(vnode), changes.children);
+    return OwnedScalarElement.create(vnode, OwnedScalarElement.image(vnode), changes.children);
   }
   const copy = { ...vnode, ...changes,
     children: changes.children.map((child) => ordinaryMountedVNode(child, count)) };
@@ -871,7 +963,7 @@ const sameMountedElementHeader = (left: MountedVNode, right: MountedVNode): bool
     left.keyedRegionId !== right.keyedRegionId) return false;
   if (OwnedScalarElement.owns(left)) {
     return OwnedScalarElement.owns(right) &&
-      OwnedScalarElement.frame(left) === OwnedScalarElement.frame(right);
+      OwnedScalarElement.image(left) === OwnedScalarElement.image(right);
   }
   if (OwnedScalarElement.owns(right)) return false;
   return left.props === right.props &&
@@ -953,7 +1045,7 @@ const publicElementSnapshot = (
     ...(vnode.componentOwner === undefined ? {} :
       { componentOwner: vnode.componentOwner }),
     keyedRegionId: vnode.keyedRegionId,
-    props: materializeMountedScalarProps(OwnedScalarElement.frame(vnode), count),
+    props: materializeMountedScalarProps(OwnedScalarElement.image(vnode), count),
     children,
   };
   const snapshot = { ...vnode, children };
@@ -4389,13 +4481,25 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     const warmEligible = scalarPlans?.length === regions.length;
     for (let regionIndex = 0; regionIndex < regions.length; regionIndex++) {
       const region = regions[regionIndex];
-      let frameDescriptor: PropertyDescriptor | undefined;
-      try { frameDescriptor = Object.getOwnPropertyDescriptor(region, "frame"); }
+      let imageDescriptor: PropertyDescriptor | undefined;
+      try { imageDescriptor = Object.getOwnPropertyDescriptor(region, "kind"); }
       catch { return null; }
-      if (frameDescriptor && !("value" in frameDescriptor)) return null;
-      const frame = frameDescriptor?.value;
-      if (frameDescriptor && !isOwnedScalarFrame(frame)) return null;
-      const compact = !!frameDescriptor;
+      if (imageDescriptor) {
+        if (!("value" in imageDescriptor) ||
+          (imageDescriptor.value !== "frame" && imageDescriptor.value !== "page"))
+          return null;
+        const fields = imageDescriptor.value === "frame"
+          ? ["frame"] : ["page", "rowIndex"];
+        try {
+          if (fields.some((name) => {
+            const descriptor = Object.getOwnPropertyDescriptor(region, name);
+            return !descriptor || !("value" in descriptor);
+          })) return null;
+        } catch { return null; }
+        if (!isOwnedScalarImage(region)) return null;
+      }
+      const image = imageDescriptor ? region as OwnedScalarStoreRegion : null;
+      const compact = image !== null;
       const output = compact ? null : (region as StorePropDelta).props;
       const ownedScalar = compact || isOwnedScalarStorePropDelta(region as StorePropDelta);
       allOwnedScalar &&= ownedScalar;
@@ -4460,7 +4564,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           child.parent === node && child.parentIndex === index &&
           child.vnode === hinted.childVNodes[index]) &&
         (compact
-          ? hinted.kind === "image" && frame.layout === hinted.layout
+          ? hinted.kind === "image" &&
+            ownedScalarImageLayout(image!) === hinted.layout
           : hinted.kind === "legacy" && !OwnedScalarElement.owns(vnode) &&
             vnode.scopedSourceProps === hinted.scopedSourceProps &&
             output!.length === hinted.outputNames.length &&
@@ -4488,19 +4593,21 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         }
       }
       if (compact) {
-        let oldFrame: OwnedScalarFrame;
+        let oldImage: OwnedScalarImage;
+        const layout = ownedScalarImageLayout(image!);
+        const length = ownedScalarImageLength(image!);
         if (OwnedScalarElement.owns(vnode)) {
-          oldFrame = OwnedScalarElement.frame(vnode);
-          if (oldFrame.layout !== frame.layout) return null;
+          oldImage = OwnedScalarElement.image(vnode);
+          if (ownedScalarImageLayout(oldImage) !== layout) return null;
         } else {
           if (vnode.scopedSourceProps || vnode.acceptedCopyProps) return null;
           let descriptors: Record<string, PropertyDescriptor>;
           try { descriptors = Object.getOwnPropertyDescriptors(vnode.props); }
           catch { return null; }
-          if (Object.keys(descriptors).length !== frame.length) return null;
+          if (Object.keys(descriptors).length !== length) return null;
           const prior: OwnedScalarValue[] = [];
-          for (let index = 0; index < frame.length; index++) {
-            const name = frame.layout.nameAt(index);
+          for (let index = 0; index < length; index++) {
+            const name = layout.nameAt(index);
             if (name === "ref" || /^on[A-Z]/.test(name) ||
               name === "__proto__" || name === "prototype" ||
               name === "constructor") return null;
@@ -4516,20 +4623,21 @@ export class VDOMSnapshotRoot<H, Parent = H> {
             const counts = this.#profileCounter
               ? { frames: 0, rootMaterializations: 0, propMaterializations: 0 }
               : undefined;
-            oldFrame = OwnedScalarFrame.create(frame.layout, prior, counts);
+            oldImage = Object.freeze({ kind: "frame" as const,
+              frame: OwnedScalarFrame.create(layout, prior, counts) });
             if (counts) this.#profileCounter?.({
               "store.scalar-output.frames": counts.frames,
             });
           }
           catch { return null; }
         }
-        const next = OwnedScalarElement.create(vnode, frame, vnode.children);
+        const next = OwnedScalarElement.create(vnode, image!, vnode.children);
         const priorChildren = earlyWarm ? hinted!.children : [...node.children];
         const priorChildVNodes = earlyWarm ? hinted!.childVNodes :
           node.children.map((child) => child.vnode);
         targets.push({ kind: "image", node, vnode, handle: node.handle,
           parent: node.parent, parentIndex: node.parentIndex,
-          bucket: node.parent?.keyedChildren, frame, oldFrame,
+          bucket: node.parent?.keyedChildren, image: image!, oldImage,
           priorRecipe: earlyWarm ? hinted! : undefined, next,
           ...(region.componentOwner === undefined ? {} :
             { componentOwner: region.componentOwner }),
@@ -4683,13 +4791,13 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       if (target.kind === "image") {
         const prior = target.priorRecipe?.kind === "image"
           ? target.priorRecipe : undefined;
-        const frame = target.frame;
+        const image = target.image;
         return mintMountedScalarRecipe<H>(Object.freeze({
           kind: "image" as const,
           root: this, node: target.node, vnode: target.next,
           handle: target.handle, key: target.vnode.key!, tag: target.vnode.tag,
           componentOwner: target.componentOwner,
-          layout: frame.layout,
+          layout: ownedScalarImageLayout(image),
           children: prior?.children ??
             Object.freeze([...(target.retainedChildren ?? target.children ?? [])]),
           childVNodes: prior?.childVNodes ??
@@ -4867,10 +4975,10 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     for (const target of record.targets) {
       this.#acceptedJournal?.capture(target.node);
       if (target.kind === "image") {
-        for (let index = 0; index < target.frame.length; index++) {
-          const name = target.frame.layout.nameAt(index);
-          const next = target.frame.valueAt(index);
-          const previous = target.oldFrame.valueAt(index);
+        for (let index = 0; index < ownedScalarImageLength(target.image); index++) {
+          const name = ownedScalarImageLayout(target.image).nameAt(index);
+          const next = ownedScalarImageValueAt(target.image, index);
+          const previous = ownedScalarImageValueAt(target.oldImage, index);
           if (Object.is(previous, next)) continue;
           if (!this.#isStoreTargetReady(target, record.writer, versionAtApply,
             publicationAtApply)) {
@@ -5494,29 +5602,105 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     }
   }
 
-  /** Execute an explicit multi-row, multi-source cut through prepared sinks. */
-  executePreparedNumericRows(
+  /** Capture a finite numeric cut before the host publication begins. */
+  prepareNumericRowCut(
     tokens: readonly (PreparedNumericRowProgram | undefined)[],
     changedRowIndices: Uint32Array,
     changedSlots: Uint32Array,
     values: readonly number[],
     count: number,
-  ): boolean | null {
+  ): PreparedNumericRowCut | null {
     if (this.#numericWriteInProgress) {
       throw new Error("Nested numeric VDOM writes are not supported");
     }
+    if (this.#publicationToken || this.#publicationFailed) return null;
+    if (!Number.isSafeInteger(count) || count < 0 ||
+      count > changedRowIndices.length || count > changedSlots.length ||
+      count > values.length) {
+      throw new RangeError("Prepared owner-row cut exceeds supplied buffers");
+    }
+    let tokenPrefixLength = 0;
+    for (let index = 0; index < count; index++) {
+      const tokenIndex = changedRowIndices[index];
+      if (tokenIndex >= tokens.length) return null;
+      tokenPrefixLength = Math.max(tokenPrefixLength, tokenIndex + 1);
+    }
+    const cut = mintNumericRowCut(this, tokens, changedRowIndices,
+      changedSlots, values, count, tokenPrefixLength);
+    return this.#numericRowCutCurrent(cut) ? cut : null;
+  }
+
+  /** Check leases again after any candidate preparation that could reenter. */
+  isPreparedNumericRowCutCurrent(cut: PreparedNumericRowCut): boolean {
+    const owned = readNumericRowCut(cut, this);
+    return !!owned && this.#numericRowCutCurrent(owned);
+  }
+
+  #numericRowCutCurrent(cut: NumericRowCut): boolean {
+    if (this.#numericWriteInProgress || this.#publicationFailed) return false;
+    const { tokens, rows, slots, values, count } = numericRowCutData(cut);
+    const touched = new Map<PreparedNumericRowProgramRecord<H>, Map<number, number>>();
+    for (let index = 0; index < count; index++) {
+      const tokenIndex = rows[index];
+      const slotIndex = slots[index];
+      const token = tokens[tokenIndex];
+      const value = values[index];
+      if (!Number.isSafeInteger(tokenIndex) || tokenIndex >= tokens.length ||
+        !token || !Number.isSafeInteger(slotIndex) ||
+        typeof value !== "number") return false;
+      const record = this.#preparedNumericRowPrograms.get(token);
+      if (!record || record.root !== this || !record.active ||
+        record.token !== token || !record.layout.programId ||
+        slotIndex >= record.sources.length) return false;
+      const source = record.sources[slotIndex];
+      const column = record.columns[slotIndex];
+      if (!source || record.sourceLease[slotIndex] !== source ||
+        record.columnLease[slotIndex] !== column || !column ||
+        column.values.length <= record.row) return false;
+      let changes = touched.get(record);
+      if (!changes) touched.set(record, changes = new Map());
+      if (changes.has(slotIndex) &&
+        !Object.is(changes.get(slotIndex), value)) return false;
+      changes.set(slotIndex, value);
+    }
+    for (const record of touched.keys()) {
+      for (let index = 0; index < record.sources.length; index++) {
+        if (!record.usedSlots[index]) continue;
+        const source = record.sources[index];
+        const column = record.columns[index];
+        if (!source || record.sourceLease[index] !== source ||
+          record.columnLease[index] !== column || !column ||
+          column.values.length <= record.row) return false;
+      }
+    }
+    return true;
+  }
+
+  /** Consume one admitted cut; stale post-entry inputs are terminal. */
+  executePreparedNumericRowCut(cut: PreparedNumericRowCut): boolean {
+    const owned = readNumericRowCut(cut, this);
+    if (!owned || !this.#numericRowCutCurrent(owned)) {
+      throw new Error("Prepared numeric row cut changed during admission");
+    }
+    consumeNumericRowCut(owned);
     this.#numericWriteInProgress = true;
     try {
-      return this.#executePreparedNumericRows(
-        tokens,
-        changedRowIndices,
-        changedSlots,
-        values,
-        count,
-      );
+      const { tokens, rows, slots, values, count } = numericRowCutData(owned);
+      const result = this.#executePreparedNumericRows(
+        tokens, rows, slots, values, count);
+      if (result === null) {
+        throw new Error("Prepared numeric row cut changed after admission");
+      }
+      return result;
     } finally {
       this.#numericWriteInProgress = false;
     }
+  }
+
+  /** Release a prepared cut abandoned before host admission. */
+  discardNumericRowCut(cut: PreparedNumericRowCut): void {
+    const owned = readNumericRowCut(cut, this);
+    if (owned) markNumericRowCutDiscarded(owned);
   }
 
   /** Check whether a cached opaque cell program still names its live fanout. */
@@ -6380,7 +6564,9 @@ export class VDOMSnapshotRoot<H, Parent = H> {
 
       let wrote = false;
       if (ownerUpdateProgram || heterogeneousPrograms) {
-        if (this.#ownerRowExecutionCancelled) return false;
+        if (this.#ownerRowExecutionCancelled) {
+          throw new Error("Prepared numeric row cut cancelled during application");
+        }
         if (ownerUpdateProgram) {
           if (ownerUpdateProgram.schemaVersion >= 4) {
             rangedValuesUsed = true;
@@ -6444,7 +6630,9 @@ export class VDOMSnapshotRoot<H, Parent = H> {
                 this.#ownerRowStagedValues,
                 start, stagedCount,
               );
-              if (this.#ownerRowExecutionCancelled) return false;
+              if (this.#ownerRowExecutionCancelled) {
+          throw new Error("Prepared numeric row cut cancelled during application");
+        }
               if (!Number.isSafeInteger(runCount) || runCount < 0 ||
                 runCount > runCapacity ||
                 runCount > stagedCleanupBound - stagedCount) {
@@ -6487,7 +6675,9 @@ export class VDOMSnapshotRoot<H, Parent = H> {
                 changedSlots.subarray(start, end), end - start, runRows,
                 runInputIndices, runSinkIds, runValues,
               );
-              if (this.#ownerRowExecutionCancelled) return false;
+              if (this.#ownerRowExecutionCancelled) {
+          throw new Error("Prepared numeric row cut cancelled during application");
+        }
               if (!Number.isSafeInteger(runCount) || runCount < 0 ||
                 runCount > runCapacity ||
                 runCount > stagedCleanupBound - stagedCount) {
@@ -6518,7 +6708,9 @@ export class VDOMSnapshotRoot<H, Parent = H> {
             start = end;
           }
         }
-        if (this.#ownerRowExecutionCancelled) return false;
+        if (this.#ownerRowExecutionCancelled) {
+          throw new Error("Prepared numeric row cut cancelled during application");
+        }
         if (
           !Number.isSafeInteger(stagedCount) || stagedCount < 0 ||
           stagedCount > stagedCleanupBound
@@ -6555,7 +6747,9 @@ export class VDOMSnapshotRoot<H, Parent = H> {
             );
           }
         }
-        if (this.#ownerRowExecutionCancelled) return false;
+        if (this.#ownerRowExecutionCancelled) {
+          throw new Error("Prepared numeric row cut cancelled during application");
+        }
         stagedCleanupBound = stagedCount;
         let selectedSinkCount = 0;
         for (let index = 0; index < this.#ownerRowRecordCount; index++) {
@@ -6580,7 +6774,9 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           this.#ownerUpdateKernelSelectedSinks += selectedSinkCount;
           this.#ownerUpdateKernelStagedSinks += stagedCount;
         }
-        if (this.#ownerRowExecutionCancelled) return false;
+        if (this.#ownerRowExecutionCancelled) {
+          throw new Error("Prepared numeric row cut cancelled during application");
+        }
         for (let index = 0; index < stagedCount; index++) {
           if (this.#ownerRowExecutionCancelled) break;
           const inputIndex = this.#ownerRowStagedInputIndices[index];
@@ -6611,7 +6807,9 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           }
         }
         for (let index = 0; index < this.#ownerRowGroupCount; index++) {
-          if (this.#ownerRowExecutionCancelled) return false;
+          if (this.#ownerRowExecutionCancelled) {
+          throw new Error("Prepared numeric row cut cancelled during application");
+        }
           if (countVisits) this.#ownerRowWorkVisits++;
           const group = this.#ownerRowGroupScratch[index]!;
           const record = this.#ownerRowGroupRecordScratch[index]!;
@@ -6623,12 +6821,16 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           this.#ownerRowValueScratch[index] = group.ownerRowProjectInputs
             ? group.ownerRowProjectInputs(inputs)
             : group.project!(inputs[0]);
-          if (this.#ownerRowExecutionCancelled) return false;
+          if (this.#ownerRowExecutionCancelled) {
+          throw new Error("Prepared numeric row cut cancelled during application");
+        }
         }
         if (countVisits) {
           this.#ownerUpdateGenericProjectors += this.#ownerRowGroupCount;
         }
-        if (this.#ownerRowExecutionCancelled) return false;
+        if (this.#ownerRowExecutionCancelled) {
+          throw new Error("Prepared numeric row cut cancelled during application");
+        }
 
         for (let index = 0; index < this.#ownerRowGroupCount; index++) {
           const group = this.#ownerRowGroupScratch[index]!;
@@ -6658,6 +6860,9 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           if (this.#ownerRowExecutionCancelled) break;
           this.#stageLastValue(group, prepared, !!preparedCopy);
         }
+      }
+      if (this.#ownerRowExecutionCancelled) {
+        throw new Error("Prepared numeric row cut cancelled during application");
       }
       return wrote;
     } finally {

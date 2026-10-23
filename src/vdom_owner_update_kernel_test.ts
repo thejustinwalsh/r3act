@@ -1,3 +1,4 @@
+import { executeNumericRowCut } from "./prepared_numeric_row_cut_test_support.ts";
 import {
   associateCompiledOwnerUpdateProgram,
   type CompiledOwnerUpdatePrimitive,
@@ -14,6 +15,11 @@ const same = (actual: unknown, expected: unknown, message: string) => {
   if (!Object.is(actual, expected)) {
     throw new Error(`${message}: expected ${String(expected)}, got ${String(actual)}`);
   }
+};
+const throws = (operation: () => unknown, message: string) => {
+  let caught = false;
+  try { operation(); } catch { caught = true; }
+  assert(caught, message);
 };
 
 const makeLayout = (): CompiledStateLayout => Object.freeze({
@@ -166,7 +172,7 @@ Deno.test("legacy uniform kernels still receive pre-sized staging capacity", () 
   assert(token, "legacy uniform row prepares");
   for (const value of [2, 3]) {
     column.values[0] = value;
-    same(root.executePreparedNumericRows([token], new Uint32Array([0]),
+    same(executeNumericRowCut(root, [token], new Uint32Array([0]),
       new Uint32Array([0]), [value], 1), true,
       "legacy uniform cut publishes through its original ABI");
     same(container.children[0].props.value, value, "legacy value reaches host");
@@ -253,7 +259,7 @@ Deno.test("ranged mixed kernels share whole-cut staging and retain sparse first-
   aColumns[0].values[0] = 5;
   aColumns[1].values[0] = 6;
   bColumn.values[0] = 9;
-  same(root.executePreparedNumericRows([tokenA, tokenB],
+  same(executeNumericRowCut(root, [tokenA, tokenB],
     new Uint32Array([0, 1, 0]), new Uint32Array([0, 0, 1]),
     [5, 9, 6], 3), true, "interleaved ranged programs publish");
   same(container.children[0].props.sum, 11, "first A slot uses captured peer");
@@ -331,7 +337,7 @@ Deno.test("legacy and ranged spans preserve output or reject late malformed outp
     bColumn.values[0] = 4;
     let failure: unknown;
     try {
-      root.executePreparedNumericRows([aToken, bToken],
+      executeNumericRowCut(root, [aToken, bToken],
         new Uint32Array(mode === "valid" ? [0, 1, 0] : [0, 1]),
         new Uint32Array(mode === "valid" ? [0, 0, 0] : [0, 0]),
         mode === "valid" ? [3, 4, 3] : [3, 4],
@@ -386,7 +392,7 @@ Deno.test("uniform ranged kernels accept explicit undefined and preserve signed 
   const token = root.prepareNumericRowProgram({ owner: 73, layout,
     rowIdentity: {}, row: 0, generation: 1, sources: [source], columns: [column] });
   assert(token, "uniform ranged program prepares");
-  const execute = (value: number) => root.executePreparedNumericRows([token],
+  const execute = (value: number) => executeNumericRowCut(root, [token],
     new Uint32Array([0]), new Uint32Array([0]), [value], 1);
   column.values[0] = -0;
   same(execute(-0), true, "signed zero changes the compiled output");
@@ -452,9 +458,9 @@ Deno.test("ranged kernel disposal cancels and releases the shared payload", () =
     rowIdentity: {}, row: 0, generation: 1, sources: [source], columns: [column] });
   assert(token, "ranged row prepares before disposal");
   column.values[0] = 2;
-  same(root.executePreparedNumericRows([token], new Uint32Array([0]),
-    new Uint32Array([0]), [2], 1), false,
-    "disposal in a ranged kernel cancels the pending cut");
+  throws(() => executeNumericRowCut(root, [token], new Uint32Array([0]),
+    new Uint32Array([0]), [2], 1),
+    "disposal in a ranged kernel is terminal");
   same(container.children.length, 0, "disposed host tree remains removed");
   same(capturedValues?.length, 0, "cancelled range releases staged values");
 });
@@ -494,32 +500,32 @@ Deno.test("compiled owner update kernel stages sparse and dense row cuts", () =>
   assert(token, "row preparation selects the associated complete kernel");
 
   columns[1].values = new Float64Array(0);
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     [token], new Uint32Array([0]), new Uint32Array([0]), [4], 1,
   ), null, "stale peer-column capacity declines before the kernel");
   same(x.value, 1, "stale peer-column decline leaves source mirrors untouched");
   columns[1].values = new Float64Array([2]);
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     [token], new Uint32Array([0, 0]), new Uint32Array([0, 0]), [4, 5], 2,
   ), null, "conflicting duplicate values reject before mirroring");
   same(x.value, 1, "conflicting values leave the source mirror unchanged");
   same(genericProjectorCalls, 0, "conflicting values do not call projectors");
 
   columns[0].values[0] = 4;
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     [token], new Uint32Array([0]), new Uint32Array([0]), [4], 1,
   ), true, "sparse cut writes its changed sinks");
   same(container.children[0].props.sum, 6, "sparse x update reads captured y");
   same(container.children[0].props.x, 4, "sparse x update reaches unary sink");
 
   columns[1].values[0] = 7;
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     [token], new Uint32Array([0, 0]), new Uint32Array([0, 1]), [5, 7], 2,
   ), true, "dense cut stages changed outputs before host writes");
   same(container.children[0].props.sum, 12, "dense cut projects the complete captured row");
   same(container.children[0].props.x, 5, "dense cut preserves sink mapping");
   same(genericProjectorCalls, 0, "compiled kernel bypasses per-group projectors");
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     [token], new Uint32Array([0, 0]), new Uint32Array([0, 1]), [5, 7], 2,
   ), false, "equal compiled outputs suppress host writes");
   const diagnostics = root.diagnostics();
@@ -550,7 +556,7 @@ Deno.test("kernel cuts stay bounded for sparse token indexes and deduplicate tok
   const tokens = new Array(4096);
   tokens[4095] = token;
   column.values[0] = 7;
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     tokens, new Uint32Array([4095]), new Uint32Array([0]), [7], 1,
   ), true, "high token index executes one row");
   same(container.children[0].props.value, 7, "sparse token output is applied");
@@ -559,7 +565,7 @@ Deno.test("kernel cuts stay bounded for sparse token indexes and deduplicate tok
 
   tokens[2] = token;
   column.values[0] = 8;
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     tokens, new Uint32Array([2, 4095]), new Uint32Array([0, 0]), [8, 8], 2,
   ), true, "duplicate token entries with matching values share one row state");
   same(container.children[0].props.value, 8, "deduplicated output remains correct");
@@ -567,7 +573,7 @@ Deno.test("kernel cuts stay bounded for sparse token indexes and deduplicate tok
   same(diagnostics.preparedOwnerUpdateKernelBatches, 2, "both accepted cuts use the kernel");
   same(diagnostics.preparedOwnerUpdateKernelRows, 2, "duplicate indexes count one affected row per cut");
   same(diagnostics.preparedOwnerUpdateKernelSelectedSinks, 2, "duplicate input aliases select the sink once");
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     tokens, new Uint32Array([2, 4095]), new Uint32Array([0, 0]), [9, 10], 2,
   ), null, "conflicting duplicate values decline before kernel execution");
   same(container.children[0].props.value, 8, "conflicting alias cut leaves host unchanged");
@@ -609,7 +615,7 @@ Deno.test("incomplete compiled sink coverage chooses generic owner-row fallback"
   });
   assert(token, "generic fallback remains prepared when kernel sinks are incomplete");
   columns[0].values[0] = 6;
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     [token], new Uint32Array([0]), new Uint32Array([0]), [6], 1,
   ), true, "generic fallback applies the cut");
   same(container.children[0].props.sum, 8, "generic fallback uses captured peer value");
@@ -678,7 +684,7 @@ Deno.test("heterogeneous owner rows use ordered generic fanout with retained vec
     writes.push(name);
     setProp(node, name, value, previous);
   };
-  const cut = (aXValue: number, bXValue: number, aYValue: number, bYValue: number) => root.executePreparedNumericRows(
+  const cut = (aXValue: number, bXValue: number, aYValue: number, bYValue: number) => executeNumericRowCut(root,
     [aToken, bToken], new Uint32Array([0, 1, 0, 1]), new Uint32Array([0, 0, 1, 1]),
     [aXValue, bXValue, aYValue, bYValue], 4,
   );
@@ -699,7 +705,7 @@ Deno.test("heterogeneous owner rows use ordered generic fanout with retained vec
   writes.length = 0;
   genericCalls = 0;
   bColumns[1].values = new Float64Array(0);
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     [aToken, bToken], new Uint32Array([0, 1]), new Uint32Array([0, 0]),
     [101, 102], 2,
   ), null, "program mismatch still validates later untouched dependencies");
@@ -768,7 +774,7 @@ Deno.test("certified heterogeneous rows run ordered kernels and validate every s
     writes.push(name);
     setProp(node, name, value, previous);
   };
-  const execute = (x: number, b: number, y: number) => root.executePreparedNumericRows(
+  const execute = (x: number, b: number, y: number) => executeNumericRowCut(root,
     [tokenA, tokenB], new Uint32Array([0, 1, 0]), new Uint32Array([0, 0, 1]),
     [x, b, y], 3,
   );
@@ -832,7 +838,7 @@ Deno.test("kernel failure and invalid staged tails scrub before host writes", ()
   column.values[0] = 2;
   let threw = false;
   try {
-    root.executePreparedNumericRows([token], new Uint32Array([0]), new Uint32Array([0]), [2], 1);
+    executeNumericRowCut(root, [token], new Uint32Array([0]), new Uint32Array([0]), [2], 1);
   } catch {
     threw = true;
   }
@@ -878,7 +884,7 @@ Deno.test("kernel validates every staged result before its first host write", ()
   column.values[0] = 2;
   let threw = false;
   try {
-    root.executePreparedNumericRows([token], new Uint32Array([0]), new Uint32Array([0]), [2], 1);
+    executeNumericRowCut(root, [token], new Uint32Array([0]), new Uint32Array([0]), [2], 1);
   } catch {
     threw = true;
   }
@@ -919,8 +925,9 @@ Deno.test("kernel disposal cancels before selected-source bookkeeping or writers
   });
   assert(token, "disposal row prepares");
   column.values[0] = 2;
-  same(root.executePreparedNumericRows([token], new Uint32Array([0]), new Uint32Array([0]), [2], 1),
-    false, "disposal from a kernel cancels its cut");
+  throws(() => executeNumericRowCut(root, [token], new Uint32Array([0]),
+    new Uint32Array([0]), [2], 1),
+    "disposal from a kernel is terminal");
   same(container.children.length, 0, "disposed host tree remains removed");
 });
 
@@ -946,19 +953,19 @@ Deno.test("kernel host reentry failure leaves state retryable and cleans scratch
   host.setProp = (node, name, value, previous) => {
     if (reenter && name === "value") {
       reenter = false;
-      root.executePreparedNumericRows([token], new Uint32Array([0]), new Uint32Array([0]), [2], 1);
+      executeNumericRowCut(root, [token], new Uint32Array([0]), new Uint32Array([0]), [2], 1);
     }
     originalSetProp(node, name, value, previous);
   };
   let threw = false;
   try {
-    root.executePreparedNumericRows([token], new Uint32Array([0]), new Uint32Array([0]), [2], 1);
+    executeNumericRowCut(root, [token], new Uint32Array([0]), new Uint32Array([0]), [2], 1);
   } catch {
     threw = true;
   }
   assert(threw, "nested host write is rejected by the numeric write guard");
   same(container.children[0].props.value, 1, "failed reentry does not complete the host write");
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     [token], new Uint32Array([0]), new Uint32Array([0]), [2], 1,
   ), true, "a later cut succeeds after host failure cleanup");
   same(container.children[0].props.value, 2, "retry publishes the captured value");

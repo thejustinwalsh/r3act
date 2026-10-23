@@ -1,3 +1,4 @@
+import { executeNumericRowCut } from "./prepared_numeric_row_cut_test_support.ts";
 import {
   bindSources,
   jsx,
@@ -108,7 +109,7 @@ Deno.test("later value getters cannot revoke a previously checked changed lease"
     },
   });
 
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     [token], new Uint32Array([0, 0]), new Uint32Array([0, 1]), values, 2,
   ), null, "stale changed-slot lease declines after the later getter");
   same(row.x.value, 1, "decline leaves the earlier source mirror untouched");
@@ -155,7 +156,7 @@ Deno.test("later value getters cannot revoke an untouched peer row lease", () =>
     },
   });
 
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     [firstToken, secondToken],
     new Uint32Array([0, 1]),
     new Uint32Array([0, 0]),
@@ -202,7 +203,7 @@ Deno.test("later value getter exceptions clean the cut without mirror or writes"
   });
   let threw = false;
   try {
-    root.executePreparedNumericRows(
+    executeNumericRowCut(root,
       [token], new Uint32Array([0, 0]), new Uint32Array([0, 1]), values, 2,
     );
   } catch {
@@ -247,7 +248,7 @@ Deno.test("later value getters observe row retirement through a cached token", (
     },
   });
 
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     [token], new Uint32Array([0, 0]), new Uint32Array([0, 1]), values, 2,
   ), null, "retired prepared row declines");
   same(row.x.value, 1, "retirement leaves source mirror untouched");

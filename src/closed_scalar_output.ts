@@ -10,7 +10,7 @@ export type OwnedScalarOutputCounts = {
   frames: number;
   rootMaterializations: number;
   propMaterializations: number;
-  directCaptures?: number;
+  pages?: number;
   batchCalls?: number;
   batchRows?: number;
 };
@@ -22,7 +22,7 @@ const intrinsicIs = Object.is;
 const intrinsicFreeze = Object.freeze;
 const intrinsicIsSafeInteger = Number.isSafeInteger;
 const intrinsicIsFinite = Number.isFinite;
-const batchRowsKey = Symbol("owned-scalar-batch-rows");
+const batchPageKey = Symbol("owned-scalar-batch-page");
 
 const copySlots = <T>(source: readonly T[]): T[] => {
   const copied: T[] = [];
@@ -141,18 +141,6 @@ export class OwnedScalarFrame {
     return frame;
   }
 
-  static adoptVerifiedBatchRow(key: symbol, layout: OwnedScalarLayout,
-    values: OwnedScalarValue[], counts?: OwnedScalarOutputCounts): OwnedScalarFrame {
-    if (key !== batchRowsKey || !isOwnedScalarLayout(layout))
-      throw new TypeError("Invalid scalar batch adoption");
-    const frame = new OwnedScalarFrame(frameKey, layout, values);
-    if (counts) {
-      counts.frames++;
-      counts.directCaptures = (counts.directCaptures ?? 0) + 1;
-    }
-    return frame;
-  }
-
   static owns(value: unknown): value is OwnedScalarFrame {
     try { return typeof value === "object" && value !== null && #values in value; }
     catch { return false; }
@@ -163,16 +151,43 @@ export class OwnedScalarFrame {
   valueAt(index: number): OwnedScalarValue { return this.#values[index]; }
 }
 
-class OwnedScalarBatchRows {
+export class OwnedScalarBatchPage {
+  readonly #layout: OwnedScalarLayout;
+  readonly #rows: readonly (readonly OwnedScalarValue[])[];
+
+  constructor(key: symbol, layout: OwnedScalarLayout,
+    rows: readonly (readonly OwnedScalarValue[])[]) {
+    if (key !== batchPageKey) throw new TypeError("Invalid scalar batch page");
+    this.#layout = layout;
+    this.#rows = rows;
+    intrinsicFreeze(this);
+  }
+
+  static owns(value: unknown): value is OwnedScalarBatchPage {
+    try { return typeof value === "object" && value !== null && #rows in value; }
+    catch { return false; }
+  }
+
+  get layout(): OwnedScalarLayout { return this.#layout; }
+  get rowCount(): number { return this.#rows.length; }
+  valueAt(rowIndex: number, propIndex: number): OwnedScalarValue {
+    if (!intrinsicIsSafeInteger(rowIndex) || rowIndex < 0 ||
+      rowIndex >= this.#rows.length || !intrinsicIsSafeInteger(propIndex) ||
+      propIndex < 0 || propIndex >= this.#layout.length)
+      throw new TypeError("Invalid scalar page index");
+    return this.#rows[rowIndex][propIndex];
+  }
+}
+
+class PrivateScalarBatchPageBuilder {
   readonly #layout: OwnedScalarLayout;
   readonly #rows: OwnedScalarValue[][];
-  readonly #adopted: boolean[];
+  #sealed = false;
 
   constructor(key: symbol, layout: OwnedScalarLayout, rowCount: number) {
-    if (key !== batchRowsKey) throw new TypeError("Invalid scalar batch rows");
+    if (key !== batchPageKey) throw new TypeError("Invalid scalar batch page builder");
     this.#layout = layout;
     this.#rows = [];
-    this.#adopted = [];
     for (let row = 0; row < rowCount; row++) {
       const values: OwnedScalarValue[] = [];
       for (let prop = 0; prop < layout.length; prop++) {
@@ -183,68 +198,90 @@ class OwnedScalarBatchRows {
       }
       intrinsicDefineProperty(this.#rows, row, { value: values,
         enumerable: true, writable: false, configurable: false });
-      intrinsicDefineProperty(this.#adopted, row, { value: false,
-        enumerable: true, writable: true, configurable: true });
     }
+    intrinsicFreeze(this.#rows);
     intrinsicFreeze(this);
   }
 
-  get rowCount(): number { return this.#rows.length; }
-
   /** The proof permits writes only at numeric prop positions. */
   numericOutputs(): number[][] {
+    if (this.#sealed) throw new TypeError("Scalar batch page already sealed");
     return this.#rows as unknown as number[][];
   }
 
-  adopt(row: number, counts?: OwnedScalarOutputCounts): OwnedScalarFrame {
-    if (!intrinsicIsSafeInteger(row) || row < 0 || row >= this.#rows.length ||
-      this.#adopted[row]) throw new TypeError("Invalid scalar batch row");
-    const values = this.#rows[row];
-    if (values.length !== this.#layout.length)
-      throw new TypeError("Scalar batch width mismatch");
-    for (let index = 0; index < values.length; index++) {
-      const value = values[index];
-      if (this.#layout.slotAt(index) >= 0) {
-        if (typeof value !== "number" || !intrinsicIsFinite(value))
-          throw new TypeError("Invalid scalar batch numeric result");
-      } else if (value !== null && typeof value !== "string" &&
-        typeof value !== "boolean" &&
-        !(typeof value === "number" && intrinsicIsFinite(value))) {
-        throw new TypeError("Invalid scalar batch constant");
+  seal(): OwnedScalarBatchPage {
+    if (this.#sealed) throw new TypeError("Scalar batch page already sealed");
+    for (const values of this.#rows) {
+      if (values.length !== this.#layout.length)
+        throw new TypeError("Scalar batch width mismatch");
+      for (let index = 0; index < values.length; index++) {
+        const value = values[index];
+        if (this.#layout.slotAt(index) >= 0) {
+          if (typeof value !== "number" || !intrinsicIsFinite(value))
+            throw new TypeError("Invalid scalar batch numeric result");
+        } else if (value !== null && typeof value !== "string" &&
+          typeof value !== "boolean" &&
+          !(typeof value === "number" && intrinsicIsFinite(value))) {
+          throw new TypeError("Invalid scalar batch constant");
+        }
+        const constant = this.#layout.constantAt(index);
+        if (constant !== undefined && !intrinsicIs(value, constant))
+          throw new TypeError("Scalar batch constant mismatch");
       }
-      const constant = this.#layout.constantAt(index);
-      if (constant !== undefined && !intrinsicIs(value, constant))
-        throw new TypeError("Scalar batch constant mismatch");
     }
-    this.#adopted[row] = true;
-    return canonicalAdoptVerifiedBatchRow(batchRowsKey, this.#layout, values, counts);
+    for (const values of this.#rows) intrinsicFreeze(values);
+    this.#sealed = true;
+    return new OwnedScalarBatchPage(batchPageKey, this.#layout, this.#rows);
   }
 }
 
-/** Execute only an authentic proof and owned inputs into private final frame arrays. */
+/** Execute an authentic proof into one fully validated immutable page. */
 export const captureVerifiedOwnedScalarBatch = (
   layout: OwnedScalarLayout, proof: ClosedStoreBatchKernelProof,
   input: OwnedClosedFrameInput, rowCount: number,
   counts?: OwnedScalarOutputCounts,
-): readonly OwnedScalarFrame[] => {
+): OwnedScalarBatchPage => {
   if (!isOwnedScalarLayout(layout) || !layout.verifiedNumericResults ||
     !OwnedClosedFrameInput.owns(input) || !intrinsicIsSafeInteger(rowCount) ||
     rowCount < 1 || rowCount > 4096)
     throw new TypeError("Invalid verified scalar batch");
-  const output = new OwnedScalarBatchRows(batchRowsKey, layout, rowCount);
+  const output = new PrivateScalarBatchPageBuilder(batchPageKey, layout, rowCount);
   const buffers = input.buffers();
   executeVerifiedClosedStoreBatch(proof, buffers.shared, buffers.varying,
     output.numericOutputs(), rowCount);
+  const page = output.seal();
   if (counts) {
+    counts.pages = (counts.pages ?? 0) + 1;
     counts.batchCalls = (counts.batchCalls ?? 0) + 1;
     counts.batchRows = (counts.batchRows ?? 0) + rowCount;
   }
-  const frames: OwnedScalarFrame[] = [];
-  for (let index = 0; index < rowCount; index++)
-    intrinsicDefineProperty(frames, index, { value: output.adopt(index, counts),
-      enumerable: true, writable: false, configurable: false });
-  return intrinsicFreeze(frames);
+  return page;
 };
+
+export type OwnedScalarImage = Readonly<
+  { kind: "frame"; frame: OwnedScalarFrame } |
+  { kind: "page"; page: OwnedScalarBatchPage; rowIndex: number }
+>;
+
+export const isOwnedScalarImage = (value: unknown): value is OwnedScalarImage => {
+  if (typeof value !== "object" || value === null) return false;
+  try {
+    const image = value as Record<string, unknown>;
+    return image.kind === "frame" ? isOwnedScalarFrame(image.frame) :
+      image.kind === "page" && OwnedScalarBatchPage.owns(image.page) &&
+      intrinsicIsSafeInteger(image.rowIndex) && (image.rowIndex as number) >= 0 &&
+      (image.rowIndex as number) < image.page.rowCount;
+  } catch { return false; }
+};
+
+export const ownedScalarImageLayout = (image: OwnedScalarImage): OwnedScalarLayout =>
+  image.kind === "frame" ? image.frame.layout : image.page.layout;
+export const ownedScalarImageLength = (image: OwnedScalarImage): number =>
+  ownedScalarImageLayout(image).length;
+export const ownedScalarImageValueAt = (image: OwnedScalarImage,
+  propIndex: number): OwnedScalarValue =>
+  image.kind === "frame" ? image.frame.valueAt(propIndex) :
+    image.page.valueAt(image.rowIndex, propIndex);
 
 export const isOwnedScalarLayout = (value: unknown): value is OwnedScalarLayout =>
   OwnedScalarLayout.owns(value);
@@ -254,11 +291,12 @@ export const isOwnedScalarFrame = (value: unknown): value is OwnedScalarFrame =>
 
 Object.freeze(OwnedScalarLayout.prototype);
 Object.freeze(OwnedScalarLayout);
-const canonicalAdoptVerifiedBatchRow = OwnedScalarFrame.adoptVerifiedBatchRow;
 Object.freeze(OwnedScalarFrame.prototype);
 Object.freeze(OwnedScalarFrame);
-Object.freeze(OwnedScalarBatchRows.prototype);
-Object.freeze(OwnedScalarBatchRows);
+Object.freeze(OwnedScalarBatchPage.prototype);
+Object.freeze(OwnedScalarBatchPage);
+Object.freeze(PrivateScalarBatchPageBuilder.prototype);
+Object.freeze(PrivateScalarBatchPageBuilder);
 
 /** Derive the former public tuple shape only when an ordinary caller observes it. */
 export const materializeOwnedScalarPropEntries = (
@@ -283,6 +321,35 @@ export const materializeOwnedScalarPropRecord = (
     Object.defineProperty(props, frame.layout.nameAt(index), {
       value: frame.valueAt(index), enumerable: true, configurable: true,
       writable: true,
+    });
+  }
+  if (counts) counts.propMaterializations++;
+  return Object.freeze(props);
+};
+
+export const materializeOwnedScalarImagePropEntries = (
+  image: OwnedScalarImage, counts?: OwnedScalarOutputCounts,
+): ClosedStoreHostOutput => {
+  if (!isOwnedScalarImage(image)) throw new TypeError("Unowned scalar image");
+  if (image.kind === "frame") return materializeOwnedScalarPropEntries(image.frame, counts);
+  const pairs: (readonly [string, OwnedScalarValue])[] = [];
+  for (let index = 0; index < image.page.layout.length; index++)
+    pairs.push(Object.freeze([image.page.layout.nameAt(index),
+      image.page.valueAt(image.rowIndex, index)] as const));
+  if (counts) counts.propMaterializations++;
+  return Object.freeze(pairs);
+};
+
+export const materializeOwnedScalarImagePropRecord = (
+  image: OwnedScalarImage, counts?: OwnedScalarOutputCounts,
+): Readonly<Record<string, OwnedScalarValue>> => {
+  if (!isOwnedScalarImage(image)) throw new TypeError("Unowned scalar image");
+  if (image.kind === "frame") return materializeOwnedScalarPropRecord(image.frame, counts);
+  const props: Record<string, OwnedScalarValue> = {};
+  for (let index = 0; index < image.page.layout.length; index++) {
+    Object.defineProperty(props, image.page.layout.nameAt(index), {
+      value: image.page.valueAt(image.rowIndex, index), enumerable: true,
+      configurable: true, writable: true,
     });
   }
   if (counts) counts.propMaterializations++;

@@ -55,7 +55,8 @@ const context = {
 const originals = {
   capture: PendingStateChanges.prototype.capture,
   prepareRow: VDOMSnapshotRoot.prototype.prepareNumericRowProgram,
-  executeRows: VDOMSnapshotRoot.prototype.executePreparedNumericRows,
+  prepareCut: VDOMSnapshotRoot.prototype.prepareNumericRowCut,
+  executeCut: VDOMSnapshotRoot.prototype.executePreparedNumericRowCut,
   isRowCurrent: VDOMSnapshotRoot.prototype.isPreparedNumericRowProgramCurrent,
   prepareCell: VDOMSnapshotRoot.prototype.prepareNumericCellProgram,
   executeCells: VDOMSnapshotRoot.prototype.executePreparedNumericCells,
@@ -74,6 +75,7 @@ const metrics = {
   legacySetColumnRowsCalls: 0,
   sourceProgramCalls: 0,
 };
+const pendingCuts = new WeakMap();
 let rootBundle;
 let app;
 
@@ -89,7 +91,7 @@ VDOMSnapshotRoot.prototype.prepareNumericRowProgram = function (...args) {
   }
   return token;
 };
-VDOMSnapshotRoot.prototype.executePreparedNumericRows = function (
+VDOMSnapshotRoot.prototype.prepareNumericRowCut = function (
   tokens,
   changedRowIndices,
   changedSlots,
@@ -113,9 +115,17 @@ VDOMSnapshotRoot.prototype.executePreparedNumericRows = function (
       ? referencedTokens.every((token) => originals.isRowCurrent.call(this, token))
       : null,
   };
-  const result = originals.executeRows.call(this, tokens, changedRowIndices, changedSlots, values, count);
+  const cut = originals.prepareCut.call(this, tokens, changedRowIndices,
+    changedSlots, values, count);
+  if (cut) pendingCuts.set(cut, call);
+  return cut;
+};
+VDOMSnapshotRoot.prototype.executePreparedNumericRowCut = function (cut) {
+  const result = originals.executeCut.call(this, cut);
+  const call = pendingCuts.get(cut);
+  assert.ok(call, "executed Three owner-row cut was prepared");
   call.executionResult = result;
-  call.accepted = result !== null;
+  call.accepted = true;
   metrics.rowCalls.push(call);
   return result;
 };
@@ -144,7 +154,8 @@ try {
   for (const [name, original] of Object.entries({
     capture: originals.capture,
     prepareNumericRowProgram: originals.prepareRow,
-    executePreparedNumericRows: originals.executeRows,
+    prepareNumericRowCut: originals.prepareCut,
+    executePreparedNumericRowCut: originals.executeCut,
     prepareNumericCellProgram: originals.prepareCell,
     executePreparedNumericCells: originals.executeCells,
     setColumnCells: originals.setColumnCells,
@@ -360,7 +371,8 @@ try {
 } finally {
   PendingStateChanges.prototype.capture = originals.capture;
   VDOMSnapshotRoot.prototype.prepareNumericRowProgram = originals.prepareRow;
-  VDOMSnapshotRoot.prototype.executePreparedNumericRows = originals.executeRows;
+  VDOMSnapshotRoot.prototype.prepareNumericRowCut = originals.prepareCut;
+  VDOMSnapshotRoot.prototype.executePreparedNumericRowCut = originals.executeCut;
   VDOMSnapshotRoot.prototype.prepareNumericCellProgram = originals.prepareCell;
   VDOMSnapshotRoot.prototype.executePreparedNumericCells = originals.executeCells;
   VDOMSnapshotRoot.prototype.setColumnCells = originals.setColumnCells;

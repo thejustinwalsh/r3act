@@ -67,7 +67,8 @@ const context = {
 const originals = {
   capture: PendingStateChanges.prototype.capture,
   prepareRow: VDOMSnapshotRoot.prototype.prepareNumericRowProgram,
-  executeRows: VDOMSnapshotRoot.prototype.executePreparedNumericRows,
+  prepareCut: VDOMSnapshotRoot.prototype.prepareNumericRowCut,
+  executeCut: VDOMSnapshotRoot.prototype.executePreparedNumericRowCut,
   isRowCurrent: VDOMSnapshotRoot.prototype.isPreparedNumericRowProgramCurrent,
   prepareCell: VDOMSnapshotRoot.prototype.prepareNumericCellProgram,
   executeCells: VDOMSnapshotRoot.prototype.executePreparedNumericCells,
@@ -87,6 +88,7 @@ const metrics = {
   legacySetColumnRowsCalls: 0,
   sourceProgramCalls: 0,
 };
+const pendingCuts = new WeakMap();
 let fixtureProof;
 let root;
 let unsubscribeDirty;
@@ -136,8 +138,8 @@ if (typeof originals.prepareRow === "function") {
     return token;
   };
 }
-if (typeof originals.executeRows === "function") {
-  VDOMSnapshotRoot.prototype.executePreparedNumericRows = function (tokens, changedRowIndices, changedSlots, values, count) {
+if (typeof originals.prepareCut === "function") {
+  VDOMSnapshotRoot.prototype.prepareNumericRowCut = function (tokens, changedRowIndices, changedSlots, values, count) {
     const rowIndices = Array.from(changedRowIndices.slice(0, count));
     const slots = Array.from(changedSlots.slice(0, count));
     const referencedTokens = rowIndices.map((rowIndex) => tokens[rowIndex]);
@@ -155,9 +157,17 @@ if (typeof originals.executeRows === "function") {
         ? referencedTokens.every((token) => originals.isRowCurrent.call(this, token))
         : null,
     };
-    const result = originals.executeRows.call(this, tokens, changedRowIndices, changedSlots, values, count);
+    const cut = originals.prepareCut.call(this, tokens, changedRowIndices,
+      changedSlots, values, count);
+    if (cut) pendingCuts.set(cut, call);
+    return cut;
+  };
+  VDOMSnapshotRoot.prototype.executePreparedNumericRowCut = function (cut) {
+    const result = originals.executeCut.call(this, cut);
+    const call = pendingCuts.get(cut);
+    assert.ok(call, "executed owner-row cut was prepared");
     call.executionResult = result;
-    call.accepted = result !== null;
+    call.accepted = true;
     metrics.rowCalls.push(call);
     return result;
   };
@@ -202,7 +212,8 @@ console.log = (...args) => {
 try {
   for (const [name, original] of Object.entries({
     prepareNumericRowProgram: originals.prepareRow,
-    executePreparedNumericRows: originals.executeRows,
+    prepareNumericRowCut: originals.prepareCut,
+    executePreparedNumericRowCut: originals.executeCut,
   })) assert.equal(typeof original, "function", `${name} runtime API exists`);
   assert.equal(typeof originals.capture, "function", "generic capture instrumentation API exists");
   await mkdir(cacheDirectory, { recursive: true });
@@ -482,7 +493,8 @@ try {
 } finally {
   PendingStateChanges.prototype.capture = originals.capture;
   VDOMSnapshotRoot.prototype.prepareNumericRowProgram = originals.prepareRow;
-  VDOMSnapshotRoot.prototype.executePreparedNumericRows = originals.executeRows;
+  VDOMSnapshotRoot.prototype.prepareNumericRowCut = originals.prepareCut;
+  VDOMSnapshotRoot.prototype.executePreparedNumericRowCut = originals.executeCut;
   VDOMSnapshotRoot.prototype.prepareNumericCellProgram = originals.prepareCell;
   VDOMSnapshotRoot.prototype.executePreparedNumericCells = originals.executeCells;
   VDOMSnapshotRoot.prototype.setColumnCells = originals.setColumnCells;

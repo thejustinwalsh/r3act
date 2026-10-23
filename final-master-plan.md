@@ -1,5 +1,14 @@
 # Final master plan: classify, measure, then choose
 
+## Realtime slice verified; dependency orchestration active — 22 October 2026
+
+Slice2 passes the repaired consolidated boundary:1,284Deno,107Rust and62actualcompiled fixtures (unchanged passing phases carried forward by hash), package/consumer checks, six-context installed output/resource/snapshot/CSP proof and owned Portless HMR. Initial and repair failures remain preserved. Immutable batch pages, private one-shot numeric cuts and ordinary one-root frame publication use existing acceptance/lifetime authorities. [Results](implementation/2026-10-22-realtime-execution/results.md).
+
+The sole balanced minified-production comparison still loses: Native update median2.30–2.50ms/p902.70–2.80 versus React0.60/0.70–0.80. Median adjacent pair ratios4.00×/3.86×update,1.72×/1.69×throughdraw. Primary independently recomputes quantiles/intervals/pairs; no repeat. Cold/retained-memory, independent-device and full product gates remain open. No claim that historical wins transfer.
+
+Slice3 is dispatched to Sol medium: C owns compiler revision-bound dependency provenance, B provider-owned shared demand/leases and explicit derived work, A integrates independent root reveal and task execution after their interfaces. Existing Root/Store/resource/module authorities remain canonical; arbitrary callbacks are not silently shared, borrowed promises are not provider-owned cancellation, and whole-tree candidates keep whole-root guards. Primary owns exports/docs/route example/integration; Luna is idle until the integrated freeze. Maintainability-review remains set aside.
+
+
 ## Slice 1 closed; integrated realtime slice active — 22 October 2026
 
 The authorized cleanup retires superseded queue wrappers, execution schemas1/2/scalar proof adapters, raw Store preparation/projection routes and the standalone synchronous graph prototype. Static native task preparation is shared across input generations; current schema3 interpreted/batch paths and host schemas1–7 remain. Exact history/acknowledgement, newer actions, forks, ownership, resources, failure quarantine and generic fallback remain authoritative. No backwards compatibility layer was added.

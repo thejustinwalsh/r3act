@@ -89,9 +89,11 @@ const context = {
 };
 const originals = {
   prepare: VDOMSnapshotRoot.prototype.prepareNumericRowProgram,
-  execute: VDOMSnapshotRoot.prototype.executePreparedNumericRows,
+  prepareCut: VDOMSnapshotRoot.prototype.prepareNumericRowCut,
+  executeCut: VDOMSnapshotRoot.prototype.executePreparedNumericRowCut,
 };
 const metrics = { prepared: 0, cuts: [], writes: [] };
+const pendingCuts = new WeakMap();
 let root;
 let three;
 const sourcePath = path.join(artifact, "authored.tsx");
@@ -222,15 +224,23 @@ try {
     if (token) metrics.prepared++;
     return token;
   };
-  VDOMSnapshotRoot.prototype.executePreparedNumericRows = function (
+  VDOMSnapshotRoot.prototype.prepareNumericRowCut = function (
     tokens, changedRowIndices, changedSlots, values, count,
   ) {
-    const cut = { count, rows: Array.from(changedRowIndices.slice(0, count)),
+    const recorded = { count, rows: Array.from(changedRowIndices.slice(0, count)),
       slots: Array.from(changedSlots.slice(0, count)),
       values: Array.from(values.slice(0, count)) };
-    const result = originals.execute.call(this, tokens, changedRowIndices, changedSlots, values, count);
-    cut.accepted = result !== null;
-    metrics.cuts.push(cut);
+    const cut = originals.prepareCut.call(this, tokens, changedRowIndices,
+      changedSlots, values, count);
+    if (cut) pendingCuts.set(cut, recorded);
+    return cut;
+  };
+  VDOMSnapshotRoot.prototype.executePreparedNumericRowCut = function (cut) {
+    const result = originals.executeCut.call(this, cut);
+    const recorded = pendingCuts.get(cut);
+    assert.ok(recorded, "executed numeric cut was prepared");
+    recorded.accepted = true;
+    metrics.cuts.push(recorded);
     return result;
   };
   const host = new MemoryVDOMHost();
@@ -374,7 +384,8 @@ try {
   throw error;
 } finally {
   VDOMSnapshotRoot.prototype.prepareNumericRowProgram = originals.prepare;
-  VDOMSnapshotRoot.prototype.executePreparedNumericRows = originals.execute;
+  VDOMSnapshotRoot.prototype.prepareNumericRowCut = originals.prepareCut;
+  VDOMSnapshotRoot.prototype.executePreparedNumericRowCut = originals.executeCut;
   root?.dispose();
   three?.dispose();
   plugin.closeBundle?.call({});

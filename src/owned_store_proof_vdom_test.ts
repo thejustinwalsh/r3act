@@ -16,6 +16,7 @@ const regions = (owners: readonly number[], value: number): OwnedScalarStoreRegi
   owners.map((owner) => Object.freeze({
     key: "motion", tag: "group", componentOwner: owner,
     retainedChildren: true as const,
+    kind: "frame" as const,
     frame: OwnedScalarFrame.create(layout, [value + owner]),
   }));
 

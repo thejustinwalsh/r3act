@@ -135,13 +135,13 @@ try {
     reset(); app.clock.dispatch(() => storeRecord({ phase }));
     assert.equal(current.root.flush(), true);
     assert.equal(counters["store.owned-data.verified-rows"], 3);
-    assert.ok((counters["store.scalar-output.frames"] ?? 0) >= 3);
+    assert.equal(counters["store.scalar-output.pages"], 3);
     assert.equal(counters["store.scalar-output.root-materializations"] ?? 0, 0);
     assert.equal(counters["owner.component-renders"] ?? 0, 0);
     assert.equal(nodes[0].props.name, "accepted-bound-frame");
   };
   step(1);
-  assert.equal(counters["store.scalar-output.frames"], 6);
+  assert.equal(counters["store.scalar-output.frames"], 3);
   assert.equal(counters["store.scalar-output.prop-materializations"] ?? 0, 0,
     "unobserved compact publication must not construct ordinary props");
   const accepted = current.root.snapshot, saved = JSON.stringify(accepted);
@@ -152,14 +152,14 @@ try {
       "managed reads during application must retain the old accepted view");
   };
   step(2); current.host.onWrite = undefined;
-  assert.equal(counters["store.scalar-output.frames"], 3);
+  assert.equal(counters["store.scalar-output.frames"] ?? 0, 0);
   assert.equal(observations, 3);
   assert.equal(counters["store.mounted-scalar.warm-rows"], 3);
   assert.equal(counters["store.mounted-scalar.cold-rows"] ?? 0, 0);
   assert.equal(counters["store.bound-input.reused-rows"], 3);
   assert.equal(counters["store.bound-input.new-rows"] ?? 0, 0);
   assert.equal(counters["store.bound-input.allocated-records"] ?? 0, 0);
-  assert.equal(counters["store.scalar-output.direct-captures"], 3);
+  assert.equal(counters["store.scalar-output.pages"], 3);
   for (const node of nodes) {
     assert.equal(node.props["position-z"], 0.5);
   }
@@ -231,7 +231,7 @@ try {
     const layout = OwnedScalarLayout.create(["rotation-y"], [undefined]);
     const regions = [1, 2].map(owner => Object.freeze({
       key: "shared-motion", tag: "group", componentOwner: owner,
-      retainedChildren: true, frame: OwnedScalarFrame.create(layout, [owner]),
+      retainedChildren: true, kind: "frame", frame: OwnedScalarFrame.create(layout, [owner]),
     }));
     const cut = root.prepareScopedKeyedRetainedAndStoreDeltas([], [], regions);
     assert.ok(cut); assert.equal(cut.validate(), true);
@@ -282,8 +282,9 @@ try {
     resetMany(); app.clock.dispatch(() => storeRecord({ phase }));
     assert.equal(manyRoot.flush(), true);
     assert.equal(manyCounters["store.owned-data.verified-rows"], 257);
-    assert.equal(manyCounters["store.scalar-output.frames"],
-      514 - expectedWarm);
+    assert.equal(manyCounters["store.scalar-output.frames"] ?? 0,
+      257 - expectedWarm);
+    assert.equal(manyCounters["store.scalar-output.pages"], 3);
     assert.equal(manyCounters["store.scalar-output.root-materializations"] ?? 0, 0);
     assert.equal(manyCounters["store.scalar-output.prop-materializations"] ?? 0, 0);
     assert.equal(manyCounters["owner.component-renders"] ?? 0, 0);
@@ -306,7 +307,7 @@ try {
     "cold admission must count real input records");
   manyStep(12, 257);
   assert.equal(manyCounters["store.bound-input.allocated-records"] ?? 0, 0);
-  assert.equal(manyCounters["store.scalar-output.direct-captures"], 257);
+  assert.equal(manyCounters["store.scalar-output.pages"], 3);
   manyStep(13, 257);
   app.controls["many-0"](2); app.controls["many-1"](3);
   assert.equal(manyRoot.flush(), true);
@@ -326,7 +327,8 @@ try {
   resetMany(); app.clock.dispatch(() => storeRecord({ phase: 15 }));
   assert.equal(manyRoot.flush(), true);
   assert.equal(manyCounters["store.owned-data.verified-rows"], 258);
-  assert.equal(manyCounters["store.scalar-output.frames"], 258);
+  assert.equal(manyCounters["store.scalar-output.frames"] ?? 0, 0);
+  assert.equal(manyCounters["store.scalar-output.pages"], 3);
   assert.equal(manyCounters["store.scalar-output.root-materializations"] ?? 0, 0);
   assert.equal(manyCounters["store.scalar-output.prop-materializations"] ?? 0, 0);
   assert.equal(manyCounters["owner.component-renders"] ?? 0, 0);
@@ -369,7 +371,7 @@ try {
   await writeFile(path.join(artifact, "result.json"), JSON.stringify({ status: "PASS",
     compilerSha256: sha(await readFile(binary)), sourceSha256: sha(source),
     transformedSha256: sha(transformed.code), selected,
-    assertions: ["actual schema2 arithmetic and numeric literal mapping", "compact frame rows without warm ordinary output",
+    assertions: ["actual schema3 arithmetic and numeric literal mapping", "shared batch pages without warm ordinary output",
       "positive public generic materialization", "warm input and mounted reuse", "immutable applying snapshots",
       "newer Store and local reentrant actions", "local offsets and retained children", "independent accepted roots",
       "bounded removed-target and same-key peer retention with roots alive", "source replacement and keyed reinsertion", "second writer failure quarantine", "stale code retirement",

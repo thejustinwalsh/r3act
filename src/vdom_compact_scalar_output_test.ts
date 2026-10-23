@@ -1,4 +1,12 @@
 import { OwnedScalarFrame, OwnedScalarLayout } from "./closed_scalar_output.ts";
+import { createAsyncStore, StoreRenderTransaction } from "./async_store_runtime.ts";
+import { OwnerStateWorld } from "./owner_state_world.ts";
+import {
+  bindOwnedClosedStoreOutputRequest, createOwnedClosedFrameRequests,
+  normalizeClosedStoreDataExecution, prepareOwnedClosedStoreOutputs,
+} from "./closed_store_execution.ts";
+import { normalizeClosedStoreHostProgram } from "./closed_store_host_program.ts";
+import { storeRecord } from "./owned_store_record.ts";
 import { copyRuntimeElement, jsx } from "./jsx_binding_runtime.ts";
 import {
   MemoryVDOMHost, VDOMSnapshotRoot,
@@ -15,6 +23,7 @@ const layout = OwnedScalarLayout.create(["name", "rotation-y"],
 const region = (owner: number, value: number): OwnedScalarStoreRegion =>
   Object.freeze({ key: "motion", tag: "group", componentOwner: owner,
     retainedChildren: true as const,
+    kind: "frame" as const,
     frame: OwnedScalarFrame.create(layout, ["marker", value]) });
 const tree = (owners: number[]) => jsx("main", {}, owners.map((owner) =>
   jsx("section", { key: `slot-${owner}` },
@@ -196,5 +205,124 @@ Deno.test("compact scalar host callbacks and partial failure read old accepted i
     warm.discard();
     assert(JSON.stringify(root.snapshot) === acceptedBeforeWarm,
       "failed compact writer advanced accepted snapshot");
+  } finally { root.dispose(); }
+});
+
+Deno.test("verified page rows preserve accepted VDOM snapshots and owner offsets", () => {
+  const hostProgram = normalizeClosedStoreHostProgram({
+    schemaVersion: 7, componentProgramId: "vdom-page", moduleRevision: "rev",
+    inputs: [{ storeUseSiteId: "frame", storeProp: "clock",
+      paths: [["phase"], ["epoch"]] }],
+    stateSites: ["offset"], effectSites: [], retainedChildProp: "children",
+    host: { tag: "group", key: "motion", child: null, props: [
+      ["rotation-y", { kind: "binary", operator: "+",
+        left: { kind: "binary", operator: "*",
+          left: { kind: "input", index: 0 }, right: { kind: "literal", value: 2 } },
+        right: { kind: "input", index: 2 } }],
+      ["position-x", { kind: "input", index: 1 }],
+    ] },
+  });
+  assert(hostProgram, "verified page host program declined");
+  const execution = normalizeClosedStoreDataExecution({
+    schemaVersion: 3, kind: "owned-data", componentProgramId: "vdom-page",
+    moduleRevision: "rev",
+    batchKernel: function(s: readonly number[], v: readonly number[],
+      o: number[][], n: number) {
+      const doubled = s[0] * 2;
+      for (let r = 0; r < n; r++) {
+        o[r][0] = doubled + v[r];
+        o[r][1] = s[1];
+      }
+    },
+  }, hostProgram);
+  assert(execution, "verified page execution declined");
+  const world = new OwnerStateWorld();
+  const owners = [world.resolveOwner(null, "a"), world.resolveOwner(null, "b")];
+  const setOffsets = owners.map((owner, index) =>
+    world.useState(owner, "offset", index + 1)[1]);
+  const store = createAsyncStore(storeRecord({ phase: 2, epoch: -0 }));
+  const capture = () => {
+    const builder = createOwnedClosedFrameRequests();
+    for (const owner of owners) {
+      const bound = bindOwnedClosedStoreOutputRequest({ execution, owner,
+        hostKey: "motion", inputs: [{ store, readerId: `reader-${owner}` }] });
+      assert(bound && builder.append(bound), "page row binding declined");
+    }
+    assert(builder.seal(), "page row builder declined");
+    const transaction = new StoreRenderTransaction("vdom-page");
+    const result = prepareOwnedClosedStoreOutputs(world, transaction, builder);
+    transaction.discard();
+    assert(result?.kind === "ready" && result.rows.every((row) =>
+      row.kind === "page"), "verified execution did not return page rows");
+    return result.rows;
+  };
+  class ReadingHost extends MemoryVDOMHost {
+    read?: () => string;
+    observed: string[] = [];
+    failSecond = false;
+    writes = 0;
+    readonly failure = new Error("second page writer failed");
+    override setProp(node: MemoryNode, name: string, value: unknown, previous?: unknown) {
+      if (this.read && name === "rotation-y") this.observed.push(this.read());
+      super.setProp(node, name, value, previous);
+      if (this.failSecond && name === "rotation-y" && ++this.writes === 2) {
+        throw this.failure;
+      }
+    }
+  }
+  const host = new ReadingHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  try {
+    root.commit(jsx("main", {}, owners.map((owner) =>
+      jsx("section", { key: `slot-${owner}` }, copyRuntimeElement("group", {
+        key: "motion", "rotation-y": 0, "position-x": 0,
+        children: jsx("mesh", { key: `child-${owner}`, x: owner }),
+      }, owner)))));
+    const first = root.prepareScopedKeyedRetainedAndStoreDeltas(
+      [], [], capture(), []);
+    if (!first || !first.storeScalarPlans?.every(Boolean)) {
+      throw new Error("page target preparation declined");
+    }
+    const firstPlans = first.storeScalarPlans;
+    accept(root, first);
+    const saved = root.snapshot;
+    const savedJSON = JSON.stringify(saved);
+    host.read = () => JSON.stringify(root.snapshot);
+    setOffsets[0](9);
+    store.dispatch(storeRecord({ phase: 7, epoch: 8 }));
+    const second = root.prepareScopedKeyedRetainedAndStoreDeltas(
+      [], [], capture(), [], firstPlans);
+    if (!second || !second.storeScalarPlans?.every(Boolean)) {
+      throw new Error("warm page target declined");
+    }
+    accept(root, second);
+    assert(host.observed.length === 2 &&
+      host.observed.every((value) => value === savedJSON),
+    "host callback observed an applying page");
+    assert(JSON.stringify(saved) === savedJSON,
+      "later page publication mutated a saved snapshot");
+    const groups = container.children[0].children.map((slot) => slot.children[0]);
+    assert(groups[0].props["rotation-y"] === 23 &&
+      groups[1].props["rotation-y"] === 16 &&
+      groups[0].props["position-x"] === 8 &&
+      groups[1].props["position-x"] === 8,
+    "page row offsets crossed owners or lost a constant");
+    const accepted = JSON.stringify(root.snapshot);
+    setOffsets[0](10);
+    setOffsets[1](11);
+    const third = root.prepareScopedKeyedRetainedAndStoreDeltas(
+      [], [], capture(), [], second.storeScalarPlans);
+    assert(third, "third page candidate declined");
+    host.writes = 0;
+    host.failSecond = true;
+    root.beginPublication();
+    let failure: unknown;
+    try { third.commit(); } catch (error) { failure = error; }
+    root.failPublication();
+    third.discard();
+    assert(failure === host.failure && JSON.stringify(root.snapshot) === accepted &&
+      host.observed.slice(-2).every((value) => value === accepted),
+    "partial page failure advanced accepted history");
   } finally { root.dispose(); }
 });

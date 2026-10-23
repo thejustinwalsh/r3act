@@ -37,11 +37,11 @@ function fixture(host = new MemoryVDOMHost()) {
 Deno.test("owner-row Root cuts use captured sparse and dense inputs without rerender", () => {
   const calls: number[] = [];
   let scalarFallbacks = 0;
-  const execute = VDOMSnapshotRoot.prototype.executePreparedNumericRows;
+  const prepare = VDOMSnapshotRoot.prototype.prepareNumericRowCut;
   const scalar = VDOMSnapshotRoot.prototype.executeSourceProgram;
-  VDOMSnapshotRoot.prototype.executePreparedNumericRows = function (...args) {
+  VDOMSnapshotRoot.prototype.prepareNumericRowCut = function (...args) {
     calls.push(args[4]);
-    return execute.apply(this, args);
+    return prepare.apply(this, args);
   };
   VDOMSnapshotRoot.prototype.executeSourceProgram = function (...args) {
     scalarFallbacks++;
@@ -60,19 +60,19 @@ Deno.test("owner-row Root cuts use captured sparse and dense inputs without rere
     equal(f.renders(), 1, "per-frame props avoid component rerender");
     equal(f.root.diagnostics().pendingChangeCount, 0, "accepted versions acknowledged");
   } finally {
-    VDOMSnapshotRoot.prototype.executePreparedNumericRows = execute;
+    VDOMSnapshotRoot.prototype.prepareNumericRowCut = prepare;
     VDOMSnapshotRoot.prototype.executeSourceProgram = scalar;
     f?.root.dispose();
   }
 });
 
 Deno.test("owner-row null retry cannot publish or acknowledge before acceptance", () => {
-  const execute = VDOMSnapshotRoot.prototype.executePreparedNumericRows;
+  const prepare = VDOMSnapshotRoot.prototype.prepareNumericRowCut;
   let f!: ReturnType<typeof fixture>;
   let declines = 0;
   let calls = 0;
   let publication = 0;
-  VDOMSnapshotRoot.prototype.executePreparedNumericRows = function (...args) {
+  VDOMSnapshotRoot.prototype.prepareNumericRowCut = function (...args) {
     calls++;
     if (declines) {
       declines--;
@@ -80,7 +80,7 @@ Deno.test("owner-row null retry cannot publish or acknowledge before acceptance"
       equal(f.root.diagnostics().pendingChangeCount, 1, "decline leaves state pending");
       return null;
     }
-    return execute.apply(this, args);
+    return prepare.apply(this, args);
   };
   try {
     f = fixture();
@@ -95,7 +95,7 @@ Deno.test("owner-row null retry cannot publish or acknowledge before acceptance"
     equal(f.container.children[0].props.position, [3, 8, 9], "fallback retains authored vector");
     equal(f.root.publicationVersion, publication + 1, "fallback alone publishes");
   } finally {
-    VDOMSnapshotRoot.prototype.executePreparedNumericRows = execute;
+    VDOMSnapshotRoot.prototype.prepareNumericRowCut = prepare;
     f?.root.dispose();
   }
 });
@@ -154,8 +154,8 @@ Deno.test("owner-row accepted no-write cut acknowledges and advances logical pub
   const site = "prepared-row.noop";
   let setter!: (value: number) => boolean;
   let calls = 0;
-  const execute = VDOMSnapshotRoot.prototype.executePreparedNumericRows;
-  VDOMSnapshotRoot.prototype.executePreparedNumericRows = function (...args) {
+  const execute = VDOMSnapshotRoot.prototype.executePreparedNumericRowCut;
+  VDOMSnapshotRoot.prototype.executePreparedNumericRowCut = function (...args) {
     calls++;
     return execute.apply(this, args);
   };
@@ -179,7 +179,7 @@ Deno.test("owner-row accepted no-write cut acknowledges and advances logical pub
     equal(root.publicationVersion, publication + 2, "each accepted no-write cut advances logical publication");
     equal(root.diagnostics().pendingChangeCount, 0, "both no-write versions acknowledged");
   } finally {
-    VDOMSnapshotRoot.prototype.executePreparedNumericRows = execute;
+    VDOMSnapshotRoot.prototype.executePreparedNumericRowCut = execute;
     root.dispose();
   }
 });
@@ -203,8 +203,8 @@ Deno.test("owner-row disposal waits for admitted writers and releases cut", () =
     dispose = true; f.controls[0](8);
     let failure = "";
     try { f.root.flush(); } catch (error) { failure = String(error); }
-    equal(failure.includes("Root disposal was requested during host application"), true,
-      "disposal rejects after the host batch");
+    equal(failure.includes("cancelled during host commit"), true,
+      "disposal cancels the admitted host batch");
     equal(writes, ["position", "repeat"], "admitted repeated-input writer finishes before teardown");
     equal(f.container.children.length, 0, "disposed host root is empty");
     equal(f.root.diagnostics().pendingChangeCount, 0, "disposal releases pending cut");

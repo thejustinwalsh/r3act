@@ -1,3 +1,4 @@
+import { executeNumericRowCut } from "./prepared_numeric_row_cut_test_support.ts";
 import {
   bind,
   bindSources,
@@ -13,9 +14,10 @@ import {
 } from "./vdom_snapshot_runtime.ts";
 import type { CompiledStateLayout } from "./compiled_state_layout.ts";
 
-const assert = (condition: unknown, message: string) => {
-  if (!condition) throw new Error(message);
-};
+const assert: (condition: unknown, message: string) => asserts condition =
+  (condition, message) => {
+    if (!condition) throw new Error(message);
+  };
 const same = (actual: unknown, expected: unknown, message: string) => {
   if (!Object.is(actual, expected)) {
     throw new Error(`${message}: expected ${String(expected)}, got ${String(actual)}`);
@@ -167,7 +169,7 @@ Deno.test("prepared owner rows project multi-source sinks from sparse captured c
   expectedProjectionsBeforeWrite = 3;
   inCut = true;
   const writes = host.writeCount;
-  const changed = root.executePreparedNumericRows(
+  const changed = executeNumericRowCut(root,
     [token0, token1],
     new Uint32Array([0, 1]),
     new Uint32Array([0, 1]),
@@ -183,7 +185,7 @@ Deno.test("prepared owner rows project multi-source sinks from sparse captured c
 
   projected.length = 0;
   assertAllProjectedBeforeWrite = false;
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     [token0, token1], new Uint32Array([0, 1]), new Uint32Array([0, 1]), [5, 9], 2,
   ), false, "unchanged primitive outputs are suppressed");
   same(projected.length, 3, "explicit captured dirty fanouts still project once per affected sink");
@@ -199,7 +201,7 @@ Deno.test("prepared owner rows project multi-source sinks from sparse captured c
   assertAllProjectedBeforeWrite = true;
   expectedProjectionsBeforeWrite = 4;
   inCut = true;
-  const denseResult = root.executePreparedNumericRows(
+  const denseResult = executeNumericRowCut(root,
     [token0, token1],
     new Uint32Array([0, 0, 1, 1]),
     new Uint32Array([0, 1, 0, 1]),
@@ -220,7 +222,7 @@ Deno.test("prepared owner rows project multi-source sinks from sparse captured c
   yColumn.values[0] = 9;
   projected.length = 0;
   const beforeForcedWrite = host.writeCount;
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     [token0], new Uint32Array([0, 0]), new Uint32Array([0, 1]), [6, 9], 2,
   ), true, "derived binding retains its forced-write behavior");
   same(container.children[0].children[0].props["data-total"], 15, "same derived primitive remains correct");
@@ -228,7 +230,7 @@ Deno.test("prepared owner rows project multi-source sinks from sparse captured c
 
   const sourceBeforeConflict = x0.value;
   projected.length = 0;
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     [token0], new Uint32Array([0, 0]), new Uint32Array([0, 0]), [7, 8], 2,
   ), null, "conflicting duplicate values decline the entire cut");
   same(x0.value, sourceBeforeConflict, "declined duplicate does not change sources");
@@ -236,7 +238,7 @@ Deno.test("prepared owner rows project multi-source sinks from sparse captured c
 
   const refreshed = rowTree([x0, y0], 100, (values) => values[0] + values[1] + 1);
   root.commit(jsx("div", {}, [refreshed, rowTree([x1, y1], 101, sum)]), undefined, true);
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     [token0], new Uint32Array([0]), new Uint32Array([0]), [6], 1,
   ), null, "binding refresh invalidates its prepared row token");
   root.dispose();
@@ -262,7 +264,7 @@ Deno.test("prepared owner rows reject duplicate source leases and reprepare afte
   }), null, "one mounted source set cannot belong to two prepared row records");
 
   root.commit(jsx("div", {}, rowTree([x, y], 450, (values) => values[0] + values[1] + 1)), undefined, true);
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     [first], new Uint32Array([0]), new Uint32Array([0]), [3], 1,
   ), null, "refresh invalidates the prior prepared row");
   const refreshed = mustToken(root.prepareNumericRowProgram({
@@ -270,7 +272,7 @@ Deno.test("prepared owner rows reject duplicate source leases and reprepare afte
     sources: [x, y], columns: [xColumn, yColumn],
   }));
   xColumn.values[0] = 3;
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     [refreshed], new Uint32Array([0]), new Uint32Array([0]), [3], 1,
   ), true, "the refreshed binding can prepare and execute a new row record");
   same(container.children[0].children[0].props["data-total"], 6, "reprepared row uses refreshed projector");
@@ -290,7 +292,7 @@ Deno.test("prepared owner row guard rejects reentry and disposal cancels later s
       writes.push(name);
       if (name === "data-first") {
         try {
-          root.executePreparedNumericRows(
+          executeNumericRowCut(root,
             [token], new Uint32Array([0]), new Uint32Array([0]), [3], 1,
           );
         } catch {
@@ -329,9 +331,9 @@ Deno.test("prepared owner row guard rejects reentry and disposal cancels later s
   }));
   xColumn.values[0] = 3;
   disposeOnFirst = true;
-  same(root.executePreparedNumericRows(
+  throws(() => executeNumericRowCut(root,
     [token], new Uint32Array([0]), new Uint32Array([0]), [3], 1,
-  ), true, "first writer commits before disposal");
+  ), "disposal after the first writer is terminal");
   same(nestedRejected, true, "nested prepared row execution is rejected");
   same(writes.join(","), "data-first", "disposal prevents subsequent sink writes");
 });
@@ -372,7 +374,7 @@ Deno.test("prepared owner row projector failure occurs before any host write", (
   const writes = host.writeCount;
   xColumn.values[0] = 8;
   fail = true;
-  throws(() => root.executePreparedNumericRows(
+  throws(() => executeNumericRowCut(root,
     [token], new Uint32Array([0]), new Uint32Array([0]), [8], 1,
   ), "projector errors propagate");
   same(host.writeCount, writes, "no host write runs before all projections succeed");
@@ -412,7 +414,7 @@ Deno.test("prepared owner rows preserve forced writes for stable mutable outputs
   const writes = host.writeCount;
   xColumn.values[0] = 2;
   yColumn.values[0] = 1;
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     [token], new Uint32Array([0, 0]), new Uint32Array([0, 1]), [2, 1], 2,
   ), true, "mutable projection is force-written after dependencies change");
   same(container.children[0].props.position, output, "stable mutable object identity is preserved");
@@ -475,7 +477,7 @@ Deno.test("owner-row first dirty cut survives preparation after the column write
   const token = mustToken(root.prepareNumericRowProgram({
     owner: 700, layout, rowIdentity: {}, row: 0, generation: 1, sources, columns,
   }));
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     [token], new Uint32Array([0]), new Uint32Array([0]), [9], 1,
   ), true, "the explicit dirty cut executes after lazy preparation");
   same(container.children[0].props.value, 11, "projection sees new x and unchanged y");
@@ -533,7 +535,7 @@ Deno.test("owner-row dirty fanouts preserve packed source and row order", () => 
   xColumn.values[1] = 6;
   writes.length = 0;
   capture = true;
-  root.executePreparedNumericRows(
+  executeNumericRowCut(root,
     tokens,
     new Uint32Array([1, 0, 1]),
     new Uint32Array([1, 0, 0]),
@@ -572,14 +574,14 @@ Deno.test("owner-row stale untouched lease dependencies decline atomically", () 
   }));
   const sourceX = x.value;
   const baseProjections = projections;
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     [token], new Uint32Array([1]), new Uint32Array([0]), [8], 1,
   ), null, "an invalid first token index declines before record scratch is used");
   same(x.value, sourceX, "invalid first token index leaves sources untouched");
   same(projections, baseProjections, "invalid first token index leaves sinks untouched");
   xColumn.values[0] = 8;
   sources[1] = undefined; // World promotion revokes the untouched y dependency.
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     [token], new Uint32Array([0]), new Uint32Array([0]), [8], 1,
   ), null, "stale untouched source lease declines the cut");
   same(x.value, sourceX, "decline happens before source mirroring");
@@ -588,13 +590,13 @@ Deno.test("owner-row stale untouched lease dependencies decline atomically", () 
 
   sources[1] = y;
   columns.length = 1; // Retiring the shared World column vector also revokes it.
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     [token], new Uint32Array([0]), new Uint32Array([0]), [8], 1,
   ), null, "retired untouched column lease declines the cut");
   same(x.value, sourceX, "retired lease still declines before source mirroring");
   same(projections, baseProjections, "retired lease still declines before projection");
   columns.push(yColumn);
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     [token], new Uint32Array([0]), new Uint32Array([0]), [8], 1,
   ), true, "a valid cut succeeds after later lease-validation failure");
   same(container.children[0].props.value, 10, "later valid cut publishes after lease failure");
@@ -619,27 +621,87 @@ Deno.test("owner-row record scratch clears after early decline and repeated cuts
     columns: [column, new NumericColumn(727, 1, new Float64Array([0]))],
   }));
 
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     [token], new Uint32Array([1]), new Uint32Array([0]), [2], 1,
   ), null, "invalid first input declines");
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     [token], new Uint32Array([0]), new Uint32Array([0]), [2], 1,
   ), true, "first valid cut succeeds after early decline");
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     [token], new Uint32Array([0, 0]), new Uint32Array([0, 0]), [4, 5], 2,
   ), null, "later conflicting input declines after retaining only scratch references");
   same(source.value, 2, "conflict after a valid prefix does not mirror that prefix");
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     [token], new Uint32Array([0]), new Uint32Array([0]), [2], 1,
   ), false, "scratch cleanup survives a late conflict without another host write");
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     [token], new Uint32Array([0]), new Uint32Array([0]), [3], 1,
   ), true, "reused scratch accepts a second cut");
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     [token], new Uint32Array([0]), new Uint32Array([0]), [3], 1,
   ), false, "unchanged cut completes without a write");
   same(source.value, 3, "source mirror follows the latest accepted cut");
   same(container.children[0].props.value, 3, "host value follows the latest accepted cut");
+  root.dispose();
+});
+
+Deno.test("numeric cut owns captured inputs and can be consumed only once", () => {
+  const host = new MemoryVDOMHost();
+  const container = host.createContainer();
+  const root = new VDOMSnapshotRoot(host, container);
+  const source = new ScalarSource(728, 1);
+  const column = new NumericColumn(729, 0, new Float64Array([1]));
+  root.commit(jsx("output", {
+    value: owned(bind(source, (value) => value), 728, ["x"], "cut.x"),
+  }), undefined, true);
+  const token = mustToken(root.prepareNumericRowProgram({
+    owner: 728, layout, rowIdentity: {}, row: 0, generation: 1,
+    sources: [source, undefined],
+    columns: [column, new NumericColumn(730, 1, new Float64Array([0]))],
+  }));
+  const rows = new Uint32Array([0]);
+  const slots = new Uint32Array([0]);
+  const values = [2];
+  const cut = root.prepareNumericRowCut([token], rows, slots, values, 1);
+  assert(cut, "valid cut prepares before publication");
+  assert(!("rows" in cut) && !("slots" in cut) && !("values" in cut) &&
+    !Reflect.ownKeys(Object.getPrototypeOf(cut)).some((name) =>
+      name === "rows" || name === "slots" || name === "values"),
+  "captured numeric buffers have no public instance or prototype accessor");
+  rows[0] = 9;
+  slots[0] = 9;
+  values[0] = 9;
+  same(root.isPreparedNumericRowCutCurrent(cut), true,
+    "caller buffer mutation cannot rewrite captured cut");
+  same(root.executePreparedNumericRowCut(cut), true,
+    "the captured cut applies its original value");
+  same(source.value, 2, "captured source value is mirrored");
+  same(container.children[0].props.value, 2, "captured host value is written");
+  same(root.isPreparedNumericRowCutCurrent(cut), false,
+    "consumed cut loses its lease");
+  throws(() => root.executePreparedNumericRowCut(cut),
+    "consumed cut cannot write twice");
+  root.discardNumericRowCut(cut);
+
+  const spareTokens: (PreparedNumericRowProgram | undefined)[] = [token];
+  spareTokens.length = 4096;
+  Object.defineProperty(spareTokens, 4095, {
+    get() { throw new Error("unreached spare token was read"); },
+  });
+  const sparse = root.prepareNumericRowCut(spareTokens,
+    new Uint32Array([0]), new Uint32Array([0]), [3], 1);
+  assert(sparse, "sparse cut ignores unused peak token capacity");
+  root.discardNumericRowCut(sparse);
+
+  const abandoned = root.prepareNumericRowCut([token], new Uint32Array([0]),
+    new Uint32Array([0]), [3], 1);
+  assert(abandoned, "second cut prepares");
+  root.discardNumericRowCut(abandoned);
+  root.discardNumericRowCut(abandoned);
+  same(root.isPreparedNumericRowCutCurrent(abandoned), false,
+    "discarded cut loses its lease");
+  throws(() => root.executePreparedNumericRowCut(abandoned),
+    "discarded cut cannot write");
   root.dispose();
 });
 
@@ -687,7 +749,7 @@ Deno.test("owner-row work visits grow linearly across one thousand rows", () => 
     return originalWeakMapGet.call(this, key);
   };
   try {
-    same(root.executePreparedNumericRows(
+    same(executeNumericRowCut(root,
       tokens,
       Uint32Array.from({ length: rowCount }, (_, row) => row),
       new Uint32Array(rowCount).fill(0),
@@ -697,7 +759,8 @@ Deno.test("owner-row work visits grow linearly across one thousand rows", () => 
   } finally {
     WeakMap.prototype.get = originalWeakMapGet;
   }
-  same(weakMapGets, rowCount, "each dirty input resolves its prepared record once");
+  same(weakMapGets, rowCount * 3,
+    "preflight, admitted recheck and execution each resolve one record per input");
   const visits = root.diagnostics().preparedNumericRowWorkVisits;
   same(visits, 6000, "dependency lease validation and capture share one slot pass");
   same(container.children[0].children[999].props.value, 1000, "last row projects correctly");
@@ -724,7 +787,7 @@ Deno.test("owner-row unused absent slots are accepted and v2 unary stays eligibl
     sources: [x, undefined],
     columns: [column, new NumericColumn(742, 1, new Float64Array([0]))],
   }));
-  same(root.executePreparedNumericRows(
+  same(executeNumericRowCut(root,
     [twoSlotRow], new Uint32Array([0]), new Uint32Array([0]), [4], 1,
   ), true, "unused missing layout slots do not reject an otherwise valid cut");
   same(container.children[0].props.value, 4, "unary v2 sink receives the captured value");
@@ -767,9 +830,9 @@ Deno.test("owner-row projector disposal cancels safely after the final projectio
   }));
   column.values[0] = 2;
   disposeDuringProjection = true;
-  same(root.executePreparedNumericRows(
+  throws(() => executeNumericRowCut(root,
     [token], new Uint32Array([0]), new Uint32Array([0]), [2], 1,
-  ), false, "disposal from the last projector cancels before cleared metadata is read");
+  ), "disposal from the last projector is terminal before host writes");
 });
 
 Deno.test("single-source v2 derived projectors use the captured cut vector", () => {
@@ -813,7 +876,7 @@ Deno.test("single-source v2 derived projectors use the captured cut vector", () 
   }));
   column.values[0] = 5;
   mutate = true;
-  root.executePreparedNumericRows(
+  executeNumericRowCut(root,
     [token], new Uint32Array([0]), new Uint32Array([0]), [5], 1,
   );
   same(container.children[0].props.derived, 50,

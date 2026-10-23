@@ -57,10 +57,10 @@ Deno.test("literal primitives, signed zero and ordinary materialization retain e
   equal(Object.getOwnPropertyDescriptor(props, "position-x")?.value, 2);
   const authoredChild = { type: "mesh", props: {} };
   const expandedChild = { type: "mesh", props: {} };
-  const authored = materializeOwnedScalarRuntimeElement(first, {
+  const authored = materializeOwnedScalarRuntimeElement({ kind: "frame", frame: first }, {
     tag: "group", key: "motion", owner: 42, children: authoredChild,
   }, counts);
-  const expanded = materializeOwnedScalarRuntimeElement(first, {
+  const expanded = materializeOwnedScalarRuntimeElement({ kind: "frame", frame: first }, {
     tag: "group", key: "motion", owner: 42, children: expandedChild,
   }, counts);
   equal(isRuntimeOwnedElement(authored), true);

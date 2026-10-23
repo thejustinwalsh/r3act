@@ -15,6 +15,7 @@ const layout = OwnedScalarLayout.create(["name", "rotation-y"],
 const region = (owner: number, value: number): OwnedScalarStoreRegion =>
   Object.freeze({ key: "motion", tag: "group", componentOwner: owner,
     retainedChildren: true as const,
+    kind: "frame" as const,
     frame: OwnedScalarFrame.create(layout, ["marker", value]) });
 const tree = (owners: readonly number[]) => jsx("main", {}, owners.map((owner) =>
   jsx("section", { key: `slot-${owner}` },

@@ -3,6 +3,7 @@ import {
   type NativeRootWorkHandle,
   type NativeStoreRootWork,
 } from "./native_root_work_queue.ts";
+import { publishImmediateNativeFrameStores } from "./component_state_runtime.ts";
 import type { RootWorkResolution, RootWorkSettled } from "./root_work_queue.ts";
 
 export type NativeFrameTime = Readonly<{ timeMs: number; deltaMs: number }>;
@@ -245,6 +246,25 @@ class NativeFrameLoopController implements NativeFrameLoop {
 
   #publish(active: ActiveFrame): void {
     const id = `native-frame:${++this.#nextWorkId}`;
+    if (this.#roots.length === 1) {
+      const { root, stores } = this.#roots[0];
+      let result: ReturnType<typeof publishImmediateNativeFrameStores>;
+      try { result = publishImmediateNativeFrameStores(root, stores); }
+      catch (error) {
+        if (this.#active !== active || this.#disposed) throw error;
+        active.resolution = Object.freeze({ status: "failed" as const,
+          transitionId: id, roots: Object.freeze([root.rootId]), error });
+        return;
+      }
+      if (result.kind === "committed") {
+        if (this.#active === active && !this.#disposed) {
+          active.resolution = Object.freeze({ status: "committed" as const,
+            transitionId: id, roots: Object.freeze([root.rootId]) });
+          active.acceptedVersions = Object.freeze([result.publicationVersion]);
+        }
+        return;
+      }
+    }
     const handle = this.#queue.enqueueStores({
       id,
       roots: this.#roots,

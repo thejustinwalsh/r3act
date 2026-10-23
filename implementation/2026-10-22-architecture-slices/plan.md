@@ -6,7 +6,7 @@ Implementation is authorized. This executes the [architecture proposal](../2026-
 
 ```mermaid
 flowchart TD
-  subgraph S1["1 · Cleanup and reduction — active"]
+  subgraph S1["1 · Cleanup and reduction — completed"]
     P1["P1 Publication API cleanup · Sol A"]
     V1["V1 Store execution cleanup · Sol B"]
     D1["D1 Static DAG preparation · Sol C"]
@@ -15,7 +15,7 @@ flowchart TD
     V1 --> G1
     D1 --> G1
   end
-  subgraph S2["2 · Realtime execution"]
+  subgraph S2["2 · Realtime execution — verified"]
     P2["P2 One publication core · Sol A"]
     V2["V2 Batch-owned accepted values · Sol B"]
     B2["B2 Mounted bindings and invalidation · Sol C"]
@@ -23,7 +23,7 @@ flowchart TD
     P2 --> G2
     V2 --> B2 --> G2
   end
-  subgraph S3["3 · Loader and derived DAG integration"]
+  subgraph S3["3 · Loader and derived DAG integration — active"]
     C3["C3 Compiler dependency relations · Sol C"]
     D3["D3 Shared demand and derived work · Sol B"]
     R3["R3 Independent readiness and reveal · Sol A"]
@@ -37,7 +37,7 @@ flowchart TD
   G2 --> D3
 ```
 
-P1/V1/D1 are dispatched to existing Sol-medium agents, with disjoint ownership. Successors are dependency-blocked, not concurrently editing their predecessors. Luna is idle during implementation. The primary owns public exports, installed examples, delivery scripts, current documentation, integration review and checkpoint updates. No implementation agent runs tests or benchmarks.
+P1/V1/D1 completed in `2f4c1c6f4`. P2/V2/B2 passed the integrated correctness/delivery boundary; realtime parity still fails (4.00× update median ratio). C3/D3/R3 are dispatched with disjoint ownership; R3 implementation follows their agreed interfaces. Luna is idle during implementation. The primary owns public exports, installed examples, delivery scripts, current documentation, integration review and checkpoint updates. No implementation agent runs tests or benchmarks.
 
 ## Slice 1: reduce execution machinery
 

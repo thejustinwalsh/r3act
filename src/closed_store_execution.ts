@@ -34,8 +34,10 @@ import {
   type OwnedClosedFrameInput,
 } from "./owned_closed_frame_input.ts";
 import {
-  OwnedScalarFrame, OwnedScalarLayout, materializeOwnedScalarPropEntries,
+  OwnedScalarFrame, OwnedScalarLayout, OwnedScalarBatchPage,
+  materializeOwnedScalarPropEntries, materializeOwnedScalarImagePropEntries,
   captureVerifiedOwnedScalarBatch,
+  type OwnedScalarImage,
   type OwnedScalarOutputCounts, type OwnedScalarValue,
 } from "./closed_scalar_output.ts";
 
@@ -328,7 +330,7 @@ export const materializeOwnedScalarStorePropDelta = (
   const region: StorePropDelta = Object.freeze({
     key: row.key,
     tag: row.tag,
-    props: materializeOwnedScalarPropEntries(row.frame, counts),
+    props: materializeOwnedScalarImagePropEntries(row, counts),
     ...(row.retainedChildren ? { retainedChildren: true as const,
       componentOwner: row.componentOwner } : {}),
   });
@@ -347,12 +349,11 @@ export type OwnedClosedStoreOutputRow = Readonly<{
   owner: number;
   lineage: readonly number[];
   cells: readonly OwnedClosedWorldInputCell[];
-  frame: OwnedScalarFrame;
   key: string;
   tag: string;
   retainedChildren?: true;
   componentOwner?: number;
-}>;
+}> & OwnedScalarImage;
 
 type NormalizedRequest = Readonly<{
   execution: NormalizedClosedStoreDataExecution;
@@ -545,14 +546,18 @@ const prepareOwnedFrameSchedule = (
   if (!readOwnedClosedProjectionSchedule(transaction, schedule))
     return { kind: "public-required" };
   const rows: OwnedClosedStoreOutputRow[] = [];
-  const makeRow = (ordinal: number, frame: OwnedScalarFrame): void => {
+  const makeRow = (ordinal: number, source: OwnedScalarFrame | OwnedScalarBatchPage,
+    rowIndex = -1): void => {
     const request = scheduled[ordinal].request;
     const worldRow = worldBatch.rows[ordinal];
     if (!worldRow || worldRow.owner !== request.owner ||
       worldRow.cells.length !== request.facts.stateSites.length)
       throw new TypeError("Invalid owned World row");
+    const image = rowIndex < 0
+      ? { kind: "frame" as const, frame: source as OwnedScalarFrame }
+      : { kind: "page" as const, page: source as OwnedScalarBatchPage, rowIndex };
     const row = intrinsicFreeze({ owner: request.owner, lineage: worldRow.lineage,
-      cells: worldRow.cells, frame,
+      cells: worldRow.cells, ...image,
       key: request.facts.retainedChildren ? request.hostKey : request.facts.host.host.key,
       tag: request.facts.host.host.tag,
       ...(request.facts.retainedChildren ? { retainedChildren: true as const,
@@ -567,10 +572,10 @@ const prepareOwnedFrameSchedule = (
     const facts = scheduled[group.rows[0]].request.facts;
     const proof = facts.batchProof;
     if (proof?.kind !== "verified" || !group.input) return null;
-    const frames = captureVerifiedOwnedScalarBatch(facts.layout, proof,
+    const page = captureVerifiedOwnedScalarBatch(facts.layout, proof,
       group.input, group.rows.length, counts);
     for (let index = 0; index < group.rows.length; index++)
-      makeRow(group.rows[index], frames[index]);
+      makeRow(group.rows[index], page, index);
   }
   let scratch: number[] | null = null;
   for (let ordinal = 0; ordinal < scheduled.length; ordinal++) {

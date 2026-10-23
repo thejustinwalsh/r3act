@@ -36,7 +36,10 @@ import {
   materializeOwnedScalarStorePropDelta,
   createOwnedScalarStorePropDelta,
 } from "./closed_store_execution.ts";
-import { type OwnedScalarFrame, type OwnedScalarOutputCounts } from "./closed_scalar_output.ts";
+import {
+  type OwnedScalarImage, type OwnedScalarOutputCounts,
+  ownedScalarImageLayout, ownedScalarImageLength, ownedScalarImageValueAt,
+} from "./closed_scalar_output.ts";
 import { materializeOwnedScalarRuntimeElement } from "./jsx_binding_runtime.ts";
 import type { ClosedHostTreeNode } from "./closed_host_tree.ts";
 import type { ClosedHostOutputValue } from "./closed_host_value.ts";
@@ -316,6 +319,12 @@ export class UnsupportedGroupOpaqueFreshnessError extends Error {
 }
 
 const rootHostPublicationDomain = Symbol("native.root.host-publication-domain");
+const rootImmediateFramePublication = Symbol("native.root.immediate-frame-publication");
+
+export const publishImmediateNativeFrameStores = (
+  root: ComponentStateRoot<any, any>, selected: readonly AnyAsyncStore[],
+): { kind: "committed"; publicationVersion: number } | { kind: "defer" } =>
+  root[rootImmediateFramePublication](selected);
 
 export const isNativeRootHostPublicationBusy = (
   root: ComponentStateRoot<any, any>,
@@ -540,7 +549,7 @@ type ComponentOutput =
   | Readonly<{ kind: "ordinary"; authored: RuntimeNode;
     expanded: RuntimeNode; shape?: ClosedStoreOutputShape;
     scalarPlan?: import("./vdom_snapshot_runtime.ts").MountedScalarStorePlan }>
-  | Readonly<{ kind: "scalar"; frame: OwnedScalarFrame;
+  | Readonly<{ kind: "scalar"; image: OwnedScalarImage;
     authoredTemplate: ScalarOutputTemplate;
     expandedTemplate: ScalarOutputTemplate;
     expandedValid: boolean; shape?: ClosedStoreOutputShape;
@@ -555,7 +564,7 @@ const cacheOutputView = (cache: ComponentCache, expanded: boolean,
   const output = cache.output;
   if (output.kind === "ordinary") return expanded ? output.expanded : output.authored;
   if (expanded && !output.expandedValid) return null;
-  return materializeOwnedScalarRuntimeElement(output.frame,
+  return materializeOwnedScalarRuntimeElement(output.image,
     expanded ? output.expandedTemplate : output.authoredTemplate, counts);
 };
 const invalidatedOutput = (output: ComponentOutput): ComponentOutput =>
@@ -632,6 +641,7 @@ type ClosedStoreOutputCut = {
   readonly inputCells: readonly StateCellHandle[];
   readonly inputCellWrites: readonly RetainedCellWrite[];
   readonly producerCellCut: ClosedWorldCellCut | null;
+  readonly passiveOwned: boolean;
   readonly ordinaryScalar: boolean;
   readonly deferredValidation: boolean;
   useExternalCellCut(cut: ClosedWorldCellCut): void;
@@ -653,6 +663,7 @@ type CandidateLifecycleSpec<H, Parent> = {
   transitions: readonly string[];
   pendingResources: readonly AsyncResource<any>[];
   blocked: boolean;
+  allowNativeCellCut?: boolean;
   permitPendingDirectIntent?: () => boolean;
   permitHeldFullCandidate?: () => boolean;
   admissionCurrent?(): boolean;
@@ -2476,6 +2487,112 @@ export class ComponentStateRoot<H, Parent = H> {
     return this.#prepareClosedStoreCandidate(selected, false, publicationLease, true);
   }
 
+  /** Publish an eligible ordinary one-root frame through the candidate receipt. */
+  [rootImmediateFramePublication](
+    selected: readonly AnyAsyncStore[],
+  ): { kind: "committed"; publicationVersion: number } | { kind: "defer" } {
+    this.#assertActive();
+    if (!this.#canPrepareImmediateFrameStores(selected)) return { kind: "defer" };
+    const release = this.holdTransactionPublications({ resources: [], stores: selected });
+    const previousCounters = this.#activeCounters;
+    const frameCounters = !previousCounters && this.#profileCounter
+      ? new Map<string, number>() : undefined;
+    if (frameCounters) this.#activeCounters = frameCounters;
+    let candidate: NativeRootCandidate<H, Parent> | CandidateLifecycleCore | null = null;
+    let failed = false;
+    let primaryFailure: unknown;
+    try {
+      candidate = this.#prepareClosedInputCandidate([], selected, false,
+        () => true, release, [], new Set(), [], true, true, true);
+      if (!candidate) return { kind: "defer" };
+      if (!("commitAdmitted" in candidate) || !candidate.validate()) {
+        return { kind: "defer" };
+      }
+      candidate.commitAdmitted();
+      candidate.publish();
+      const publicationVersion = this.#publicationVersion;
+      this.#count("publication.frame-immediate.runs");
+      candidate.runEffects();
+      return { kind: "committed", publicationVersion };
+    } catch (error) {
+      failed = true;
+      primaryFailure = error;
+      throw error;
+    } finally {
+      const errors = collectCleanupErrors([
+        () => candidate?.discard(), release,
+        () => {
+          if (!frameCounters) return;
+          this.#activeCounters = previousCounters;
+          this.#profileCounter?.(Object.fromEntries(frameCounters));
+        },
+      ]);
+      if (failed) throwWithCleanup(primaryFailure, errors);
+      if (errors.length === 1) throw errors[0];
+      if (errors.length) throw new AggregateError(errors,
+        "Immediate frame cleanup failed");
+    }
+  }
+
+  #canPrepareImmediateFrameStores(selected: readonly AnyAsyncStore[]): boolean {
+    if (!selected.length || new Set(selected).size !== selected.length ||
+      this.#disposed || this.#disposeRequested || this.#terminalHostFailed ||
+      this.#codeInvalidated || this.#publicationBarrier ||
+      this.#scopedFlushActive || this.#pendingDirectIntent ||
+      this.#activeRootClaim || this.#publicationIntents.size > 0 ||
+      isHostPublicationDomainBusy(this.#hostPublicationDomain)) return false;
+    const selectedStores = new Set(selected);
+    const covered = new Set<AnyAsyncStore>();
+    let readers = 0;
+    for (const [id, membership] of this.#liveStoreReaders) {
+      if (![...membership].some((store) => selectedStores.has(store))) continue;
+      readers++;
+      const split = id.indexOf("\u0000");
+      const owner = Number(id.slice(0, split));
+      const cache = this.#componentCache.get(owner);
+      const metadata = typeof cache?.type === "function"
+        ? definedComponents.get(cache.type)?.metadata : undefined;
+      const program = metadata?.closedStoreHostProgram;
+      if (split <= 0 || !Number.isSafeInteger(owner) || !cache || !program ||
+        !metadata?.closedStoreExecution ||
+        (program.schemaVersion !== 5 && program.schemaVersion !== 6 &&
+          program.schemaVersion !== 7) ||
+        metadata.closedStoreNumericKernel || !this.#liveOwners.has(owner) ||
+        !componentCodeCurrentPrivate(cache.type) || cache.keyedRegion ||
+        cache.nativeBoundary || cache.propBoundSites.size > 0 ||
+        (cache.output.kind === "ordinary" &&
+          (!isRuntimeOwnedElement(cache.output.expanded) ||
+            !Object.isFrozen(cache.output.expanded.props))) ||
+        (cache.output.kind === "scalar" && !cache.output.expandedValid)) return false;
+      const inputs = closedStoreHostInputs(program);
+      if (!inputs.some((input) => `${owner}\u0000${input.storeUseSiteId}` === id)) {
+        return false;
+      }
+      for (const input of inputs) {
+        const descriptor = Object.getOwnPropertyDescriptor(cache.props, input.storeProp);
+        const store = descriptor && "value" in descriptor ? descriptor.value : undefined;
+        const inputMembership = this.#liveStoreReaders.get(
+          `${owner}\u0000${input.storeUseSiteId}`);
+        if ((typeof store !== "object" || store === null) ||
+          !selectedStores.has(store as AnyAsyncStore) ||
+          inputMembership?.size !== 1 ||
+          !inputMembership.has(store as AnyAsyncStore)) return false;
+        covered.add(store as AnyAsyncStore);
+      }
+      if (program.schemaVersion === 7 &&
+        (cache.ownEffects.size !== program.effectSites.length ||
+          program.effectSites.some((site) =>
+            !cache.ownEffects.has(effectKey(owner, site)) ||
+            !this.#liveEffectKeysByOwner.get(owner)?.has(effectKey(owner, site))))) {
+        return false;
+      }
+      if (program.schemaVersion !== 7 && cache.ownEffects.size !== 0) return false;
+      if (program.schemaVersion === 5 && cache.subtreeOwners.size !== 1) return false;
+    }
+    return readers > 0 && covered.size === selectedStores.size &&
+      !this.#resourceHoldWait(new Set(), undefined, { stores: selected });
+  }
+
   /** Prepare the selected closed resource consumers as one root publication. */
   prepareResources(
     resources: readonly AsyncResource<any>[], resourceLease?: () => void,
@@ -3283,6 +3400,7 @@ export class ComponentStateRoot<H, Parent = H> {
     selectedCells: readonly RetainedCellWrite[] = [],
     privatePublication = false,
     deferPrivateCells = false,
+    requirePassive = false,
   ): ClosedStoreOutputCut {
     if (new Set(selected).size !== selected.length) throw new SparseCandidateIneligible();
     const selectedStores = new Set(selected);
@@ -3301,7 +3419,7 @@ export class ComponentStateRoot<H, Parent = H> {
       membership: Set<AnyAsyncStore> };
     type Owner = { owner: OwnerId; cache: ComponentCache; inputs: readonly Input[];
       stateInputs: readonly RetainedCellWrite[]; next?: RuntimeElement;
-      nextResult?: RuntimeElement; frame?: OwnedScalarFrame;
+      nextResult?: RuntimeElement; image?: OwnedScalarImage;
       authoredTemplate?: ScalarOutputTemplate;
       expandedTemplate?: ScalarOutputTemplate;
       keyedOutput?: Readonly<{ parentOwner: OwnerId; parentCache: ComponentCache;
@@ -3773,7 +3891,8 @@ export class ComponentStateRoot<H, Parent = H> {
         throw new SparseCandidateIneligible();
       }
       if (prior.kind === "scalar") {
-        if (!prior.expandedValid || prior.frame.layout !== image.frame.layout ||
+        if (!prior.expandedValid || ownedScalarImageLayout(prior.image) !==
+          ownedScalarImageLayout(image) ||
           prior.authoredTemplate.key !== hostKey ||
           prior.expandedTemplate.key !== hostKey ||
           prior.authoredTemplate.tag !== image.tag ||
@@ -3782,15 +3901,16 @@ export class ComponentStateRoot<H, Parent = H> {
           prior.expandedTemplate.owner !== owner) {
           throw new SparseCandidateIneligible();
         }
-        for (let index = 0; index < image.frame.length; index++) {
-          outputChanged ||= !Object.is(prior.frame.valueAt(index),
-            image.frame.valueAt(index));
+        for (let index = 0; index < ownedScalarImageLength(image); index++) {
+          outputChanged ||= !Object.is(
+            ownedScalarImageValueAt(prior.image, index),
+            ownedScalarImageValueAt(image, index));
         }
       } else {
-        for (let index = 0; index < image.frame.length; index++) {
-          const name = image.frame.layout.nameAt(index);
+        for (let index = 0; index < ownedScalarImageLength(image); index++) {
+          const name = ownedScalarImageLayout(image).nameAt(index);
           outputChanged ||= !sameClosedHostOutput(image.tag, name,
-            previousProps![name].value, image.frame.valueAt(index));
+            previousProps![name].value, ownedScalarImageValueAt(image, index));
         }
       }
       if (program.schemaVersion === 7) {
@@ -3845,7 +3965,7 @@ export class ComponentStateRoot<H, Parent = H> {
         keyedRegion && keyedKey !== undefined
         ? Object.freeze({ parentOwner, parentCache, region: keyedRegion,
           key: keyedKey, value: materializeOwnedScalarRuntimeElement(
-            image.frame, expandedTemplate, keyedCounts) })
+            image, expandedTemplate, keyedCounts) })
         : undefined;
       if (keyedCounts) {
         this.#count("store.scalar-output.root-materializations",
@@ -3856,7 +3976,7 @@ export class ComponentStateRoot<H, Parent = H> {
       const next = nextShape(cache, program, owner, hostKey,
         row.boundRequest, row.inputs,
         row.dataExecution);
-      row.frame = image.frame;
+      row.image = image;
       row.authoredTemplate = authoredTemplate;
       row.expandedTemplate = expandedTemplate;
       row.keyedOutput = keyedOutput;
@@ -3864,7 +3984,10 @@ export class ComponentStateRoot<H, Parent = H> {
       row.regionIndex = regions.length;
       owners.set(owner, row);
       regions.push(Object.freeze({ key: image.key, tag: image.tag,
-        frame: image.frame, ...(image.retainedChildren ? {
+        ...(image.kind === "page"
+          ? { kind: "page" as const, page: image.page, rowIndex: image.rowIndex }
+          : { kind: "frame" as const, frame: image.frame }),
+        ...(image.retainedChildren ? {
           retainedChildren: true as const, componentOwner: image.componentOwner,
         } : {}) }));
     };
@@ -4029,14 +4152,14 @@ export class ComponentStateRoot<H, Parent = H> {
           seen.clear();
         } else {
           const scalarCounts: OwnedScalarOutputCounts | undefined = this.#activeCounters
-            ? { frames: 0, rootMaterializations: 0, propMaterializations: 0,
-              directCaptures: 0 }
+            ? { frames: 0, pages: 0, rootMaterializations: 0,
+              propMaterializations: 0 }
             : undefined;
           const batch = prepareOwnedClosedStoreOutputs(this.world, stores, ownedRequests,
             scalarCounts);
           if (scalarCounts) this.#count("store.scalar-output.frames", scalarCounts.frames);
-          if (scalarCounts?.directCaptures) this.#count(
-            "store.scalar-output.direct-captures", scalarCounts.directCaptures);
+          if (scalarCounts?.pages) this.#count(
+            "store.scalar-output.pages", scalarCounts.pages);
           if (scalarCounts?.batchCalls) this.#count("store.batch.calls", scalarCounts.batchCalls);
           if (scalarCounts?.batchRows) this.#count("store.batch.rows", scalarCounts.batchRows);
           if (batch === null) throw new SparseCandidateIneligible();
@@ -4083,6 +4206,7 @@ export class ComponentStateRoot<H, Parent = H> {
           }
         }
       }
+      if (requirePassive && !passive) throw new SparseCandidateIneligible();
       if (!passive) for (const [id, membership] of this.#liveStoreReaders) {
         const split = id.indexOf("\u0000");
         const owner = Number(id.slice(0, split));
@@ -4325,6 +4449,7 @@ export class ComponentStateRoot<H, Parent = H> {
         inputStores, inputResources,
         inputCells, inputCellWrites: stagedCellWrites,
         producerCellCut,
+        passiveOwned: !!passive && regions.length > 0,
         ordinaryScalar: !!passive && allOwnedScalar && regions.length > 0,
         deferredValidation: deferPrivateCells && !!passive,
         privatePreparedCurrent: () => current(true) &&
@@ -4334,12 +4459,12 @@ export class ComponentStateRoot<H, Parent = H> {
             throw new Error("Closed Store publication lacks owned World lineage");
           }
           const ancestors = new Set<OwnerId>();
-          for (const [owner, { next, nextResult, frame, authoredTemplate,
+          for (const [owner, { next, nextResult, image, authoredTemplate,
             expandedTemplate, keyedOutput, nextShape, scalarPlan }] of owners) {
             const cache = this.#componentCache.get(owner)!;
-            const output: ComponentOutput = frame && authoredTemplate &&
+            const output: ComponentOutput = image && authoredTemplate &&
               expandedTemplate
-              ? Object.freeze({ kind: "scalar" as const, frame,
+              ? Object.freeze({ kind: "scalar" as const, image,
                 authoredTemplate, expandedTemplate, expandedValid: true,
                 shape: nextShape, scalarPlan })
               : ordinaryOutput(nextResult ?? next ?? null, next ?? null,
@@ -4349,10 +4474,10 @@ export class ComponentStateRoot<H, Parent = H> {
             if (keyedOutput) {
               keyedOutput.region.outputsByKey.set(keyedOutput.key,
                 keyedOutput.value);
-            } else if (privatePublication && !frame) {
+        } else if (privatePublication && !image) {
               this.#refreshDirectKeyedRegionOutputForParent(owner,
                 publicationLineages!.get(owner)![1]);
-            } else if (!frame) this.#refreshDirectKeyedRegionOutput(owner);
+        } else if (!image) this.#refreshDirectKeyedRegionOutput(owner);
             const lineage = privatePublication
               ? publicationLineages!.get(owner)! : this.world.ownerLineage(owner);
             for (const ancestor of lineage.slice(1)) {
@@ -4432,6 +4557,7 @@ export class ComponentStateRoot<H, Parent = H> {
     acceptedCollectionFootprint?: readonly KeyedCollection<any>[],
     internalCellCapture?: false,
     groupContinuation?: boolean,
+    immediateOnly?: false,
   ): NativeRootCandidate<H, Parent> | null;
   #prepareClosedInputCandidate(
     cells: readonly StateCellHandle[], selected: readonly AnyAsyncStore[],
@@ -4441,7 +4567,8 @@ export class ComponentStateRoot<H, Parent = H> {
     acceptedResources: ReadonlySet<AsyncResource<any>>,
     acceptedCollectionFootprint: readonly KeyedCollection<any>[],
     internalCellCapture: true,
-    groupContinuation?: false,
+    groupContinuation?: boolean,
+    immediateOnly?: boolean,
   ): NativeRootCandidate<H, Parent> | CandidateLifecycleCore | null;
   #prepareClosedInputCandidate(
     cells: readonly StateCellHandle[], selected: readonly AnyAsyncStore[],
@@ -4453,6 +4580,7 @@ export class ComponentStateRoot<H, Parent = H> {
     acceptedCollectionFootprint: readonly KeyedCollection<any>[] = [],
     internalCellCapture = false,
     groupContinuation = false,
+    immediateOnly = false,
   ): NativeRootCandidate<H, Parent> | CandidateLifecycleCore | null {
     this.#assertActive();
     this.#assertNoPublicationBarrier("prepare closed inputs");
@@ -4488,9 +4616,10 @@ export class ComponentStateRoot<H, Parent = H> {
       if (selected.length || mixedWrites.length) {
         closed = this.#stageClosedStoreOutputs(selected, stores,
           requireOutputChange, new Set(), new Set(), resourceLease, mixedWrites,
-          true, true);
+          true, true, immediateOnly);
       }
-      ownedCellCut = closed?.ordinaryScalar === true &&
+      ownedCellCut = (closed?.ordinaryScalar === true ||
+        immediateOnly && closed?.passiveOwned === true) &&
         writes.every(({ handle }) => closed!.owners.has(handle.owner));
       if (ownedCellCut) {
         const producerCovered = !!closed!.producerCellCut && writes.every((write) =>
@@ -4526,7 +4655,8 @@ export class ComponentStateRoot<H, Parent = H> {
       const isOwnedRegion = (region: StorePropDelta |
         import("./vdom_snapshot_runtime.ts").OwnedScalarStoreRegion):
         region is import("./vdom_snapshot_runtime.ts").OwnedScalarStoreRegion =>
-        "frame" in region;
+        "kind" in region &&
+        (region.kind === "frame" || region.kind === "page");
       ownedStoreOnly = selected.length > 0 &&
         ownedCellCut && remainingWrites.length === 0 &&
         closed?.ordinaryScalar === true && closed.inputResources.size === 0 &&
@@ -4744,9 +4874,19 @@ export class ComponentStateRoot<H, Parent = H> {
     };
     const ordinaryClosed = closed;
     const ordinaryImmediate = internalCellCapture && selected.length > 0 &&
-      ownedCellCut && ordinaryClosed?.ordinaryScalar === true &&
+      ownedCellCut && (ordinaryClosed?.ordinaryScalar === true ||
+        immediateOnly && ordinaryClosed?.passiveOwned === true) &&
       ordinaryClosed.inputResources.size === 0 && acceptedCollections.length === 0 &&
       acceptedResources.size === 0 && acceptedCollectionFootprint.length === 0;
+    if (immediateOnly && !ordinaryImmediate) {
+      const errors = collectCleanupErrors([
+        () => program?.discard(), () => closed?.release(), () => stores.discard(),
+        () => this.#discardUncommittedStoreRoots(stores),
+      ]);
+      if (errors.length) throw new AggregateError(errors,
+        "Immediate frame candidate cleanup failed");
+      return null;
+    }
     return ordinaryImmediate
       ? this.#createCandidateLifecycle(lifecycleSpec, true)
       : this.#createCandidateLifecycle(lifecycleSpec);
@@ -5033,7 +5173,8 @@ export class ComponentStateRoot<H, Parent = H> {
       spec.validatePreparedPrivate();
     const commitHostInternal = (admitted: boolean) => {
       if (phase !== "prepared") throw new Error(`Candidate is ${phase}`);
-      this.#assertNoPublicationBarrier("commit another candidate");
+      this.#assertNoPublicationBarrier("commit another candidate",
+        spec.allowNativeCellCut === true);
       const groupContinuation = admitted && groupClaim !== null &&
         groupClaim !== undefined && groupWasPartial?.() === true &&
         spec.validateAdmittedContinuation !== undefined;
@@ -11277,9 +11418,10 @@ export class ComponentStateRoot<H, Parent = H> {
     if (errors.length) throw new AggregateError(errors, "Deferred lifetime cleanup failed");
   }
 
-  #assertNoPublicationBarrier(operation: string) {
+  #assertNoPublicationBarrier(operation: string, allowNativeCellCut = false) {
     if (
-      this.#nativeCellCutActive || this.#hostApplicationDepth > 0 ||
+      (this.#nativeCellCutActive && !allowNativeCellCut) ||
+      this.#hostApplicationDepth > 0 ||
       this.#directPublicationPending
     ) {
       throw new Error(
@@ -11802,25 +11944,17 @@ export class ComponentStateRoot<H, Parent = H> {
           view.columns[view.slot].values[view.row];
         this.#numericProgramUsedCount = index + 1;
       }
-      let declined = false;
-      let wrote = this.#commitHostMutation(() => {
-        const result = this.#vdom.executePreparedNumericRows(
-          this.#nativeRowTokens,
-          this.#nativeChangedRows,
-          this.#nativeChangedSlots,
-          this.#numericProgramCurrentValues,
-          count,
-        );
-        if (result === null) {
-          declined = true;
-          return false;
-        }
-        return result;
-      }, true);
-      if (declined) {
-        this.#abandonDirectHostMutation();
-        // A binding edit can stale a cached VDOM token. Recheck the entire
-        // World cut before rebuilding any row token; never recapture values.
+      const prepareCut = () => this.#vdom.prepareNumericRowCut(
+        this.#nativeRowTokens,
+        this.#nativeChangedRows,
+        this.#nativeChangedSlots,
+        this.#numericProgramCurrentValues,
+        count,
+      );
+      let cut = prepareCut();
+      if (!cut) {
+        // A binding edit can stale a cached token. Rebuild only after
+        // rechecking the captured World cut, without recapturing values.
         for (let index = 0; index < count; index++) {
           const handle = this.#nativeCellHandles[index]!;
           const cache = this.#componentCache.get(handle.owner);
@@ -11845,36 +11979,75 @@ export class ComponentStateRoot<H, Parent = H> {
           this.#nativeRowTokens[index] = token;
           this.#nativeRowPrograms.get(view.rowIdentity)!.token = token;
         }
-        declined = false;
-        wrote = this.#commitHostMutation(() => {
-          const result = this.#vdom.executePreparedNumericRows(
-            this.#nativeRowTokens,
-            this.#nativeChangedRows,
-            this.#nativeChangedSlots,
-            this.#numericProgramCurrentValues,
-            count,
-          );
-          if (result === null) {
-            declined = true;
-            return false;
-          }
-          return result;
-        }, true);
-        if (declined) {
-          this.#abandonDirectHostMutation();
+        cut = prepareCut();
+        if (!cut) return null;
+      }
+      const preparedCut = cut;
+      const handles = this.#nativeCellHandles.slice(0, count) as StateCellHandle[];
+      const versions = this.#nativeCellVersions.slice(0, count);
+      const sources = this.#numericProgramSources.slice(0, count);
+      const current = (afterHost = false) => handles.every((handle, index) => {
+        const version = this.world.versionForCell(handle);
+        const cache = this.#componentCache.get(handle.owner);
+        return version !== null &&
+          (afterHost ? version >= versions[index] : version === versions[index]) &&
+          this.world.scalarSourceForCell(handle) === sources[index] &&
+          cache !== undefined && this.#liveOwners.has(handle.owner) &&
+          this.#compiledOwnerSiteCertified(handle.owner, cache, handle.site) &&
+          componentCodeCurrentPrivate(cache.type);
+      });
+      const stores = new StoreRenderTransaction(this.#rootId);
+      let wrote = false;
+      const candidate = this.#createCandidateLifecycle({
+        baseVersion: this.#publicationVersion,
+        baseVDOMVersion: this.#vdom.version,
+        scope: { kind: "retained" }, stores, transitions: [],
+        pendingResources: [], blocked: false, allowNativeCellCut: true,
+        codeCurrent: () => current(true),
+        validatePrepared: () => current() &&
+          this.#vdom.isPreparedNumericRowCutCurrent(preparedCut),
+        validatePreparedPrivate: () => current() &&
+          this.#vdom.isPreparedNumericRowCutCurrent(preparedCut),
+        validatePostHost: () => current(true),
+        finalGroupCurrent: () => current(true),
+        commitHost: () => {
+          wrote = this.#vdom.executePreparedNumericRowCut(preparedCut);
+        },
+        commitHostAdmitted: () => {
+          wrote = this.#vdom.executePreparedNumericRowCut(preparedCut);
+        },
+        preparePublication: () => stores.preparePublicationAfterHost(),
+        publish: () => {
+          stores.publishAccepted();
+          this.#acknowledgeNativeCellCut(count);
+          this.#publicationVersion++;
+        },
+        installSubscriptions: () => [],
+        runEffects: () => [],
+        discard: () => {
+          this.#vdom.discardNumericRowCut(preparedCut);
+          stores.discard();
+        },
+        releaseArtifacts: () => {
+          this.#vdom.discardNumericRowCut(preparedCut);
+          handles.length = 0; versions.length = 0; sources.length = 0;
+        },
+        effectFailureMessage: "Numeric row publication callbacks failed",
+      }, true);
+      try {
+        if (!candidate.validate()) {
+          candidate.discard();
           return null;
         }
-      }
-      accepted = true;
-      this.#count("numeric.row-batches");
-      this.#count("numeric.row-count", this.#nativeRowUsedCount);
-      this.#count("numeric.row-cells", count);
-      try {
-        this.#acknowledgeNativeCellCut(count);
-        this.#publishDirectHostMutation();
-      } catch (error) {
-        if (this.#directPublicationPending) this.#failDirectHostMutation(error);
-        throw error;
+        candidate.commitAdmitted();
+        candidate.publish();
+        accepted = true;
+        this.#count("numeric.row-batches");
+        this.#count("numeric.row-count", this.#nativeRowUsedCount);
+        this.#count("numeric.row-cells", count);
+        candidate.runEffects();
+      } finally {
+        candidate.discard();
       }
       return wrote || count > 0;
     } finally {

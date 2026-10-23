@@ -1,9 +1,13 @@
 import { assert, assertEquals, assertStrictEquals, assertThrows } from "jsr:@std/assert";
 import { createAsyncStore, type AsyncStore } from "./async_store_runtime.ts";
-import { ComponentStateRoot, defineComponent, useStoreAt } from "./component_state_runtime.ts";
+import {
+  ComponentStateRoot, defineComponent, publishImmediateNativeFrameStores,
+  useStateAt, useStoreAt,
+} from "./component_state_runtime.ts";
 import { registerCompiledSemanticPlan } from "./compiled_semantic_plan.ts";
 import { createNativeFrameLoop } from "./native_frame_loop.ts";
 import { jsx } from "./jsx_binding_runtime.ts";
+import { storeRecord } from "./owned_store_record.ts";
 import { MemoryVDOMHost, type MemoryNode } from "./vdom_snapshot_runtime.ts";
 
 const revision = "native-frame-loop-test-v1";
@@ -38,6 +42,51 @@ function fixture(id: string, shared?: AsyncStore<number, number>, host = new Mem
     value: () => container.children[0].props["data-value"],
     dispose: () => root.dispose(),
   };
+}
+
+function ownedFixture(id: string, host = new MemoryVDOMHost(),
+  schemaVersion: 5 | 7 = 7, onProfile?: () => void) {
+  const sourceFile = `native-frame-loop/owned-${id}.tsx`;
+  registerCompiledSemanticPlan({ schema_version: 1, source_file: sourceFile,
+    module_revision: revision, owners: [], sources: [], sinks: [], operations: [],
+    graph: { coverage: "proven-sinks-only", source_to_sinks: {}, execution_order: [] } });
+  const store = createAsyncStore(storeRecord({ phase: 0 }));
+  const site = `${sourceFile}#component:Value`, useSite = `${site}#store:0`;
+  const stateSite = `${site}#state:0`;
+  const input = { storeUseSiteId: useSite, storeProp: "store",
+    paths: [["phase"]] } as const;
+  const hostProgram = schemaVersion === 5 ? {
+    schemaVersion: 5 as const, componentProgramId: site, moduleRevision: revision,
+    inputs: [input], host: { tag: "group", key: "value", children: [],
+      props: [["position-x", { kind: "input" as const, index: 0 }]] },
+  } as const : {
+    schemaVersion: 7 as const, componentProgramId: site, moduleRevision: revision,
+    inputs: [input], stateSites: [stateSite], effectSites: [], retainedChildProp: null,
+    host: { tag: "output", key: "value", child: null,
+      props: [["data-value", { kind: "input" as const, index: 0 }]] },
+  } as const;
+  const Value = defineComponent(site, (props: { store: typeof store }) => {
+    if (schemaVersion === 7) useStateAt(stateSite, 0);
+    const phase = useStoreAt(useSite, props.store).phase;
+    return schemaVersion === 5
+      ? jsx("group", { key: "value", "position-x": phase })
+      : jsx("output", { key: "value", "data-value": phase });
+  }, { propOnlySites: [], closedStoreHostProgram: hostProgram,
+    closedStoreExecution: { schemaVersion: 3, kind: "owned-data",
+      componentProgramId: site, moduleRevision: revision } });
+  const container = host.createContainer();
+  const counters: Record<string, number>[] = [];
+  const root = new ComponentStateRoot(host, container, {
+    rootId: id, scheduleCommit() {}, profileCounter: (values) => {
+      counters.push(values);
+      onProfile?.();
+    },
+  });
+  root.mount(jsx(Value, { key: "owner", store }));
+  return { root, host, container, store, counters,
+    value: () => container.children[0].props[schemaVersion === 5
+      ? "position-x" : "data-value"],
+    dispose: () => root.dispose() };
 }
 
 function fakeRaf() {
@@ -78,6 +127,85 @@ Deno.test("manual frame certifies an unchanged Store group and clamps elapsed ti
     assertThrows(() => loop.advance(109), RangeError);
     assertEquals(loop.running, false);
   } finally { loop.dispose(); f.dispose(); }
+});
+
+Deno.test("owned one-root frame uses the immediate receipt and preserves newer actions", () => {
+  const host = new MemoryVDOMHost();
+  const f = ownedFixture("owned-immediate", host);
+  const acceptedBefore = f.root.snapshot;
+  const priorText = JSON.stringify(acceptedBefore);
+  let writes = 0;
+  const set = host.setProp.bind(host);
+  host.setProp = (node, name, value, previous) => {
+    set(node, name, value, previous);
+    if (name === "data-value" && value === 1 && ++writes === 1) {
+      f.store.dispatch(() => storeRecord({ phase: 2 }));
+    }
+  };
+  let updates = 0;
+  const seen: unknown[] = [];
+  const loop = createNativeFrameLoop({ roots: [{ root: f.root, stores: [f.store] }],
+    update() {
+      if (++updates === 1) f.store.dispatch(() => storeRecord({ phase: 1 }));
+    },
+    draw() { seen.push(f.value()); },
+  });
+  try {
+    const before = f.root.publicationVersion;
+    assertEquals(loop.advance(1).status, "drawn");
+    assertEquals(f.root.publicationVersion, before + 1);
+    assertEquals(seen, [1]);
+    assertEquals(JSON.stringify(acceptedBefore), priorText);
+    assertEquals(f.counters.reduce((n, counters) => n +
+      (counters["publication.frame-immediate.runs"] ?? 0), 0), 1);
+    assertEquals(loop.advance(2).status, "drawn");
+    assertEquals(seen, [1, 2]);
+    assertEquals(updates, 2);
+  } finally { loop.dispose(); f.dispose(); }
+});
+
+Deno.test("compiled schema-5 leaf frame also bypasses deferred queue preparation", () => {
+  const f = ownedFixture("owned-leaf", new MemoryVDOMHost(), 5);
+  const loop = createNativeFrameLoop({ roots: [{ root: f.root, stores: [f.store] }],
+    update() { f.store.dispatch(() => storeRecord({ phase: 4 })); },
+    draw() { assertEquals(f.value(), 4); },
+  });
+  try {
+    assertEquals(loop.advance(1).status, "drawn");
+    assertEquals(f.counters.reduce((n, counters) => n +
+      (counters["publication.frame-immediate.runs"] ?? 0), 0), 1);
+  } finally { loop.dispose(); f.dispose(); }
+});
+
+Deno.test("immediate frame keeps a partial host failure ahead of diagnostic cleanup", () => {
+  let failWriter = false;
+  class Host extends MemoryVDOMHost {
+    override setProp(node: MemoryNode, name: string, value: unknown,
+      previous?: unknown) {
+      super.setProp(node, name, value, previous);
+      if (failWriter && name === "data-value") throw new Error("host write failed");
+    }
+  }
+  const f = ownedFixture("owned-failure", new Host(), 7,
+    () => { if (failWriter) throw new Error("counter failed"); });
+  try {
+    const before = f.root.publicationVersion;
+    f.store.dispatch(() => storeRecord({ phase: 1 }));
+    failWriter = true;
+    let thrown: unknown;
+    try { publishImmediateNativeFrameStores(f.root, [f.store]); }
+    catch (error) { thrown = error; }
+    assert(thrown instanceof AggregateError);
+    const messages = (error: unknown): string[] => error instanceof AggregateError
+      ? error.errors.flatMap(messages) : [String(error)];
+    assert(messages(thrown).some((message) => message.includes("host write failed")));
+    assert(messages(thrown).some((message) => message.includes("counter failed")));
+    assertEquals(f.store.getState().phase, 1);
+    assertEquals(f.root.publicationVersion, before);
+    assertEquals((f.root.snapshot[0] as { props: Record<string, unknown> })
+      .props["data-value"], 0);
+    assertThrows(() => f.root.flush(), Error, "host commit failure");
+  } finally { f.dispose(); }
 });
 
 Deno.test("RAF ownership ignores stopped callback after restart", () => {
@@ -122,14 +250,14 @@ Deno.test("two Store roots draw only after their grouped accepted cut", () => {
 Deno.test("busy host settles later and an intervening root commit forces reprepare", async () => {
   const host = new MemoryVDOMHost();
   const blocker = fixture("busy-blocker", undefined, host);
-  const f = fixture("busy-target", undefined, host);
+  const f = ownedFixture("busy-target", host);
   const held = blocker.root.prepareStores([blocker.store]);
   assert(held);
   held.commitHost();
   let updates = 0;
   const draws: unknown[] = [];
   const loop = createNativeFrameLoop({ roots: [{ root: f.root, stores: [f.store] }],
-    update() { updates++; f.store.dispatch(1); },
+    update() { updates++; f.store.dispatch(() => storeRecord({ phase: 1 })); },
     draw() { draws.push(f.value()); },
   });
   try {
@@ -142,11 +270,17 @@ Deno.test("busy host settles later and an intervening root commit forces reprepa
     await Promise.resolve();
     assertEquals(draws, [], "host wake drew outside advance");
     assertEquals(f.root.publicationVersion, before + 1);
-    f.store.dispatch(2);
+    assertEquals(f.counters.reduce((n, counters) => n +
+      (counters["publication.frame-immediate.runs"] ?? 0), 0), 0,
+      "busy shared host retains queue coordination while pending");
+    f.store.dispatch(() => storeRecord({ phase: 2 }));
     f.root.flush();
     assertEquals(loop.advance(2).status, "drawn");
     assertEquals(updates, 1, "pending frame reran update");
     assertEquals(draws, [2]);
+    assertEquals(f.counters.reduce((n, counters) => n +
+      (counters["publication.frame-immediate.runs"] ?? 0), 0), 1,
+      "reprepared free-host frame uses immediate publication");
   } finally { loop.dispose(); blocker.dispose(); f.dispose(); }
 });
 
