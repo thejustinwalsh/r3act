@@ -1,5 +1,14 @@
 # Final master plan: classify, measure, then choose
 
+## Declarative frame components and dirty execution — 23 October 2026
+
+The human further clarifies that frame logic belongs in components and users should express host changes through props, without parallel per-frame ref mutation. Existing dirty tracking should deduplicate affected mounted computations and schedule them before the loop draw; extra flags or a second dirty registry are not the goal. The execution target is one loop-owned tick: frame logic/state changes, dirty compiled-region evaluation, batched host writes, accepted-value publication and draw.
+
+A proposed authoring design is a declarative loop scope with a frame-clock read hook for derived props, plus a callback form for stateful frame logic using native state setters and explicit captured dependencies. Names such as FrameLoop/useFrame and their signatures are design examples, not implemented or published APIs. A component logically updates when its inputs change; compiler-proven scalar regions should execute without reconstructing JSX/VDOM or running general reconciliation. Conditional structure and opaque code retain the necessary component/reconciliation path. Effects and resources remain mount/unmount owned.
+
+Both forms use the same prop binding/state/publication model. This does not introduce a separate mutable animation state universe, bypass exact acceptance semantics, or promise that arbitrary JavaScript work becomes cheaper. Frame-clock and state dependencies should select retained computations directly, and ordinary frames should not pay inactive transition/fork coordination. Real RAF freshness/deadline and idiomatic direct-write comparisons remain required; the current synchronous CPU timing does not establish this capability.
+
+
 ## Direct RAF prop execution: confirmed product steer — 23 October 2026
 
 The human confirms that ordinary eligible realtime prop updates should execute direct host writes during RAF, without a React-style component scheduling round trip or a user-facing flushSync requirement. JSX establishes mounted structure, identities, dependency slots and writer bindings; ordinary frames capture changed inputs, evaluate retained kernels, batch direct host writes and publish accepted values. Structural reconciliation and async dependency work remain supported through the same state and publication authorities. Transition/fork/coherent-group coordination should be proportional to active requirements, with a cheap ordinary-frame route when those features are unused.
