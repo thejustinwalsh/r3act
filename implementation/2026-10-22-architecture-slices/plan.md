@@ -23,7 +23,7 @@ flowchart TD
     P2 --> G2
     V2 --> B2 --> G2
   end
-  subgraph S3["3 · Loader and derived DAG integration — active"]
+  subgraph S3["3 · Loader and derived DAG integration — verified; parity fails"]
     C3["C3 Compiler dependency relations · Sol C"]
     D3["D3 Shared demand and derived work · Sol B"]
     R3["R3 Independent readiness and reveal · Sol A"]
@@ -37,7 +37,7 @@ flowchart TD
   G2 --> D3
 ```
 
-P1/V1/D1 completed in `2f4c1c6f4`. P2/V2/B2 passed the integrated correctness/delivery boundary; realtime parity still fails (4.00× update median ratio). C3/D3/R3 are dispatched with disjoint ownership; R3 implementation follows their agreed interfaces. Luna is idle during implementation. The primary owns public exports, installed examples, delivery scripts, current documentation, integration review and checkpoint updates. No implementation agent runs tests or benchmarks.
+P1/V1/D1 completed in `2f4c1c6f4`. P2/V2/B2 passed the integrated correctness/delivery boundary; realtime parity still fails (4.00× update median ratio). C3/D3/R3 completed with disjoint ownership; their consolidated correctness/delivery boundary passes. The sole urgent-update comparison still loses5.50×median/5.17×p90. Luna is idle during implementation. The primary owns public exports, installed examples, delivery scripts, current documentation, integration review and checkpoint updates. No implementation agent runs tests or benchmarks.
 
 ## Slice 1: reduce execution machinery
 

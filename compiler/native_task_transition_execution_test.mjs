@@ -7,6 +7,8 @@ import {nativeModuleCompilerPlugin} from './vite_native_module.ts';
 import {createNativeRoot,createWorld,AsyncResource,NativeTaskTransitionQueue} from '../src/native_runtime_api.ts';
 import {MemoryVDOMHost} from '../src/vdom_snapshot_runtime.ts';
 import {jsx} from '../src/jsx_binding_runtime.ts';
+import {asyncTask as authoredAsyncTask} from '../src/async_task_plan.ts';
+import {invalidateCompiledSemanticPlan,isCompiledSemanticRevisionCurrent} from '../src/compiled_semantic_plan.ts';
 const directory=path.resolve('.');
 const api=pathToFileURL(path.join(directory,'src/native_runtime_api.ts')).href;
 const authored=`/** @jsxRuntime classic */
@@ -43,6 +45,18 @@ try{
  const emitted=await transformWithOxc(transformed.code,'.cache/native-task-transition.tsx',{lang:'tsx',jsx:{runtime:'classic',pragma:'jsx',pragmaFrag:'Fragment'}});
  await mkdir('.cache',{recursive:true});const file=path.join(directory,'.cache/native-task-transition.mjs');await writeFile(file,emitted.code);
  const app=await import(pathToFileURL(file).href+'?test='+Date.now());
+ const searchProvenance=app.tasks[0].compiled;
+ const panelProvenance=app.tasks[2].compiled;
+ assert.ok(searchProvenance && panelProvenance,'Actual emitted tasks lost compiler provenance');
+ assert.deepEqual(searchProvenance.controlInputs,['query']);
+ assert.deepEqual(searchProvenance.hardPrerequisites,[]);
+ assert.deepEqual(panelProvenance.controlInputs,[]);
+ assert.deepEqual(panelProvenance.hardPrerequisites,['catalog','search']);
+ assert.equal(searchProvenance.discovery,'candidate-local');
+ assert.equal(searchProvenance.moduleRevision,app.compiledNativeComponentPlan.module_revision);
+ assert.throws(()=>authoredAsyncTask('search',app.tasks[0].dependsOn,app.tasks[0].run,
+   {...searchProvenance,controlInputs:[]}),/provenance does not match/,
+   'A missing control input was accepted as compiler evidence');
  const world=createWorld();
  const initialSearch=new AsyncResource(Promise.resolve('initial'));
  const initialModel=new AsyncResource(Promise.resolve({search:'initial',catalog:'en'}));
@@ -69,5 +83,8 @@ try{
  assert.ok(handle.snapshot().reused.includes('catalog'));
  queue.dispose();for(const root of roots)root.dispose();
  assert.equal(app.query.diagnostics().roots,0);assert.equal(app.query.diagnostics().readers,0);assert.equal(app.query.diagnostics().listeners,0);
+ assert.equal(invalidateCompiledSemanticPlan(searchProvenance.sourceFile,searchProvenance.moduleRevision),true);
+ assert.equal(isCompiledSemanticRevisionCurrent(searchProvenance.revisionToken),false,
+   'Retired compiled task code retained a current revision token');
  console.log('PASS compiled native tasks: Rust-authored TSX/DAG edges, hidden-branch prewarming, shared equal cuts, live source restart, unaffected completed reuse, ignored late old output, grouped reveal, drafts/numeric bindings and cleanup.');
 }finally{queue.dispose();for(const root of roots)root.dispose();await plugin.closeBundle();}

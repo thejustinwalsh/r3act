@@ -535,7 +535,12 @@ struct NativeTaskPlan {
     id: String,
     site_id: String,
     depends_on: Vec<String>,
+    hard_prerequisites: Vec<String>,
+    control_inputs: Vec<String>,
+    discovery: &'static str,
     span: SourceSpan,
+    #[serde(skip)]
+    metadata_insertion: u32,
 }
 
 #[derive(Clone)]
@@ -547,6 +552,7 @@ struct NativeTaskEdit {
 
 struct NativeTaskCollector<'s, 'a> {
     source_file: &'s str,
+    module_revision: &'s str,
     helper_module: &'s str,
     source: &'s str,
     semantic: &'s Semantic<'a>,
@@ -2859,6 +2865,27 @@ impl<'a> NativeTaskCollector<'_, 'a> {
             ));
         }
 
+        for task in &mut self.tasks {
+            task.hard_prerequisites = task.depends_on.iter()
+                .filter(|dependency| !dependency.starts_with('$')).cloned().collect();
+            task.control_inputs = task.depends_on.iter()
+                .filter_map(|dependency| dependency.strip_prefix('$').map(str::to_owned))
+                .collect();
+            let provenance = serde_json::json!({
+                "sourceFile": self.source_file,
+                "moduleRevision": self.module_revision,
+                "siteId": &task.site_id,
+                "hardPrerequisites": &task.hard_prerequisites,
+                "controlInputs": &task.control_inputs,
+                "discovery": "candidate-local",
+            });
+            self.edits.push(NativeTaskEdit {
+                start: task.metadata_insertion,
+                end: task.metadata_insertion,
+                replacement: format!(", {provenance}"),
+            });
+        }
+
         self.edits.sort_by_key(|edit| edit.start);
         let mut transformed = String::with_capacity(self.source.len() + self.edits.len() * 16);
         let mut cursor = 0usize;
@@ -3026,7 +3053,7 @@ impl<'a> Visit<'a> for NativeTaskCollector<'_, 'a> {
             return;
         }
 
-        let parsed = (|| -> Result<(String, Vec<String>, NativeTaskEdit), String> {
+        let parsed = (|| -> Result<(String, Vec<String>, NativeTaskEdit, u32), String> {
             if node.arguments.len() != 2 && node.arguments.len() != 3 {
                 return Err("`asyncTask` expects an ID and callback, optionally preceded by a literal dependency array".to_owned());
             }
@@ -3141,11 +3168,11 @@ impl<'a> Visit<'a> for NativeTaskCollector<'_, 'a> {
                     replacement: format!("{json_dependencies}, "),
                 }
             };
-            Ok((id, dependencies, edit))
+            Ok((id, dependencies, edit, callback_span.end))
         })();
 
         match parsed {
-            Ok((id, dependencies, edit)) => {
+            Ok((id, dependencies, edit, metadata_insertion)) => {
                 let at = span(node.span.start, node.span.end);
                 if self.tasks.iter().any(|task| task.id == id) {
                     self.error_at(at, format!("duplicate task ID `{id}`"));
@@ -3156,7 +3183,11 @@ impl<'a> Visit<'a> for NativeTaskCollector<'_, 'a> {
                         id,
                         site_id,
                         depends_on: dependencies,
+                        hard_prerequisites: Vec::new(),
+                        control_inputs: Vec::new(),
+                        discovery: "candidate-local",
                         span: at,
+                        metadata_insertion,
                     });
                 }
             }
@@ -3344,6 +3375,7 @@ fn compile_native_module(request: NativeModuleRequest) -> NativeModuleResponse {
         let semantic = semantic_return.semantic;
         let mut collector = NativeTaskCollector {
             source_file: &request.path,
+            module_revision: &revision,
             helper_module: &request.helper_module,
             source: &request.source,
             semantic: &semantic,
@@ -8698,7 +8730,16 @@ export function Panel(props) {
         assert_eq!(plan.tasks.len(), 2);
         assert_eq!(plan.tasks[0].depends_on, vec!["$request"]);
         assert_eq!(plan.tasks[1].depends_on, vec!["$target", "load-content"]);
+        assert_eq!(plan.tasks[0].hard_prerequisites, Vec::<String>::new());
+        assert_eq!(plan.tasks[0].control_inputs, vec!["request"]);
+        assert_eq!(plan.tasks[1].hard_prerequisites, vec!["load-content"]);
+        assert_eq!(plan.tasks[1].control_inputs, vec!["target"]);
         assert_eq!(plan.task_order, vec![0, 1]);
+        assert!(response.code.contains(&format!(
+            "\"moduleRevision\":\"{}\"", plan.module_revision
+        )));
+        assert!(response.code.contains("\"hardPrerequisites\":[\"load-content\"]"));
+        assert!(response.code.contains("\"controlInputs\":[\"request\"]"));
         assert!(
             response
                 .code
@@ -8712,7 +8753,7 @@ export function Panel(props) {
         assert!(response.code.contains(
             "asyncTask(\"compose-view\", [\"$target\",\"load-content\"], async (input) => {"
         ));
-        assert_eq!(response.edits.len(), 2);
+        assert_eq!(response.edits.len(), 4);
         let mut applied = source.to_owned();
         let mut edits = response.edits.clone();
         edits.sort_by_key(|edit| edit.start);
@@ -8732,8 +8773,9 @@ export function Panel(props) {
         let source = include_str!("../../fixtures/native-module-three-args.ts");
         let response = compile("native-module-three-args.ts", source);
         assert!(response.error.is_none(), "{:?}", response.error);
-        assert_eq!(response.edits.len(), 1);
-        assert_eq!(response.edits[0].replacement, "[\"$source\"]");
+        assert_eq!(response.edits.len(), 2);
+        assert!(response.edits.iter().any(|edit|
+            edit.replacement == "[\"$source\"]"));
         assert!(response.code.contains("async (input: Map<string, unknown>) => {\n  // This body and comment remain byte-for-byte authored."));
         assert_eq!(
             response
@@ -8742,6 +8784,25 @@ export function Panel(props) {
                 .count(),
             1
         );
+    }
+
+    #[test]
+    fn metadata_insertion_uses_callback_span_before_trailing_trivia() {
+        for (label, suffix) in [
+            ("trailing-comma", ", /* retained comment */"),
+            ("no-comma", " /* retained comment */"),
+        ] {
+            let source = format!(
+                "import {{ asyncTask }} from \"@runtime/tasks\";\n\
+                 export const task = asyncTask(\"task\", values => values.get(\"$query\"){suffix});"
+            );
+            let response = compile(&format!("{label}.ts"), &source);
+            assert!(response.error.is_none(), "{label}: {:?}", response.error);
+            assert!(response.code.contains("values.get(\"$query\"), {"),
+                "{label}: {}", response.code);
+            assert!(response.code.contains("/* retained comment */"));
+            assert!(!response.code.contains("},, /*"), "{label}: {}", response.code);
+        }
     }
 
     #[test]

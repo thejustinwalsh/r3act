@@ -1,5 +1,11 @@
 import { AsyncResource } from "./async_resource_runtime.ts";
 import {
+  AsyncTaskDemandScope, runDemandUnshared,
+  type DemandCapture, type DemandDefinition, type DemandLease,
+} from "./async_task_demand.ts";
+import { isCompiledSemanticRevisionCurrent,
+  subscribeCompiledSemanticRevision } from "./compiled_semantic_plan.ts";
+import {
   type AsyncTaskExecution,
   type AsyncTaskReuse,
   executeAsyncTaskPlan,
@@ -14,11 +20,23 @@ import {
   type AuthoredAsyncTask,
 } from "./async_task_plan.ts";
 
+const taskExecutionDefinition = Symbol("native.task-execution.definition");
+
 export type NativeTaskExecutionOptions = {
   signal?: AbortSignal;
   maxConcurrency?: number;
   reuseCompleted?: AsyncTaskReuse;
+  /** Internal prior execution receipt for compiled same-definition reuse. */
+  reuseFrom?: Readonly<{
+    [taskExecutionDefinition]: PreparedNativeTaskDefinition<readonly AuthoredAsyncTask[]>;
+    snapshot(): NativeTaskExecutionSnapshot;
+  }>;
   onObserverError?: (error: unknown) => void;
+  demandScope?: AsyncTaskDemandScope;
+  demands?: ReadonlyMap<string, DemandDefinition | Readonly<{
+    definition: DemandDefinition;
+    captures: (inputs: ReadonlyMap<string, unknown>) => readonly DemandCapture[];
+  }>>;
 };
 
 export type NativeTaskExecutionSnapshot = Readonly<{
@@ -31,6 +49,7 @@ export type NativeTaskExecutionSnapshot = Readonly<{
 }>;
 
 export type NativeTaskExecution<Tasks extends readonly AuthoredAsyncTask[]> = {
+  readonly [taskExecutionDefinition]: PreparedNativeTaskDefinition<Tasks>;
   resource<Id extends AsyncTaskIds<Tasks>>(
     id: Id,
   ): AsyncResource<AsyncTaskOutput<Tasks, Id>>;
@@ -44,6 +63,12 @@ export type PreparedNativeTaskDefinition<Tasks extends readonly AuthoredAsyncTas
   tasks: Tasks;
   graph: PreparedAsyncTaskGraph;
 }>;
+
+/** A prepared compiler task remains valid only for its registered module plan. */
+export const isPreparedNativeTaskDefinitionCurrent = (
+  definition: PreparedNativeTaskDefinition<readonly AuthoredAsyncTask[]>,
+): boolean => definition.tasks.every((task) => !task.compiled ||
+  isCompiledSemanticRevisionCurrent(task.compiled.revisionToken));
 
 type Deferred<T> = {
   promise: Promise<T>;
@@ -64,6 +89,25 @@ const deferred = <T>(): Deferred<T> => {
 const freezeList = (values: readonly string[]): readonly string[] =>
   Object.freeze([...values]);
 
+const automaticCaptures = (task: { dependsOn: readonly string[] },
+  inputs: ReadonlyMap<string, unknown>): Readonly<{
+    captures: readonly DemandCapture[]; shareable: boolean;
+  }> => {
+    let shareable = true;
+    const captures = task.dependsOn.map((identity) => {
+      const value = inputs.get(identity);
+      const opaque = (value !== null && typeof value === "object") ||
+        typeof value === "function" || typeof value === "symbol";
+      if (opaque)
+        shareable = false;
+      const version = opaque ? "opaque" :
+        typeof value === "number" && Object.is(value, -0)
+        ? "number:-0" : `${typeof value}:${String(value)}`;
+      return Object.freeze({ identity, version, value });
+    });
+    return Object.freeze({ captures: Object.freeze(captures), shareable });
+  };
+
 /** Snapshot and validate task relations once for all input generations. */
 export const prepareNativeTaskDefinition = <
   const Tasks extends readonly AuthoredAsyncTask[],
@@ -75,12 +119,19 @@ export const prepareNativeTaskDefinition = <
       id: task.id,
       dependsOn: Object.freeze([...task.dependsOn]),
       run: task.run,
+      ...(task.compiled ? { compiled: Object.freeze({ ...task.compiled,
+        hardPrerequisites: Object.freeze([...task.compiled.hardPrerequisites]),
+        controlInputs: Object.freeze([...task.compiled.controlInputs]),
+      }) } : {}),
     })
   )) as unknown as Tasks;
-  return Object.freeze({
+  const definition = Object.freeze({
     tasks: taskSnapshot,
     graph: prepareAsyncTaskGraph(taskSnapshot),
   });
+  if (!isPreparedNativeTaskDefinitionCurrent(definition))
+    throw new Error("Compiled task module revision is stale");
+  return definition;
 };
 
 /** Start one input cut with stable task resources and candidate-owned results. */
@@ -92,6 +143,16 @@ export const createTaskExecutionFromDefinition = <
   options: NativeTaskExecutionOptions = {},
 ): NativeTaskExecution<Tasks> => {
   const { tasks: taskSnapshot, graph } = definition;
+  if (!isPreparedNativeTaskDefinitionCurrent(definition))
+    throw new Error("Compiled task module revision is stale");
+  const compiledReuse = !!options.reuseCompleted &&
+    taskSnapshot.some((task) => task.compiled);
+  if (compiledReuse && options.reuseFrom?.[taskExecutionDefinition] !== definition)
+    throw new Error("Compiled task output reuse requires prior code provenance");
+  const demandBindings = options.demands ? new Map([...options.demands].map(
+    ([id, binding]) => [id, "definition" in binding
+      ? Object.freeze({ definition: binding.definition, captures: binding.captures })
+      : binding] as const)) : undefined;
   const inputSnapshot = Object.freeze({ ...initialValues });
   const declaredExternalInputs = graph.externalInputs;
   const inputIds = Object.keys(inputSnapshot);
@@ -122,10 +183,12 @@ export const createTaskExecutionFromDefinition = <
     resources.set(task.id, new AsyncResource(output.promise));
   }
 
+  const priorSnapshot = compiledReuse ? options.reuseFrom!.snapshot() : undefined;
   const reuseSnapshot: AsyncTaskReuse | undefined = options.reuseCompleted
     ? {
-      values: new Map(options.reuseCompleted.values),
-      completed: Object.freeze([...options.reuseCompleted.completed]),
+      values: new Map(priorSnapshot?.completedValues ?? options.reuseCompleted.values),
+      completed: Object.freeze([...(priorSnapshot?.completed ??
+        options.reuseCompleted.completed)]),
       changedInputs: Object.freeze([...options.reuseCompleted.changedInputs]),
     }
     : undefined;
@@ -138,6 +201,12 @@ export const createTaskExecutionFromDefinition = <
   const completedValues = new Map<string, unknown>();
   const completed: string[] = [];
   const reused: string[] = [];
+  const demandOwners = new Map<string, object>();
+  const demandLeases: DemandLease<unknown>[] = [];
+  let unsubscribeRevision: (() => void) | undefined;
+  const releaseDemands = () => {
+    for (const lease of demandLeases.splice(0)) lease.release();
+  };
 
   const rejectOutstanding = (reason: unknown) => {
     for (const [id, output] of outputs) {
@@ -151,6 +220,9 @@ export const createTaskExecutionFromDefinition = <
     status = "aborted";
     error = reason;
     controller.abort(reason);
+    unsubscribeRevision?.();
+    unsubscribeRevision = undefined;
+    releaseDemands();
     rejectOutstanding(reason);
   };
 
@@ -161,6 +233,15 @@ export const createTaskExecutionFromDefinition = <
   else {externalSignal?.addEventListener("abort", onExternalAbort, {
       once: true,
     });}
+  if (status === "pending" && taskSnapshot.some((task) => task.compiled)) {
+    const sources = new Set(taskSnapshot.flatMap((task) =>
+      task.compiled ? [task.compiled.sourceFile] : []));
+    unsubscribeRevision = subscribeCompiledSemanticRevision((change) => {
+      if (sources.has(change.sourceFile) &&
+        !isPreparedNativeTaskDefinitionCurrent(definition))
+        cancel(new Error("Compiled task module revision is stale"));
+    });
+  }
 
   const completion = executeAsyncTaskPlan(
     taskSnapshot,
@@ -183,6 +264,10 @@ export const createTaskExecutionFromDefinition = <
         : {}),
       onTaskComplete: ({ taskId, value, reused: wasReused }) => {
         if (status !== "pending" || controller.signal.aborted) return;
+        if (!isPreparedNativeTaskDefinitionCurrent(definition)) {
+          cancel(new Error("Compiled task module revision is stale"));
+          return;
+        }
         const output = outputs.get(taskId);
         if (!output || resources.get(taskId)?.status.status !== "pending") {
           return;
@@ -191,6 +276,24 @@ export const createTaskExecutionFromDefinition = <
         completed.push(taskId);
         if (wasReused) reused.push(taskId);
         output.resolve(value);
+      },
+      runTask: (task, inputs, signal) => {
+        if (!isPreparedNativeTaskDefinitionCurrent(definition))
+          throw new Error("Compiled task module revision is stale");
+        const binding = demandBindings?.get(task.id);
+        if (!binding) return task.run(inputs, signal);
+        const demandDefinition = "definition" in binding ? binding.definition : binding;
+        const automatic = "definition" in binding ? null : automaticCaptures(task, inputs);
+        const captures = "definition" in binding
+          ? binding.captures(inputs) : automatic!.captures;
+        if (automatic && !automatic.shareable)
+          return runDemandUnshared(demandDefinition, captures, signal);
+        let owner = demandOwners.get(task.id);
+        if (!owner) demandOwners.set(task.id, owner = {});
+        const lease = options.demandScope?.acquire(demandDefinition, owner, captures);
+        if (!lease) return runDemandUnshared(demandDefinition, captures, signal);
+        demandLeases.push(lease);
+        return lease.result;
       },
     },
     prepared,
@@ -223,6 +326,9 @@ export const createTaskExecutionFromDefinition = <
     }
     throw failure;
   }).finally(() => {
+    unsubscribeRevision?.();
+    unsubscribeRevision = undefined;
+    releaseDemands();
     externalSignal?.removeEventListener("abort", onExternalAbort);
   });
   // Keep a rejection handled even if a consumer only observes individual
@@ -244,6 +350,9 @@ export const createTaskExecutionFromDefinition = <
       cancel(new Error("Native task execution disposed"));
     }
     isDisposed = true;
+    unsubscribeRevision?.();
+    unsubscribeRevision = undefined;
+    releaseDemands();
     resources.clear();
     outputs.clear();
     completedValues.clear();
@@ -252,6 +361,7 @@ export const createTaskExecutionFromDefinition = <
   };
 
   return {
+    [taskExecutionDefinition]: definition,
     resource<Id extends AsyncTaskIds<Tasks>>(
       id: Id,
     ): AsyncResource<AsyncTaskOutput<Tasks, Id>> {

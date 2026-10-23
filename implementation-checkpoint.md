@@ -1,5 +1,23 @@
 # Implementation checkpoint
 
+## Three architecture slices implemented; performance goals remain unmet — 22 October 2026
+
+Slice3 passes consolidated correctness/delivery:1,302Deno,108Rust,63actualcompiled fixtures including collectionGC, tooling/host/GC, fresh package/consumer checks, six-context installed equal-preload proof and owned Portless HMR. Initial build, route-lifetime and delivery harness failures remain preserved. Parent cancellation now releases pending work from already-committed independent children, matching exact Operation identity while preserving accepted views and external leases. [Results](implementation/2026-10-22-dependency-orchestration/results.md).
+
+One24.17s balanced minified-production urgent-update comparison loses: Native median1.00–1.10ms/p901.20–1.40 versus React0.20/0.20–0.30; median adjacent ratios5.50×/5.17×. Raw timestamps/counts, primary quantile/pair/source recomputation and complete cleanup pass. No repeat. This deterministic pending-loader interaction is separate from Slice2's dense realtime loss; no new dense, network, thermal, presentation or universal speed claim follows.
+
+Compiler task provenance, bounded explicit provider/pure demand, shared static definitions and optional independent root reveal are integrated through existing module/resource/Root authorities. Default coherent groups remain; whole-tree/cache guards remain; no arbitrary same-root merge, worker parallelism or visual atomicity is claimed. The three-slice implementation pass is delivered, but the full master-plan finish line/performance objective is not complete. Continue lifecycle/cold/retained-memory and bounded portability/conformance work; independent-device and human evidence limits remain explicit. No automatic compiler/container/helper tuning successor is selected by this timing loss.
+
+
+## Dependency orchestration implemented; combined boundary pending — 22 October 2026
+
+Slice3 source integrates same-revision compiled task provenance, explicit bounded provider/pure-demand leases, shared static task definitions and optional independent per-root reveal through the existing native queue. Default coherent multi-root transactions remain coherent. Whole-tree/cache candidates keep whole-root guards; no arbitrary same-root delta merge. Pending HMR revokes task interests, completed retry reuse requires the same existing prepared definition, and accepted histories remain per root. [Contracts](implementation/2026-10-22-dependency-orchestration/design.md).
+
+The public dependency-scoped route exercises profile/permissions/recommendations startup, profile-dependent project keys, shared navigation derivation, fast DOM/Three acceptance while recommendations remain pending, urgent Store updates and late cancellation. New compiled and runtime adversaries are authored; no changed-source workload has run yet. Primary source review corrected opaque-input coercion, mutable option/descriptor capture, pending HMR lifetime, compiled retry provenance, duplicate static preparation and compiler comment trivia before gate release.
+
+The fresh installed comparison uses equal explicit React preload knowledge and declarative R3F10.0.0-alpha.6 output. Deterministic deferred traces prove semantics, not network latency. One reviewed/frozen correctness/package/installed boundary and one balanced minified-production urgent accepted-observation comparison follow. Median+p90 primary, raw p95/max retained; no helper timing or favorable retries. Historical network parity and realtime parity loss remain unchanged. Cold/memory, quick OS smoke, independent-device and full product evidence remain open.
+
+
 ## Realtime slice verified; dependency orchestration active — 22 October 2026
 
 Slice2 passes the repaired consolidated boundary:1,284Deno,107Rust and62actualcompiled fixtures (unchanged passing phases carried forward by hash), package/consumer checks, six-context installed output/resource/snapshot/CSP proof and owned Portless HMR. Initial and repair failures remain preserved. Immutable batch pages, private one-shot numeric cuts and ordinary one-root frame publication use existing acceptance/lifetime authorities. [Results](implementation/2026-10-22-realtime-execution/results.md).

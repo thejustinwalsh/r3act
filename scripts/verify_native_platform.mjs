@@ -366,7 +366,8 @@ try {
     "compiled_realtime_store_progress_test",
     "compiled_compact_scalar_output_test", "compiled_owned_scalar_capture_test",
     "compiled_owned_frame_transaction_test", "compiled_store_batch_execution_test",
-    "compiled_native_frame_publication_test", "compiled_owned_store_proof_test"];
+    "compiled_native_frame_publication_test", "compiled_owned_store_proof_test",
+    "compiled_dependency_route_test"];
   for (const [index, fixture] of fixtures.entries()) {
     const name = `compiled-${String(index + 1).padStart(2, "0")}`;
     const before = await compilerHash();

@@ -5,9 +5,12 @@ import {
   type StoreSource,
 } from "./async_store_runtime.ts";
 import { type AuthoredAsyncTask } from "./async_task_plan.ts";
+import { subscribeCompiledSemanticRevision } from "./compiled_semantic_plan.ts";
 import {
   createTaskExecutionFromDefinition,
+  isPreparedNativeTaskDefinitionCurrent,
   type NativeTaskExecution,
+  type NativeTaskExecutionOptions,
   type PreparedNativeTaskDefinition,
   prepareNativeTaskDefinition,
 } from "./native_task_execution.ts";
@@ -24,6 +27,7 @@ import {
 } from "./root_work_queue.ts";
 
 type NativeRoot = ComponentStateRoot<any, any>;
+const taskTransitionOperation = Symbol("native.task-transition.operation");
 type InputRecord = Readonly<Record<string, unknown>>;
 type LiveInputRecord = Readonly<Record<string, StoreSource<unknown>>>;
 
@@ -39,6 +43,10 @@ export type NativeTaskTransitionOptions = {
   transitions?: readonly string[];
   finishTransitions?: boolean;
   maxConcurrency?: number;
+  demandScope?: NativeTaskExecutionOptions["demandScope"];
+  demands?: NativeTaskExecutionOptions["demands"];
+  /** The roots of this enqueue form one coherent publication by default. */
+  reveal?: "coherent" | "independent";
   key?: string;
   /** Declares generic task trees safe to prepare, discard, and repeat. */
   renderPreparation?: "repeatable";
@@ -112,9 +120,14 @@ type Operation<Tasks extends readonly AuthoredAsyncTask[]> = {
   capturing: boolean;
   disposed: boolean;
 };
+type CoherentTaskTransitionHandle<Tasks extends readonly AuthoredAsyncTask[]> =
+  NativeTaskTransitionHandle & Readonly<{
+    [taskTransitionOperation]: Operation<Tasks>;
+  }>;
 
 type OwnedExecution = {
   execution: NativeTaskExecution<any>;
+  operation: Operation<any>;
   roots: Map<string, NativeRoot>;
   unsubs: Map<string, () => void>;
 };
@@ -170,6 +183,8 @@ export class NativeTaskTransitionQueue {
   #ownsQueue: boolean;
   #operations = new Map<string, Operation<any>>();
   #keys = new Map<string, string>();
+  #independent = new Map<string, NativeTaskTransitionHandle>();
+  #independentKeys = new Map<string, string>();
   #ownedExecutions = new Map<NativeTaskExecution<any>, OwnedExecution>();
   #disposed = false;
 
@@ -192,6 +207,8 @@ export class NativeTaskTransitionQueue {
       options.renderPreparation !== "repeatable") {
       throw new Error("Task transition renderPreparation must be repeatable");
     }
+    if (options.reveal !== undefined && options.reveal !== "coherent" &&
+      options.reveal !== "independent") throw new Error("Invalid task reveal policy");
     for (const { root } of roots) {
       if (options.renderPreparation !== "repeatable" &&
         root.renderPreparation !== "repeatable") {
@@ -200,9 +217,23 @@ export class NativeTaskTransitionQueue {
         );
       }
     }
+    const definition = prepareNativeTaskDefinition(tasks);
+    const descriptors = Object.freeze(roots.map(({ root, buildTree }) =>
+      Object.freeze({ root, buildTree })));
+    if (options.reveal === "independent" && descriptors.length > 1)
+      return this.#enqueueIndependent(definition, descriptors, options);
+    return this.#enqueueCoherent(definition, descriptors, options);
+  }
+
+  #enqueueCoherent<const Tasks extends readonly AuthoredAsyncTask[]>(
+    definition: PreparedNativeTaskDefinition<Tasks>,
+    descriptors: NativeTaskTransitionRoots<Tasks>,
+    options: NativeTaskTransitionOptions,
+  ): CoherentTaskTransitionHandle<Tasks> {
     const publicId = options.id;
     if (
-      publicId !== undefined && (!publicId || this.#operations.has(publicId))
+      publicId !== undefined && (!publicId || this.#operations.has(publicId) ||
+        this.#independent.has(publicId))
     ) {
       throw new Error("Task transition IDs must be unique non-empty strings");
     }
@@ -211,17 +242,17 @@ export class NativeTaskTransitionQueue {
     const completion = new Promise<RootWorkResolution>((resolve) => {
       resolveCompletion = resolve;
     });
-    const definition = prepareNativeTaskDefinition(tasks);
     const taskSnapshot = definition.tasks;
-    const descriptors = Object.freeze(
-      roots.map(({ root, buildTree }) => Object.freeze({ root, buildTree })),
-    );
     const operation: Operation<Tasks> = {
       id,
       tasks: taskSnapshot,
       definition,
       options: {
         ...options,
+        demands: options.demands ? new Map([...options.demands].map(
+          ([id, binding]) => [id, "definition" in binding
+            ? Object.freeze({ definition: binding.definition, captures: binding.captures })
+            : binding] as const)) : undefined,
         inputs: freezeRecord(options.inputs ?? {}),
         liveInputs: Object.freeze({ ...(options.liveInputs ?? {}) }),
         transitions: Object.freeze([...(options.transitions ?? [])]),
@@ -242,8 +273,9 @@ export class NativeTaskTransitionQueue {
       capturing: false,
       disposed: false,
     };
-    const handle: NativeTaskTransitionHandle = {
+    const handle: CoherentTaskTransitionHandle<Tasks> = {
       id,
+      [taskTransitionOperation]: operation,
       get status() {
         return operation.status;
       },
@@ -255,8 +287,18 @@ export class NativeTaskTransitionQueue {
       cancel: (reason) => this.#cancel(operation, reason),
     };
     this.#operations.set(id, operation);
+    if (taskSnapshot.some((task) => task.compiled)) {
+      operation.rootDisposers.push(subscribeCompiledSemanticRevision((change) => {
+        if (operation.status !== "pending" || !operation.definition?.tasks.some((task) =>
+          task.compiled?.sourceFile === change.sourceFile)) return;
+        this.#cancel(operation, "Compiled task module revision changed");
+      }));
+    }
     if (options.key !== undefined) {
       const key = options.key;
+      const priorIndependent = this.#independentKeys.get(key);
+      if (priorIndependent)
+        this.#independent.get(priorIndependent)?.cancel("Replaced by explicit operation key");
       const prior = this.#keys.get(key);
       this.#keys.set(key, id);
       if (prior) {
@@ -301,6 +343,8 @@ export class NativeTaskTransitionQueue {
   dispose(): void {
     if (this.#disposed) return;
     this.#disposed = true;
+    for (const handle of [...this.#independent.values()])
+      handle.cancel("Task transition queue disposed");
     if ([...this.#operations.values()].some((operation) =>
       operation.status === "pending" &&
       this.#queue.isApplying(operation.id + ":generation:" + operation.generation)
@@ -309,6 +353,117 @@ export class NativeTaskTransitionQueue {
       return;
     }
     this.#finishDispose();
+  }
+
+  #enqueueIndependent<const Tasks extends readonly AuthoredAsyncTask[]>(
+    definition: PreparedNativeTaskDefinition<Tasks>,
+    descriptors: NativeTaskTransitionRoots<Tasks>,
+    options: NativeTaskTransitionOptions,
+  ): NativeTaskTransitionHandle {
+    const id = options.id ?? "native-task-op:" + (++nextOperationId);
+    if (!id || this.#operations.has(id) || this.#independent.has(id))
+      throw new Error("Task transition IDs must be unique non-empty strings");
+    const taskSnapshot = definition.tasks;
+    const childOptions: NativeTaskTransitionOptions = {
+      ...options,
+      inputs: freezeRecord(options.inputs ?? {}),
+      liveInputs: Object.freeze({ ...(options.liveInputs ?? {}) }),
+      transitions: Object.freeze([...(options.transitions ?? [])]),
+      demands: options.demands ? new Map([...options.demands].map(
+        ([taskId, binding]) => [taskId, "definition" in binding
+          ? Object.freeze({ definition: binding.definition, captures: binding.captures })
+          : binding] as const)) : undefined,
+    };
+    const rootIds = Object.freeze(descriptors.map(({ root }) => root.rootId));
+    const children: CoherentTaskTransitionHandle<Tasks>[] = [];
+    let resolveCompletion!: (value: RootWorkResolution) => void;
+    const completion = new Promise<RootWorkResolution>((resolve) => {
+      resolveCompletion = resolve;
+    });
+    let resolution: RootWorkResolution = Object.freeze({ status: "pending",
+      transitionId: id, roots: rootIds });
+    let generation = 0;
+    let finished = false;
+    const settle = (result: RootWorkResolution) => {
+      if (finished) return result;
+      finished = true;
+      resolution = result;
+      this.#independent.delete(id);
+      if (options.key !== undefined && this.#independentKeys.get(options.key) === id)
+        this.#independentKeys.delete(options.key);
+      try { options.onSettled?.(result); } catch { /* Terminal observer. */ }
+      resolveCompletion(result);
+      return result;
+    };
+    const handle: NativeTaskTransitionHandle = {
+      id,
+      get status() { return resolution.status; },
+      get resolution() { return resolution; },
+      completion,
+      snapshot: () => {
+        const snapshots = children.map((child) => child.snapshot());
+        return Object.freeze({ status: resolution.status, generation,
+          taskIds: Object.freeze(taskSnapshot.map((task) => task.id)), roots: rootIds,
+          started: Object.freeze([...new Set(snapshots.flatMap((item) => item.started))]),
+          completed: Object.freeze([...new Set(snapshots.flatMap((item) => item.completed))]),
+          reused: Object.freeze([...new Set(snapshots.flatMap((item) => item.reused))]),
+        });
+      },
+      cancel: (reason) => {
+        if (finished) return resolution;
+        this.#cancelIndependentChildren(children, reason ?? "Independent task cancelled");
+        return settle(resolutionFor(id, "cancelled", rootIds, reason));
+      },
+    };
+    this.#independent.set(id, handle);
+    if (options.key !== undefined) {
+      const priorCoherent = this.#keys.get(options.key);
+      if (priorCoherent) {
+        const previous = this.#operations.get(priorCoherent);
+        if (previous) this.#cancel(previous, "Replaced by explicit operation key");
+      }
+      const prior = this.#independentKeys.get(options.key);
+      this.#independentKeys.set(options.key, id);
+      if (prior) this.#independent.get(prior)?.cancel("Replaced by explicit operation key");
+    }
+    try {
+      for (const descriptor of descriptors) {
+        if (finished) break;
+        children.push(this.#enqueueCoherent(definition, Object.freeze([descriptor]), {
+          ...childOptions, id: `${id}:root:${descriptor.root.rootId}`,
+          key: undefined, reveal: "coherent", onSettled: undefined,
+        }));
+        generation++;
+      }
+    } catch (error) {
+      this.#cancelIndependentChildren(children, "Independent task setup failed");
+      settle(resolutionFor(id, "failed", rootIds, undefined, error));
+      throw error;
+    }
+    void Promise.all(children.map((child) => child.completion)).then((results) => {
+      if (finished) return;
+      const failure = results.find((item) => item.status === "failed") ??
+        results.find((item) => item.status === "stale") ??
+        results.find((item) => item.status === "cancelled");
+      const status = failure?.status === "failed" || failure?.status === "stale" ||
+          failure?.status === "cancelled" ? failure.status : "committed";
+      settle(resolutionFor(id, status, rootIds,
+        failure?.reason, failure?.error));
+    });
+    return handle;
+  }
+
+  #cancelIndependentChildren<Tasks extends readonly AuthoredAsyncTask[]>(
+    children: readonly CoherentTaskTransitionHandle<Tasks>[], reason: string,
+  ): void {
+    for (const child of children) child.cancel(reason);
+    for (const child of children) {
+      for (const owned of this.#ownedExecutions.values()) {
+        if (owned.operation === child[taskTransitionOperation] &&
+          owned.execution.snapshot().status === "pending")
+          owned.execution.cancel(reason);
+      }
+    }
   }
 
   #finishDispose(): void {
@@ -464,6 +619,9 @@ export class NativeTaskTransitionQueue {
             group.values,
             {
               maxConcurrency: operation.options.maxConcurrency,
+              demandScope: operation.options.demandScope,
+              demands: operation.options.demands,
+              reuseFrom: prior.execution,
               reuseCompleted: prior.completed.length
                 ? {
                   values: prior.completedValues,
@@ -477,7 +635,9 @@ export class NativeTaskTransitionQueue {
         group.execution ??= createTaskExecutionFromDefinition(
           operation.definition!,
           group.values,
-          { maxConcurrency: operation.options.maxConcurrency },
+          { maxConcurrency: operation.options.maxConcurrency,
+            demandScope: operation.options.demandScope,
+            demands: operation.options.demands },
         );
         if (operation.status !== "pending") {
           throw new TaskTransitionInterrupted();
@@ -486,6 +646,7 @@ export class NativeTaskTransitionQueue {
         this.#trackExecution(
           group.execution,
           group.roots.map(({ root }) => root),
+          operation,
         );
         if (operation.status !== "pending") {
           throw new TaskTransitionInterrupted();
@@ -509,6 +670,8 @@ export class NativeTaskTransitionQueue {
       }
 
       operation.execution = groups[0]?.execution;
+      if (!isPreparedNativeTaskDefinitionCurrent(operation.definition!))
+        throw new Error("Compiled task module revision is stale");
       const trees: { root: NativeRoot; tree: RuntimeNode }[] = [];
       for (const root of operation.roots) {
         trees.push({
@@ -536,6 +699,7 @@ export class NativeTaskTransitionQueue {
         validateWork: () =>
           operation.status === "pending" &&
           operation.generation === generation &&
+          isPreparedNativeTaskDefinitionCurrent(operation.definition!) &&
           operation.roots.every((root) =>
             root.live && root.transaction.validate()
           ),
@@ -547,6 +711,8 @@ export class NativeTaskTransitionQueue {
             operation.status !== "pending" ||
             operation.generation !== generation
           ) return "reject";
+          if (!isPreparedNativeTaskDefinitionCurrent(operation.definition!))
+            return "reject";
           this.#requestRefresh(operation);
           return "retry";
         },
@@ -962,16 +1128,20 @@ export class NativeTaskTransitionQueue {
   #trackExecution(
     execution: NativeTaskExecution<any>,
     roots: readonly NativeRoot[],
+    operation: Operation<any>,
   ): void {
     let owned = this.#ownedExecutions.get(execution);
     if (!owned) {
-      owned = { execution, roots: new Map(), unsubs: new Map() };
+      owned = { execution, operation,
+        roots: new Map(), unsubs: new Map() };
       this.#ownedExecutions.set(execution, owned);
       void execution.completion.then(
         () => this.#releaseExecution(execution),
         () => this.#releaseExecution(execution),
       );
     }
+    if (owned.operation !== operation)
+      throw new Error("Task execution cannot belong to two operations");
     for (const root of roots) {
       if (owned.roots.has(root.rootId)) continue;
       owned.roots.set(root.rootId, root);

@@ -610,7 +610,19 @@ export const nativeModuleCompilerPlugin = (
           return typeof candidate.id !== "string" ||
             typeof candidate.site_id !== "string" ||
             !Array.isArray(candidate.depends_on) ||
-            !candidate.depends_on.every((dependency) => typeof dependency === "string");
+            !candidate.depends_on.every((dependency) => typeof dependency === "string") ||
+            !Array.isArray(candidate.hard_prerequisites) ||
+            !candidate.hard_prerequisites.every((dependency) => typeof dependency === "string") ||
+            !Array.isArray(candidate.control_inputs) ||
+            !candidate.control_inputs.every((input) => typeof input === "string") ||
+            candidate.discovery !== "candidate-local" ||
+            JSON.stringify(candidate.depends_on.filter((dependency: string) =>
+              !dependency.startsWith("$")
+            )) !== JSON.stringify(candidate.hard_prerequisites) ||
+            JSON.stringify(candidate.depends_on.filter((dependency: string) =>
+              dependency.startsWith("$")
+            ).map((dependency: string) => dependency.slice(1))) !==
+              JSON.stringify(candidate.control_inputs);
         })
       ) {
         this.error(

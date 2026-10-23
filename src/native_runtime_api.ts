@@ -23,7 +23,7 @@ import { DOMVDOMHost, type VDOMHost } from "./vdom_snapshot_runtime.ts";
 import { type StoreSource } from "./async_store_runtime.ts";
 import { OwnerStateWorld } from "./owner_state_world.ts";
 import { type AsyncResource } from "./async_resource_runtime.ts";
-import { asyncTask as authoredAsyncTask } from "./async_task_plan.ts";
+import { asyncTask as authoredAsyncTask, type CompilerTaskMetadata } from "./async_task_plan.ts";
 import { type AsyncTaskSpec } from "./async_task_scheduler.ts";
 
 export {
@@ -70,6 +70,10 @@ export type { NativeRootCandidate } from "./component_state_runtime.ts";
 export type { NativeSuspenseProps } from "./component_state_runtime.ts";
 export { AsyncResource, AsyncResourceTable } from "./async_resource_runtime.ts";
 export type { AsyncResourceStatus } from "./async_resource_runtime.ts";
+export {
+  AsyncTaskDemandScope, defineProviderDemand, definePureDerivedDemand,
+} from "./async_task_demand.ts";
+export type { DemandCapture, DemandDefinition, DemandLease } from "./async_task_demand.ts";
 export { createKeyedCollection } from "./keyed_collection.ts";
 export type {
   KeyedCollection,
@@ -100,12 +104,15 @@ export const asyncTask: typeof authoredAsyncTask = ((
   id: string,
   dependenciesOrRun: readonly string[] | AsyncTaskSpec["run"],
   run?: AsyncTaskSpec["run"],
+  compilerMetadata?: CompilerTaskMetadata,
 ) => {
   if (typeof dependenciesOrRun === "function") {
     return compileRequired("asyncTask");
   }
   if (!run) throw new TypeError("asyncTask requires a callback");
-  return authoredAsyncTask(id, dependenciesOrRun, run);
+  return compilerMetadata
+    ? authoredAsyncTask(id, dependenciesOrRun, run, compilerMetadata)
+    : authoredAsyncTask(id, dependenciesOrRun, run);
 }) as typeof authoredAsyncTask;
 
 /** Authored hook spelling. Native modules must compile this call before execution. */

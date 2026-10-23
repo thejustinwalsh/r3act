@@ -32,6 +32,9 @@ export type AsyncTaskExecutionOptions = {
   onTaskComplete?: (event: AsyncTaskCompletionEvent) => void;
   /** Receives completion observer failures; reporter failures are ignored. */
   onObserverError?: (error: unknown, event: AsyncTaskCompletionEvent) => void;
+  /** Execute one admitted task through an explicit provider or derived demand. */
+  runTask?: (task: AsyncTaskSpec, inputs: ReadonlyMap<string, unknown>,
+    signal: AbortSignal) => unknown | PromiseLike<unknown>;
 };
 
 export type AsyncTaskCompletionEvent = {
@@ -347,7 +350,9 @@ export const executeAsyncTaskPlan = async (
       let output: unknown | Promise<unknown>;
       try {
         startedSink?.push(taskId);
-        output = task.run(taskInputs, controller.signal);
+        output = options.runTask
+          ? options.runTask(task, taskInputs, controller.signal)
+          : task.run(taskInputs, controller.signal);
       } catch (error) {
         running--;
         hasFailure = true;

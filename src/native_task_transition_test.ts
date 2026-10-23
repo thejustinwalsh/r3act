@@ -1,5 +1,9 @@
 import { assertEquals, assertThrows } from "jsr:@std/assert";
 import { asyncTask } from "./async_task_plan.ts";
+import { AsyncTaskDemandScope, defineProviderDemand } from "./async_task_demand.ts";
+import { createTaskExecution } from "./native_task_execution.ts";
+import { invalidateCompiledSemanticPlan,
+  registerCompiledSemanticPlan } from "./compiled_semantic_plan.ts";
 import { createAsyncStore } from "./async_store_runtime.ts";
 import {
   ComponentStateRoot,
@@ -103,6 +107,183 @@ Deno.test("task transition shares one execution across equal cuts and commits af
   queue.dispose();
   app.root.dispose();
   secondApp.root.dispose();
+});
+
+Deno.test("independent reveal publishes a ready root while an unrelated branch waits", async () => {
+  const readyRoot = harness("task-independent-ready");
+  const slowRoot = harness("task-independent-slow");
+  const slow = deferred<string>();
+  const tasks = [asyncTask("ready", [], () => "shell"),
+    asyncTask("slow", [], () => slow.promise)] as const;
+  const Ready = defineComponent("task-independent-ready-view", ({ execution }: any) =>
+    jsx("b", {}, String(useAt("ready", execution.resource("ready")))));
+  const Slow = defineComponent("task-independent-slow-view", ({ execution }: any) =>
+    jsx("b", {}, String(useAt("slow", execution.resource("slow")))));
+  const queue = new NativeTaskTransitionQueue();
+  try {
+    const operation = queue.enqueue(tasks, [{ root: readyRoot.root,
+      buildTree: (execution) => boundary(jsx(Ready, { execution })) },
+    { root: slowRoot.root,
+      buildTree: (execution) => boundary(jsx(Slow, { execution })) }],
+    { reveal: "independent" });
+    for (let turn = 0; turn < 4 && readyRoot.text() !== "shell"; turn++)
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    assertEquals(readyRoot.text(), "shell");
+    assertEquals(slowRoot.text(), "");
+    assertEquals(operation.status, "pending");
+    slow.resolve("detail");
+    assertEquals((await operation.completion).status, "committed");
+    assertEquals(slowRoot.text(), "detail");
+  } finally { queue.dispose(); readyRoot.root.dispose(); slowRoot.root.dispose(); }
+});
+
+Deno.test("independent reveal snapshots root descriptors before task callbacks", async () => {
+  const first = harness("task-descriptor-first");
+  const second = harness("task-descriptor-second");
+  const replacement = harness("task-descriptor-replacement");
+  const View = defineComponent("task-descriptor-view", ({ execution }: any) =>
+    jsx("b", {}, String(useAt("load", execution.resource("load")))));
+  const buildTree = (execution: any) => boundary(jsx(View, { execution }));
+  const roots = [{ root: first.root, buildTree }, { root: second.root, buildTree }];
+  const tasks = [asyncTask("load", [], () => {
+    roots.splice(1, 1, { root: replacement.root, buildTree });
+    return "ready";
+  })] as const;
+  const queue = new NativeTaskTransitionQueue();
+  try {
+    const operation = queue.enqueue(tasks, roots, { reveal: "independent" });
+    assertEquals((await operation.completion).status, "committed");
+    assertEquals([first.text(), second.text(), replacement.text()],
+      ["ready", "ready", ""]);
+  } finally {
+    queue.dispose(); first.root.dispose(); second.root.dispose();
+    replacement.root.dispose();
+  }
+});
+
+Deno.test("cancelling a partly revealed route revokes only its remaining demand interest", async () => {
+  const readyRoot = harness("task-partial-ready");
+  const slowRoot = harness("task-partial-slow");
+  const replacementRoot = harness("task-partial-reused-id");
+  const pending = deferred<string>();
+  let starts = 0, aborts = 0;
+  const provider = defineProviderDemand({}, "partial-v1", (_captures, signal) => {
+    starts++;
+    signal.addEventListener("abort", () => aborts++, { once: true });
+    return pending.promise;
+  });
+  const tasks = [asyncTask("fast", [], () => "accepted"),
+    asyncTask("slow", [], () => { throw new Error("opaque slow callback ran"); })] as const;
+  const demands = new Map([["slow", provider]]);
+  const scope = new AsyncTaskDemandScope();
+  const external = createTaskExecution(tasks, {}, { demandScope: scope, demands });
+  const Ready = defineComponent("task-partial-ready-view", ({ execution }: any) =>
+    jsx("b", {}, String(useAt("fast", execution.resource("fast")))));
+  const Slow = defineComponent("task-partial-slow-view", ({ execution }: any) =>
+    jsx("b", {}, String(useAt("slow", execution.resource("slow")))));
+  const queue = new NativeTaskTransitionQueue();
+  try {
+    const route = queue.enqueue(tasks, [{ root: readyRoot.root,
+      buildTree: (execution) => boundary(jsx(Ready, { execution })) },
+    { root: slowRoot.root,
+      buildTree: (execution) => boundary(jsx(Slow, { execution })) }],
+    { reveal: "independent", id: "task-partial-parent",
+      demandScope: scope, demands });
+    for (let turn = 0; turn < 4 && readyRoot.text() !== "accepted"; turn++)
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    assertEquals(readyRoot.text(), "accepted");
+    assertEquals(route.status, "pending");
+    assertEquals(starts, 1);
+    const accepted = JSON.stringify(readyRoot.root.snapshot);
+    const acceptedVersion = readyRoot.root.publicationVersion;
+    const reusedId = `task-partial-parent:root:${readyRoot.root.rootId}`;
+    const newer = queue.enqueue(tasks, [{ root: replacementRoot.root,
+      buildTree: (execution) => boundary(jsx(Slow, { execution })) }],
+    { id: reusedId, demandScope: scope, demands });
+    assertEquals(newer.status, "pending");
+    assertEquals(route.cancel("retire pending branch").status, "cancelled");
+    assertEquals(aborts, 0, "external operation retains provider demand");
+    assertEquals(newer.status, "pending", "old parent cannot cancel reused child ID");
+    assertEquals(JSON.stringify(readyRoot.root.snapshot), accepted);
+    assertEquals(readyRoot.root.publicationVersion, acceptedVersion);
+    assertEquals(readyRoot.text(), "accepted");
+    newer.cancel("new route closed");
+    assertEquals(aborts, 0, "external lease remains after newer route cancellation");
+    external.cancel("last interested owner");
+    assertEquals((await external.completion).status, "aborted");
+    assertEquals(aborts, 1);
+    assertEquals(scope.size, 0);
+    pending.resolve("late");
+  } finally {
+    queue.dispose(); external.dispose(); scope.dispose();
+    readyRoot.root.dispose(); slowRoot.root.dispose(); replacementRoot.root.dispose();
+  }
+});
+
+Deno.test("disposing a partly revealed queue releases pending branch work", async () => {
+  const readyRoot = harness("task-dispose-ready");
+  const slowRoot = harness("task-dispose-slow");
+  let aborted = false;
+  const provider = defineProviderDemand({}, "dispose-v1", (_captures, signal) => {
+    signal.addEventListener("abort", () => aborted = true, { once: true });
+    return new Promise<string>(() => {});
+  });
+  const scope = new AsyncTaskDemandScope();
+  const demands = new Map([["slow", provider]]);
+  const tasks = [asyncTask("fast", [], () => "visible"),
+    asyncTask("slow", [], () => { throw new Error("opaque slow callback ran"); })] as const;
+  const Ready = defineComponent("task-dispose-ready-view", ({ execution }: any) =>
+    jsx("b", {}, String(useAt("fast", execution.resource("fast")))));
+  const Slow = defineComponent("task-dispose-slow-view", ({ execution }: any) =>
+    jsx("b", {}, String(useAt("slow", execution.resource("slow")))));
+  const queue = new NativeTaskTransitionQueue();
+  try {
+    const route = queue.enqueue(tasks, [{ root: readyRoot.root,
+      buildTree: (execution) => boundary(jsx(Ready, { execution })) },
+    { root: slowRoot.root,
+      buildTree: (execution) => boundary(jsx(Slow, { execution })) }],
+    { reveal: "independent", demandScope: scope, demands });
+    for (let turn = 0; turn < 4 && readyRoot.text() !== "visible"; turn++)
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    assertEquals(readyRoot.text(), "visible");
+    const accepted = JSON.stringify(readyRoot.root.snapshot);
+    queue.dispose();
+    assertEquals(route.status, "cancelled");
+    assertEquals(aborted, true);
+    assertEquals(scope.size, 0);
+    assertEquals(JSON.stringify(readyRoot.root.snapshot), accepted);
+    assertEquals(readyRoot.text(), "visible");
+  } finally { queue.dispose(); scope.dispose();
+    readyRoot.root.dispose(); slowRoot.root.dispose(); }
+});
+
+Deno.test("stale compiler revision cannot publish a pending task transition", async () => {
+  const sourceFile = "native-task-transition/stale.tsx", moduleRevision = "stale-v1";
+  registerCompiledSemanticPlan({ schema_version: 1, source_file: sourceFile,
+    module_revision: moduleRevision, owners: [], sources: [], sinks: [],
+    operations: [{ site_id: `${sourceFile}#async-task:load`, owner_site_id: null,
+      kind: "async-task", provenance: "opaque", source_sites: [] }],
+    graph: { coverage: "proven-sinks-only", source_to_sinks: {}, execution_order: [] } });
+  const gate = deferred<string>();
+  const task = asyncTask("load", [], () => gate.promise, {
+    sourceFile, moduleRevision, siteId: `${sourceFile}#async-task:load`,
+    hardPrerequisites: [], controlInputs: [], discovery: "candidate-local",
+  });
+  const app = harness("task-transition-stale-revision");
+  const View = defineComponent("task-transition-stale-revision-view",
+    ({ execution }: any) => jsx("b", {}, String(useAt("load", execution.resource("load")))));
+  const queue = new NativeTaskTransitionQueue();
+  try {
+    const before = app.root.publicationVersion;
+    const operation = queue.enqueue([task] as const, [{ root: app.root,
+      buildTree: (execution) => boundary(jsx(View, { execution })) }]);
+    assertEquals(invalidateCompiledSemanticPlan(sourceFile, moduleRevision), true);
+    gate.resolve("obsolete");
+    const result = await operation.completion;
+    assertEquals(result.status === "committed", false);
+    assertEquals(app.root.publicationVersion, before);
+    assertEquals(app.text(), "");
+  } finally { queue.dispose(); app.root.dispose(); }
 });
 
 Deno.test("live task input restart ignores late non-cooperative results and reuses unaffected output", async () => {

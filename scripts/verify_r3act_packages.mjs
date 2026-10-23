@@ -262,6 +262,9 @@ export const invalidDialogChild = <RadixDialog {...dialogProps} children={validI
   record.checks.push("installed core/Three JSX, both React bridge directions and controlled Radix dialog props typecheck authored TSX");
 
   const examples = [
+    { directory: "dependency-scoped", field: "dependencyExampleSources",
+      files: ["app.tsx", "main.ts", "vite.config.ts", "tsconfig.json"],
+      check: "actual dependency-scoped DOM/Three route and Vite config typecheck against fresh public packages" },
     { directory: "forked-transitions", field: "forkedExampleSources",
       files: ["app.tsx", "scene.tsx", "main.ts", "vite.config.ts", "tsconfig.json"],
       check: "actual forked-transition DOM/Three example and Vite config typecheck against fresh installed public packages" },

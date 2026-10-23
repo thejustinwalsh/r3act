@@ -2,6 +2,24 @@ import {
   type AsyncTaskSpec,
   prepareAsyncTaskPlan,
 } from "./async_task_scheduler.ts";
+import {
+  captureCompiledSemanticRevision,
+  type CompiledSemanticRevisionToken,
+  inspectCompiledSemanticPlan,
+} from "./compiled_semantic_plan.ts";
+
+export type CompilerTaskMetadata = Readonly<{
+  sourceFile: string;
+  moduleRevision: string;
+  siteId: string;
+  hardPrerequisites: readonly string[];
+  controlInputs: readonly string[];
+  discovery: "candidate-local";
+}>;
+
+export type CompiledAsyncTaskProvenance = CompilerTaskMetadata & Readonly<{
+  revisionToken: CompiledSemanticRevisionToken;
+}>;
 
 export type AsyncTaskRun<Output = unknown> = (
   values: ReadonlyMap<string, unknown>,
@@ -17,6 +35,7 @@ export type AuthoredAsyncTask<
   id: Id;
   dependsOn: Dependencies;
   run: AsyncTaskRun<Output>;
+  compiled?: CompiledAsyncTaskProvenance;
 }>;
 
 export type AsyncTaskIds<Tasks extends readonly AuthoredAsyncTask[]> =
@@ -35,8 +54,8 @@ export type AsyncTaskOutput<
  * Authoring helper for task prerequisites. Prefix an external input ID with $
  * (for example, "$query") to declare a live input read instead of a task edge.
  * OXC infers task and external-input edges from literal `values.get("key")`
- * reads in the task callback. The two-argument form is intended for plans
- * passed through the compiler and compiled-plan binder.
+ * reads in the task callback. The compiler attaches same-revision metadata
+ * to emitted calls; authored calls remain conservative.
  */
 export function asyncTask<const Id extends string, Output>(
   id: Id,
@@ -51,10 +70,17 @@ export function asyncTask<
   dependencies: Dependencies,
   run: AsyncTaskRun<Output>,
 ): AuthoredAsyncTask<Id, Output, Dependencies>;
+export function asyncTask<const Id extends string, Output>(
+  id: Id,
+  dependencies: readonly string[],
+  run: AsyncTaskRun<Output>,
+  compilerMetadata: CompilerTaskMetadata,
+): AuthoredAsyncTask<Id, Output>;
 export function asyncTask(
   id: string,
   dependenciesOrRun: readonly string[] | AsyncTaskSpec["run"],
   run?: AsyncTaskSpec["run"],
+  compilerMetadata?: CompilerTaskMetadata,
 ): AsyncTaskSpec {
   if (typeof dependenciesOrRun === "function") {
     if (run !== undefined) {
@@ -64,6 +90,54 @@ export function asyncTask(
   }
   if (run === undefined) {
     throw new TypeError("asyncTask requires a callback");
+  }
+  if (compilerMetadata) {
+    const hardPrerequisites = dependenciesOrRun.filter((dependency) =>
+      !dependency.startsWith("$")
+    );
+    const controlInputs = dependenciesOrRun.filter((dependency) =>
+      dependency.startsWith("$")
+    ).map((dependency) => dependency.slice(1));
+    const same = (left: readonly string[], right: readonly string[]) =>
+      left.length === right.length && left.every((value, index) => value === right[index]);
+    if (typeof compilerMetadata.sourceFile !== "string" ||
+      !compilerMetadata.sourceFile ||
+      typeof compilerMetadata.moduleRevision !== "string" ||
+      !compilerMetadata.moduleRevision ||
+      !Array.isArray(compilerMetadata.hardPrerequisites) ||
+      !Array.isArray(compilerMetadata.controlInputs) ||
+      compilerMetadata.siteId !==
+        `${compilerMetadata.sourceFile}#async-task:${id}` ||
+      compilerMetadata.discovery !== "candidate-local" ||
+      !same(compilerMetadata.hardPrerequisites, hardPrerequisites) ||
+      !same(compilerMetadata.controlInputs, controlInputs)) {
+      throw new Error("Compiler task provenance does not match the emitted callback");
+    }
+    const revisionToken = captureCompiledSemanticRevision(
+      compilerMetadata.sourceFile, compilerMetadata.moduleRevision,
+    );
+    if (!revisionToken) {
+      throw new Error("Compiler task revision is not registered");
+    }
+    const operation = inspectCompiledSemanticPlan(compilerMetadata.sourceFile)
+      ?.operations.find((candidate) =>
+        candidate.kind === "async-task" &&
+        candidate.site_id === compilerMetadata.siteId
+      );
+    if (!operation || !same(operation.source_sites, dependenciesOrRun)) {
+      throw new Error("Compiler task edges do not match the registered revision");
+    }
+    return Object.freeze({
+      id,
+      dependsOn: Object.freeze([...dependenciesOrRun]),
+      run,
+      compiled: Object.freeze({
+        ...compilerMetadata,
+        hardPrerequisites: Object.freeze([...hardPrerequisites]),
+        controlInputs: Object.freeze([...controlInputs]),
+        revisionToken,
+      }),
+    });
   }
   return { id, dependsOn: dependenciesOrRun, run };
 };

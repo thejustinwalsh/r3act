@@ -20,7 +20,7 @@ const optionalFiles = [".github/workflows/native-package-portability.yml",
     "build-gate.mjs", "run-pairs.mjs", "README.md"].map((file) =>
     `implementation/2026-10-18-authored-lifecycle/workload/${file}`)];
 const selectedDirectories = ["examples/installed-scene", "examples/forked-transitions",
-  "examples/custom-host", "examples/arrow-components"];
+  "examples/custom-host", "examples/arrow-components", "examples/dependency-scoped"];
 const requiredDirectories = ["implementation/2026-10-18-native-platforms/benchmark",
   "implementation/2026-10-18-native-platforms/linux"];
 const contextFiles = ["AGENTS.md", "final-master-plan.md", "implementation-checkpoint.md",
