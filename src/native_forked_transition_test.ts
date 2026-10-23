@@ -1,5 +1,6 @@
 import { assertEquals } from "jsr:@std/assert";
 import { asyncTask } from "./async_task_plan.ts";
+import { AsyncTaskDemandScope, defineProviderDemand } from "./async_task_demand.ts";
 import { AsyncResource } from "./async_resource_runtime.ts";
 import { createAsyncStore } from "./async_store_runtime.ts";
 import {
@@ -31,6 +32,82 @@ const root = (rootId: string) => {
   });
   return { value, text: () => container.children.map(text).join("") };
 };
+
+Deno.test("shared provider demand preserves divergent root history through independent cancellation", async () => {
+  const left = root("shared-demand-history-left");
+  const right = root("shared-demand-history-right");
+  left.value.mount(jsx("output", {}, "initial-left"));
+  right.value.mount(jsx("output", {}, "initial-right"));
+  const query = createAsyncStore("old");
+  query.beginTransition("shared-demand-fork", [left.value.rootId, right.value.rootId]);
+  query.dispatch("new", { kind: "transition", transitionId: "shared-demand-fork" });
+  query.commitTransitionRoots("shared-demand-fork", [right.value.rootId], { finish: true });
+  const shared = deferred<string>(), oldResult = deferred<string>();
+  const newResult = deferred<string>(), background = deferred<string>();
+  const scope = new AsyncTaskDemandScope();
+  let sharedStarts = 0, backgroundStarts = 0, backgroundAborts = 0;
+  const sharedDemand = defineProviderDemand({}, "shared-history-v1", () => {
+    sharedStarts++;
+    return shared.promise;
+  });
+  const backgroundDemand = defineProviderDemand({}, "shared-history-v1", (_captures, signal) => {
+    backgroundStarts++;
+    signal.addEventListener("abort", () => backgroundAborts++, { once: true });
+    return background.promise;
+  });
+  const queried: string[] = [];
+  const tasks = [
+    asyncTask("shared", [], () => { throw new Error("explicit shared provider required"); }),
+    asyncTask("background", [], () => { throw new Error("explicit background provider required"); }),
+    asyncTask("result", ["$query", "shared"], (inputs) => {
+      const key = String(inputs.get("$query"));
+      queried.push(key);
+      return (key === "old" ? oldResult.promise : newResult.promise)
+        .then(value => `${String(inputs.get("shared"))}:${value}`);
+    }),
+  ] as const;
+  const View = defineComponent("shared-demand-history-view",
+    ({ execution }: { execution: NativeTaskExecution<typeof tasks> }) =>
+      jsx("output", { "data-query": useStoreAt("query", query) },
+        String(useAt("result", execution.resource("result")))));
+  const buildTree = (execution: NativeTaskExecution<typeof tasks>): RuntimeNode =>
+    jsx(Suspense, { __nativeBoundarySite: "shared-demand-history-boundary",
+      fallback: jsx("i", {}, "loading"), children: jsx(View, { execution }) });
+  const queue = new NativeTaskTransitionQueue();
+  const histories = () => [query.getStateForRoot(left.value.rootId),
+    query.getStateForRoot(right.value.rootId)];
+  try {
+    const operation = queue.enqueue(tasks, [
+      { root: left.value, buildTree }, { root: right.value, buildTree },
+    ], { reveal: "independent", liveInputs: { "$query": query }, demandScope: scope,
+      demands: new Map([["shared", sharedDemand], ["background", backgroundDemand]]) });
+    assertEquals(histories(), ["old", "new"]);
+    assertEquals([sharedStarts, backgroundStarts], [1, 1]);
+    shared.resolve("shared");
+    oldResult.resolve("old-result");
+    for (let turn = 0; turn < 8 && left.text() !== "shared:old-result"; turn++)
+      await new Promise(resolve => setTimeout(resolve, 0));
+    assertEquals(queried, ["old", "new"]);
+    assertEquals([left.text(), right.text()], ["shared:old-result", "initial-right"]);
+    assertEquals(histories(), ["old", "new"]);
+    assertEquals(backgroundAborts, 0);
+    const acceptedLeft = JSON.stringify(left.value.snapshot);
+    const acceptedVersions = [left.value.publicationVersion, right.value.publicationVersion];
+    operation.cancel("retire pending fork interests");
+    assertEquals((await operation.completion).status, "cancelled");
+    assertEquals(backgroundAborts, 1);
+    newResult.resolve("late-new-result");
+    background.resolve("late-background");
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assertEquals(JSON.stringify(left.value.snapshot), acceptedLeft);
+    assertEquals([left.value.publicationVersion, right.value.publicationVersion], acceptedVersions);
+    assertEquals([left.text(), right.text()], ["shared:old-result", "initial-right"]);
+    assertEquals(histories(), ["old", "new"]);
+    assertEquals(scope.size, 0);
+  } finally {
+    queue.dispose(); scope.dispose(); left.value.dispose(); right.value.dispose();
+  }
+});
 
 Deno.test("forked task inputs converge onto the already matching execution", async () => {
   const left = root("fork-converge-left");

@@ -52,6 +52,8 @@ Ownership is local to one Three host. A borrowed alias never makes a resource ow
 
 ### Copied prop inputs
 
+Host property capabilities explicitly report `mayThrow: true` and `mayReenter: true`, including scalar and copied values. These describe possible synchronous callbacks, not purity. Mounted Store bindings reuse static target geometry while retaining live writer checks around application.
+
 An ordinary JSX prop can reuse a supported Vector2/3/4, Quaternion, Euler, Color, Matrix3/4 or numeric tuple input after changing its components. Trigger the normal component or source invalidation to publish that change; mutating an untracked global alone schedules no work. The Three adapter captures independent values for supported built-in `copy`/`fromArray` paths and compares them with its accepted component history. An unchanged input reference with unchanged components skips the write. A distinct input reference still reaches the writer, preserving observable Three change callbacks. Host object identity and resource ownership stay with the adapter.
 
 This finite capture requires the installed built-in prototype/method and ordinary data-field layout. Accessors, unusual own fields, method/constructor overrides, custom property writers and other shapes retain the generic reference contract. A value equal to the host target itself preserves the existing no-op. Proxy reflection can execute caller code and does not certify purity. Descriptive `propertyCapabilities` alone does not opt a custom writer into capture.

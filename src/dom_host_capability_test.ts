@@ -62,6 +62,7 @@ const installMocks = () => {
 const describe = (host: DOMVDOMHost, node: MockElement, name: string, next: unknown) => {
   const capability = host.describePropertyWrite(node as unknown as Node, name, next);
   assert.equal(capability.mayThrow, true);
+  assert.equal(capability.mayReenter, true);
   assert.equal(capability.targetResource, null);
   assert.equal(capability.valueResource, null);
   return capability.valuePolicy;

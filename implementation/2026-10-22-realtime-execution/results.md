@@ -1,5 +1,7 @@
 # Integrated realtime execution boundary
 
+**23 October original-plan audit correction:** these passing results cover immutable pages, immediate/numeric candidate publication and existing warm mounted-plan integration. Original B2 mount-lifetime execution/revocation/affected-region repair and stable per-frame schedule/target discovery retirement remain partial. See the [requirement matrix](../2026-10-23-three-slice-audit/report.md); raw results below are unchanged.
+
 Immutable batch pages replace verified per-row frame adoption. Ordinary eligible one-root Store frames and prepared numeric rows now use the existing candidate lifecycle. Mounted VDOM images retain immutable page/frame references, with private one-shot numeric cuts. Deferred/opaque/multi-root work still uses queue coordination. Exact acknowledgement, newer actions, per-root/fork histories, old snapshots, live ownership checks, resources and partial-failure quarantine remain. No new version or publication registry. Pages still allocate, and one retained row can pin a whole page; cold/retained-memory qualification remains open.
 
 ## Correctness and delivery

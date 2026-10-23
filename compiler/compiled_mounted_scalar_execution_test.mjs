@@ -246,9 +246,14 @@ try {
     assert.equal(manyRoot.flush(), true);
     assert.equal(manyCounters["store.owned-data.verified-rows"], 257);
     assert.equal(manyCounters["owner.component-renders"] ?? 0, 0);
-    assert.equal(manyCounters["store.scalar-target.bucket-builds"], 2);
-    for (const name of ["member-visits", "owner-index-visits", "owner-lookups"])
-      assert.equal(manyCounters[`store.scalar-target.${name}`], 257);
+    assert.equal(manyCounters["store.scalar-target.bucket-builds"] ?? 0, 0);
+    for (const name of ["member-visits", "owner-index-visits"])
+      assert.equal(manyCounters[`store.scalar-target.${name}`] ?? 0, 0);
+    assert.equal(manyCounters["store.scalar-target.owner-lookups"] ?? 0, 0);
+    assert.equal(manyCounters["store.mounted-frame.mounted-targets"], 257);
+    assert.equal(manyCounters["store.mounted-frame.direct-cuts"], 1);
+    if (expectedWarm === 257)
+      assert.equal(manyCounters["store.mounted-execution.reused"], 1);
     assert.equal(manyCounters["store.mounted-scalar.warm-rows"] ?? 0, expectedWarm);
     assert.equal(manyCounters["store.mounted-scalar.cold-rows"] ?? 0, 257 - expectedWarm);
     assert.equal(manySlots()[0].children[0].props.name, "accepted-bound-frame");
@@ -282,9 +287,13 @@ try {
   assert.equal(manyRoot.flush(), true);
   assert.equal(manyCounters["store.owned-data.verified-rows"], 258);
   assert.equal(manyCounters["owner.component-renders"] ?? 0, 0);
-  assert.equal(manyCounters["store.scalar-target.bucket-builds"], 2);
-  for (const name of ["member-visits", "owner-index-visits", "owner-lookups"])
-    assert.equal(manyCounters[`store.scalar-target.${name}`], 258);
+  assert.equal(manyCounters["store.scalar-target.bucket-builds"] ?? 0, 0);
+  for (const name of ["member-visits", "owner-index-visits"])
+    assert.equal(manyCounters[`store.scalar-target.${name}`] ?? 0, 0);
+  assert.equal(manyCounters["store.scalar-target.owner-lookups"] ?? 0, 0);
+  assert.equal(manyCounters["store.mounted-frame.mounted-targets"], 258);
+  assert.equal(manyCounters["store.mounted-frame.direct-cuts"], 1);
+  assert.equal(manyCounters["store.mounted-execution.reused"], 1);
   assert.equal(manyCounters["store.mounted-scalar.warm-rows"], 258);
   assert.equal(manySlots()[0].children[0].props["position-x"], 15);
   app.clock.dispatch(() => storeRecord({ phase: 8 }));

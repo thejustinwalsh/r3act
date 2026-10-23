@@ -1,9 +1,11 @@
 import {
-  bindOwnedClosedStoreOutputRequest, createOwnedClosedFrameRequests,
+  bindOwnedClosedStoreOutputRequest,
   createOwnedScalarStorePropDelta, evaluateClosedStoreDataExecution,
   inspectClosedStoreDataExecution, isOwnedScalarStorePropDelta,
-  materializeOwnedScalarStorePropDelta, normalizeClosedStoreDataExecution,
-  prepareOwnedClosedStoreOutputs, type ClosedStoreDataExecution,
+  normalizeClosedStoreDataExecution, OwnedClosedFrameCut,
+  prepareMountedClosedStoreExecution, prepareOwnedClosedStoreOutputs,
+  type ClosedStoreDataExecution, type BoundClosedStoreOutputRequest,
+  type MountedClosedStoreExecution, type MountedClosedStoreExecutionCounts,
 } from "./closed_store_execution.ts";
 import { normalizeClosedStoreHostProgram } from "./closed_store_host_program.ts";
 import { createAsyncStore, StoreRenderTransaction } from "./async_store_runtime.ts";
@@ -30,11 +32,15 @@ const mixed = (): any => ({
     ["position-x", { kind: "input", index: 1 }],
   ] },
 });
-const schedule = (bound: NonNullable<ReturnType<typeof bindOwnedClosedStoreOutputRequest>>) => {
-  const requests = createOwnedClosedFrameRequests();
-  equal(requests.append(bound), true);
-  equal(requests.seal(), true);
-  return requests;
+const requestsFor = (bound: NonNullable<ReturnType<typeof bindOwnedClosedStoreOutputRequest>>) => {
+  return [bound];
+};
+const capture = (world: OwnerStateWorld, transaction: StoreRenderTransaction,
+  requests: readonly BoundClosedStoreOutputRequest[],
+  previous?: MountedClosedStoreExecution | null,
+  counts?: MountedClosedStoreExecutionCounts) => {
+  const plan = prepareMountedClosedStoreExecution(requests, previous, counts);
+  return plan ? prepareOwnedClosedStoreOutputs(world, transaction, plan) : null;
 };
 
 Deno.test("current data execution binds one host and preserves finite input order", () => {
@@ -69,24 +75,62 @@ Deno.test("bound frame requests reuse layout while old accepted output stays imm
   raw.hostKey = "changed-key";
   input.readerId = "changed-reader";
   const firstTransaction = new StoreRenderTransaction("bound-first");
-  const first = prepareOwnedClosedStoreOutputs(world, firstTransaction, schedule(bound));
+  const planCounts = { built: 0, reused: 0, repairedGroups: 0 };
+  const first = capture(world, firstTransaction, requestsFor(bound), null, planCounts);
   if (!first || first.kind !== "ready") throw new Error("first capture declined");
-  const old = materializeOwnedScalarStorePropDelta(first.rows[0]);
-  equal(old.key, "original-key");
-  equal(old.props[0][1], 7);
-  equal(Object.is(old.props[1][1], -0), true);
+  equal(planCounts.built, 1);
+  const oldImage = first.cut.imageAt(0);
+  equal(first.cut.keyAt(0), "original-key");
+  equal(first.cut.layoutAt(0).nameAt(0), "rotation-y");
+  equal(first.cut.valueAt(0, 0), 7);
+  equal(Object.is(first.cut.valueAt(0, 1), -0), true);
   firstTransaction.discard();
   dispatchOffset(4);
   store.dispatch(storeRecord({ phase: 5, epoch: 6 }));
   const secondTransaction = new StoreRenderTransaction("bound-second");
-  const second = prepareOwnedClosedStoreOutputs(world, secondTransaction, schedule(bound));
+  const second = capture(world, secondTransaction,
+    requestsFor(bound), first.cut.mounted, planCounts);
   if (!second || second.kind !== "ready") throw new Error("second capture declined");
-  const next = materializeOwnedScalarStorePropDelta(second.rows[0]);
-  equal(next.props[0][1], 14);
-  equal(next.props[1][1], 6);
-  equal(old.props[0][1], 7);
-  equal(second.rows[0].cells[0].version, first.rows[0].cells[0].version + 1);
-  equal(isOwnedScalarStorePropDelta(next), true);
+  equal(second.cut.mounted, first.cut.mounted);
+  equal(planCounts.reused, 1);
+  equal(planCounts.built, 1);
+  equal(second.cut.valueAt(0, 0), 14);
+  equal(second.cut.valueAt(0, 1), 6);
+  equal(first.cut.imageAt(0), oldImage);
+  equal(first.cut.valueAt(0, 0), 7);
+  equal(second.cut.cellsAt(0)[0].version, first.cut.cellsAt(0)[0].version + 1);
+  equal(OwnedClosedFrameCut.owns(second.cut), true);
+  secondTransaction.discard();
+});
+
+Deno.test("mounted execution repairs a changed bound source without changing old cut", () => {
+  const world = new OwnerStateWorld();
+  const owner = world.resolveOwner(null, "rebound-execution");
+  world.useState(owner, "offset", 3);
+  const firstStore = createAsyncStore(storeRecord({ phase: 2, epoch: 1 }));
+  const secondStore = createAsyncStore(storeRecord({ phase: 5, epoch: 8 }));
+  const execution = normalizeClosedStoreDataExecution(marker(),
+    normalizeClosedStoreHostProgram(mixed())!)!;
+  const bound = bindOwnedClosedStoreOutputRequest({ execution, owner,
+    hostKey: "rebound-key", inputs: [{ store: firstStore, readerId: "rebound-reader" }] })!;
+  const rebound = bindOwnedClosedStoreOutputRequest({ execution, owner,
+    hostKey: "rebound-key", inputs: [{ store: secondStore, readerId: "rebound-reader" }] })!;
+  const firstTransaction = new StoreRenderTransaction("rebound-root");
+  const first = capture(world, firstTransaction, requestsFor(bound));
+  if (!first || first.kind !== "ready") throw new Error("first capture declined");
+  const oldImage = first.cut.imageAt(0);
+  firstTransaction.discard();
+  const counts = { built: 0, reused: 0, repairedGroups: 0 };
+  const secondTransaction = new StoreRenderTransaction("rebound-root");
+  const second = capture(world, secondTransaction,
+    requestsFor(rebound), first.cut.mounted, counts);
+  if (!second || second.kind !== "ready") throw new Error("rebind declined");
+  equal(counts.built, 1);
+  equal(counts.reused, 0);
+  equal(second.cut.mounted === first.cut.mounted, false);
+  equal(second.cut.valueAt(0, 0), 13);
+  equal(first.cut.imageAt(0), oldImage);
+  equal(first.cut.valueAt(0, 0), 7);
   secondTransaction.discard();
 });
 
@@ -99,9 +143,8 @@ Deno.test("invalid owned binding declines before Store capture", () => {
     normalizeClosedStoreHostProgram(mixed())!)!;
   equal(bindOwnedClosedStoreOutputRequest({ execution, owner, hostKey: "",
     inputs: [{ store, readerId: "reader" }] }), null);
-  const unsealed = createOwnedClosedFrameRequests();
   const transaction = new StoreRenderTransaction("invalid");
-  equal(prepareOwnedClosedStoreOutputs(world, transaction, unsealed), null);
+  equal(prepareMountedClosedStoreExecution([]), null);
   equal(transaction.observations.size, 0);
   transaction.discard();
 });

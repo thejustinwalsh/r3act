@@ -2,8 +2,9 @@ import { OwnedScalarFrame, OwnedScalarLayout } from "./closed_scalar_output.ts";
 import { createAsyncStore, StoreRenderTransaction } from "./async_store_runtime.ts";
 import { OwnerStateWorld } from "./owner_state_world.ts";
 import {
-  bindOwnedClosedStoreOutputRequest, createOwnedClosedFrameRequests,
-  normalizeClosedStoreDataExecution, prepareOwnedClosedStoreOutputs,
+  bindOwnedClosedStoreOutputRequest,
+  normalizeClosedStoreDataExecution, prepareMountedClosedStoreExecution,
+  prepareOwnedClosedStoreOutputs,
 } from "./closed_store_execution.ts";
 import { normalizeClosedStoreHostProgram } from "./closed_store_host_program.ts";
 import { storeRecord } from "./owned_store_record.ts";
@@ -63,14 +64,21 @@ for (const count of [1, 32, 256, 1024]) {
       let plans: readonly (MountedScalarStorePlan | null)[] | undefined;
       for (let step = 1; step <= 3; step++) {
         const before = new Map(counters);
+        const previousPlans = plans;
         const candidate = prepare(root, owners, step * 10000, plans);
-        assert(candidate !== null && candidate.storeScalarPlans?.every(Boolean) === true,
+        const nextPlans = candidate?.storeScalarPlans;
+        assert(candidate !== null && nextPlans?.every(Boolean) === true,
           `compact step ${step} declined or lost successors`);
-        plans = candidate.storeScalarPlans;
+        if (previousPlans) {
+          assert(nextPlans.every((plan, index) =>
+            plan === previousPlans[index]),
+          `compact step ${step} rebuilt mounted target geometry`);
+        }
+        plans = nextPlans;
         for (const [name, expected] of [
-          ["store.scalar-target.bucket-builds", 1],
-          ["store.scalar-target.member-visits", count],
-          ["store.scalar-target.owner-index-visits", count],
+          ["store.scalar-target.bucket-builds", step === 1 ? 1 : 0],
+          ["store.scalar-target.member-visits", step === 1 ? count : 0],
+          ["store.scalar-target.owner-index-visits", step === 1 ? count : 0],
           ["store.scalar-target.owner-lookups", count],
           [step === 1 ? "store.mounted-scalar.cold-rows" :
             "store.mounted-scalar.warm-rows", count],
@@ -208,7 +216,7 @@ Deno.test("compact scalar host callbacks and partial failure read old accepted i
   } finally { root.dispose(); }
 });
 
-Deno.test("verified page rows preserve accepted VDOM snapshots and owner offsets", () => {
+Deno.test("mounted page cut preserves accepted VDOM snapshots and owner offsets", () => {
   const hostProgram = normalizeClosedStoreHostProgram({
     schemaVersion: 7, componentProgramId: "vdom-page", moduleRevision: "rev",
     inputs: [{ storeUseSiteId: "frame", storeProp: "clock",
@@ -241,20 +249,28 @@ Deno.test("verified page rows preserve accepted VDOM snapshots and owner offsets
   const setOffsets = owners.map((owner, index) =>
     world.useState(owner, "offset", index + 1)[1]);
   const store = createAsyncStore(storeRecord({ phase: 2, epoch: -0 }));
+  const requests = owners.map((owner) => {
+    const bound = bindOwnedClosedStoreOutputRequest({ execution, owner,
+      hostKey: "motion", inputs: [{ store, readerId: `reader-${owner}` }] });
+    assert(bound, "page row binding declined");
+    return bound;
+  });
+  const mounted = prepareMountedClosedStoreExecution(requests);
+  assert(mounted, "page mounted plan declined");
   const capture = () => {
-    const builder = createOwnedClosedFrameRequests();
-    for (const owner of owners) {
-      const bound = bindOwnedClosedStoreOutputRequest({ execution, owner,
-        hostKey: "motion", inputs: [{ store, readerId: `reader-${owner}` }] });
-      assert(bound && builder.append(bound), "page row binding declined");
-    }
-    assert(builder.seal(), "page row builder declined");
     const transaction = new StoreRenderTransaction("vdom-page");
-    const result = prepareOwnedClosedStoreOutputs(world, transaction, builder);
+    const result = prepareOwnedClosedStoreOutputs(world, transaction, mounted);
     transaction.discard();
-    assert(result?.kind === "ready" && result.rows.every((row) =>
-      row.kind === "page"), "verified execution did not return page rows");
-    return result.rows;
+    assert(result?.kind === "ready" && result.cut.rowCount === owners.length &&
+      result.cut.imageAt(0).kind === "page" &&
+      result.cut.imageAt(1).kind === "page",
+    "verified execution did not capture page images");
+    const first = result.cut.imageAt(0);
+    const second = result.cut.imageAt(1);
+    assert(first.kind === "page" && second.kind === "page" &&
+      first.page === second.page && first.rowIndex === 0 && second.rowIndex === 1,
+    "mounted page lost shared page identity or owner order");
+    return result.cut;
   };
   class ReadingHost extends MemoryVDOMHost {
     read?: () => string;
@@ -279,23 +295,23 @@ Deno.test("verified page rows preserve accepted VDOM snapshots and owner offsets
         key: "motion", "rotation-y": 0, "position-x": 0,
         children: jsx("mesh", { key: `child-${owner}`, x: owner }),
       }, owner)))));
-    const first = root.prepareScopedKeyedRetainedAndStoreDeltas(
-      [], [], capture(), []);
-    if (!first || !first.storeScalarPlans?.every(Boolean)) {
+    const first = root.prepareOwnedScalarStoreDeltas(capture());
+    if (!first || !first.mountedBindingAt(0) || !first.mountedBindingAt(1)) {
       throw new Error("page target preparation declined");
     }
-    const firstPlans = first.storeScalarPlans;
+    const firstPlans = [first.mountedBindingAt(0), first.mountedBindingAt(1)];
     accept(root, first);
     const saved = root.snapshot;
     const savedJSON = JSON.stringify(saved);
     host.read = () => JSON.stringify(root.snapshot);
     setOffsets[0](9);
     store.dispatch(storeRecord({ phase: 7, epoch: 8 }));
-    const second = root.prepareScopedKeyedRetainedAndStoreDeltas(
-      [], [], capture(), [], firstPlans);
-    if (!second || !second.storeScalarPlans?.every(Boolean)) {
+    const second = root.prepareOwnedScalarStoreDeltas(capture(), firstPlans);
+    if (!second || second.mountedBindingAt(0) !== firstPlans[0] ||
+      second.mountedBindingAt(1) !== firstPlans[1]) {
       throw new Error("warm page target declined");
     }
+    const secondPlans = [second.mountedBindingAt(0), second.mountedBindingAt(1)];
     accept(root, second);
     assert(host.observed.length === 2 &&
       host.observed.every((value) => value === savedJSON),
@@ -311,8 +327,7 @@ Deno.test("verified page rows preserve accepted VDOM snapshots and owner offsets
     const accepted = JSON.stringify(root.snapshot);
     setOffsets[0](10);
     setOffsets[1](11);
-    const third = root.prepareScopedKeyedRetainedAndStoreDeltas(
-      [], [], capture(), [], second.storeScalarPlans);
+    const third = root.prepareOwnedScalarStoreDeltas(capture(), secondPlans);
     assert(third, "third page candidate declined");
     host.writes = 0;
     host.failSecond = true;

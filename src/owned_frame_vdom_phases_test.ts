@@ -1,32 +1,35 @@
-import { OwnedScalarFrame, OwnedScalarLayout } from "./closed_scalar_output.ts";
 import { copyRuntimeElement, jsx } from "./jsx_binding_runtime.ts";
+import { mountedFrameFixture } from "./vdom_mounted_frame_fixture.ts";
 import {
   MemoryVDOMHost, VDOMSnapshotRoot,
   type MemoryNode, type MountedScalarStorePlan,
-  type OwnedScalarStoreRegion, type PreparedOwnedScalarStoreProgram,
+  type PreparedOwnedScalarStoreProgram,
 } from "./vdom_snapshot_runtime.ts";
 
 function assert(value: unknown, message: string): asserts value {
   if (!value) throw new Error(message);
 }
 
-const layout = OwnedScalarLayout.create(["name", "rotation-y"],
-  ["marker", undefined]);
-const region = (owner: number, value: number): OwnedScalarStoreRegion =>
-  Object.freeze({ key: "motion", tag: "group", componentOwner: owner,
-    retainedChildren: true as const,
-    kind: "frame" as const,
-    frame: OwnedScalarFrame.create(layout, ["marker", value]) });
 const tree = (owners: readonly number[]) => jsx("main", {}, owners.map((owner) =>
   jsx("section", { key: `slot-${owner}` },
     copyRuntimeElement("group", {
-      key: "motion", name: "marker", "rotation-y": 0,
+      key: "motion", "rotation-y": 0, "position-x": 0,
       children: jsx("mesh", { key: `child-${owner}`, x: owner }),
     }, owner))));
+const fixtures = new WeakMap<VDOMSnapshotRoot<MemoryNode>,
+  { owners: string; capture(value: number): import("./closed_store_execution.ts").OwnedClosedFrameCut }>();
 const prepare = (root: VDOMSnapshotRoot<MemoryNode>, owners: readonly number[],
-  value: number, plans?: readonly (MountedScalarStorePlan | null)[]) =>
-  root.prepareOwnedScalarStoreDeltas(owners.map((owner) =>
-    region(owner, value + owner)), plans);
+  value: number, plans?: readonly (MountedScalarStorePlan | null)[]) => {
+  const key = owners.join(",");
+  let fixture = fixtures.get(root);
+  if (!fixture || fixture.owners !== key) {
+    fixture = { owners: key, ...mountedFrameFixture(owners) };
+    fixtures.set(root, fixture);
+  }
+  return root.prepareOwnedScalarStoreDeltas(fixture.capture(value), plans);
+};
+const bindings = (program: PreparedOwnedScalarStoreProgram, count: number) =>
+  Array.from({ length: count }, (_, index) => program.mountedBindingAt(index));
 const accept = (root: VDOMSnapshotRoot<MemoryNode>,
   program: PreparedOwnedScalarStoreProgram) => {
   assert(program.ownedScalarPhases.preflightPrepared(), "pre-host audit failed");
@@ -45,7 +48,7 @@ Deno.test("owned scalar phases retain one admitted and one final full sweep", ()
     root.commit(tree([1, 2]));
     const cold = prepare(root, [2, 1], 10);
     assert(cold, "cold candidate declined");
-    assert(cold.storeScalarPlans?.every(Boolean), "cold successors unavailable");
+    assert(bindings(cold, 2).every(Boolean), "cold bindings unavailable");
     assert(Object.isFrozen(cold.ownedScalarPhases), "phase descriptor is mutable");
     assert(cold.ownedScalarPhases.readCounts().preparedSweeps === 0,
       "internal construction performed a redundant full sweep");
@@ -53,14 +56,15 @@ Deno.test("owned scalar phases retain one admitted and one final full sweep", ()
     const counts = cold.ownedScalarPhases.readCounts();
     assert(counts.preparedSweeps === 1 && counts.postHostSweeps === 1 &&
       Object.isFrozen(counts), "owned route did not perform exactly two full sweeps");
-    const plans = cold.storeScalarPlans;
+    const plans = bindings(cold, 2);
     const saved = root.snapshot;
     const savedText = JSON.stringify(saved);
     cold.discard();
-    assert(cold.storeScalarPlans === undefined, "discard retained successors");
+    assert(cold.mountedBindingAt(0) === null, "discard retained proposals");
     const warm = prepare(root, [2, 1], 20, plans);
     assert(warm, "warm candidate declined");
-    assert(warm.storeScalarPlans?.every(Boolean), "warm successors unavailable");
+    assert(bindings(warm, 2).every((binding, index) => binding === plans[index]),
+      "warm binding geometry changed");
     accept(root, warm);
     assert(container.children[0].children[0].children[0].props["rotation-y"] === 21 &&
       container.children[0].children[1].children[0].props["rotation-y"] === 22 &&
@@ -122,7 +126,7 @@ Deno.test("owned scalar writer replacement quarantines the partial frame", () =>
     const cold = prepare(root, [1, 2], 0);
     assert(cold, "cold frame declined");
     accept(root, cold);
-    const plans = cold.storeScalarPlans;
+    const plans = bindings(cold, 2);
     cold.discard();
     const before = JSON.stringify(root.snapshot);
     const warm = prepare(root, [1, 2], 10, plans);
@@ -138,7 +142,7 @@ Deno.test("owned scalar writer replacement quarantines the partial frame", () =>
     "second write ran or the partial frame advanced the accepted snapshot");
     root.failPublication();
     warm.discard();
-    assert(warm.storeScalarPlans === undefined, "failed frame retained successors");
+    assert(warm.mountedBindingAt(0) === null, "failed frame retained proposals");
   } finally { root.dispose(); }
 });
 
@@ -188,7 +192,7 @@ Deno.test("second writer error retains the accepted image and child identity", (
     const cold = prepare(root, [1, 2], 0);
     assert(cold, "cold frame declined");
     accept(root, cold);
-    const plans = cold.storeScalarPlans;
+    const plans = bindings(cold, 2);
     cold.discard();
     const accepted = root.snapshot;
     const acceptedText = JSON.stringify(accepted);

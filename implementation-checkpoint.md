@@ -1,5 +1,78 @@
 # Implementation checkpoint
 
+## Mounted frame execution wave verified; React parity remains open — 23 October 2026
+
+The [integrated Astra wave results](implementation/2026-10-23-mounted-frame-execution/results.md) close this mounted-region/cut migration and its sole performance episode. Root/Store/World/VDOM share mounted geometry and one authentic candidate cut through existing history/publication/lifetime authorities. Superseded owned transport is removed; actual prechange-to-final production accounting is1106 added/617 deleted lines across six files, excluding tests/evidence/generated output. The actual workbench accepted-child regression found during HMR was repaired with a structured-copy test; all failures and diagnostics remain preserved.
+
+Current correctness passes1312 Deno,63 actual compiled fixtures across explicitly carried/rerun prerequisites,Rust108, tooling/GC/package checks, fresh installed dense/game/CSP/delivery and uninstrumented owned Portless HMR. The1024-owner game balances2054 resource disposals and1027 effects, preserves old snapshots and produces real WebGL pixels. Primary independently verifies72 source hashes,24865 before/after observations, all timing endpoints and fixed bootstrap bounds; resources/source are restored and closed.
+
+The sole balanced20-context production comparison improves publication median/p90 from2.30/2.50ms to1.90/2.10ms; contemporary React is0.60/0.70ms. Through-draw improves4.70/5.00 to4.30/4.60ms versus React2.70/2.90. All four declared non-regression bounds pass; no favorable rerun. This is a measured narrow improvement, not React parity or physical-presentation evidence. Raw p95/max remain preserved. The speed claim for this wave is closed; no per-helper tuning/reversion or automatic backend successor is selected.
+
+Source remains uncommitted. The full product plan remains unachieved: realtime parity, cold/startup/retained-memory costs, broader dependency discovery and safe same-root merge, independent-device/OS conformance and human maintenance evidence remain open. Historic wins/losses retain their exact original scope.
+
+
+## Workbench accepted-child integration repair under verification — 23 October 2026
+
+The v4 correctness boundary passes1311 Deno tests,63 actual compiler fixtures (with explicit carried prerequisites),108 Rust and package/tooling/GC checks. V5 installed dense and1024-owner game proofs pass values/pixels/CSP/resources/old snapshots. The actual workbench then fails before HMR edit: [preserved failure](implementation/2026-10-23-mounted-frame-execution/proof-hmr-v1/attempt-receipt.json). A bounded transform-only diagnostic locates VDOM3929, a new invalid equality between raw parent child descriptions and accepted mounted children after host copy normalization. No performance run occurred.
+
+Primary and Sol source review approve the demonstrated repair: direct cuts bind actual live mounted child VNodes and use the private geometry child list for scalar successors, retaining cold/warm child linkage and every required live sweep. An exact structured-copy regression is added. [V6 freeze](implementation/2026-10-23-mounted-frame-execution/source-review-v6.json) releases affected correctness/package checks, fresh uninstrumented owned Portless HMR and fresh installed candidate proofs. Prior passing assets retain their source scope; they do not qualify changed production. Timing remains held until this successor passes. Diagnostic environment failures and the companion TypeScript-narrowing failure remain preserved. Full master-product limits remain unchanged.
+
+
+## Mounted frame execution repaired; consolidated successor running — 23 October 2026
+
+The integrated wave remains under verification. Preserved [v1](implementation/2026-10-23-mounted-frame-execution/verification/darwin-v1/receipt.json) and [v2](implementation/2026-10-23-mounted-frame-execution/verification/darwin-v2/receipt.json) failures exposed a full-tree retained mounted binding, cleanup type errors, generic owned-data continuation misclassification and discarded-program binding references. Source repairs retain the existing GC/group/failure assertions. Old allocation/parser counter assertions migrate to exact direct-cut/cold/warm counts; they are not recreated in production. Node24 PATH now pins package lifecycle as well as the runner. V2 package build/consumer and actual-compiled1024-owner game pass; Deno1300/1311 passes, so correctness is not yet established.
+
+[Reviewed v3 source freeze](implementation/2026-10-23-mounted-frame-execution/source-review-v3.json) releases the integrated successor to Luna. No installed browser/HMR/timing proof exists for this wave yet. One balanced matched production comparison remains after correctness/delivery. [Retirement and residual costs](implementation/2026-10-23-mounted-frame-execution/retirement.md) distinguish removed transport from required captures/observations/live validation; the source is a net addition. Full product performance/cold/memory/device and broader dependency obligations remain open.
+
+
+## Mounted frame execution wave in source review — 23 October 2026
+
+The human approved Astra's integrated contraction. [Shared interfaces and ownership](implementation/2026-10-23-mounted-frame-execution/interfaces.md). Three Sol-medium agents migrated Root to mount-owned region selection and cut ordinals, Store/World to retained capture/reader partitions and a genuine private cut, and VDOM to direct cut consumption through existing records/publisher. Primary source review removed remaining owned per-owner staging records and a test-only cut-to-region materializer, and repaired a cold row/prop index shadow. Actual prechange60 package sources and five tarballs were preserved before edits; HEAD alone is not the comparator. Full live checks, exact histories/actions, immutable observations, failure quarantine and generic fallback remain.
+
+A new actual-compiled1024-owner Three lifecycle companion covers sparse/shared updates, structural churn and HUD cadence; installed real DOM/WebGL proof is authored. These are untimed correctness controls. No changed-source tests/builds or timing have run yet. Source freeze precedes Luna's consolidated correctness/package/installed/HMR boundary and one balanced same-source prechange/candidate/React episode, median+p90 primary. No speed result is inherited or promised. Full master-plan release/cold/memory/device obligations remain open.
+
+
+## Astra next realtime wave selected for interface design — 23 October 2026
+
+At the human's request, Astra high reviewed the verified current dirty source and proposes one integrated representation migration: mount-owned region descriptions plus one authentic update cut consumed directly by Root/Store/VDOM through the existing publisher. [Report and source map](implementation/2026-10-23-astra-realtime-next-wave/report.md), [Sol dependency packets and boundary](implementation/2026-10-23-astra-realtime-next-wave/orchestration.md). Primary verifies37 source/evidence hashes and all28 prior frozen hashes; cold binding/acceptance and module boundaries were clarified. Mounted component/Three/resource instances already persist; redundant transient selection/row/region/target/cohort descriptions remain. Retire those together while retaining fresh captures, immutable snapshots, history, live checks and generic fallback. No production edit or workload runs in this review. Exact shared interfaces/revocation map must precede Sol dispatch; no numerical saving or React parity is promised. The completed prior refactor and full product evidence limits retain their scope.
+
+
+## Audited refactor completion audit — 23 October 2026
+
+The [requirement-by-requirement completion audit](implementation/2026-10-23-mounted-execution-completion/completion-audit.md) proves the active audited Store/VDOM/scoped-dependency refactor objective: current source retirement, correctness/history/resource semantics, installed/HMR delivery and matched within-margin performance. Two final independent read-only Sol audits find no missing supported-path requirement. The original task-plan status now reflects the verified B2/interaction successor. This closes that refactor objective; the full product master plan remains unachieved, including realtime parity, general same-root task-output reveal/delta merge and current cold/memory/conformance/independent-device obligations. No production source or workload changed during this audit; all28 frozen hashes remain required. No broad product or speed claim follows.
+
+
+## Audited execution refactor verified; full product remains open — 23 October 2026
+
+The substantial mounted Store/target refactor now passes consolidated correctness, installed output/resource/delivery checks, owned Portless HTTPS HMR and the sole balanced same-run prechange/candidate/React non-regression comparison. [Results, retirement matrix and preserved failures](implementation/2026-10-23-mounted-execution-completion/results.md). Primary independently matches28 source hashes,24865 before/after asset observations and the fixed paired-context bootstrap results. Deno1306,62 compiled fixtures plus collection GC, tooling/host/package checks pass; unchanged Rust108/compiler prerequisites are explicitly carried by hash.
+
+Old request/schedule builders and draft recipe-binding registry are removed; Root/mounted key index retain immutable geometry, with private candidate buffers and existing live/publication/history authorities. Maintained production +669/−255 and tests/helpers +422/−112 exclude generated evidence/dependencies. This slice is a net addition; it is not represented as a massive net cleanup.
+
+Typical update median/p90 is2.40/2.70ms for both prechange and candidate versus React0.60/0.70ms. Candidate through-draw median/p90 is4.80/5.10ms versus prechange4.90/5.30ms. All four declared non-regression bounds pass; no major speedup, React parity or physical-presentation claim follows. Initial browser aborts remain recorded; corrected native launch uses identical assets. Owned server/browser resources are closed and HMR source restored. Source changes remain uncommitted.
+
+Full-plan goal remains active. Automatic dynamic/component dependency discovery, safe general same-root delta merging, realtime parity and cold/memory/lifecycle/host/portability/independent-device/human obligations remain open. Whole-root guards, generic fallback and required live checks remain. This completed boundary does not authorize another per-helper diagnostic loop.
+
+
+## Mounted repair completed in source; successor boundary released — 23 October 2026
+
+The final static audit caught ordinal-sensitive repair before qualification. The initial owned gate was stopped with source MATCH and preserved failures (pnpm non-TTY purge, six Store type errors); no browser/timing ran. The wider production refactor now reuses immutable group capture chunks across unrelated insert/remove/reorder/rebind, prunes retired owner bindings in batches, and keeps target geometry on the existing mounted node. The canonical key bucket owns shared membership/owner snapshots; peer churn revokes prepared cuts without recreating unrelated target geometry. No per-frame recipe rebinding receipts or parallel legacy schedule builder remain. [Reviewed successor freeze](implementation/2026-10-23-mounted-execution-completion/source-review-v2.json).
+
+Luna receives the complete integrated successor with CI=true for the observed pnpm environment failure. Required live sweeps/writer checks and exact history/acknowledgement remain. No speed or passing correctness claim exists yet for this source. One same-run prechange/candidate/React comparison follows a passing integrated boundary; broad dynamic discovery/same-root merging and full product evidence remain explicitly unfinished.
+
+## Audited refactor completion: consolidated boundary released — 23 October 2026
+
+The human authorized completion of audited gaps with two Sol-medium agents and required real production refactoring/deletion, not parallel implementations or runtime tracking added for tests. [Plan/dependency graph](implementation/2026-10-23-mounted-execution-completion/plan.md). Source review removes the old request builder and schedule append/seal route, retains immutable Store capture geometry with candidate-private buffers, and reuses mount-stable VDOM target geometry through the existing key-index invalidation authority. No per-frame rebinding receipt list remains. Root publication/history/acknowledgement and required live checks stay canonical.
+
+Compiled retry invalidation now derives changed keys from actual captured cuts instead of trusting caller omissions; duplicate transition-side calculation is removed. A real Store-transition divergent-history/shared-demand test is authored. Source is frozen for Luna's consolidated gate, installed/HMR proof and one balanced prechange/candidate/React episode. Prechange package sources match e02135abf and are preserved immutably. No changed-source tests or timings have run yet. Broader dynamic discovery/same-root delta merging, cost/conformance evidence and original product finish-line obligations remain open; completion will follow the requirement matrix rather than gate counts alone.
+
+## Independent original-plan audit: completion claim corrected — 23 October 2026
+
+A fresh Sol-medium agent audited all three slices against the original proposal/task plan; the primary verified the reported call paths. [Requirement matrix and timing reconciliation](implementation/2026-10-23-three-slice-audit/report.md). No new tests, benchmarks, servers or containers ran. Slice1 cleanup is delivered. Slice2's immutable pages and immediate/numeric candidate publication pass their archived boundaries, but original B2 mount-lifetime execution/revocation/affected-region repair and retirement of per-frame stable schedule/target discovery remain partial. Existing warm hints do not complete that promise; required live checks remain.
+
+Slice3 delivers revision-bound literal-read metadata, explicit leased demand and independent per-root reveal. Broader automatic control/discovery integration remains partial, and a separately created root named fork does not prove true fork-history sharing with demand. Cold/retained-memory and full product/conformance evidence remain open. Earlier statements that all three slices were fully implemented/verified overstate original-plan completion; archived passing gates retain their actual scope.
+
+Recorded performance improved substantially across development, but an exact11ms saving is not supported by the intervals reviewed. Historical10.70ms publication and current dense2.30–2.50ms come from changed workload/protocols; the three-slice dense baseline was already2.50–2.60ms. Slice3's1.00–1.10ms is a different urgent interaction. Finish original B2 before declaring the realtime architecture complete; do not replace it with another helper diagnostic loop.
+
 ## Three architecture slices implemented; performance goals remain unmet — 22 October 2026
 
 The bounded Linux check supplies current packaged-core import/Store evidence only. Its expanded script failed on the inferred asyncTask overload, and the corrected attempt launched no container after Podman stopped. Raw failures remain; the Depot-backed2GiBVM is stopped, with no owned container left. Current Linux compiler/task/provider/host qualification remains open; no VM/architecture matrix or daemon/volume permission change was made.

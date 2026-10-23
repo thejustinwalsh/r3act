@@ -26,7 +26,8 @@ Deno.test("bound scalar Store updates retain the literal and accepted snapshots"
   const Motion = defineComponent(site, (props: { clock: typeof clock }) => {
     renders++;
     const phase = useStoreAt(useSite, props.clock).phase;
-    return jsx("group", { key: "motion", name: "anchor", "position-x": phase * 2 });
+    return jsx("group", { key: "motion", name: "anchor",
+      "position-x": phase * 2, "position-y": phase * 3 });
   }, { propOnlySites: [], closedStoreHostProgram: {
     schemaVersion: 5, componentProgramId: site, moduleRevision: revision,
     inputs: [{ storeUseSiteId: useSite, storeProp: "clock", paths: [["phase"]] }],
@@ -34,6 +35,8 @@ Deno.test("bound scalar Store updates retain the literal and accepted snapshots"
       ["name", { kind: "literal", value: "anchor" }],
       ["position-x", { kind: "binary", operator: "*",
         left: { kind: "input", index: 0 }, right: { kind: "literal", value: 2 } }],
+      ["position-y", { kind: "binary", operator: "*",
+        left: { kind: "input", index: 0 }, right: { kind: "literal", value: 3 } }],
     ] },
   }, closedStoreExecution: { schemaVersion: 3, kind: "owned-data",
     componentProgramId: site, moduleRevision: revision } });
@@ -56,26 +59,35 @@ Deno.test("bound scalar Store updates retain the literal and accepted snapshots"
     assertStrictEquals(container.children[0], node);
     assertEquals(node.props.name, "anchor");
     assertEquals(node.props["position-x"], 2);
+    assertEquals(node.props["position-y"], 3);
     clock.dispatch(() => storeRecord({ phase: 2 }));
     assertEquals(root.flush(), true);
     const second = root.snapshot;
     assertStrictEquals(container.children[0], node);
     assertEquals(node.props["position-x"], 4);
+    assertEquals(node.props["position-y"], 6);
     assertEquals(renders, 1);
     assertEquals((initial[0] as { props: Record<string, unknown> }).props["position-x"], 0);
+    assertEquals((initial[0] as { props: Record<string, unknown> }).props["position-y"], 0);
     assertEquals((first[0] as { props: Record<string, unknown> }).props["position-x"], 2);
+    assertEquals((first[0] as { props: Record<string, unknown> }).props["position-y"], 3);
     assertEquals((second[0] as { props: Record<string, unknown> }).props["position-x"], 4);
+    assertEquals((second[0] as { props: Record<string, unknown> }).props["position-y"], 6);
     const total = (name: string) => frames.reduce((sum, frame) => sum + (frame[name] ?? 0), 0);
     assertEquals(total("store.bound-input.new-rows"), 1);
     assertEquals(total("store.bound-input.reused-rows"), 1);
     assertEquals(allocatedAfterCold, 1);
     assertEquals(total("store.bound-input.allocated-records"), 1);
-    assertEquals(total("store.scalar-output.frames"), 3);
+    assertEquals(total("store.mounted-frame.selection-passes"), 2);
+    assertEquals(total("store.scalar-output.frames"), 2);
     assertEquals(total("store.scalar-output.root-materializations"), 0);
     assertEquals(total("store.mounted-scalar.cold-rows"), 1);
     assertEquals(total("store.mounted-scalar.warm-rows"), 1);
-    for (const name of ["bucket-builds", "member-visits", "owner-index-visits", "owner-lookups"])
-      assertEquals(total(`store.scalar-target.${name}`), 2);
+    assertEquals(total("store.mounted-frame.direct-cuts"), 2);
+    assertEquals(total("store.mounted-frame.mounted-targets"), 2);
+    for (const name of ["bucket-builds", "member-visits", "owner-index-visits"])
+      assertEquals(total(`store.scalar-target.${name}`), 0);
+    assertEquals(total("store.scalar-target.owner-lookups"), 0);
     assert(invalidateCompiledSemanticPlan(sourceFile, revision));
     assertEquals((root.snapshot[0] as { props: Record<string, unknown> })
       .props["position-x"], 4);

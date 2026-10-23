@@ -46,7 +46,7 @@ Deno.test("compact Store output stays framed until a generic Root observation", 
     reports.length = 0;
     clock.dispatch(() => storeRecord({ phase: 1 }));
     assertEquals(root.flush(), true);
-    assertEquals(count("store.scalar-output.frames"), 2);
+    assertEquals(count("store.scalar-output.frames"), 1);
     assertEquals(count("store.scalar-output.root-materializations"), 0);
     assertEquals(count("store.scalar-output.prop-materializations"), 0);
     assertEquals(count("owner.component-renders"), 0);

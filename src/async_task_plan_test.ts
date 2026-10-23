@@ -94,6 +94,23 @@ Deno.test("compiled task binder rejects implementation drift", () => {
   }
 });
 
+Deno.test("compiled task binder rejects external aliases colliding with task IDs", () => {
+  const plan = { schema_version: 1 as const, source_file: "collision.tsx",
+    tasks: [
+      { id: "query", site_id: "collision.tsx#async-task:query",
+        depends_on: [] },
+      { id: "lookup", site_id: "collision.tsx#async-task:lookup",
+        depends_on: ["$query"] },
+    ], task_order: [0, 1] };
+  let rejected = false;
+  try {
+    bindCompiledAsyncTasks(plan, { query: () => "task", lookup: () => "input" });
+  } catch (error) {
+    rejected = error instanceof Error && error.message.includes("aliases");
+  }
+  if (!rejected) throw new Error("External alias became a task prerequisite");
+});
+
 const typedOutputTasks = [
   asyncTask("two-argument-result", (values) => ({
     result: values.get("input") as number,

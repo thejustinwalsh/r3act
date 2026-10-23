@@ -747,6 +747,7 @@ const writeGenericProp = (handle: ThreeHandle, name: string, value: unknown) => 
           targetResource: null,
           valueResource: null,
           mayThrow: true,
+          mayReenter: true,
         });
       }
       if (handle.kind === "object" && name.startsWith("material-")) {
@@ -759,6 +760,7 @@ const writeGenericProp = (handle: ThreeHandle, name: string, value: unknown) => 
             targetResource: null,
             valueResource: describeResource(next),
             mayThrow: true,
+            mayReenter: true,
           });
         }
       }
@@ -775,6 +777,7 @@ const writeGenericProp = (handle: ThreeHandle, name: string, value: unknown) => 
           : null,
         valueResource: describeResource(next),
         mayThrow: true,
+        mayReenter: true,
       });
     },
     place(parent, handle, before) {

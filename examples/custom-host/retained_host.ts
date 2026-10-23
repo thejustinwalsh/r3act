@@ -242,6 +242,7 @@ export class RetainedCanvasHost implements VDOMHost<CanvasNode, CanvasParent> {
         ownership: binding.ownership === "owned" ? "shared-owned" : "borrowed",
       } : null,
       mayThrow: true,
+      mayReenter: true,
     };
   }
 

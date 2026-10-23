@@ -15,7 +15,7 @@ flowchart TD
     V1 --> G1
     D1 --> G1
   end
-  subgraph S2["2 · Realtime execution — verified"]
+  subgraph S2["2 · Realtime execution — supported B2 verified23Oct"]
     P2["P2 One publication core · Sol A"]
     V2["V2 Batch-owned accepted values · Sol B"]
     B2["B2 Mounted bindings and invalidation · Sol C"]
@@ -23,7 +23,7 @@ flowchart TD
     P2 --> G2
     V2 --> B2 --> G2
   end
-  subgraph S3["3 · Loader and derived DAG integration — verified; parity fails"]
+  subgraph S3["3 · Supported dependency/demand/root-history routes verified; broader master open"]
     C3["C3 Compiler dependency relations · Sol C"]
     D3["D3 Shared demand and derived work · Sol B"]
     R3["R3 Independent readiness and reveal · Sol A"]
@@ -37,7 +37,7 @@ flowchart TD
   G2 --> D3
 ```
 
-P1/V1/D1 completed in `2f4c1c6f4`. P2/V2/B2 passed the integrated correctness/delivery boundary; realtime parity still fails (4.00× update median ratio). C3/D3/R3 completed with disjoint ownership; their consolidated correctness/delivery boundary passes. The sole urgent-update comparison still loses5.50×median/5.17×p90. Luna is idle during implementation. The primary owns public exports, installed examples, delivery scripts, current documentation, integration review and checkpoint updates. No implementation agent runs tests or benchmarks.
+P1/V1/D1 completed in `2f4c1c6f4`. The23October integrated successor closes the audited B2 mount-lifetime execution/affected-group repair and stable construction retirement on supported routes, with actual root-specific Store history/shared-demand evidence and exact-cut retry invalidation. Correctness, installed/HMR delivery and the declared same-run non-regression boundary pass. [Requirement-by-requirement completion audit](../2026-10-23-mounted-execution-completion/completion-audit.md). Realtime parity still fails: current dense median/p902.40/2.70ms versus React0.60/0.70ms. Broader dynamic/component-tree discovery and general same-root merging remain master-plan work. The prior separate urgent-update comparison still loses5.50×median/5.17×p90. See the [independent original-plan audit](../2026-10-23-three-slice-audit/report.md). Luna is idle during implementation. The primary owns public exports, installed examples, delivery scripts, current documentation, integration review and checkpoint updates. No implementation agent runs tests or benchmarks.
 
 ## Slice 1: reduce execution machinery
 

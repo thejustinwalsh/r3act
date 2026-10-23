@@ -21,6 +21,7 @@ import {
 } from "./async_task_plan.ts";
 
 const taskExecutionDefinition = Symbol("native.task-execution.definition");
+const taskExecutionInputs = Symbol("native.task-execution.inputs");
 
 export type NativeTaskExecutionOptions = {
   signal?: AbortSignal;
@@ -29,6 +30,7 @@ export type NativeTaskExecutionOptions = {
   /** Internal prior execution receipt for compiled same-definition reuse. */
   reuseFrom?: Readonly<{
     [taskExecutionDefinition]: PreparedNativeTaskDefinition<readonly AuthoredAsyncTask[]>;
+    [taskExecutionInputs](): Readonly<Record<string, unknown>>;
     snapshot(): NativeTaskExecutionSnapshot;
   }>;
   onObserverError?: (error: unknown) => void;
@@ -50,6 +52,7 @@ export type NativeTaskExecutionSnapshot = Readonly<{
 
 export type NativeTaskExecution<Tasks extends readonly AuthoredAsyncTask[]> = {
   readonly [taskExecutionDefinition]: PreparedNativeTaskDefinition<Tasks>;
+  readonly [taskExecutionInputs]: () => Readonly<Record<string, unknown>>;
   resource<Id extends AsyncTaskIds<Tasks>>(
     id: Id,
   ): AsyncResource<AsyncTaskOutput<Tasks, Id>>;
@@ -154,6 +157,8 @@ export const createTaskExecutionFromDefinition = <
       ? Object.freeze({ definition: binding.definition, captures: binding.captures })
       : binding] as const)) : undefined;
   const inputSnapshot = Object.freeze({ ...initialValues });
+  const priorInputs = options.reuseCompleted && options.reuseFrom
+    ? options.reuseFrom[taskExecutionInputs]() : undefined;
   const declaredExternalInputs = graph.externalInputs;
   const inputIds = Object.keys(inputSnapshot);
   const extraInputs = inputIds.filter((id) => !declaredExternalInputs.has(id));
@@ -184,12 +189,16 @@ export const createTaskExecutionFromDefinition = <
   }
 
   const priorSnapshot = compiledReuse ? options.reuseFrom!.snapshot() : undefined;
+  const exactChangedInputs = priorInputs
+    ? Object.keys(inputSnapshot).filter((id) =>
+      !Object.is(priorInputs[id], inputSnapshot[id]))
+    : options.reuseCompleted?.changedInputs;
   const reuseSnapshot: AsyncTaskReuse | undefined = options.reuseCompleted
     ? {
       values: new Map(priorSnapshot?.completedValues ?? options.reuseCompleted.values),
       completed: Object.freeze([...(priorSnapshot?.completed ??
         options.reuseCompleted.completed)]),
-      changedInputs: Object.freeze([...options.reuseCompleted.changedInputs]),
+      changedInputs: Object.freeze([...(exactChangedInputs ?? [])]),
     }
     : undefined;
   const controller = new AbortController();
@@ -360,8 +369,9 @@ export const createTaskExecutionFromDefinition = <
     externalSignal?.removeEventListener("abort", onExternalAbort);
   };
 
-  return {
+  return Object.freeze({
     [taskExecutionDefinition]: definition,
+    [taskExecutionInputs]: () => inputSnapshot,
     resource<Id extends AsyncTaskIds<Tasks>>(
       id: Id,
     ): AsyncResource<AsyncTaskOutput<Tasks, Id>> {
@@ -379,7 +389,7 @@ export const createTaskExecutionFromDefinition = <
     snapshot,
     cancel,
     dispose,
-  };
+  });
 };
 
 /** Allocate one execution from externally authored task declarations. */

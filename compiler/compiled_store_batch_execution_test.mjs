@@ -148,7 +148,9 @@ try {
     assert.equal(nodes[0].props.name, "accepted-bound-frame");
   };
   step(1);
-  assert.equal(counters["store.scalar-output.frames"], 3);
+  assert.equal(counters["store.scalar-output.frames"] ?? 0, 0);
+  assert.equal(counters["store.mounted-frame.direct-cuts"], 1);
+  assert.equal(counters["store.mounted-frame.mounted-targets"], 3);
   assert.equal(counters["store.scalar-output.prop-materializations"] ?? 0, 0,
     "unobserved compact publication must not construct ordinary props");
   const accepted = current.root.snapshot, saved = JSON.stringify(accepted);
@@ -295,15 +297,19 @@ try {
     assert.equal(manyCounters["store.batch.calls"], 3);
     assert.equal(manyCounters["store.batch.rows"], 257);
     assert.equal(manyCounters["store.scalar-kernel.calls"] ?? 0, 0);
-    assert.equal(manyCounters["store.scalar-output.frames"] ?? 0,
-      257 - expectedWarm);
+    assert.equal(manyCounters["store.scalar-output.frames"] ?? 0, 0);
     assert.equal(manyCounters["store.scalar-output.pages"], 3);
     assert.equal(manyCounters["store.scalar-output.root-materializations"] ?? 0, 0);
     assert.equal(manyCounters["store.scalar-output.prop-materializations"] ?? 0, 0);
     assert.equal(manyCounters["owner.component-renders"] ?? 0, 0);
-    assert.equal(manyCounters["store.scalar-target.bucket-builds"], 2);
-    for (const name of ["member-visits", "owner-index-visits", "owner-lookups"])
-      assert.equal(manyCounters[`store.scalar-target.${name}`], 257);
+    assert.equal(manyCounters["store.scalar-target.bucket-builds"] ?? 0, 0);
+    for (const name of ["member-visits", "owner-index-visits"])
+      assert.equal(manyCounters[`store.scalar-target.${name}`] ?? 0, 0);
+    assert.equal(manyCounters["store.scalar-target.owner-lookups"] ?? 0, 0);
+    assert.equal(manyCounters["store.mounted-frame.mounted-targets"], 257);
+    assert.equal(manyCounters["store.mounted-frame.direct-cuts"], 1);
+    if (expectedWarm === 257)
+      assert.equal(manyCounters["store.mounted-execution.reused"], 1);
     assert.equal(manyCounters["store.mounted-scalar.warm-rows"] ?? 0, expectedWarm);
     assert.equal(manyCounters["store.mounted-scalar.cold-rows"] ?? 0, 257 - expectedWarm);
     if (expectedWarm === 257) {
@@ -403,9 +409,13 @@ try {
   assert.equal(manyCounters["store.scalar-output.root-materializations"] ?? 0, 0);
   assert.equal(manyCounters["store.scalar-output.prop-materializations"] ?? 0, 0);
   assert.equal(manyCounters["owner.component-renders"] ?? 0, 0);
-  assert.equal(manyCounters["store.scalar-target.bucket-builds"], 2);
-  for (const name of ["member-visits", "owner-index-visits", "owner-lookups"])
-    assert.equal(manyCounters[`store.scalar-target.${name}`], 258);
+  assert.equal(manyCounters["store.scalar-target.bucket-builds"] ?? 0, 0);
+  for (const name of ["member-visits", "owner-index-visits"])
+    assert.equal(manyCounters[`store.scalar-target.${name}`] ?? 0, 0);
+  assert.equal(manyCounters["store.scalar-target.owner-lookups"] ?? 0, 0);
+  assert.equal(manyCounters["store.mounted-frame.mounted-targets"], 258);
+  assert.equal(manyCounters["store.mounted-frame.direct-cuts"], 1);
+  assert.equal(manyCounters["store.mounted-execution.reused"], 1);
   assert.equal(manyCounters["store.mounted-scalar.warm-rows"], 258);
   assert.equal(manySlots()[0].children[0].props["position-x"], 15);
   const changedChild = make("owned-frame-child-change");

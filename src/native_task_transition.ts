@@ -150,14 +150,6 @@ const sameValues = (
       Object.hasOwn(right, key) && Object.is(left[key], right[key])
     );
 };
-const changedKeys = (
-  left: Readonly<Record<string, unknown>>,
-  right: Readonly<Record<string, unknown>>,
-) =>
-  [...new Set([...Object.keys(left), ...Object.keys(right)])].filter((key) =>
-    !Object.hasOwn(left, key) || !Object.hasOwn(right, key) ||
-    !Object.is(left[key], right[key])
-  );
 const resolutionFor = (
   id: string,
   status: Exclude<RootWorkStatus, "pending">,
@@ -613,7 +605,6 @@ export class NativeTaskTransitionQueue {
           retainedExecutions.add(equalPrior.execution);
         } else if (priorMatches.length === 1) {
           const prior = priorMatches[0];
-          const inputsChanged = changedKeys(prior.values, group.values);
           group.execution = createTaskExecutionFromDefinition(
             operation.definition!,
             group.values,
@@ -626,7 +617,8 @@ export class NativeTaskTransitionQueue {
                 ? {
                   values: prior.completedValues,
                   completed: prior.completed,
-                  changedInputs: inputsChanged,
+                  // The execution derives changed keys from reuseFrom's captured cut.
+                  changedInputs: [],
                 }
                 : undefined,
             },

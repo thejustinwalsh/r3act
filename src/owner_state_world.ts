@@ -1,8 +1,11 @@
 import { ScalarSource, canonicalScalarSourceValue } from "./jsx_binding_runtime.ts";
 import { NumericColumn } from "./jsx_binding_runtime.ts";
 import {
-  OwnedClosedFrameInput, OwnedClosedFrameSchedule,
-  canonicalOwnedClosedFrameScheduleOwns, canonicalOwnedClosedFrameScheduleRowAt,
+  OwnedClosedFrameInput, OwnedClosedFrameFill,
+  canonicalOwnedClosedFrameFillOwns,
+  canonicalOwnedClosedFrameFillWorldAt,
+  canonicalOwnedClosedFrameFillRowInputAt,
+  canonicalOwnedClosedFrameFillGroupRowAt,
 } from "./owned_closed_frame_input.ts";
 import {
   compiledStateLayoutSlot,
@@ -611,7 +614,7 @@ export class OwnerStateWorld {
     key: symbol,
     world: OwnerStateWorld,
     requests: readonly { owner: OwnerId; sites: readonly StateSiteId[] }[] |
-      OwnedClosedFrameSchedule,
+      OwnedClosedFrameFill,
     includeCut = false,
   ): OwnedClosedWorldInputBatch | readonly OwnedClosedWorldInputRow[] | null {
     if (key !== ownedWorldCaptureKey) return null;
@@ -622,22 +625,25 @@ export class OwnerStateWorld {
       const capturedCells: ClosedWorldCell[] = [];
       const byOwner = includeCut
         ? new Map<OwnerId, Map<StateSiteId, ClosedWorldCell>>() : null;
-      const schedule = canonicalOwnedClosedFrameScheduleOwns(requests) &&
-        requests.sealed ? requests : null;
+      const schedule = canonicalOwnedClosedFrameFillOwns(requests) ? requests : null;
       const requestCount = schedule ? schedule.rowCount :
         (requests as readonly { owner: OwnerId; sites: readonly StateSiteId[] }[]).length;
       for (let requestIndex = 0; requestIndex < requestCount; requestIndex++) {
-        const scheduled = schedule
-          ? canonicalOwnedClosedFrameScheduleRowAt.call(schedule, requestIndex) : null;
-        const request = scheduled
+        const scheduledWorld = schedule
+          ? canonicalOwnedClosedFrameFillWorldAt.call(schedule, requestIndex) : null;
+        const scheduledInput = schedule
+          ? canonicalOwnedClosedFrameFillRowInputAt.call(schedule, requestIndex) : null;
+        const scheduledGroupRow = schedule
+          ? canonicalOwnedClosedFrameFillGroupRowAt.call(schedule, requestIndex) : -1;
+        const request = scheduledWorld
           ? canonicalUnwrapOwnedWorldInputRequest(ownedWorldInputBindingKey,
-            scheduled.world)
+            scheduledWorld)
           : (requests as readonly { owner: OwnerId;
             sites: readonly StateSiteId[] }[])[requestIndex];
         if (!request) return null;
-        if (scheduled?.input && (!OwnedClosedFrameInput.owns(scheduled.input) ||
-          !Number.isSafeInteger(scheduled.groupRow) || scheduled.groupRow < 0 ||
-          scheduled.input.varyingCount !== request.sites.length)) return null;
+        if (scheduledInput && (!OwnedClosedFrameInput.owns(scheduledInput) ||
+          !Number.isSafeInteger(scheduledGroupRow) || scheduledGroupRow < 0 ||
+          scheduledInput.varyingCount !== request.sites.length)) return null;
         const owner = request.owner;
         if (!Number.isSafeInteger(owner) || !world.#owners.has(owner) ||
           world.#stagedOwners.has(owner)) return null;
@@ -657,8 +663,8 @@ export class OwnerStateWorld {
           const sourceValue = canonicalScalarSourceValue(cell.source);
           if (typeof value !== "number" || !Number.isFinite(value) ||
             sourceValue === null || !Object.is(value, sourceValue)) return null;
-          if (scheduled?.input) scheduled.input.setVarying(
-            scheduled.groupRow * request.sites.length + siteIndex, value,
+          if (scheduledInput) scheduledInput.setVarying(
+            scheduledGroupRow * request.sites.length + siteIndex, value,
           );
           const handle = world.#handleForCell(owner, site, cell);
           if (byOwner) {
@@ -2797,11 +2803,11 @@ export function captureOwnedClosedWorldInputBatch(
 }
 
 /** Capture producer-owned rows and fill varying columns in the same World cut. */
-export function captureOwnedClosedWorldInputSchedule(
+export function captureOwnedClosedWorldInputFill(
   world: OwnerStateWorld,
-  schedule: OwnedClosedFrameSchedule,
+  schedule: OwnedClosedFrameFill,
 ): OwnedClosedWorldInputBatch | null {
-  if (!canonicalOwnedClosedFrameScheduleOwns(schedule) || !schedule.sealed ||
+  if (!canonicalOwnedClosedFrameFillOwns(schedule) ||
     schedule.rowCount > 65536) return null;
   try {
     return canonicalCaptureOwnedClosedInputs.call(

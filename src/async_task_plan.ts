@@ -168,9 +168,14 @@ export const bindCompiledAsyncTasks = (
   }
   const planIds = new Set(plan.tasks.map((task) => task.id));
   if (
-    planIds.size !== plan.tasks.length || plan.tasks.some((task) => !task.id)
+    planIds.size !== plan.tasks.length ||
+    plan.tasks.some((task) => !task.id || task.id.startsWith("$"))
   ) {
     throw new Error("Compiled async task IDs must be unique and non-empty");
+  }
+  if (plan.tasks.some((task) => task.depends_on.some((dependency) =>
+    dependency.startsWith("$") && planIds.has(dependency.slice(1))))) {
+    throw new Error("Compiled external input aliases must not match task IDs");
   }
   const implementationIds = Object.keys(implementations);
   if (

@@ -10,13 +10,13 @@ import {
 } from "./closed_store_host_program.ts";
 import {
   bindOwnedClosedProjectionRequest,
-  readOwnedClosedProjectionSchedule,
+  readOwnedClosedProjectionFill,
   type AnyAsyncStore, type BoundClosedProjectionRequest,
   type StoreRenderTransaction,
 } from "./async_store_runtime.ts";
 import {
   bindOwnedClosedWorldInputRequest,
-  captureOwnedClosedWorldInputSchedule,
+  captureOwnedClosedWorldInputFill,
   type ClosedWorldCellCut,
   type OwnedClosedWorldInputCell, type OwnedClosedWorldInputRequest,
   type OwnerStateWorld,
@@ -29,13 +29,14 @@ import {
   CLOSED_STORE_BATCH_MAX_ROWS, type ClosedStoreBatchKernelProof,
 } from "./closed_store_batch_kernel_proof.ts";
 import {
-  createOwnedClosedFrameInput, createOwnedClosedFrameSchedule,
-  canonicalOwnedClosedFrameScheduleRowAt,
+  createOwnedClosedFrameInput, createOwnedClosedFramePlan,
+  createOwnedClosedFrameFillFromPlan, type OwnedClosedFramePlan,
+  canonicalOwnedClosedFrameFillFallbackAt,
   type OwnedClosedFrameInput,
 } from "./owned_closed_frame_input.ts";
 import {
   OwnedScalarFrame, OwnedScalarLayout, OwnedScalarBatchPage,
-  materializeOwnedScalarPropEntries, materializeOwnedScalarImagePropEntries,
+  materializeOwnedScalarPropEntries,
   captureVerifiedOwnedScalarBatch,
   type OwnedScalarImage,
   type OwnedScalarOutputCounts, type OwnedScalarValue,
@@ -216,7 +217,6 @@ const evaluateOwnedProps = (
 };
 
 const ownedScalarStorePropDeltas = new WeakSet<StorePropDelta>();
-const ownedClosedOutputRows = new WeakSet<object>();
 
 /** Identify a region constructed by the shared scalar output authority. */
 export const isOwnedScalarStorePropDelta = (region: StorePropDelta): boolean =>
@@ -320,40 +320,12 @@ const copyOwnedScalarRegion = (fields: Record<string, unknown>): StorePropDelta 
   return copy;
 };
 
-export const materializeOwnedScalarStorePropDelta = (
-  row: OwnedClosedStoreOutputRow,
-  counts?: OwnedScalarOutputCounts,
-): StorePropDelta => {
-  if (typeof row !== "object" || row === null || !ownedClosedOutputRows.has(row)) {
-    throw new TypeError("Unowned scalar output row");
-  }
-  const region: StorePropDelta = Object.freeze({
-    key: row.key,
-    tag: row.tag,
-    props: materializeOwnedScalarImagePropEntries(row, counts),
-    ...(row.retainedChildren ? { retainedChildren: true as const,
-      componentOwner: row.componentOwner } : {}),
-  });
-  ownedScalarStorePropDeltas.add(region);
-  return region;
-};
-
 export type OwnedClosedStoreOutputRequest = Readonly<{
   execution: NormalizedClosedStoreDataExecution;
   owner: number;
   hostKey: string;
   inputs: readonly Readonly<{ store: AnyAsyncStore; readerId: string }>[];
 }>;
-
-export type OwnedClosedStoreOutputRow = Readonly<{
-  owner: number;
-  lineage: readonly number[];
-  cells: readonly OwnedClosedWorldInputCell[];
-  key: string;
-  tag: string;
-  retainedChildren?: true;
-  componentOwner?: number;
-}> & OwnedScalarImage;
 
 type NormalizedRequest = Readonly<{
   execution: NormalizedClosedStoreDataExecution;
@@ -433,199 +405,382 @@ export type BoundClosedStoreOutputRequest = PrivateBoundClosedStoreOutputRequest
 export const bindOwnedClosedStoreOutputRequest = PrivateBoundClosedStoreOutputRequest.bind;
 const canonicalUnwrapClosedStoreOutputRequest = PrivateBoundClosedStoreOutputRequest.unwrap;
 
-const ownedFrameRequestsKey = Symbol("owned-frame-requests");
-export class OwnedClosedFrameRequests {
-  #requests: NormalizedRequest[] = [];
-  #sealed = false;
-  #consumed = false;
-  private constructor(key: symbol) {
-    if (key !== ownedFrameRequestsKey) throw new TypeError("Invalid frame request builder");
-    Object.freeze(this);
-  }
-  static create(): OwnedClosedFrameRequests {
-    return new OwnedClosedFrameRequests(ownedFrameRequestsKey);
-  }
-  append(bound: BoundClosedStoreOutputRequest): boolean {
-    if (this.#sealed || this.#consumed || this.#requests.length >= 65536) return false;
+const unwrapOrderedRequests = (
+  ordered: readonly BoundClosedStoreOutputRequest[],
+): readonly NormalizedRequest[] | null => {
+  if (!Array.isArray(ordered) || ordered.length < 1 || ordered.length > 65536) return null;
+  const requests: NormalizedRequest[] = [];
+  for (const bound of ordered) {
     const request = canonicalUnwrapClosedStoreOutputRequest(closedOutputBindingKey, bound);
-    if (!request) return false;
-    appendOwned(this.#requests, request);
-    return true;
+    if (!request) return null;
+    appendOwned(requests, request);
   }
-  seal(): boolean {
-    if (this.#sealed || this.#consumed || this.#requests.length === 0) return false;
-    this.#sealed = true;
-    return true;
-  }
-  static consume(key: symbol, value: unknown): readonly NormalizedRequest[] | null {
-    if (key !== ownedFrameRequestsKey || typeof value !== "object" || value === null ||
-      !(#requests in value) || !value.#sealed || value.#consumed) return null;
-    value.#consumed = true;
-    return value.#requests;
-  }
-}
-export const createOwnedClosedFrameRequests = OwnedClosedFrameRequests.create;
-const canonicalConsumeOwnedFrameRequests = OwnedClosedFrameRequests.consume;
-Object.freeze(OwnedClosedFrameRequests.prototype);
-Object.freeze(OwnedClosedFrameRequests);
+  return Object.freeze(requests);
+};
 
-type ScheduledFrameRow = {
+type ScheduledFrameRow = Readonly<{
   request: NormalizedRequest;
   group: BatchGroup | null;
+  groupIndex: number;
   groupRow: number;
-};
-type BatchGroup = {
+}>;
+type BatchGroup = Readonly<{
   execution: NormalizedClosedStoreDataExecution;
-  rows: number[];
-  input?: OwnedClosedFrameInput;
-};
+  index: number;
+  rows: readonly number[];
+}>;
 type GroupTrie = { children: Map<AnyAsyncStore, GroupTrie>; group?: BatchGroup };
+const mountedExecutionKey = Symbol("mounted-closed-store-execution");
 
-const prepareOwnedFrameSchedule = (
-  world: OwnerStateWorld, transaction: StoreRenderTransaction,
-  requests: readonly NormalizedRequest[], counts?: OwnedScalarOutputCounts,
-): { kind: "ready"; rows: readonly OwnedClosedStoreOutputRow[];
-  cellCut: ClosedWorldCellCut } | { kind: "public-required" } | null => {
-  if (requests.length === 0) return null;
-  const scheduled: ScheduledFrameRow[] = [];
-  const groups: BatchGroup[] = [];
-  const byExecution = new Map<NormalizedClosedStoreDataExecution, GroupTrie>();
-  for (let ordinal = 0; ordinal < requests.length; ordinal++) {
-    const request = requests[ordinal];
-    let group: BatchGroup | null = null;
-    let groupRow = -1;
-    if (request.facts.batchProof?.kind === "verified") {
-      const existingRoot = byExecution.get(request.execution);
-      let node: GroupTrie;
-      if (existingRoot) node = existingRoot;
-      else {
-        node = { children: new Map<AnyAsyncStore, GroupTrie>() };
-        byExecution.set(request.execution, node);
-      }
-      for (let index = 0; index < request.inputs.length; index++) {
-        const store = request.inputs[index].store;
-        const existingChild = node.children.get(store);
-        let child: GroupTrie;
-        if (existingChild) child = existingChild;
-        else {
-          child = { children: new Map<AnyAsyncStore, GroupTrie>() };
-          node.children.set(store, child);
+/** Root-owned immutable schedule geometry; a candidate owns every writable buffer. */
+export class MountedClosedStoreExecution {
+  readonly #mountedExecutionBrand = true;
+  readonly #requests: readonly NormalizedRequest[];
+  readonly #scheduled: readonly ScheduledFrameRow[];
+  readonly #groups: readonly BatchGroup[];
+  readonly #framePlan: OwnedClosedFramePlan;
+  readonly #boundRequests: readonly BoundClosedStoreOutputRequest[];
+  private constructor(key: symbol, requests: readonly NormalizedRequest[],
+    scheduled: readonly ScheduledFrameRow[], groups: readonly BatchGroup[],
+    framePlan: OwnedClosedFramePlan,
+    boundRequests: readonly BoundClosedStoreOutputRequest[]) {
+    if (key !== mountedExecutionKey) throw new TypeError("Invalid mounted execution");
+    this.#requests = requests;
+    this.#scheduled = scheduled;
+    this.#groups = groups;
+    this.#framePlan = framePlan;
+    this.#boundRequests = boundRequests;
+    Object.freeze(this);
+  }
+  static prepare(key: symbol, requests: readonly NormalizedRequest[],
+    boundRequests: readonly BoundClosedStoreOutputRequest[],
+    previous?: MountedClosedStoreExecution | null,
+    counts?: MountedClosedStoreExecutionCounts): MountedClosedStoreExecution | null {
+    if (key !== mountedExecutionKey) return null;
+    if (previous && !MountedClosedStoreExecution.owns(previous)) previous = null;
+    if (previous && previous.#requests.length === requests.length &&
+      previous.#requests.every((request, index) => request === requests[index])) {
+      if (counts) counts.reused++;
+      return previous;
+    }
+    const scheduled: ScheduledFrameRow[] = [];
+    const groups: BatchGroup[] = [];
+    const byExecution = new Map<NormalizedClosedStoreDataExecution, GroupTrie>();
+    const targets = new Map<string, Set<number>>();
+    for (let ordinal = 0; ordinal < requests.length; ordinal++) {
+      const request = requests[ordinal];
+      const key = request.facts.retainedChildren
+        ? request.hostKey : request.facts.host.host.key;
+      let owners = targets.get(key);
+      if (!owners) targets.set(key, owners = new Set());
+      if (owners.has(request.owner)) return null;
+      owners.add(request.owner);
+      let group: BatchGroup | null = null;
+      let groupIndex = -1;
+      let groupRow = -1;
+      if (request.facts.batchProof?.kind === "verified") {
+        let node: GroupTrie = byExecution.get(request.execution) ??
+          { children: new Map<AnyAsyncStore, GroupTrie>() };
+        if (!byExecution.has(request.execution))
+          byExecution.set(request.execution, node);
+        for (const input of request.inputs) {
+          let child: GroupTrie = node.children.get(input.store) ??
+            { children: new Map<AnyAsyncStore, GroupTrie>() };
+          if (!node.children.has(input.store)) node.children.set(input.store, child);
+          node = child;
         }
-        node = child;
+        group = node.group ?? null;
+        if (!group || group.rows.length >= CLOSED_STORE_BATCH_MAX_ROWS) {
+          group = { execution: request.execution, index: groups.length, rows: [] };
+          node.group = group;
+          appendOwned(groups, group);
+        }
+        groupRow = group.rows.length;
+        groupIndex = group.index;
+        appendOwned(group.rows as number[], ordinal);
       }
-      group = node.group ?? null;
-      if (!group || group.rows.length >= CLOSED_STORE_BATCH_MAX_ROWS) {
-        group = { execution: request.execution, rows: [] };
-        node.group = group;
-        appendOwned(groups, group);
-      }
-      groupRow = group.rows.length;
-      appendOwned(group.rows, ordinal);
+      appendOwned(scheduled, Object.freeze({ request, group, groupIndex, groupRow }));
     }
-    appendOwned(scheduled, { request, group, groupRow });
-  }
-  for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
-    const group = groups[groupIndex];
-    const proof = requests[group.rows[0]].facts.batchProof;
-    if (proof?.kind !== "verified") return null;
-    group.input = createOwnedClosedFrameInput(
-      proof.sharedInputCount, proof.varyingInputCount, group.rows.length,
-    );
-  }
-  const schedule = createOwnedClosedFrameSchedule();
-  for (let rowIndex = 0; rowIndex < scheduled.length; rowIndex++) {
-    const row = scheduled[rowIndex];
-    const request = row.request;
-    if (!request.worldRequest || !request.projectionRequests) return null;
-    if (!schedule.append(request.worldRequest, request.projectionRequests,
-      row.group?.input ?? null, row.groupRow, !row.group)) return null;
-  }
-  if (!schedule.seal()) return null;
-  const worldBatch = captureOwnedClosedWorldInputSchedule(world, schedule);
-  if (!worldBatch) return { kind: "public-required" };
-  if (!readOwnedClosedProjectionSchedule(transaction, schedule))
-    return { kind: "public-required" };
-  const rows: OwnedClosedStoreOutputRow[] = [];
-  const makeRow = (ordinal: number, source: OwnedScalarFrame | OwnedScalarBatchPage,
-    rowIndex = -1): void => {
-    const request = scheduled[ordinal].request;
-    const worldRow = worldBatch.rows[ordinal];
-    if (!worldRow || worldRow.owner !== request.owner ||
-      worldRow.cells.length !== request.facts.stateSites.length)
-      throw new TypeError("Invalid owned World row");
-    const image = rowIndex < 0
-      ? { kind: "frame" as const, frame: source as OwnedScalarFrame }
-      : { kind: "page" as const, page: source as OwnedScalarBatchPage, rowIndex };
-    const row = intrinsicFreeze({ owner: request.owner, lineage: worldRow.lineage,
-      cells: worldRow.cells, ...image,
-      key: request.facts.retainedChildren ? request.hostKey : request.facts.host.host.key,
-      tag: request.facts.host.host.tag,
-      ...(request.facts.retainedChildren ? { retainedChildren: true as const,
-        componentOwner: request.owner } : {}),
-    });
-    ownedClosedOutputRows.add(row);
-    intrinsicDefineProperty(rows, ordinal, { value: row, enumerable: true,
-      writable: true, configurable: true });
-  };
-  for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
-    const group = groups[groupIndex];
-    const facts = scheduled[group.rows[0]].request.facts;
-    const proof = facts.batchProof;
-    if (proof?.kind !== "verified" || !group.input) return null;
-    const page = captureVerifiedOwnedScalarBatch(facts.layout, proof,
-      group.input, group.rows.length, counts);
-    for (let index = 0; index < group.rows.length; index++)
-      makeRow(group.rows[index], page, index);
-  }
-  let scratch: number[] | null = null;
-  for (let ordinal = 0; ordinal < scheduled.length; ordinal++) {
-    const row = scheduled[ordinal];
-    if (row.group) continue;
-    const facts = row.request.facts;
-    const worldRow = worldBatch.rows[ordinal];
-    const fallbackValues = canonicalOwnedClosedFrameScheduleRowAt.call(
-      schedule, ordinal).fallbackValues;
-    if (!worldRow || !fallbackValues ||
-      fallbackValues.length !== row.request.inputs.length)
-      return null;
-    if (!scratch) scratch = denseNumericScratch(0);
-    growNumericScratch(scratch, facts.valueCount);
-    let cursor = 0;
-    for (let projection = 0; projection < fallbackValues.length; projection++) {
-      const values = fallbackValues[projection];
-      for (let valueIndex = 0; valueIndex < values.length; valueIndex++) {
-        const value = values[valueIndex];
-        if (typeof value !== "number" || !Number.isFinite(value)) return null;
-        scratch[cursor++] = value;
+    for (const group of groups) {
+      Object.freeze(group.rows);
+      Object.freeze(group);
+    }
+    const framePlan = createOwnedClosedFramePlan(scheduled.map((row) => ({
+      world: row.request.worldRequest!,
+      projections: row.request.projectionRequests!,
+      group: row.groupIndex,
+      groupRow: row.groupRow,
+    })), previous ? previous.#framePlan : undefined);
+    if (!framePlan) return null;
+    if (counts && previous) {
+      const priorChunks = new Set(previous.#requests.map((_request, index) =>
+        previous.#framePlan.chunkAt(index)));
+      for (const group of groups) {
+        if (priorChunks.has(framePlan.chunkAt(group.rows[0])))
+          counts.repairedGroups++;
       }
     }
-    for (let cellIndex = 0; cellIndex < worldRow.cells.length; cellIndex++) {
-      const cell = worldRow.cells[cellIndex];
-      if (typeof cell.value !== "number" || !Number.isFinite(cell.value)) return null;
-      scratch[cursor++] = cell.value;
-    }
-    if (cursor !== facts.valueCount) return null;
-    const frame = evaluateOwnedFrame(facts, scratch, counts);
-    if (!frame) return null;
-    makeRow(ordinal, frame);
+    if (counts) counts.built++;
+    return new MountedClosedStoreExecution(mountedExecutionKey,
+      Object.freeze([...requests]),
+      Object.freeze(scheduled), Object.freeze(groups), framePlan,
+      Object.freeze([...boundRequests]));
   }
-  return intrinsicFreeze({ kind: "ready" as const, rows: intrinsicFreeze(rows),
-    cellCut: worldBatch.cellCut });
+  static owns(value: unknown): value is MountedClosedStoreExecution {
+    try { return typeof value === "object" && value !== null &&
+      #mountedExecutionBrand in value; }
+    catch { return false; }
+  }
+  static prune(key: symbol, previous: MountedClosedStoreExecution | null,
+    retired: ReadonlySet<number>): MountedClosedStoreExecution | null {
+    if (key !== mountedExecutionKey || !previous ||
+      !MountedClosedStoreExecution.owns(previous)) return null;
+    if (!previous.#requests.some((request) => retired.has(request.owner)))
+      return previous;
+    const survivors = previous.#requests.filter((request) => !retired.has(request.owner));
+    return survivors.length
+      ? MountedClosedStoreExecution.prepare(key, survivors,
+        previous.#boundRequests.filter((_request, index) =>
+          !retired.has(previous.#requests[index].owner)), previous) : null;
+  }
+  static retain(key: symbol, previous: MountedClosedStoreExecution | null,
+    live: ReadonlySet<number>): MountedClosedStoreExecution | null {
+    if (key !== mountedExecutionKey || !previous ||
+      !MountedClosedStoreExecution.owns(previous)) return null;
+    const survivors = previous.#requests.filter((request) => live.has(request.owner));
+    return survivors.length === previous.#requests.length ? previous
+      : survivors.length
+      ? MountedClosedStoreExecution.prepare(key, survivors,
+        previous.#boundRequests.filter((_request, index) =>
+          live.has(previous.#requests[index].owner)), previous) : null;
+  }
+  static inspect(key: symbol, value: MountedClosedStoreExecution): Readonly<{
+    scheduled: readonly ScheduledFrameRow[];
+    groups: readonly BatchGroup[];
+    framePlan: OwnedClosedFramePlan;
+  }> | null {
+    return key === mountedExecutionKey && MountedClosedStoreExecution.owns(value)
+      ? { scheduled: value.#scheduled, groups: value.#groups,
+        framePlan: value.#framePlan } : null;
+  }
+  layoutIdentityForOwner(owner: number): object | null {
+    const ordinal = this.#requests.findIndex((request) => request.owner === owner);
+    return ordinal < 0 ? null : this.#framePlan.chunkAt(ordinal);
+  }
+  get rowCount(): number { return this.#scheduled.length; }
+  requestAt(index: number): BoundClosedStoreOutputRequest {
+    if (!Number.isSafeInteger(index) || index < 0 || index >= this.#boundRequests.length)
+      throw new TypeError("Invalid mounted request index");
+    return this.#boundRequests[index];
+  }
+}
+export const pruneMountedClosedStoreExecution = (
+  previous: MountedClosedStoreExecution | null,
+  retired: ReadonlySet<number>,
+): MountedClosedStoreExecution | null =>
+  MountedClosedStoreExecution.prune(mountedExecutionKey, previous, retired);
+export const retainMountedClosedStoreExecution = (
+  previous: MountedClosedStoreExecution | null,
+  live: ReadonlySet<number>,
+): MountedClosedStoreExecution | null =>
+  MountedClosedStoreExecution.retain(mountedExecutionKey, previous, live);
+const canonicalInspectMountedExecution = MountedClosedStoreExecution.inspect;
+Object.freeze(MountedClosedStoreExecution.prototype);
+Object.freeze(MountedClosedStoreExecution);
+export type MountedClosedStoreExecutionCounts = {
+  built: number;
+  reused: number;
+  repairedGroups: number;
 };
 
-/** Enclose passive captures and finite evaluation for ordered owned scalar rows. */
+export const prepareMountedClosedStoreExecution = (
+  orderedRequests: readonly BoundClosedStoreOutputRequest[],
+  previousPlan?: MountedClosedStoreExecution | null,
+  planCounts?: MountedClosedStoreExecutionCounts,
+): MountedClosedStoreExecution | null => {
+  try {
+    if (previousPlan && MountedClosedStoreExecution.owns(previousPlan) &&
+      Array.isArray(orderedRequests) &&
+      orderedRequests.length === previousPlan.rowCount &&
+      orderedRequests.every((request, index) =>
+        request === previousPlan.requestAt(index))) {
+      if (planCounts) planCounts.reused++;
+      return previousPlan;
+    }
+    const requests = unwrapOrderedRequests(orderedRequests);
+    return requests ? MountedClosedStoreExecution.prepare(mountedExecutionKey,
+      requests, orderedRequests, previousPlan, planCounts) : null;
+  } catch { return null; }
+};
+
+const ownedClosedFrameCutKey = Symbol("owned-closed-frame-cut");
+
+/** One authentic capture and immutable scalar result over mounted metadata. */
+export class OwnedClosedFrameCut {
+  readonly #mounted: MountedClosedStoreExecution;
+  readonly #scheduled: readonly ScheduledFrameRow[];
+  readonly #worldRows: readonly Readonly<{ owner: number;
+    lineage: readonly number[]; cells: readonly OwnedClosedWorldInputCell[] }>[];
+  readonly #cellCut: ClosedWorldCellCut;
+  readonly #pages: readonly OwnedScalarBatchPage[];
+  readonly #frames: readonly (OwnedScalarFrame | null)[];
+  readonly #images: (OwnedScalarImage | undefined)[];
+
+  private constructor(key: symbol, mounted: MountedClosedStoreExecution,
+    scheduled: readonly ScheduledFrameRow[],
+    worldRows: readonly Readonly<{ owner: number; lineage: readonly number[];
+      cells: readonly OwnedClosedWorldInputCell[] }>[],
+    cellCut: ClosedWorldCellCut, pages: readonly OwnedScalarBatchPage[],
+    frames: readonly (OwnedScalarFrame | null)[]) {
+    if (key !== ownedClosedFrameCutKey) throw new TypeError("Invalid owned frame cut");
+    this.#mounted = mounted;
+    this.#scheduled = scheduled;
+    this.#worldRows = worldRows;
+    this.#cellCut = cellCut;
+    this.#pages = pages;
+    this.#frames = frames;
+    this.#images = [];
+    intrinsicFreeze(this);
+  }
+  static owns(value: unknown): value is OwnedClosedFrameCut {
+    try { return typeof value === "object" && value !== null && #mounted in value; }
+    catch { return false; }
+  }
+  static capture(world: OwnerStateWorld, transaction: StoreRenderTransaction,
+    mounted: MountedClosedStoreExecution, counts?: OwnedScalarOutputCounts,
+  ): { kind: "ready"; cut: OwnedClosedFrameCut } |
+    { kind: "public-required" } | null {
+    const details = canonicalInspectMountedExecution(mountedExecutionKey, mounted);
+    if (!details) return null;
+    const { scheduled, groups } = details;
+    if (scheduled.length === 0) return null;
+    const groupInputs: OwnedClosedFrameInput[] = [];
+    for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+      const group = groups[groupIndex];
+      const proof = scheduled[group.rows[0]].request.facts.batchProof;
+      if (proof?.kind !== "verified") return null;
+      groupInputs.push(createOwnedClosedFrameInput(
+        proof.sharedInputCount, proof.varyingInputCount, group.rows.length,
+      ));
+    }
+    const fill = createOwnedClosedFrameFillFromPlan(details.framePlan, groupInputs);
+    if (!fill) return null;
+    const worldBatch = captureOwnedClosedWorldInputFill(world, fill);
+    if (!worldBatch) return { kind: "public-required" };
+    if (!readOwnedClosedProjectionFill(transaction, fill))
+      return { kind: "public-required" };
+    const pages: OwnedScalarBatchPage[] = [];
+    for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+      const group = groups[groupIndex];
+      const facts = scheduled[group.rows[0]].request.facts;
+      const proof = facts.batchProof;
+      const input = groupInputs[groupIndex];
+      if (proof?.kind !== "verified" || !input) return null;
+      pages.push(captureVerifiedOwnedScalarBatch(facts.layout, proof,
+        input, group.rows.length, counts));
+    }
+    const frames: (OwnedScalarFrame | null)[] = [];
+    let scratch: number[] | null = null;
+    for (let ordinal = 0; ordinal < scheduled.length; ordinal++) {
+      const row = scheduled[ordinal];
+      const worldRow = worldBatch.rows[ordinal];
+      if (!worldRow || worldRow.owner !== row.request.owner ||
+        worldRow.cells.length !== row.request.facts.stateSites.length) return null;
+      if (row.group) {
+        frames.push(null);
+        continue;
+      }
+      const facts = row.request.facts;
+      const fallbackValues = canonicalOwnedClosedFrameFillFallbackAt.call(
+        fill, ordinal);
+      if (!fallbackValues || fallbackValues.length !== row.request.inputs.length)
+        return null;
+      if (!scratch) scratch = denseNumericScratch(0);
+      growNumericScratch(scratch, facts.valueCount);
+      let cursor = 0;
+      for (const values of fallbackValues) {
+        for (const value of values) {
+          if (typeof value !== "number" || !Number.isFinite(value)) return null;
+          scratch[cursor++] = value;
+        }
+      }
+      for (const cell of worldRow.cells) {
+        if (typeof cell.value !== "number" || !Number.isFinite(cell.value)) return null;
+        scratch[cursor++] = cell.value;
+      }
+      if (cursor !== facts.valueCount) return null;
+      const frame = evaluateOwnedFrame(facts, scratch, counts);
+      if (!frame) return null;
+      frames.push(frame);
+    }
+    return intrinsicFreeze({ kind: "ready" as const,
+      cut: new OwnedClosedFrameCut(ownedClosedFrameCutKey,
+      mounted, scheduled, worldBatch.rows, worldBatch.cellCut,
+      intrinsicFreeze(pages), intrinsicFreeze(frames)) });
+  }
+  get mounted(): MountedClosedStoreExecution { return this.#mounted; }
+  get rowCount(): number { return this.#scheduled.length; }
+  get cellCut(): ClosedWorldCellCut { return this.#cellCut; }
+  ownerAt(index: number): number { return this.#row(index).request.owner; }
+  keyAt(index: number): string {
+    const request = this.#row(index).request;
+    return request.facts.retainedChildren ? request.hostKey : request.facts.host.host.key;
+  }
+  tagAt(index: number): string { return this.#row(index).request.facts.host.host.tag; }
+  retainedChildrenAt(index: number): boolean {
+    return this.#row(index).request.facts.retainedChildren;
+  }
+  layoutAt(index: number): OwnedScalarLayout {
+    return this.#row(index).request.facts.layout;
+  }
+  cellsAt(index: number): readonly OwnedClosedWorldInputCell[] {
+    this.#row(index);
+    return this.#worldRows[index].cells;
+  }
+  lineageAt(index: number): readonly number[] {
+    this.#row(index);
+    return this.#worldRows[index].lineage;
+  }
+  valueAt(index: number, prop: number): OwnedScalarValue {
+    const row = this.#row(index);
+    if (row.group) {
+      const page = this.#pages[row.groupIndex];
+      if (!page) throw new TypeError("Missing scalar batch page");
+      return page.valueAt(row.groupRow, prop);
+    }
+    return this.#frames[index]!.valueAt(prop);
+  }
+  imageAt(index: number): OwnedScalarImage {
+    const row = this.#row(index);
+    let image = this.#images[index];
+    if (image) return image;
+    if (row.group) {
+      const page = this.#pages[row.groupIndex];
+      if (!page) throw new TypeError("Missing scalar batch page");
+      image = intrinsicFreeze({ kind: "page" as const, page,
+        rowIndex: row.groupRow });
+    } else image = intrinsicFreeze({ kind: "frame" as const,
+      frame: this.#frames[index]! });
+    this.#images[index] = image;
+    return image;
+  }
+  #row(index: number): ScheduledFrameRow {
+    if (!Number.isSafeInteger(index) || index < 0 || index >= this.#scheduled.length)
+      throw new TypeError("Invalid owned frame cut index");
+    return this.#scheduled[index];
+  }
+}
+Object.freeze(OwnedClosedFrameCut.prototype);
+Object.freeze(OwnedClosedFrameCut);
+
+/** Capture one mounted plan through its canonical World and Store authorities. */
 export const prepareOwnedClosedStoreOutputs = (
   world: OwnerStateWorld,
   transaction: StoreRenderTransaction,
-  orderedRequests: OwnedClosedFrameRequests,
+  mountedPlan: MountedClosedStoreExecution,
   counts?: OwnedScalarOutputCounts,
-): { kind: "ready"; rows: readonly OwnedClosedStoreOutputRow[];
-  cellCut: ClosedWorldCellCut } |
+): { kind: "ready"; cut: OwnedClosedFrameCut } |
   { kind: "public-required" } | null => {
-  try {
-    const owned = canonicalConsumeOwnedFrameRequests(ownedFrameRequestsKey, orderedRequests);
-    return owned ? prepareOwnedFrameSchedule(world, transaction, owned, counts) : null;
-  } catch {
-    return null;
-  }
+  try { return OwnedClosedFrameCut.capture(world, transaction, mountedPlan, counts); }
+  catch { return null; }
 };

@@ -1,5 +1,6 @@
 const inputKey = Symbol("owned-closed-frame-input");
-const scheduleKey = Symbol("owned-closed-frame-schedule");
+const planKey = Symbol("owned-closed-frame-plan");
+const fillKey = Symbol("owned-closed-frame-fill");
 const intrinsicDefineProperty = Object.defineProperty;
 const intrinsicFreeze = Object.freeze;
 const intrinsicPush = Array.prototype.push;
@@ -10,6 +11,7 @@ const intrinsicIsFinite = Number.isFinite;
 const intrinsicIs = Object.is;
 import {
   isBoundClosedProjectionRequest, ownedClosedProjectionPathCount,
+  ownedClosedProjectionMetadata, type AnyAsyncStore,
   type BoundClosedProjectionRequest,
 } from "./async_store_runtime.ts";
 import {
@@ -95,93 +97,354 @@ export const createOwnedClosedFrameInput = (sharedCount: number,
 Object.freeze(OwnedClosedFrameInput.prototype);
 Object.freeze(OwnedClosedFrameInput);
 
-export type OwnedClosedFrameScheduleRow = Readonly<{
+type MountedRow = Readonly<{
   world: OwnedClosedWorldInputRequest;
   projections: readonly BoundClosedProjectionRequest[];
-  input: OwnedClosedFrameInput | null;
-  groupRow: number;
-  fallbackValues?: number[][];
 }>;
-export type OwnedClosedFrameProjectionColumn = Readonly<{
+type MountedColumn = Readonly<{
   bound: BoundClosedProjectionRequest;
-  input: OwnedClosedFrameInput | null;
   sharedOffset: number;
   fillShared: boolean;
-  fallbackValues?: number[][];
+}>;
+type MountedChunk = Readonly<{
+  identity: object;
+  rows: readonly MountedRow[];
+  columns: readonly (readonly MountedColumn[])[];
+}>;
+type OrderedRow = Readonly<{
+  chunk: MountedChunk;
+  localRow: number;
+  group: number;
+}>;
+type OrderedColumn = Readonly<{
+  chunk: MountedChunk;
+  localRow: number;
+  localColumn: number;
+  group: number;
+  fallbackRow: number;
 }>;
 
-/** One ephemeral authenticated candidate schedule consumed by World and Store. */
-export class OwnedClosedFrameSchedule {
-  readonly #rows: OwnedClosedFrameScheduleRow[] = [];
-  readonly #columns: OwnedClosedFrameProjectionColumn[] = [];
-  #sealed = false;
-  private constructor(key: symbol) {
-    if (key !== scheduleKey)
-      throw new TypeError("Invalid closed frame schedule");
+/** Immutable group geometry composed through an ordered row remap. */
+export class OwnedClosedFramePlan {
+  readonly #rows: readonly OrderedRow[];
+  readonly #columns: readonly OrderedColumn[];
+  readonly #chunks: readonly MountedChunk[];
+  readonly #readers: readonly BoundClosedProjectionRequest[];
+  readonly #readerIndex: ReadonlyMap<string, number>;
+  readonly #stores: readonly AnyAsyncStore[];
+  readonly #readersByStore: readonly (readonly string[])[];
+  readonly #uniqueProjections: readonly BoundClosedProjectionRequest[];
+  readonly #columnProjectionIndex: readonly number[];
+  readonly #projectionIndexByStore: ReadonlyMap<AnyAsyncStore,
+    ReadonlyMap<readonly (readonly string[])[], number>>;
+  private constructor(key: symbol, rows: readonly OrderedRow[],
+    columns: readonly OrderedColumn[], chunks: readonly MountedChunk[],
+    readers: readonly BoundClosedProjectionRequest[],
+    readerIndex: ReadonlyMap<string, number>,
+    stores: readonly AnyAsyncStore[],
+    readersByStore: readonly (readonly string[])[],
+    uniqueProjections: readonly BoundClosedProjectionRequest[],
+    columnProjectionIndex: readonly number[],
+    projectionIndexByStore: ReadonlyMap<AnyAsyncStore,
+      ReadonlyMap<readonly (readonly string[])[], number>>) {
+    if (key !== planKey) throw new TypeError("Invalid closed frame plan");
+    this.#rows = intrinsicFreeze(rows);
+    this.#columns = intrinsicFreeze(columns);
+    this.#chunks = intrinsicFreeze(chunks);
+    this.#readers = intrinsicFreeze(readers);
+    this.#readerIndex = readerIndex;
+    this.#stores = intrinsicFreeze(stores);
+    this.#readersByStore = intrinsicFreeze(readersByStore);
+    this.#uniqueProjections = intrinsicFreeze(uniqueProjections);
+    this.#columnProjectionIndex = intrinsicFreeze(columnProjectionIndex);
+    this.#projectionIndexByStore = projectionIndexByStore;
     intrinsicFreeze(this);
   }
-  static create(): OwnedClosedFrameSchedule {
-    return new OwnedClosedFrameSchedule(scheduleKey);
-  }
-  append(world: OwnedClosedWorldInputRequest,
-    sourceProjections: readonly BoundClosedProjectionRequest[],
-    input: OwnedClosedFrameInput | null, groupRow: number,
-    fallback: boolean): boolean {
-    const sourceLength = intrinsicIsArray(sourceProjections)
-      ? sourceProjections.length : -1;
-    if (this.#sealed || this.#rows.length >= 65536 ||
-      !isOwnedClosedWorldInputRequest(world) ||
-      !intrinsicIsSafeInteger(sourceLength) || sourceLength < 0 ||
-      sourceLength > 8 || this.#columns.length + sourceLength > 65536 ||
-      (input !== null && !OwnedClosedFrameInput.owns(input)) ||
-      !intrinsicIsSafeInteger(groupRow) || groupRow < -1 ||
-      (input === null && groupRow !== -1) || (input !== null && groupRow < 0))
-      return false;
-    const projections: BoundClosedProjectionRequest[] = [];
-    for (let index = 0; index < sourceLength; index++) {
-      const bound = sourceProjections[index];
-      if (!isBoundClosedProjectionRequest(bound)) return false;
-      intrinsicApply(intrinsicPush, projections, [bound]);
+  static create(rows: readonly Readonly<{
+    world: OwnedClosedWorldInputRequest;
+    projections: readonly BoundClosedProjectionRequest[];
+    group: number;
+    groupRow: number;
+  }>[], previous?: OwnedClosedFramePlan | null): OwnedClosedFramePlan | null {
+    if (!intrinsicIsArray(rows) || !rows.length || rows.length > 65536 ||
+      (previous && !OwnedClosedFramePlan.owns(previous))) return null;
+    const groupRows = new Map<number, number[]>();
+    for (let index = 0; index < rows.length; index++) {
+      const row = rows[index];
+      if (!isOwnedClosedWorldInputRequest(row.world) ||
+        !intrinsicIsArray(row.projections) || row.projections.length > 8 ||
+        !intrinsicIsSafeInteger(row.group) || row.group < -1 ||
+        !intrinsicIsSafeInteger(row.groupRow) ||
+        (row.group < 0 ? row.groupRow !== -1 : row.groupRow < 0)) return null;
+      const group = row.group < 0 ? -index - 1 : row.group;
+      let members = groupRows.get(group);
+      if (!members) groupRows.set(group, members = []);
+      if (row.group >= 0 && row.groupRow !== members.length) return null;
+      members.push(index);
     }
-    const owned = intrinsicFreeze({ world,
-      projections: intrinsicFreeze(projections), input, groupRow,
-      ...(fallback ? { fallbackValues: [] as number[][] } : {}) });
-    intrinsicApply(intrinsicPush, this.#rows, [owned]);
-    let offset = 0;
-    for (let index = 0; index < projections.length; index++) {
-      const bound = projections[index];
-      intrinsicApply(intrinsicPush, this.#columns, [intrinsicFreeze({ bound,
-        input, sharedOffset: offset, fillShared: groupRow === 0,
-        ...(owned.fallbackValues ? { fallbackValues: owned.fallbackValues } : {}) })]);
-      offset += ownedClosedProjectionPathCount(bound);
+    const chunks: MountedChunk[] = [];
+    const orderedRows: OrderedRow[] = Array(rows.length);
+    const priorByWorld = new Map<OwnedClosedWorldInputRequest, MountedChunk[]>();
+    for (const chunk of previous ? previous.#chunks : []) {
+      const world = chunk.rows[0].world;
+      let candidates = priorByWorld.get(world);
+      if (!candidates) priorByWorld.set(world, candidates = []);
+      candidates.push(chunk);
     }
-    return true;
+    const usedPrior = new Set<MountedChunk>();
+    for (const members of groupRows.values()) {
+      const same = (chunk: MountedChunk) =>
+        chunk.rows.length === members.length && members.every((ordinal, localRow) => {
+          const source = rows[ordinal], prior = chunk.rows[localRow];
+          return prior.world === source.world &&
+            prior.projections.length === source.projections.length &&
+            prior.projections.every((bound, index) => bound === source.projections[index]);
+        });
+      let chunk = priorByWorld.get(rows[members[0]].world)?.find((candidate) =>
+        !usedPrior.has(candidate) && same(candidate));
+      if (chunk) usedPrior.add(chunk);
+      else {
+        const chunkRows: MountedRow[] = [];
+        const chunkColumns: (readonly MountedColumn[])[] = [];
+        for (let localRow = 0; localRow < members.length; localRow++) {
+          const source = rows[members[localRow]];
+          const projections: BoundClosedProjectionRequest[] = [];
+          const columns: MountedColumn[] = [];
+          let offset = 0;
+          for (const bound of source.projections) {
+            if (!isBoundClosedProjectionRequest(bound)) return null;
+            projections.push(bound);
+            columns.push(intrinsicFreeze({ bound, sharedOffset: offset,
+              fillShared: localRow === 0 }));
+            offset += ownedClosedProjectionPathCount(bound);
+          }
+          chunkRows.push(intrinsicFreeze({ world: source.world,
+            projections: intrinsicFreeze(projections) }));
+          chunkColumns.push(intrinsicFreeze(columns));
+        }
+        chunk = intrinsicFreeze({ identity: intrinsicFreeze({}),
+          rows: intrinsicFreeze(chunkRows),
+          columns: intrinsicFreeze(chunkColumns) });
+      }
+      chunks.push(chunk);
+      for (let localRow = 0; localRow < members.length; localRow++) {
+        const ordinal = members[localRow];
+        orderedRows[ordinal] = intrinsicFreeze({ chunk, localRow,
+          group: rows[ordinal].group });
+      }
+    }
+    const orderedColumns: OrderedColumn[] = [];
+    for (let ordinal = 0; ordinal < orderedRows.length; ordinal++) {
+      const entry = orderedRows[ordinal];
+      const columns = entry.chunk.columns[entry.localRow];
+      for (let localColumn = 0; localColumn < columns.length; localColumn++) {
+        if (orderedColumns.length >= 65536) return null;
+        orderedColumns.push(intrinsicFreeze({ chunk: entry.chunk,
+          localRow: entry.localRow, localColumn, group: entry.group,
+          fallbackRow: entry.group < 0 ? ordinal : -1 }));
+      }
+    }
+    const readers: BoundClosedProjectionRequest[] = [];
+    const readerIndex = new Map<string, number>();
+    const stores: AnyAsyncStore[] = [];
+    const storeIndex = new Map<AnyAsyncStore, number>();
+    const readersByStore: string[][] = [];
+    const uniqueProjections: BoundClosedProjectionRequest[] = [];
+    const columnProjectionIndex: number[] = [];
+    const projectionByStore = new Map<AnyAsyncStore,
+      Map<readonly (readonly string[])[], number>>();
+    for (const column of orderedColumns) {
+      const bound = column.chunk.columns[column.localRow][column.localColumn].bound;
+      const request = ownedClosedProjectionMetadata(bound);
+      if (!request) return null;
+      let byPath = projectionByStore.get(request.store);
+      if (!byPath) projectionByStore.set(request.store, byPath = new Map());
+      let projectionIndex = byPath.get(request.paths);
+      if (projectionIndex === undefined) {
+        projectionIndex = uniqueProjections.length;
+        byPath.set(request.paths, projectionIndex);
+        uniqueProjections.push(bound);
+      }
+      columnProjectionIndex.push(projectionIndex);
+      const priorIndex = readerIndex.get(request.readerId);
+      if (priorIndex !== undefined) {
+        const prior = ownedClosedProjectionMetadata(readers[priorIndex]);
+        if (!prior || prior.store !== request.store) return null;
+        continue;
+      }
+      readerIndex.set(request.readerId, readers.length);
+      readers.push(bound);
+      let index = storeIndex.get(request.store);
+      if (index === undefined) {
+        index = stores.length;
+        storeIndex.set(request.store, index);
+        stores.push(request.store);
+        readersByStore.push([]);
+      }
+      readersByStore[index].push(request.readerId);
+    }
+    return new OwnedClosedFramePlan(planKey, orderedRows, orderedColumns,
+      chunks, readers, readerIndex, stores,
+      readersByStore.map((row) => intrinsicFreeze(row)),
+      uniqueProjections, columnProjectionIndex, projectionByStore);
   }
-  seal(): boolean {
-    if (this.#sealed || this.#rows.length === 0 || this.#columns.length > 65536)
-      return false;
-    this.#sealed = true;
-    intrinsicFreeze(this.#rows);
-    intrinsicFreeze(this.#columns);
-    return true;
-  }
-  static owns(value: unknown): value is OwnedClosedFrameSchedule {
+  static owns(value: unknown): value is OwnedClosedFramePlan {
     try { return typeof value === "object" && value !== null && #rows in value; }
     catch { return false; }
   }
-  get sealed(): boolean { return this.#sealed; }
   get rowCount(): number { return this.#rows.length; }
-  rowAt(index: number): OwnedClosedFrameScheduleRow { return this.#rows[index]; }
   get projectionCount(): number { return this.#columns.length; }
-  projectionAt(index: number): OwnedClosedFrameProjectionColumn {
-    return this.#columns[index];
+  get readerCount(): number { return this.#readers.length; }
+  get storeCount(): number { return this.#stores.length; }
+  get uniqueProjectionCount(): number { return this.#uniqueProjections.length; }
+  uniqueProjectionAt(index: number): BoundClosedProjectionRequest {
+    return this.#uniqueProjections[index];
+  }
+  projectionIndexAt(index: number): number { return this.#columnProjectionIndex[index]; }
+  projectionIndexFor(store: AnyAsyncStore,
+    paths: readonly (readonly string[])[]): number {
+    return this.#projectionIndexByStore.get(store)?.get(paths) ?? -1;
+  }
+  readerAt(index: number): BoundClosedProjectionRequest { return this.#readers[index]; }
+  readerIndexForId(id: string): number { return this.#readerIndex.get(id) ?? -1; }
+  storeAt(index: number): AnyAsyncStore { return this.#stores[index]; }
+  storeReadersAt(index: number): readonly string[] {
+    return this.#readersByStore[index];
+  }
+  worldAt(index: number): OwnedClosedWorldInputRequest {
+    const row = this.#rows[index];
+    return row.chunk.rows[row.localRow].world;
+  }
+  rowGroupAt(index: number): number { return this.#rows[index].group; }
+  groupRowAt(index: number): number {
+    const row = this.#rows[index];
+    return row.group < 0 ? -1 : row.localRow;
+  }
+  boundAt(index: number): BoundClosedProjectionRequest {
+    const column = this.#columns[index];
+    return column.chunk.columns[column.localRow][column.localColumn].bound;
+  }
+  projectionGroupAt(index: number): number { return this.#columns[index].group; }
+  sharedOffsetAt(index: number): number {
+    const column = this.#columns[index];
+    return column.chunk.columns[column.localRow][column.localColumn].sharedOffset;
+  }
+  fillSharedAt(index: number): boolean {
+    const column = this.#columns[index];
+    return column.chunk.columns[column.localRow][column.localColumn].fillShared;
+  }
+  fallbackRowAt(index: number): number { return this.#columns[index].fallbackRow; }
+  chunkAt(index: number): object { return this.#rows[index].chunk.identity; }
+}
+export const createOwnedClosedFramePlan = OwnedClosedFramePlan.create;
+const canonicalPlanWorldAt = OwnedClosedFramePlan.prototype.worldAt;
+const canonicalPlanRowGroupAt = OwnedClosedFramePlan.prototype.rowGroupAt;
+const canonicalPlanGroupRowAt = OwnedClosedFramePlan.prototype.groupRowAt;
+const canonicalPlanBoundAt = OwnedClosedFramePlan.prototype.boundAt;
+const canonicalPlanProjectionGroupAt = OwnedClosedFramePlan.prototype.projectionGroupAt;
+const canonicalPlanSharedOffsetAt = OwnedClosedFramePlan.prototype.sharedOffsetAt;
+const canonicalPlanFillSharedAt = OwnedClosedFramePlan.prototype.fillSharedAt;
+const canonicalPlanFallbackRowAt = OwnedClosedFramePlan.prototype.fallbackRowAt;
+export const canonicalOwnedClosedFramePlanReaderAt = OwnedClosedFramePlan.prototype.readerAt;
+export const canonicalOwnedClosedFramePlanReaderIndexForId =
+  OwnedClosedFramePlan.prototype.readerIndexForId;
+export const canonicalOwnedClosedFramePlanStoreAt = OwnedClosedFramePlan.prototype.storeAt;
+export const canonicalOwnedClosedFramePlanStoreReadersAt =
+  OwnedClosedFramePlan.prototype.storeReadersAt;
+export const canonicalOwnedClosedFramePlanUniqueProjectionAt =
+  OwnedClosedFramePlan.prototype.uniqueProjectionAt;
+export const canonicalOwnedClosedFramePlanProjectionIndexAt =
+  OwnedClosedFramePlan.prototype.projectionIndexAt;
+export const canonicalOwnedClosedFramePlanProjectionIndexFor =
+  OwnedClosedFramePlan.prototype.projectionIndexFor;
+intrinsicFreeze(OwnedClosedFramePlan.prototype);
+intrinsicFreeze(OwnedClosedFramePlan);
+
+/** Candidate-private buffers over a retained immutable capture plan. */
+export class OwnedClosedFrameFill {
+  readonly #plan: OwnedClosedFramePlan;
+  readonly #groupInputs: readonly OwnedClosedFrameInput[];
+  readonly #fallbackValues: readonly number[][][];
+  private constructor(key: symbol, plan: OwnedClosedFramePlan,
+    groupInputs: readonly OwnedClosedFrameInput[]) {
+    if (key !== fillKey) throw new TypeError("Invalid closed frame cut");
+    this.#plan = plan;
+    this.#groupInputs = intrinsicFreeze([...groupInputs]);
+    const fallbacks: number[][][] = [];
+    for (let index = 0; index < plan.rowCount; index++) {
+      const group = canonicalPlanRowGroupAt.call(plan, index);
+      if (group >= groupInputs.length) throw new TypeError("Missing group input");
+      if (group < 0) fallbacks[index] = [];
+    }
+    this.#fallbackValues = fallbacks;
+    intrinsicFreeze(this);
+  }
+  static fromPlan(plan: OwnedClosedFramePlan,
+    groupInputs: readonly OwnedClosedFrameInput[]): OwnedClosedFrameFill | null {
+    if (!OwnedClosedFramePlan.owns(plan) || !intrinsicIsArray(groupInputs)) return null;
+    for (let index = 0; index < groupInputs.length; index++)
+      if (!OwnedClosedFrameInput.owns(groupInputs[index])) return null;
+    try { return new OwnedClosedFrameFill(fillKey, plan, groupInputs); }
+    catch { return null; }
+  }
+  static owns(value: unknown): value is OwnedClosedFrameFill {
+    try { return typeof value === "object" && value !== null && #plan in value; }
+    catch { return false; }
+  }
+  get rowCount(): number { return this.#plan.rowCount; }
+  get projectionCount(): number { return this.#plan.projectionCount; }
+  get plan(): OwnedClosedFramePlan { return this.#plan; }
+  worldAt(index: number): OwnedClosedWorldInputRequest {
+    return canonicalPlanWorldAt.call(this.#plan, index);
+  }
+  rowInputAt(index: number): OwnedClosedFrameInput | null {
+    const group = canonicalPlanRowGroupAt.call(this.#plan, index);
+    return group < 0 ? null : this.#groupInputs[group];
+  }
+  groupRowAt(index: number): number {
+    return canonicalPlanGroupRowAt.call(this.#plan, index);
+  }
+  fallbackAt(index: number): number[][] | undefined {
+    return this.#fallbackValues[index];
+  }
+  boundAt(index: number): BoundClosedProjectionRequest {
+    return canonicalPlanBoundAt.call(this.#plan, index);
+  }
+  projectionInputAt(index: number): OwnedClosedFrameInput | null {
+    const group = canonicalPlanProjectionGroupAt.call(this.#plan, index);
+    return group < 0 ? null : this.#groupInputs[group];
+  }
+  sharedOffsetAt(index: number): number {
+    return canonicalPlanSharedOffsetAt.call(this.#plan, index);
+  }
+  fillSharedAt(index: number): boolean {
+    return canonicalPlanFillSharedAt.call(this.#plan, index);
+  }
+  projectionFallbackAt(index: number): number[][] | undefined {
+    const row = canonicalPlanFallbackRowAt.call(this.#plan, index);
+    return row < 0 ? undefined : this.#fallbackValues[row];
   }
 }
 
-export const createOwnedClosedFrameSchedule = OwnedClosedFrameSchedule.create;
-export const canonicalOwnedClosedFrameScheduleOwns = OwnedClosedFrameSchedule.owns;
-export const canonicalOwnedClosedFrameScheduleRowAt = OwnedClosedFrameSchedule.prototype.rowAt;
-export const canonicalOwnedClosedFrameScheduleProjectionAt =
-  OwnedClosedFrameSchedule.prototype.projectionAt;
-intrinsicFreeze(OwnedClosedFrameSchedule.prototype);
-intrinsicFreeze(OwnedClosedFrameSchedule);
+export const createOwnedClosedFrameFillFromPlan = OwnedClosedFrameFill.fromPlan;
+export const canonicalOwnedClosedFrameFillOwns = OwnedClosedFrameFill.owns;
+export const canonicalOwnedClosedFrameFillWorldAt =
+  OwnedClosedFrameFill.prototype.worldAt;
+export const canonicalOwnedClosedFrameFillRowInputAt =
+  OwnedClosedFrameFill.prototype.rowInputAt;
+export const canonicalOwnedClosedFrameFillGroupRowAt =
+  OwnedClosedFrameFill.prototype.groupRowAt;
+export const canonicalOwnedClosedFrameFillFallbackAt =
+  OwnedClosedFrameFill.prototype.fallbackAt;
+export const canonicalOwnedClosedFrameFillBoundAt =
+  OwnedClosedFrameFill.prototype.boundAt;
+export const canonicalOwnedClosedFrameFillProjectionInputAt =
+  OwnedClosedFrameFill.prototype.projectionInputAt;
+export const canonicalOwnedClosedFrameFillSharedOffsetAt =
+  OwnedClosedFrameFill.prototype.sharedOffsetAt;
+export const canonicalOwnedClosedFrameFillFillSharedAt =
+  OwnedClosedFrameFill.prototype.fillSharedAt;
+export const canonicalOwnedClosedFrameFillProjectionFallbackAt =
+  OwnedClosedFrameFill.prototype.projectionFallbackAt;
+intrinsicFreeze(OwnedClosedFrameFill.prototype);
+intrinsicFreeze(OwnedClosedFrameFill);

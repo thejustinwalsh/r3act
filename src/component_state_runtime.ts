@@ -24,16 +24,18 @@ import {
 import {
   type ClosedStoreDataExecution,
   type NormalizedClosedStoreDataExecution,
-  type OwnedClosedStoreOutputRow,
   type BoundClosedStoreOutputRequest,
-  type OwnedClosedStoreOutputRequest,
+  type OwnedClosedFrameCut,
+  type MountedClosedStoreExecution,
+  type MountedClosedStoreExecutionCounts,
+  prepareMountedClosedStoreExecution,
+  pruneMountedClosedStoreExecution,
+  retainMountedClosedStoreExecution,
   bindOwnedClosedStoreOutputRequest,
   evaluateClosedStoreDataExecution,
   inspectClosedStoreDataExecution,
   normalizeClosedStoreDataExecution,
   prepareOwnedClosedStoreOutputs,
-  createOwnedClosedFrameRequests,
-  materializeOwnedScalarStorePropDelta,
   createOwnedScalarStorePropDelta,
 } from "./closed_store_execution.ts";
 import {
@@ -589,6 +591,18 @@ type ClosedStoreOutputShape = Readonly<{
     membership: Set<AnyAsyncStore> }>[];
 }>;
 
+type MountedRootClosedRegion = ClosedStoreOutputShape & Readonly<{
+  boundInputs: NonNullable<ClosedStoreOutputShape["boundInputs"]>;
+  boundRequest: BoundClosedStoreOutputRequest;
+  boundExecution: NormalizedClosedStoreDataExecution;
+}>;
+type MountedRootClosedComposition = Readonly<{
+  plan: MountedClosedStoreExecution;
+  regions: readonly MountedRootClosedRegion[];
+  requests: readonly BoundClosedStoreOutputRequest[];
+  bindings: readonly (import("./vdom_snapshot_runtime.ts").MountedScalarStorePlan | null)[];
+}>;
+
 const canAdoptBareSuspenseFallback = (
   boundaryOwner: OwnerId,
   accepted: ComponentCache | undefined,
@@ -635,13 +649,16 @@ type RetainedCellWrite = {
 type ClosedStoreOutputCut = {
   readonly owners: ReadonlySet<OwnerId>;
   readonly regions: readonly (StorePropDelta | import("./vdom_snapshot_runtime.ts").OwnedScalarStoreRegion)[];
+  readonly ownedCut: OwnedClosedFrameCut | null;
+  readonly mountedBindings: readonly (import("./vdom_snapshot_runtime.ts").MountedScalarStorePlan | null)[];
+  installMountedBindings(program: { mountedBindingAt(index: number): import("./vdom_snapshot_runtime.ts").MountedScalarStorePlan | null }): void;
   readonly scalarPlans: readonly (import("./vdom_snapshot_runtime.ts").MountedScalarStorePlan | null)[];
   setScalarSuccessors(plans: readonly (import("./vdom_snapshot_runtime.ts").MountedScalarStorePlan | null)[] | undefined): void;
   readonly inputStores: ReadonlySet<AnyAsyncStore>;
   readonly inputCells: readonly StateCellHandle[];
   readonly inputCellWrites: readonly RetainedCellWrite[];
   readonly producerCellCut: ClosedWorldCellCut | null;
-  readonly passiveOwned: boolean;
+  readonly mountedOwned: boolean;
   readonly ordinaryScalar: boolean;
   readonly deferredValidation: boolean;
   useExternalCellCut(cut: ClosedWorldCellCut): void;
@@ -1965,6 +1982,7 @@ export class ComponentStateRoot<H, Parent = H> {
   #liveEffects = new Map<string, LiveEffect>();
   #liveEffectKeysByOwner = new Map<OwnerId, Set<string>>();
   #componentCache = new Map<OwnerId, ComponentCache>();
+  #mountedClosedStoreExecution: MountedRootClosedComposition | null = null;
   // Metadata lists compiler-approved sinks; the committed cache records sinks bound
   // in this render, so render identity invalidates conditional-output changes.
   #compiledPropSitesByCache = new WeakMap<
@@ -2070,6 +2088,46 @@ export class ComponentStateRoot<H, Parent = H> {
   };
   static #nextRootId = 1;
 
+  #pruneMountedClosedComposition(retired: ReadonlySet<OwnerId>): void {
+    const prior = this.#mountedClosedStoreExecution;
+    if (!prior) return;
+    const plan = pruneMountedClosedStoreExecution(prior.plan, retired);
+    if (!plan) {
+      this.#mountedClosedStoreExecution = null;
+      return;
+    }
+    if (plan === prior.plan) return;
+    const regions = prior.regions.filter(({ owner }) => !retired.has(owner));
+    const requests = prior.requests.filter((_request, index) =>
+      !retired.has(prior.regions[index].owner));
+    const bindings = prior.bindings.filter((_binding, index) =>
+      !retired.has(prior.regions[index].owner));
+    if (regions.length !== plan.rowCount || requests.some((request, index) =>
+      request !== plan.requestAt(index))) {
+      this.#mountedClosedStoreExecution = null;
+      return;
+    }
+    this.#mountedClosedStoreExecution = Object.freeze({ plan,
+      regions: Object.freeze(regions), requests: Object.freeze(requests),
+      bindings: Object.freeze(bindings) });
+  }
+
+  #reconcileMountedClosedComposition(next: ReadonlyMap<OwnerId, ComponentCache>,
+    live: ReadonlySet<OwnerId>): void {
+    const prior = this.#mountedClosedStoreExecution;
+    if (!prior) return;
+    const stale = new Set<OwnerId>();
+    for (let index = 0; index < prior.regions.length; index++) {
+      const region = prior.regions[index];
+      const output = next.get(region.owner)?.output;
+      if (!live.has(region.owner) || !output || output.shape !== region ||
+        (output.scalarPlan ?? null) !== prior.bindings[index]) {
+        stale.add(region.owner);
+      }
+    }
+    if (stale.size) this.#pruneMountedClosedComposition(stale);
+  }
+
   [rootHostPublicationDomain](): HostPublicationDomain {
     return this.#hostPublicationDomain;
   }
@@ -2161,6 +2219,7 @@ export class ComponentStateRoot<H, Parent = H> {
       }
       if (!affected) return;
       this.#codeInvalidated = true;
+      this.#mountedClosedStoreExecution = null;
       this.#revisionRetirementPending = true;
       this.#retireCompiledInterests();
     });
@@ -2541,56 +2600,7 @@ export class ComponentStateRoot<H, Parent = H> {
       this.#scopedFlushActive || this.#pendingDirectIntent ||
       this.#activeRootClaim || this.#publicationIntents.size > 0 ||
       isHostPublicationDomainBusy(this.#hostPublicationDomain)) return false;
-    const selectedStores = new Set(selected);
-    const covered = new Set<AnyAsyncStore>();
-    let readers = 0;
-    for (const [id, membership] of this.#liveStoreReaders) {
-      if (![...membership].some((store) => selectedStores.has(store))) continue;
-      readers++;
-      const split = id.indexOf("\u0000");
-      const owner = Number(id.slice(0, split));
-      const cache = this.#componentCache.get(owner);
-      const metadata = typeof cache?.type === "function"
-        ? definedComponents.get(cache.type)?.metadata : undefined;
-      const program = metadata?.closedStoreHostProgram;
-      if (split <= 0 || !Number.isSafeInteger(owner) || !cache || !program ||
-        !metadata?.closedStoreExecution ||
-        (program.schemaVersion !== 5 && program.schemaVersion !== 6 &&
-          program.schemaVersion !== 7) ||
-        metadata.closedStoreNumericKernel || !this.#liveOwners.has(owner) ||
-        !componentCodeCurrentPrivate(cache.type) || cache.keyedRegion ||
-        cache.nativeBoundary || cache.propBoundSites.size > 0 ||
-        (cache.output.kind === "ordinary" &&
-          (!isRuntimeOwnedElement(cache.output.expanded) ||
-            !Object.isFrozen(cache.output.expanded.props))) ||
-        (cache.output.kind === "scalar" && !cache.output.expandedValid)) return false;
-      const inputs = closedStoreHostInputs(program);
-      if (!inputs.some((input) => `${owner}\u0000${input.storeUseSiteId}` === id)) {
-        return false;
-      }
-      for (const input of inputs) {
-        const descriptor = Object.getOwnPropertyDescriptor(cache.props, input.storeProp);
-        const store = descriptor && "value" in descriptor ? descriptor.value : undefined;
-        const inputMembership = this.#liveStoreReaders.get(
-          `${owner}\u0000${input.storeUseSiteId}`);
-        if ((typeof store !== "object" || store === null) ||
-          !selectedStores.has(store as AnyAsyncStore) ||
-          inputMembership?.size !== 1 ||
-          !inputMembership.has(store as AnyAsyncStore)) return false;
-        covered.add(store as AnyAsyncStore);
-      }
-      if (program.schemaVersion === 7 &&
-        (cache.ownEffects.size !== program.effectSites.length ||
-          program.effectSites.some((site) =>
-            !cache.ownEffects.has(effectKey(owner, site)) ||
-            !this.#liveEffectKeysByOwner.get(owner)?.has(effectKey(owner, site))))) {
-        return false;
-      }
-      if (program.schemaVersion !== 7 && cache.ownEffects.size !== 0) return false;
-      if (program.schemaVersion === 5 && cache.subtreeOwners.size !== 1) return false;
-    }
-    return readers > 0 && covered.size === selectedStores.size &&
-      !this.#resourceHoldWait(new Set(), undefined, { stores: selected });
+    return !this.#resourceHoldWait(new Set(), undefined, { stores: selected });
   }
 
   /** Prepare the selected closed resource consumers as one root publication. */
@@ -3400,7 +3410,7 @@ export class ComponentStateRoot<H, Parent = H> {
     selectedCells: readonly RetainedCellWrite[] = [],
     privatePublication = false,
     deferPrivateCells = false,
-    requirePassive = false,
+    requireMounted = false,
   ): ClosedStoreOutputCut {
     if (new Set(selected).size !== selected.length) throw new SparseCandidateIneligible();
     const selectedStores = new Set(selected);
@@ -3419,9 +3429,7 @@ export class ComponentStateRoot<H, Parent = H> {
       membership: Set<AnyAsyncStore> };
     type Owner = { owner: OwnerId; cache: ComponentCache; inputs: readonly Input[];
       stateInputs: readonly RetainedCellWrite[]; next?: RuntimeElement;
-      nextResult?: RuntimeElement; image?: OwnedScalarImage;
-      authoredTemplate?: ScalarOutputTemplate;
-      expandedTemplate?: ScalarOutputTemplate;
+      nextResult?: RuntimeElement;
       keyedOutput?: Readonly<{ parentOwner: OwnerId; parentCache: ComponentCache;
         region: KeyedRegionCache; key: string; value: RuntimeElement }>;
       nextShape?: ClosedStoreOutputShape;
@@ -3439,6 +3447,7 @@ export class ComponentStateRoot<H, Parent = H> {
     const resources = new ResourceReadSet(this.#resourceTable);
     let outputChanged = false;
     let allOwnedScalar = true;
+    let genericOwnedDataRows = 0;
     let kernelInputs: number[] | null = null;
     let kernelOutputs: number[] | null = null;
     type NumericRow = {
@@ -3452,15 +3461,13 @@ export class ComponentStateRoot<H, Parent = H> {
     let numericRun: {
       kernel: ClosedStoreNumericKernel; inputStart: number; rows: NumericRow[];
     } | null = null;
-    const emptyStateInputs: readonly RetainedCellWrite[] = Object.freeze([]);
-    type PassiveRow = Omit<Owner, "inputs"> & {
-      program: ClosedStoreHostProgram;
-      dataExecution: NormalizedClosedStoreDataExecution;
-      inputs: readonly StoreInput[];
-      boundRequest?: BoundClosedStoreOutputRequest;
-    };
-    const passiveRows: PassiveRow[] = [];
-    const passiveByReader = new Set<string>();
+    const selectedRegions: MountedRootClosedRegion[] = [];
+    const selectedBases: ComponentCache[] = [];
+    let ownedTemplateProposals: Array<Readonly<{
+      authored: ScalarOutputTemplate;
+      expanded: ScalarOutputTemplate;
+    }> | undefined> | null = null;
+    let ownedKeyedPatches: Array<Owner["keyedOutput"]> | null = null;
     let coverage: Readonly<{
       ownerPrefixes: ReadonlySet<string>;
       coveredReaders: ReadonlySet<string>;
@@ -3479,29 +3486,32 @@ export class ComponentStateRoot<H, Parent = H> {
         shape.tag !== program.host.tag) return undefined;
       return shape;
     };
-    let passiveEligible = newlyStaged.size === 0 && retiredPendingReaders.size === 0;
-    if (passiveEligible) {
+    let ownedEligible = newlyStaged.size === 0 && retiredPendingReaders.size === 0;
+    if (ownedEligible) {
+      if (this.#activeCounters) this.#count("store.mounted-frame.selection-passes");
       const candidates = new Set<OwnerId>();
+      const requiredReaders = new Set<string>();
       for (const [id, membership] of this.#liveStoreReaders) {
         if (![...membership].some((store) => selectedStores.has(store))) continue;
-        passiveByReader.add(id);
+        requiredReaders.add(id);
         const split = id.indexOf("\u0000");
         const owner = Number(id.slice(0, split));
         if (split <= 0 || !Number.isSafeInteger(owner)) {
-          passiveEligible = false; break;
+          ownedEligible = false; break;
         }
         candidates.add(owner);
       }
       for (const owner of selectedCellSites.keys()) candidates.add(owner);
-      if (candidates.size === 0) passiveEligible = false;
+      if (candidates.size === 0) ownedEligible = false;
       for (const owner of candidates) {
-        if (!passiveEligible) break;
+        if (!ownedEligible) break;
         const cache = this.#componentCache.get(owner);
         const metadata = typeof cache?.type === "function"
           ? definedComponents.get(cache.type)?.metadata : undefined;
         const program = metadata?.closedStoreHostProgram;
         if (!cache || !program || !metadata?.closedStoreExecution ||
-          program.schemaVersion === 4 ||
+          (program.schemaVersion !== 5 && program.schemaVersion !== 6 &&
+            program.schemaVersion !== 7) ||
           metadata.closedStoreNumericKernel ||
           !this.#liveOwners.has(owner) || !componentCodeCurrentPrivate(cache.type) ||
           (cache.output.kind === "ordinary" &&
@@ -3512,14 +3522,14 @@ export class ComponentStateRoot<H, Parent = H> {
           (program.schemaVersion !== 6 && program.schemaVersion !== 7 &&
             cache.subtreeOwners.size !== 1) ||
           (program.schemaVersion !== 7 && cache.ownEffects.size !== 0)) {
-          passiveEligible = false; break;
+          ownedEligible = false; break;
         }
         if (program.schemaVersion === 7 &&
           (cache.ownEffects.size !== program.effectSites.length ||
             program.effectSites.some((site) =>
               !cache.ownEffects.has(effectKey(owner, site)) ||
               !this.#liveEffectKeysByOwner.get(owner)?.has(effectKey(owner, site))))) {
-          passiveEligible = false; break;
+          ownedEligible = false; break;
         }
         const programInputs = closedStoreHostInputs(program);
         const hostKey = cache.scopeExplicitHostKeys === true
@@ -3540,7 +3550,7 @@ export class ComponentStateRoot<H, Parent = H> {
               membership.has(store as AnyAsyncStore) &&
               selectedStores.has(store as AnyAsyncStore);
           });
-        let rowInputs: PassiveRow["inputs"];
+        let rowInputs: NonNullable<ClosedStoreOutputShape["boundInputs"]>;
         if (reusable && priorInputs && shape?.boundRequest) {
           rowInputs = priorInputs;
         } else {
@@ -3553,7 +3563,7 @@ export class ComponentStateRoot<H, Parent = H> {
               !selectedStores.has(store as AnyAsyncStore) ||
               !membership || membership.size !== 1 ||
               !membership.has(store as AnyAsyncStore)) {
-              passiveEligible = false; break;
+              ownedEligible = false; break;
             }
             freshInputs.push(Object.freeze({ id, prop: input.storeProp,
               source: store as AnyAsyncStore, store: store as AnyAsyncStore,
@@ -3562,24 +3572,36 @@ export class ComponentStateRoot<H, Parent = H> {
           }
           rowInputs = Object.freeze(freshInputs);
         }
-        if (passiveEligible) {
+        if (ownedEligible) {
           for (const input of rowInputs) {
-            passiveByReader.delete(input.id);
+            requiredReaders.delete(input.id);
             seen.add(input.store);
           }
-          passiveRows.push({ owner, cache, program,
-            dataExecution: metadata.closedStoreExecution,
-            inputs: rowInputs, stateInputs: emptyStateInputs,
-            ...(reusable && shape?.boundRequest ? { boundRequest: shape.boundRequest } : {}),
-            regionIndex: -1 });
+          const request = reusable && shape?.boundRequest
+            ? shape.boundRequest
+            : bindOwnedClosedStoreOutputRequest({
+              execution: metadata.closedStoreExecution, owner, hostKey,
+              inputs: rowInputs.map(({ store, id }) => ({ store, readerId: id })),
+            });
+          if (!request) { ownedEligible = false; break; }
+          if (this.#activeCounters) this.#count(reusable
+            ? "store.bound-input.reused-rows" : "store.bound-input.new-rows");
+          const mountedShape = reusable && shape ? shape : Object.freeze({
+            program, owner, cacheProps: cache.props, hostKey,
+            tag: program.host.tag, boundRequest: request,
+            boundExecution: metadata.closedStoreExecution, boundInputs: rowInputs,
+          });
+          selectedRegions.push(mountedShape as MountedRootClosedRegion);
+          selectedBases.push(cache);
         }
       }
-      if (passiveByReader.size !== 0 ||
-        [...selectedStores].some((store) => !seen.has(store))) passiveEligible = false;
+      if (requiredReaders.size !== 0 ||
+        [...selectedStores].some((store) => !seen.has(store))) ownedEligible = false;
     }
-    if (!passiveEligible) seen.clear();
-    let passive: readonly OwnedClosedStoreOutputRow[] | null = null;
-    let acceptedScalarPlans: readonly (import("./vdom_snapshot_runtime.ts").MountedScalarStorePlan | null)[] = [];
+    if (!ownedEligible) seen.clear();
+    let ownedCut: OwnedClosedFrameCut | null = null;
+    let mountedCompositionForCut: MountedRootClosedComposition | null = null;
+    let mountedBindingsForCut: readonly (import("./vdom_snapshot_runtime.ts").MountedScalarStorePlan | null)[] = [];
     const nextShape = (
       cache: ComponentCache, program: ClosedStoreHostProgram, owner: OwnerId,
       hostKey: string,
@@ -3815,13 +3837,22 @@ export class ComponentStateRoot<H, Parent = H> {
       regions.push(enclosedRegion ?? scalarRegion({ key: program.host.key,
         tag: program.host.tag, props: output }));
     };
-    const stagePassiveRow = (row: PassiveRow,
-      image: OwnedClosedStoreOutputRow) => {
-      const { owner, cache, program, inputs: capturedInputs } = row;
+    const stageOwnedOrdinal = (region: MountedRootClosedRegion,
+      index: number, cut: OwnedClosedFrameCut) => {
+      const { owner, program, boundInputs: capturedInputs } = region;
+      const cache = this.#componentCache.get(owner);
+      if (!cache || cache !== selectedBases[index] ||
+        !this.#liveOwners.has(owner) ||
+        region.cacheProps !== cache.props ||
+        cut.ownerAt(index) !== owner) {
+        throw new SparseCandidateIneligible();
+      }
+      const image = cut.imageAt(index);
+      const tag = cut.tagAt(index);
       const hostKey = cache.scopeExplicitHostKeys === true
         ? `${String(cache.hostKeyScope)}\u0000${program.host.key}` : program.host.key;
-      if (image.owner !== owner || image.tag !== program.host.tag ||
-        image.key !== hostKey || owners.has(owner)) throw new SparseCandidateIneligible();
+      if (tag !== program.host.tag ||
+        cut.keyAt(index) !== hostKey) throw new SparseCandidateIneligible();
       const proof = ownedShape(cache, program, owner, hostKey);
       const retained = program.schemaVersion === 6 ||
         (program.schemaVersion === 7 && program.retainedChildProp === "children");
@@ -3837,7 +3868,8 @@ export class ComponentStateRoot<H, Parent = H> {
           !Object.isFrozen(prior.expanded.props) ||
           getComponentOutputOwner(prior.authored) !== owner ||
           getComponentOutputOwner(prior.expanded) !== owner ||
-          prior.authored.type !== image.tag || prior.expanded.type !== image.tag) {
+          prior.authored.type !== tag ||
+          prior.expanded.type !== tag) {
           throw new SparseCandidateIneligible();
         }
         const authoredProps = Object.getOwnPropertyDescriptors(prior.authored.props);
@@ -3864,8 +3896,8 @@ export class ComponentStateRoot<H, Parent = H> {
         const child = Object.getOwnPropertyDescriptor(cache.props, "children");
         if (!cache.retainedStoreChildAdmitted || !Object.isFrozen(cache.props) ||
           !child || !("value" in child) || !isRuntimeOwnedElement(child.value) ||
-          !Object.isFrozen(child.value) || image.retainedChildren !== true ||
-          image.componentOwner !== owner) throw new SparseCandidateIneligible();
+          !Object.isFrozen(child.value) ||
+          !cut.retainedChildrenAt(index)) throw new SparseCandidateIneligible();
         authoredChild = child.value;
         if (proof) {
           const priorAuthored = prior.kind === "scalar"
@@ -3887,7 +3919,7 @@ export class ComponentStateRoot<H, Parent = H> {
           isRuntimeOwnedElement(previousProps?.children?.value)) {
           expandedChild = previousProps!.children.value;
         } else throw new SparseCandidateIneligible();
-      } else if (image.retainedChildren !== true || image.componentOwner !== owner) {
+      } else if (!cut.retainedChildrenAt(index)) {
         throw new SparseCandidateIneligible();
       }
       if (prior.kind === "scalar") {
@@ -3895,8 +3927,8 @@ export class ComponentStateRoot<H, Parent = H> {
           ownedScalarImageLayout(image) ||
           prior.authoredTemplate.key !== hostKey ||
           prior.expandedTemplate.key !== hostKey ||
-          prior.authoredTemplate.tag !== image.tag ||
-          prior.expandedTemplate.tag !== image.tag ||
+          prior.authoredTemplate.tag !== tag ||
+          prior.expandedTemplate.tag !== tag ||
           prior.authoredTemplate.owner !== owner ||
           prior.expandedTemplate.owner !== owner) {
           throw new SparseCandidateIneligible();
@@ -3909,16 +3941,16 @@ export class ComponentStateRoot<H, Parent = H> {
       } else {
         for (let index = 0; index < ownedScalarImageLength(image); index++) {
           const name = ownedScalarImageLayout(image).nameAt(index);
-          outputChanged ||= !sameClosedHostOutput(image.tag, name,
+          outputChanged ||= !sameClosedHostOutput(tag, name,
             previousProps![name].value, ownedScalarImageValueAt(image, index));
         }
       }
       if (program.schemaVersion === 7) {
         hasMixedOwner = true;
-        if (image.cells.length !== program.stateSites.length) {
+        if (cut.cellsAt(index).length !== program.stateSites.length) {
           throw new SparseCandidateIneligible();
         }
-        for (const captured of image.cells) {
+        for (const captured of cut.cellsAt(index)) {
           const wait = this.#resourceHoldWait(new Set(), resourceLease,
             { cells: [captured.handle] });
           if (wait) throw new HeldPublicationWait(wait);
@@ -3927,10 +3959,9 @@ export class ComponentStateRoot<H, Parent = H> {
         if (selectedCellSites.has(owner) &&
           [...selectedCellSites.get(owner)!].some((site) =>
             !program.stateSites.includes(site))) throw new SparseCandidateIneligible();
-      } else if (image.cells.length || selectedCellSites.has(owner)) {
+      } else if (cut.cellsAt(index).length || selectedCellSites.has(owner)) {
         throw new SparseCandidateIneligible();
       }
-      row.stateInputs = image.cells;
       if (closedStoreHostInputs(program).length !== capturedInputs.length) {
         throw new SparseCandidateIneligible();
       }
@@ -3947,12 +3978,12 @@ export class ComponentStateRoot<H, Parent = H> {
         prior.authoredTemplate.children === authoredChild &&
         prior.expandedTemplate.children === expandedChild;
       const authoredTemplate: ScalarOutputTemplate = reuseTemplates
-        ? prior.authoredTemplate : Object.freeze({ tag: image.tag, key: hostKey,
+        ? prior.authoredTemplate : Object.freeze({ tag, key: hostKey,
           owner, ...(retained ? { children: authoredChild } : {}) });
       const expandedTemplate: ScalarOutputTemplate = reuseTemplates
-        ? prior.expandedTemplate : Object.freeze({ tag: image.tag, key: hostKey,
+        ? prior.expandedTemplate : Object.freeze({ tag, key: hostKey,
           owner, ...(retained ? { children: expandedChild } : {}) });
-      const parentOwner = image.lineage[1];
+      const parentOwner = cut.lineageAt(index)[1];
       const parentCache = parentOwner === undefined ? undefined
         : this.#componentCache.get(parentOwner);
       const keyedRegion = parentCache?.keyedRegion;
@@ -3973,23 +4004,16 @@ export class ComponentStateRoot<H, Parent = H> {
         this.#count("store.scalar-output.prop-materializations",
           keyedCounts.propMaterializations);
       }
-      const next = nextShape(cache, program, owner, hostKey,
-        row.boundRequest, row.inputs,
-        row.dataExecution);
-      row.image = image;
-      row.authoredTemplate = authoredTemplate;
-      row.expandedTemplate = expandedTemplate;
-      row.keyedOutput = keyedOutput;
-      row.nextShape = next;
-      row.regionIndex = regions.length;
-      owners.set(owner, row);
-      regions.push(Object.freeze({ key: image.key, tag: image.tag,
-        ...(image.kind === "page"
-          ? { kind: "page" as const, page: image.page, rowIndex: image.rowIndex }
-          : { kind: "frame" as const, frame: image.frame }),
-        ...(image.retainedChildren ? {
-          retainedChildren: true as const, componentOwner: image.componentOwner,
-        } : {}) }));
+      if (!reuseTemplates) {
+        ownedTemplateProposals ??= [];
+        ownedTemplateProposals[index] = Object.freeze({
+          authored: authoredTemplate, expanded: expandedTemplate,
+        });
+      }
+      if (keyedOutput) {
+        ownedKeyedPatches ??= [];
+        ownedKeyedPatches[index] = keyedOutput;
+      }
     };
     const flushNumericRun = () => {
       const run = numericRun;
@@ -4027,7 +4051,7 @@ export class ComponentStateRoot<H, Parent = H> {
     };
     const current = (privateOnly = false, afterHost = false) => {
       let worldPhaseCurrent = false;
-      if (!privateOnly && passive && phaseCellCut) {
+      if (!privateOnly && ownedCut && phaseCellCut) {
         const status = validateCanonicalClosedWorldPhase(this.world, phaseCellCut,
           afterHost ? "after-host" : "prepared");
         if (status === "stale") return false;
@@ -4036,12 +4060,14 @@ export class ComponentStateRoot<H, Parent = H> {
       const ownerPrefixes = coverage?.ownerPrefixes;
       const coveredReaders = coverage?.coveredReaders;
       if (!ownerPrefixes || !coveredReaders) return false;
-      for (const [owner, { cache, inputs, stateInputs, keyedOutput }] of owners) {
+      const ownerCurrent = (owner: OwnerId, cache: ComponentCache,
+        inputs: readonly Input[], stateInputs: readonly RetainedCellWrite[],
+        keyedOutput: Owner["keyedOutput"]): boolean => {
         if (worldPhaseCurrent &&
           (typeof cache.type !== "function" || !definedComponents.has(cache.type))) {
           worldPhaseCurrent = false;
         }
-        if (!this.#liveOwners.has(owner) ||
+        return !(!this.#liveOwners.has(owner) ||
           !canonicalWorldIsAlive.call(this.world, owner) ||
           this.#componentCache.get(owner) !== cache ||
           (keyedOutput !== undefined &&
@@ -4076,11 +4102,30 @@ export class ComponentStateRoot<H, Parent = H> {
             return liveSource === source && liveVersion !== null &&
               (afterHost ? liveVersion >= version : liveVersion === version) &&
               (afterHost && liveVersion > version || capturedScalarCurrent(source, value));
-          })) return false;
+          }));
+      };
+      if (ownedCut) {
+        for (let index = 0; index < ownedCut.rowCount; index++) {
+          const region = mountedCompositionForCut?.regions[index];
+          const cache = selectedBases[index];
+          if (!region || !cache || !ownerCurrent(region.owner, cache,
+            region.boundInputs, ownedCut.cellsAt(index),
+            ownedKeyedPatches?.[index])) return false;
+        }
+      } else for (const [owner, entry] of owners) {
+        if (!ownerCurrent(owner, entry.cache, entry.inputs,
+          entry.stateInputs, entry.keyedOutput)) return false;
       }
       if (hasMixedOwner) {
         for (const change of this.#pendingChanges.capture()) {
-          const stateInputs = owners.get(change.owner)?.stateInputs;
+          let stateInputs: readonly RetainedCellWrite[] | undefined =
+            owners.get(change.owner)?.stateInputs;
+          if (ownedCut) for (let index = 0; index < ownedCut.rowCount; index++) {
+            if (ownedCut.ownerAt(index) === change.owner) {
+              stateInputs = ownedCut.cellsAt(index);
+              break;
+            }
+          }
           if (!stateInputs?.length ||
             selectedCellSites.get(change.owner)?.has(change.site)) continue;
           const captured = stateInputs.find(({ handle }) => handle.site === change.site);
@@ -4094,7 +4139,7 @@ export class ComponentStateRoot<H, Parent = H> {
           afterHost ? "after-host" : "prepared")) return false;
       if (!afterHost && this.#resourceHoldWait(new Set(), resourceLease,
         { cells: inputCells })) return false;
-      const canonicalMembershipIteration = passive &&
+      const canonicalMembershipIteration = ownedCut &&
         ownDataDescriptor(Set.prototype, "forEach")?.value === canonicalSetForEach &&
         ownDataDescriptor(Set.prototype, "has")?.value === canonicalSetHas;
       for (const [id, membership] of this.#liveStoreReaders) {
@@ -4115,7 +4160,7 @@ export class ComponentStateRoot<H, Parent = H> {
       return privateOnly ? resources.validateCanonical() : resources.validate();
     };
     const storeCurrent = (afterHost = false) => {
-      if (passive) {
+      if (ownedCut) {
         const status = validateCanonicalClosedStorePhase(stores,
           afterHost ? "after-host" : "prepared");
         if (status !== "public-required") return status === "current";
@@ -4123,40 +4168,33 @@ export class ComponentStateRoot<H, Parent = H> {
       return afterHost ? stores.validatePublicationInputs() : stores.validate();
     };
     try {
-      if (passiveEligible) {
-        const ownedRequests = createOwnedClosedFrameRequests();
-        let allBound = true;
-        for (const row of passiveRows) {
-          const { owner, cache, program, dataExecution, inputs } = row;
-          if (row.boundRequest) {
-            if (this.#activeCounters) this.#count("store.bound-input.reused-rows");
-          } else {
-            const hostKey = cache.scopeExplicitHostKeys === true
-              ? `${String(cache.hostKeyScope)}\u0000${program.host.key}` : program.host.key;
-            const request: OwnedClosedStoreOutputRequest = {
-              execution: dataExecution, owner, hostKey,
-              inputs: inputs.map(({ store, id }) => ({ store, readerId: id })),
-            };
-            const bound = bindOwnedClosedStoreOutputRequest(request);
-            if (bound) {
-              row.boundRequest = bound;
-              if (this.#activeCounters) this.#count("store.bound-input.new-rows");
-            }
-          }
-          if (!row.boundRequest || !ownedRequests.append(row.boundRequest)) {
-            allBound = false;
-            break;
-          }
-        }
-        if (!allBound || !ownedRequests.seal()) {
-          seen.clear();
-        } else {
+      if (ownedEligible && selectedRegions.length > 0 &&
+        selectedRegions.length <= 65536) {
+          const retained = this.#mountedClosedStoreExecution;
+          const sameSelection = retained?.regions.length === selectedRegions.length &&
+            selectedRegions.every((region, index) =>
+              retained.regions[index] === region);
+          const chosenRegions = sameSelection ? retained!.regions
+            : Object.freeze([...selectedRegions]);
+          const chosenRequests = sameSelection ? retained!.requests
+            : Object.freeze(chosenRegions.map(({ boundRequest }) => boundRequest));
           const scalarCounts: OwnedScalarOutputCounts | undefined = this.#activeCounters
             ? { frames: 0, pages: 0, rootMaterializations: 0,
               propMaterializations: 0 }
             : undefined;
-          const batch = prepareOwnedClosedStoreOutputs(this.world, stores, ownedRequests,
-            scalarCounts);
+          const planCounts: MountedClosedStoreExecutionCounts | undefined = this.#activeCounters
+            ? { built: 0, reused: 0, repairedGroups: 0 } : undefined;
+          const plan = prepareMountedClosedStoreExecution(chosenRequests,
+            retained?.plan, planCounts);
+          if (!plan) throw new SparseCandidateIneligible();
+          const batch = prepareOwnedClosedStoreOutputs(this.world, stores,
+            plan, scalarCounts);
+          if (planCounts) {
+            this.#count("store.mounted-execution.built", planCounts.built);
+            this.#count("store.mounted-execution.reused", planCounts.reused);
+            this.#count("store.mounted-execution.repaired-groups",
+              planCounts.repairedGroups);
+          }
           if (scalarCounts) this.#count("store.scalar-output.frames", scalarCounts.frames);
           if (scalarCounts?.pages) this.#count(
             "store.scalar-output.pages", scalarCounts.pages);
@@ -4165,35 +4203,27 @@ export class ComponentStateRoot<H, Parent = H> {
           if (batch === null) throw new SparseCandidateIneligible();
           if (batch.kind !== "ready") seen.clear();
           if (batch.kind === "ready") {
-            producerCellCut = batch.cellCut;
-            if (batch.rows.length !== passiveRows.length) throw new SparseCandidateIneligible();
-            passive = batch.rows;
-            for (let index = 0; index < passiveRows.length; index++) {
-              const row = passiveRows[index], image = passive[index];
-              if (row.program.schemaVersion === 1 ||
-                row.program.schemaVersion === 2 ||
-                row.program.schemaVersion === 3) {
-                if (image.owner !== row.owner || image.tag !== row.program.host.tag ||
-                  image.key !== row.program.host.key || image.cells.length !== 0 ||
-                  image.retainedChildren === true || owners.has(row.owner)) {
-                  throw new SparseCandidateIneligible();
-                }
-                for (const input of row.inputs) {
-                  inputStores.add(input.store);
-                  const wait = this.#resourceHoldWait(new Set(), resourceLease,
-                    { stores: [input.store] });
-                  if (wait) throw new HeldPublicationWait(wait);
-                  covered.add(input.id);
-                  if (selectedStores.has(input.store)) seen.add(input.store);
-                }
-                const region = materializeOwnedScalarStorePropDelta(image, scalarCounts);
-                stageLeaf({ ...row, program: row.program,
-                  boundExecution: row.dataExecution,
-                  boundInputs: row.inputs }, region.props, region);
-              } else stagePassiveRow(row, image);
+            ownedCut = batch.cut;
+            producerCellCut = ownedCut.cellCut;
+            if (ownedCut.mounted !== plan ||
+              ownedCut.rowCount !== chosenRegions.length) {
+              throw new SparseCandidateIneligible();
+            }
+            mountedBindingsForCut = sameSelection && retained!.plan === plan
+              ? retained!.bindings
+              : Object.freeze(chosenRegions.map(({ owner }) =>
+                this.#componentCache.get(owner)?.output.scalarPlan ?? null));
+            mountedCompositionForCut = Object.freeze({ plan,
+              regions: chosenRegions, requests: chosenRequests,
+              bindings: mountedBindingsForCut });
+            for (let index = 0; index < chosenRegions.length; index++) {
+              if (plan.requestAt(index) !== chosenRegions[index].boundRequest) {
+                throw new SparseCandidateIneligible();
+              }
+              stageOwnedOrdinal(chosenRegions[index], index, ownedCut);
               if (this.#activeCounters) {
                 this.#count("store.owned-data.rows");
-                if (inspectClosedStoreDataExecution(passiveRows[index].dataExecution)
+                if (inspectClosedStoreDataExecution(chosenRegions[index].boundExecution)
                   ?.mode.startsWith("verified-")) {
                   this.#count("store.owned-data.verified-rows");
                 }
@@ -4204,10 +4234,9 @@ export class ComponentStateRoot<H, Parent = H> {
               scalarCounts.propMaterializations,
             );
           }
-        }
       }
-      if (requirePassive && !passive) throw new SparseCandidateIneligible();
-      if (!passive) for (const [id, membership] of this.#liveStoreReaders) {
+      if (requireMounted && !ownedCut) throw new SparseCandidateIneligible();
+      if (!ownedCut) for (const [id, membership] of this.#liveStoreReaders) {
         const split = id.indexOf("\u0000");
         const owner = Number(id.slice(0, split));
         if (![...membership].some((store) => selectedStores.has(store)) &&
@@ -4362,6 +4391,7 @@ export class ComponentStateRoot<H, Parent = H> {
         stageLeaf({ owner, cache, inputs, stateInputs, program }, dataExecution
           ? evaluateClosedStoreDataExecution(dataExecution, values)
           : evaluateClosedStoreHostProgram(program, values));
+        if (dataExecution) genericOwnedDataRows++;
         if (dataExecution && this.#activeCounters) {
           this.#count("store.owned-data.rows");
           if (inspectClosedStoreDataExecution(dataExecution)?.mode.startsWith("verified-")) {
@@ -4370,62 +4400,102 @@ export class ComponentStateRoot<H, Parent = H> {
         }
       }
       flushNumericRun();
-      const stagedCellWrites = [...owners.values()].flatMap(({ stateInputs }) =>
-        [...stateInputs]);
-      if (passive && !deferPrivateCells) {
+      const stagedCellWrites: RetainedCellWrite[] = [];
+      if (ownedCut) {
+        for (let index = 0; index < ownedCut.rowCount; index++) {
+          stagedCellWrites.push(...ownedCut.cellsAt(index));
+        }
+      } else for (const { stateInputs } of owners.values()) {
+        stagedCellWrites.push(...stateInputs);
+      }
+      if (ownedCut && !deferPrivateCells) {
         phaseCellCut = createClosedWorldCellCut(stagedCellWrites);
         if (!phaseCellCut) throw new SparseCandidateIneligible();
         privateCellCut = phaseCellCut;
       }
-      if (!deferPrivateCells && passive && stagedCellWrites.length) {
+      if (!deferPrivateCells && ownedCut && stagedCellWrites.length) {
         if (!privateCellCut ||
           !validateClosedWorldCellCut(this.world, privateCellCut, "prepared")) {
           throw new SparseCandidateIneligible();
         }
       }
-      const ownerIds = new Set(owners.keys());
+      const ownerIds = new Set<OwnerId>();
+      if (ownedCut) {
+        for (let index = 0; index < ownedCut.rowCount; index++) {
+          ownerIds.add(ownedCut.ownerAt(index));
+        }
+      } else for (const owner of owners.keys()) ownerIds.add(owner);
       coverage = Object.freeze({
         ownerPrefixes: new Set([...ownerIds].map(String)),
         coveredReaders: new Set(covered),
       });
-      if ((passive ? passive.some((image) => image.lineage.slice(1).some(
-        (ancestor) => ownerIds.has(ancestor))) : [...ownerIds].some((owner) =>
+      let overlappingLineage = false;
+      if (ownedCut) {
+        for (let index = 0; index < ownedCut.rowCount; index++) {
+          if (ownedCut.lineageAt(index).slice(1).some((ancestor) =>
+            ownerIds.has(ancestor))) {
+            overlappingLineage = true;
+            break;
+          }
+        }
+      } else overlappingLineage = [...ownerIds].some((owner) =>
         this.world.ownerLineage(owner).slice(1).some((ancestor) =>
-          ownerIds.has(ancestor)))) ||
+          ownerIds.has(ancestor)));
+      if (overlappingLineage ||
         [...selectedStores].some((store) =>
         !seen.has(store) && !newlyStaged.has(store)) ||
         [...selectedCellSites.keys()].some((owner) => !ownerIds.has(owner)) ||
         (requireOutputChange && !outputChanged) ||
-        (!(deferPrivateCells && passive) && (!current() || !storeCurrent()))) {
+        (!(deferPrivateCells && ownedCut) && (!current() || !storeCurrent()))) {
         throw new SparseCandidateIneligible();
       }
-      const publicationLineages = privatePublication
+      const publicationLineages = privatePublication && !ownedCut
         ? new Map([...ownerIds].map((owner) =>
           [owner, canonicalWorldOwnerLineage.call(this.world, owner)] as const))
         : null;
-      if (passive && this.#activeCounters) {
+      if (ownedCut && this.#activeCounters) {
         this.#count("store.owned-data.batches");
         this.#count("store.owned-data.enclosed-batches");
       }
-      const stagedByRegion: Array<Owner | undefined> =
-        Array(regions.length);
-      for (const [owner, staged] of owners) {
-        stagedByRegion[staged.regionIndex] = staged;
+      const genericByRegion: Array<Owner | undefined> = ownedCut
+        ? [] : Array(regions.length);
+      if (!ownedCut) for (const staged of owners.values()) {
+        genericByRegion[staged.regionIndex] = staged;
       }
-      acceptedScalarPlans = Object.freeze(regions.map((_region, index) =>
-        stagedByRegion[index]?.cache.output.scalarPlan ?? null));
+      const genericBindings = ownedCut ? [] : Object.freeze(regions.map(
+        (_region, index) => genericByRegion[index]?.cache.output.scalarPlan ?? null));
       return {
         owners: ownerIds, regions,
-        get scalarPlans() { return acceptedScalarPlans; },
+        get ownedCut() { return ownedCut; },
+        get mountedBindings() { return mountedBindingsForCut; },
+        scalarPlans: genericBindings,
+        installMountedBindings: (program) => {
+          if (!ownedCut || !mountedCompositionForCut) return;
+          let successor: (import("./vdom_snapshot_runtime.ts").MountedScalarStorePlan | null)[] | null = null;
+          for (let index = 0; index < ownedCut.rowCount; index++) {
+            const binding = program.mountedBindingAt(index);
+            if (binding !== mountedBindingsForCut[index]) {
+              successor ??= [...mountedBindingsForCut];
+              successor[index] = binding;
+            }
+          }
+          if (successor) {
+            mountedBindingsForCut = Object.freeze(successor);
+            mountedCompositionForCut = Object.freeze({
+              ...mountedCompositionForCut, bindings: mountedBindingsForCut,
+            });
+          }
+        },
         setScalarSuccessors: (plans) => {
+          if (ownedCut) return;
           if (plans && plans.length !== regions.length) {
             throw new SparseCandidateIneligible();
           }
-          const successors = plans ? Object.freeze([...plans]) : [];
+          const successors = plans ?? [];
           for (let index = 0; index < successors.length; index++) {
             const plan = successors[index];
             if (!plan) continue;
-            const entry = stagedByRegion[index];
+            const entry = genericByRegion[index];
             if (regions[index]?.componentOwner !== undefined &&
               regions[index].componentOwner !== entry?.owner) {
               throw new SparseCandidateIneligible();
@@ -4434,7 +4504,7 @@ export class ComponentStateRoot<H, Parent = H> {
           for (let index = 0; index < successors.length; index++) {
             const plan = successors[index];
             if (!plan) continue;
-            const staged = stagedByRegion[index];
+            const staged = genericByRegion[index];
             if (staged) staged.scalarPlan = plan;
           }
         },
@@ -4449,35 +4519,59 @@ export class ComponentStateRoot<H, Parent = H> {
         inputStores, inputResources,
         inputCells, inputCellWrites: stagedCellWrites,
         producerCellCut,
-        passiveOwned: !!passive && regions.length > 0,
-        ordinaryScalar: !!passive && allOwnedScalar && regions.length > 0,
-        deferredValidation: deferPrivateCells && !!passive,
+        mountedOwned: !!ownedCut && ownedCut.rowCount > 0,
+        ordinaryScalar: !!ownedCut && ownedCut.rowCount > 0 ||
+          genericOwnedDataRows > 0 && genericOwnedDataRows === owners.size &&
+          regions.length === owners.size && allOwnedScalar,
+        deferredValidation: deferPrivateCells && !!ownedCut,
         privatePreparedCurrent: () => current(true) &&
           canonicalResourceCutCurrent(resources),
         publish: () => {
-          if (privatePublication && !publicationLineages) {
+          if (privatePublication && !ownedCut && !publicationLineages) {
             throw new Error("Closed Store publication lacks owned World lineage");
           }
           const ancestors = new Set<OwnerId>();
-          for (const [owner, { next, nextResult, image, authoredTemplate,
-            expandedTemplate, keyedOutput, nextShape, scalarPlan }] of owners) {
-            const cache = this.#componentCache.get(owner)!;
-            const output: ComponentOutput = image && authoredTemplate &&
-              expandedTemplate
-              ? Object.freeze({ kind: "scalar" as const, image,
+          if (ownedCut && mountedCompositionForCut) {
+            for (let index = 0; index < ownedCut.rowCount; index++) {
+              const region = mountedCompositionForCut.regions[index];
+              const owner = region.owner;
+              const cache = selectedBases[index];
+              const proposal = ownedTemplateProposals?.[index];
+              const prior = cache.output;
+              const authoredTemplate = proposal?.authored ??
+                (prior.kind === "scalar" ? prior.authoredTemplate : undefined);
+              const expandedTemplate = proposal?.expanded ??
+                (prior.kind === "scalar" ? prior.expandedTemplate : undefined);
+              if (!authoredTemplate || !expandedTemplate) {
+                throw new Error("Owned Store output lost mounted templates");
+              }
+              const output: ComponentOutput = Object.freeze({
+                kind: "scalar" as const, image: ownedCut.imageAt(index),
                 authoredTemplate, expandedTemplate, expandedValid: true,
-                shape: nextShape, scalarPlan })
-              : ordinaryOutput(nextResult ?? next ?? null, next ?? null,
-                nextShape, scalarPlan);
+                shape: region,
+                scalarPlan: mountedBindingsForCut[index] ?? undefined,
+              });
+              this.#componentCache.set(owner, { ...cache, output });
+              const keyedOutput = ownedKeyedPatches?.[index];
+              if (keyedOutput) keyedOutput.region.outputsByKey.set(
+                keyedOutput.key, keyedOutput.value);
+              const lineage = ownedCut.lineageAt(index);
+              for (const ancestor of lineage.slice(1)) ancestors.add(ancestor);
+            }
+          } else for (const [owner, { next, nextResult,
+            keyedOutput, nextShape, scalarPlan }] of owners) {
+            const cache = this.#componentCache.get(owner)!;
+            const output = ordinaryOutput(nextResult ?? next ?? null,
+              next ?? null, nextShape, scalarPlan);
             this.#componentCache.set(owner, { ...cache,
               output });
             if (keyedOutput) {
               keyedOutput.region.outputsByKey.set(keyedOutput.key,
                 keyedOutput.value);
-        } else if (privatePublication && !image) {
+            } else if (privatePublication) {
               this.#refreshDirectKeyedRegionOutputForParent(owner,
                 publicationLineages!.get(owner)![1]);
-        } else if (!image) this.#refreshDirectKeyedRegionOutput(owner);
+            } else this.#refreshDirectKeyedRegionOutput(owner);
             const lineage = privatePublication
               ? publicationLineages!.get(owner)! : this.world.ownerLineage(owner);
             for (const ancestor of lineage.slice(1)) {
@@ -4491,6 +4585,12 @@ export class ComponentStateRoot<H, Parent = H> {
               invalidatedBySparseStore: true,
             });
           }
+          if (mountedCompositionForCut) {
+            const retained = retainMountedClosedStoreExecution(
+              mountedCompositionForCut.plan, this.#liveOwners);
+            this.#mountedClosedStoreExecution = retained === mountedCompositionForCut.plan
+              ? mountedCompositionForCut : null;
+          }
         },
         release: () => {
           resources.discard(); owners.clear(); ownerIds.clear(); covered.clear();
@@ -4498,12 +4598,17 @@ export class ComponentStateRoot<H, Parent = H> {
           publicationLineages?.clear(); regions.length = 0;
           inputCells.length = 0;
           stagedCellWrites.length = 0;
-          passive = null; privateCellCut = null; phaseCellCut = null;
+          ownedCut = null; privateCellCut = null; phaseCellCut = null;
+          mountedCompositionForCut = null;
+          mountedBindingsForCut = [];
           producerCellCut = null;
           externalCellCutCovered = false;
-          passiveRows.length = 0; passiveByReader.clear();
-          stagedByRegion.length = 0;
-          acceptedScalarPlans = [];
+          selectedRegions.length = 0;
+          selectedBases.length = 0;
+          if (ownedTemplateProposals) ownedTemplateProposals.length = 0;
+          if (ownedKeyedPatches) ownedKeyedPatches.length = 0;
+          ownedTemplateProposals = null; ownedKeyedPatches = null;
+          genericByRegion.length = 0;
           coverage = null;
           if (kernelInputs) kernelInputs.length = 0;
           if (kernelOutputs) kernelOutputs.length = 0;
@@ -4514,10 +4619,14 @@ export class ComponentStateRoot<H, Parent = H> {
       owners.clear(); covered.clear(); seen.clear();
       inputStores.clear(); inputResources.clear(); regions.length = 0;
       inputCells.length = 0;
-      passive = null; privateCellCut = null; phaseCellCut = null;
+      ownedCut = null; privateCellCut = null; phaseCellCut = null;
+      mountedCompositionForCut = null;
+      mountedBindingsForCut = [];
       producerCellCut = null;
       externalCellCutCovered = false;
-      passiveRows.length = 0; passiveByReader.clear();
+      selectedRegions.length = 0;
+      selectedBases.length = 0;
+      ownedTemplateProposals = null; ownedKeyedPatches = null;
       if (kernelInputs) kernelInputs.length = 0;
       if (kernelOutputs) kernelOutputs.length = 0;
       throw error;
@@ -4619,7 +4728,7 @@ export class ComponentStateRoot<H, Parent = H> {
           true, true, immediateOnly);
       }
       ownedCellCut = (closed?.ordinaryScalar === true ||
-        immediateOnly && closed?.passiveOwned === true) &&
+        immediateOnly && closed?.mountedOwned === true) &&
         writes.every(({ handle }) => closed!.owners.has(handle.owner));
       if (ownedCellCut) {
         const producerCovered = !!closed!.producerCellCut && writes.every((write) =>
@@ -4651,32 +4760,27 @@ export class ComponentStateRoot<H, Parent = H> {
       const remainingWrites = writes.filter(({ handle }) =>
         !closed?.owners.has(handle.owner)).map(
         ({ source, value }) => [source, value] as const);
-      const ownedRegions = closed?.regions;
-      const isOwnedRegion = (region: StorePropDelta |
-        import("./vdom_snapshot_runtime.ts").OwnedScalarStoreRegion):
-        region is import("./vdom_snapshot_runtime.ts").OwnedScalarStoreRegion =>
-        "kind" in region &&
-        (region.kind === "frame" || region.kind === "page");
       ownedStoreOnly = selected.length > 0 &&
         ownedCellCut && remainingWrites.length === 0 &&
         closed?.ordinaryScalar === true && closed.inputResources.size === 0 &&
         acceptedCollections.length === 0 && acceptedResources.size === 0 &&
         acceptedCollectionFootprint.length === 0;
       const narrowOwnedScalar = (internalCellCapture || groupContinuation) &&
-        ownedStoreOnly &&
-        ownedRegions?.every(isOwnedRegion) === true;
-      const ownedProgram = narrowOwnedScalar && ownedRegions &&
-        ownedRegions.every(isOwnedRegion)
+        ownedStoreOnly && !!closed?.ownedCut;
+      const ownedProgram = narrowOwnedScalar && closed?.ownedCut
         ? this.#vdom.prepareOwnedScalarStoreDeltas(
-          ownedRegions, closed!.scalarPlans)
+          closed.ownedCut, closed.mountedBindings)
         : null;
       program = ownedProgram ?? this.#vdom.prepareScopedKeyedRetainedAndStoreDeltas(
-        [], remainingWrites, closed?.regions ?? [], [], closed?.scalarPlans);
+        [], remainingWrites, closed?.regions ?? [], [],
+        closed?.ownedCut ? closed.mountedBindings : closed?.scalarPlans,
+        closed?.ownedCut ?? undefined);
       ownedScalarPhases = ownedProgram?.ownedScalarPhases ?? null;
       if (!program || program.readSources.some((source) => !sources.has(source))) {
         throw new SparseCandidateIneligible();
       }
-      closed?.setScalarSuccessors(program.storeScalarPlans);
+      if (closed?.ownedCut) closed.installMountedBindings(program);
+      else closed?.setScalarSuccessors(program.storeScalarPlans);
     } catch (error) {
       privateCellCut = null; cellFootprint.length = 0;
       const errors = collectCleanupErrors([
@@ -4875,7 +4979,7 @@ export class ComponentStateRoot<H, Parent = H> {
     const ordinaryClosed = closed;
     const ordinaryImmediate = internalCellCapture && selected.length > 0 &&
       ownedCellCut && (ordinaryClosed?.ordinaryScalar === true ||
-        immediateOnly && ordinaryClosed?.passiveOwned === true) &&
+        immediateOnly && ordinaryClosed?.mountedOwned === true) &&
       ordinaryClosed.inputResources.size === 0 && acceptedCollections.length === 0 &&
       acceptedResources.size === 0 && acceptedCollectionFootprint.length === 0;
     if (immediateOnly && !ordinaryImmediate) {
@@ -6221,6 +6325,8 @@ export class ComponentStateRoot<H, Parent = H> {
       publish: () => {
         artifacts.preparation!.publishAccepted();
         artifacts.stores!.publishAccepted();
+        this.#reconcileMountedClosedComposition(artifacts.nextCache!,
+          artifacts.ownerIds!);
         this.#tree = artifacts.tree!.value;
         this.#liveOwners = new Set(artifacts.ownerIds!);
         this.#componentCache = artifacts.nextCache!;
@@ -7169,6 +7275,7 @@ export class ComponentStateRoot<H, Parent = H> {
     ];
     this.#liveEffects.clear();
     this.#liveEffectKeysByOwner.clear();
+    this.#mountedClosedStoreExecution = null;
     for (const owner of this.#liveOwners) this.world.destroyOwner(owner);
     this.#liveOwners.clear();
     this.#componentCache.clear();
@@ -7563,12 +7670,14 @@ export class ComponentStateRoot<H, Parent = H> {
         [], writes.filter(({ handle }) => !closed?.owners.has(handle.owner)).map(
           ({ source, value }) => [source, value] as const),
         closed?.regions ?? [], stages.map(({ region }) => region),
-        closed?.scalarPlans,
+        closed?.ownedCut ? closed.mountedBindings : closed?.scalarPlans,
+        closed?.ownedCut ?? undefined,
       );
       if (!program || program.readSources.some((source) => !sources.has(source))) {
         throw new SparseCandidateIneligible();
       }
-      closed?.setScalarSuccessors(program.storeScalarPlans);
+      if (closed?.ownedCut) closed.installMountedBindings(program);
+      else closed?.setScalarSuccessors(program.storeScalarPlans);
       if (!preparation.validate() || !stores.validate() || !reads.validate() ||
         !stages.every((stage) => stage.current())) {
         throw new SparseCandidateIneligible();
@@ -8037,8 +8146,10 @@ export class ComponentStateRoot<H, Parent = H> {
         privatePreparedCurrent: () => sourceCurrent() && current(),
         retirementCurrent,
         publish: () => {
+          if (retiredOwned.length) this.#pruneMountedClosedComposition(
+            new Set(retiredOwned.map(({ owner }) => owner)));
           for (const { owner, cache, lineage, sources } of retiredOwned) {
-            this.#retireOwnerAcceptedOwned(owner, cache, lineage, sources);
+            this.#retireOwnerAcceptedOwned(owner, cache, lineage, sources, false);
           }
           for (const [key] of retiredEffects) this.#liveEffects.delete(key);
           for (const owner of retired) this.#liveEffectKeysByOwner.delete(owner);
@@ -8672,6 +8783,8 @@ export class ComponentStateRoot<H, Parent = H> {
         this.#liveOwners.delete(previousOwner);
         retiredOwners.push(previousOwner);
       }
+      if (retiredOwners.length) this.#pruneMountedClosedComposition(
+        new Set(retiredOwners));
       for (const [nextOwner, component] of nextComponentCache) {
         this.#componentCache.set(nextOwner, component);
         this.#liveOwners.add(nextOwner);
@@ -10053,6 +10166,7 @@ export class ComponentStateRoot<H, Parent = H> {
       }));
       if (options.scopedStructural && (scopedCellWrites.length > 0 ||
         (closedStoreOutputs?.regions.length ?? 0) > 0 ||
+        !!closedStoreOutputs?.ownedCut ||
         resourceStages.length > 0)) {
         const joint = this.#vdom.prepareScopedKeyedRetainedAndStoreDeltas(
           deltas,
@@ -10061,12 +10175,15 @@ export class ComponentStateRoot<H, Parent = H> {
             ({ source, value }) => [source, value] as const),
           closedStoreOutputs?.regions ?? [],
           resourceStages.map(({ region }) => region),
-          closedStoreOutputs?.scalarPlans,
+          closedStoreOutputs?.ownedCut
+            ? closedStoreOutputs.mountedBindings : closedStoreOutputs?.scalarPlans,
+          closedStoreOutputs?.ownedCut ?? undefined,
         );
         if (!joint || joint.readSources.some((source) =>
           !scopedSources.has(source)
         )) throw new SparseCandidateIneligible();
-        closedStoreOutputs?.setScalarSuccessors(joint.storeScalarPlans);
+        if (closedStoreOutputs?.ownedCut) closedStoreOutputs.installMountedBindings(joint);
+        else closedStoreOutputs?.setScalarSuccessors(joint.storeScalarPlans);
         preparedProgram = joint;
       } else {
         preparedProgram = this.#vdom.prepareKeyedRegionDeltas(
@@ -10387,12 +10504,22 @@ export class ComponentStateRoot<H, Parent = H> {
           for (const [owner, cache] of leafCaches) {
             this.#componentCache.set(owner, cache);
           }
+          if (options.scopedStructural) {
+            const retiredMounted = new Set<OwnerId>();
+            for (const stage of stages.values()) for (const [key, candidate] of stage.rows) {
+              if (!candidate) {
+                const previous = stage.previousRows.get(key);
+                if (previous) retiredMounted.add(previous.owner);
+              }
+            }
+            if (retiredMounted.size) this.#pruneMountedClosedComposition(retiredMounted);
+          }
           for (const stage of stages.values()) {
             for (const [key, candidate] of stage.rows) {
               if (!candidate) {
                 const previous = stage.previousRows.get(key);
                 if (options.scopedStructural && previous) {
-                  this.#retireOwnerAccepted(previous.owner);
+                  this.#retireOwnerAccepted(previous.owner, false);
                 }
                 stage.region.rows.delete(key);
                 stage.region.hostKeysByCollectionKey.delete(key);
@@ -10555,10 +10682,12 @@ export class ComponentStateRoot<H, Parent = H> {
           }
           // Match the full candidate lifecycle: retired owners clean up before
           // replacement effects publish any same-key external registrations.
+          if (!options.scopedStructural && retiredOwners.size)
+            this.#pruneMountedClosedComposition(new Set(retiredOwners));
           for (const owner of retiredOwners) {
             if (options.scopedStructural) {
               errors.push(...this.#reconcileOwnerEffects(owner, new Map()));
-            } else this.#retireCollectionRow(owner, errors);
+            } else this.#retireCollectionRow(owner, errors, undefined, false);
           }
           for (const [owner, cache] of leafCaches) {
             errors.push(
@@ -11028,6 +11157,19 @@ export class ComponentStateRoot<H, Parent = H> {
       }
       acknowledge();
 
+      const retiredMounted = new Set<OwnerId>();
+      for (const [key, candidate] of overlay) {
+        const previous = originalRows.get(key);
+        if (candidate === null) {
+          if (previous) retiredMounted.add(previous.owner);
+        } else {
+          if (candidate.staged && candidate.previousOwner !== undefined)
+            retiredMounted.add(candidate.previousOwner);
+          if (previous && previous.owner !== candidate.owner)
+            retiredMounted.add(previous.owner);
+        }
+      }
+      if (retiredMounted.size) this.#pruneMountedClosedComposition(retiredMounted);
       for (const [key, candidate] of overlay) {
         const previous = originalRows.get(key);
         if (candidate === null) {
@@ -11036,6 +11178,7 @@ export class ComponentStateRoot<H, Parent = H> {
               previous.owner,
               effectErrors,
               deferredEffects,
+              false,
             );
           }
           region.rows.delete(key);
@@ -11051,12 +11194,13 @@ export class ComponentStateRoot<H, Parent = H> {
               candidate.previousOwner,
               effectErrors,
               deferredEffects,
+              false,
             );
           }
         }
         const oldOwner = previous?.owner;
         if (oldOwner !== undefined && oldOwner !== candidate.owner) {
-          this.#retireCollectionRow(oldOwner, effectErrors, deferredEffects);
+          this.#retireCollectionRow(oldOwner, effectErrors, deferredEffects, false);
           ownerRegion.keysByOwner.delete(oldOwner);
         }
         const previousCache = this.#componentCache.get(candidate.owner);
@@ -11181,6 +11325,7 @@ export class ComponentStateRoot<H, Parent = H> {
     owner: OwnerId,
     errors: unknown[],
     deferredEffects?: Array<() => void>,
+    pruneMounted = true,
   ) {
     const cache = this.#componentCache.get(owner);
     if (!cache) return;
@@ -11197,6 +11342,7 @@ export class ComponentStateRoot<H, Parent = H> {
     }
     this.#forgetOwnerSourceValues(owner, cache.propBoundSites);
     this.#componentCache.delete(owner);
+    if (pruneMounted) this.#pruneMountedClosedComposition(new Set([owner]));
     this.#liveOwners.delete(owner);
     if (!deferredEffects) {
       this.#dropPendingForOwner(owner);
@@ -11213,25 +11359,26 @@ export class ComponentStateRoot<H, Parent = H> {
     }
   }
 
-  #retireOwnerAccepted(owner: OwnerId) {
+  #retireOwnerAccepted(owner: OwnerId, pruneMounted = true) {
     const cache = this.#componentCache.get(owner);
     if (!cache) return;
     const lineage = this.world.ownerLineage(owner).slice(1);
     this.#retireOwnerAcceptedFromSources(owner, cache, lineage,
       (site) => this.world.scalarSource(owner, site),
-      () => this.world.destroyOwner(owner));
+      () => this.world.destroyOwner(owner), false, pruneMounted);
   }
 
   #retireOwnerAcceptedOwned(
     owner: OwnerId, cache: ComponentCache, lineage: readonly OwnerId[],
     sources: ReadonlyMap<string, ScalarSource | null>,
+    pruneMounted = true,
   ) {
     if (this.#componentCache.get(owner) !== cache) {
       throw new Error("Retired owner cache changed before publication");
     }
     this.#retireOwnerAcceptedFromSources(owner, cache, lineage,
       (site) => sources.get(site) ?? null,
-      () => retireOwnedWorldOwner(this.world, owner), true);
+      () => retireOwnedWorldOwner(this.world, owner), true, pruneMounted);
   }
 
   #retireOwnerAcceptedFromSources(
@@ -11239,6 +11386,7 @@ export class ComponentStateRoot<H, Parent = H> {
     sourceFor: (site: string) => ScalarSource | null,
     destroy: () => boolean,
     requireDestroy = false,
+    pruneMounted = true,
   ) {
     this.#count("owner.retired");
     for (const site of cache.propBoundSites) {
@@ -11246,6 +11394,7 @@ export class ComponentStateRoot<H, Parent = H> {
       if (source) this.#lastSourceValues.delete(source);
     }
     this.#componentCache.delete(owner);
+    if (pruneMounted) this.#pruneMountedClosedComposition(new Set([owner]));
     this.#liveOwners.delete(owner);
     this.#dropPendingForOwner(owner);
     if (!destroy() && requireDestroy) {

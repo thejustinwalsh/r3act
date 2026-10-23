@@ -298,7 +298,7 @@ Deno.test("bad numeric output declines before host publication and uses generic 
   }
 });
 
-Deno.test("owned Store data evaluates in one passive batch and retains host identity", () => {
+Deno.test("generic owned Store data retains host identity and immediate publication", () => {
   const sourceFile = "owned-store-data/passive.tsx", revision = "owned-store-data-v1";
   registerPlan(sourceFile, revision);
   const clock = createAsyncStore(1, (_old: number, next: number) => next);
@@ -337,8 +337,9 @@ Deno.test("owned Store data evaluates in one passive batch and retains host iden
     root.flush();
     assertEquals(retained.props["position-x"], 5);
     assertEquals(observed["store.owned-data.rows"], 1);
-    assertEquals(observed["store.owned-data.batches"], 1);
-    assertEquals(observed["store.owned-data.enclosed-batches"], 1);
+    assertEquals(observed["store.owned-data.batches"] ?? 0, 0);
+    assertEquals(observed["store.owned-data.enclosed-batches"] ?? 0, 0);
+    assertEquals(observed["store.mounted-frame.direct-cuts"] ?? 0, 0);
     assertEquals(observed["publication.immediate.runs"], 1);
     assertEquals(observed["publication.deferred-adapters"] ?? 0, 0);
   } finally { root.dispose(); }
@@ -429,8 +430,9 @@ Deno.test("ordinary owned-data flush preserves preflight owner order and accepte
     assertStrictEquals(container.children[0].children[0], retained[0]);
     assertStrictEquals(container.children[0].children[1], retained[1]);
     assertEquals(counters["store.owned-data.rows"], 2);
-    assertEquals(counters["store.owned-data.batches"], 1);
-    assertEquals(counters["store.owned-data.enclosed-batches"], 1);
+    assertEquals(counters["store.owned-data.batches"] ?? 0, 0);
+    assertEquals(counters["store.owned-data.enclosed-batches"] ?? 0, 0);
+    assertEquals(counters["store.mounted-frame.direct-cuts"] ?? 0, 0);
     assertEquals(counters["publication.immediate.runs"], 1);
     assertEquals(counters["publication.deferred-adapters"] ?? 0, 0);
   } finally { root.dispose(); }

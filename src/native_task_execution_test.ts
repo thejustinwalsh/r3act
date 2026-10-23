@@ -195,7 +195,7 @@ Deno.test("compiler invalidation releases a pending execution's provider interes
   scope.dispose();
 });
 
-Deno.test("compiled same-definition retry reuses completed independent work only with its prior receipt", async () => {
+Deno.test("compiled retry derives changed control inputs from its prior cut", async () => {
   const sourceFile = "native-task-execution/retry.tsx", moduleRevision = "retry-v1";
   registerCompiledSemanticPlan({ schema_version: 1, source_file: sourceFile,
     module_revision: moduleRevision, owners: [], sources: [], sinks: [],
@@ -204,6 +204,8 @@ Deno.test("compiled same-definition retry reuses completed independent work only
         kind: "async-task", provenance: "opaque", source_sites: ["$query"] },
       { site_id: `${sourceFile}#async-task:catalog`, owner_site_id: null,
         kind: "async-task", provenance: "opaque", source_sites: [] },
+      { site_id: `${sourceFile}#async-task:echo`, owner_site_id: null,
+        kind: "async-task", provenance: "opaque", source_sites: ["$query"] },
     ], graph: { coverage: "proven-sinks-only", source_to_sinks: {},
       execution_order: [] } });
   const metadata = (id: string, controlInputs: string[]) => ({
@@ -211,18 +213,23 @@ Deno.test("compiled same-definition retry reuses completed independent work only
     hardPrerequisites: [], controlInputs, discovery: "candidate-local" as const,
   });
   const old = deferred<string>();
-  let catalogRuns = 0;
+  let catalogRuns = 0, echoRuns = 0;
   const tasks = [asyncTask("load", ["$query"], (values) =>
     values.get("$query") === "old" ? old.promise : "fresh",
   metadata("load", ["query"])),
   asyncTask("catalog", [], () => { catalogRuns++; return "catalog"; },
-    metadata("catalog", []))] as const;
+    metadata("catalog", [])),
+  asyncTask("echo", ["$query"], (values) => {
+    echoRuns++;
+    return values.get("$query");
+  }, metadata("echo", ["query"]))] as const;
   const definition = prepareNativeTaskDefinition(tasks);
   const first = createTaskExecutionFromDefinition(definition, { $query: "old" });
   await waitForResource(first.resource("catalog"));
+  await waitForResource(first.resource("echo"));
   const prior = first.snapshot();
   const reuseCompleted = { values: prior.completedValues,
-    completed: prior.completed, changedInputs: ["$query"] };
+    completed: prior.completed, changedInputs: [] };
   let rejected = false;
   try { createTaskExecutionFromDefinition(definition, { $query: "new" },
     { reuseCompleted }); }
@@ -233,7 +240,9 @@ Deno.test("compiled same-definition retry reuses completed independent work only
   assertEquals((await next.completion).status, "complete");
   assertEquals(next.snapshot().reused, ["catalog"]);
   assertEquals(catalogRuns, 1);
+  assertEquals(echoRuns, 2);
   assertEquals(next.resource("load").read(), "fresh");
+  assertEquals(next.resource("echo").read(), "new");
   first.cancel("superseded");
   await first.completion;
   old.resolve("obsolete");

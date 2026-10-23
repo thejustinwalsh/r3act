@@ -1,4 +1,4 @@
-import { copyRuntimeElement, jsx } from "./jsx_binding_runtime.ts";
+import { copyRuntimeElement, jsx, keyedOwnerChildren } from "./jsx_binding_runtime.ts";
 import {
   createOwnedScalarStorePropDelta,
   MemoryVDOMHost,
@@ -73,15 +73,15 @@ for (const count of [1, 32, 256, 1024]) {
         assert(candidate.storeScalarPlans?.every(Boolean),
           `frame ${frame} did not prepare every owner`);
         for (const [name, expected] of [
-          [scalarTargetCounters[0], 1],
-          [scalarTargetCounters[1], count],
-          [scalarTargetCounters[2], count],
+          [scalarTargetCounters[0], frame === 1 ? 1 : 0],
+          [scalarTargetCounters[1], frame === 1 ? count : 0],
+          [scalarTargetCounters[2], frame === 1 ? count : 0],
           [scalarTargetCounters[3], count],
           [frame === 1 ? "store.mounted-scalar.cold-rows" :
             "store.mounted-scalar.warm-rows", count],
         ] as const) {
           assert((counters.get(name) ?? 0) - (before.get(name) ?? 0) === expected,
-            `${name} did not count one candidate-local pass at frame ${frame}`);
+            `${name} did not reuse the mounted bucket at frame ${frame}`);
         }
         plans = candidate.storeScalarPlans;
         accept(root, candidate);
@@ -119,7 +119,7 @@ Deno.test("mounted scalar successor keeps constants, child and accepted snapshot
     const first = prepare(root, 1);
     assert(first, "first cold candidate declined");
     const plan = first.storeScalarPlans?.[0];
-    assert(plan, "cold candidate did not produce an immutable successor");
+    assert(plan, "cold candidate did not produce a mounted binding");
     accept(root, first);
     first.discard();
     const savedA = JSON.stringify(root.snapshot);
@@ -127,7 +127,7 @@ Deno.test("mounted scalar successor keeps constants, child and accepted snapshot
     const second = prepare(root, 2, plan);
     assert(second, "warm successor declined");
     const nextPlan = second.storeScalarPlans?.[0];
-    assert(nextPlan, "warm candidate did not produce its own successor");
+    assert(nextPlan === plan, "warm candidate replaced its mounted binding");
     accept(root, second);
     second.discard();
     assert(host.during.at(-1) === savedA,
@@ -136,13 +136,9 @@ Deno.test("mounted scalar successor keeps constants, child and accepted snapshot
       group.props.name === "marker" && group.props["rotation-y"] === 2 &&
       group.children[0] === child,
     "warm successor lost a constant, output or retained child");
-    const coldAgain = prepare(root, 3, plan);
-    assert(coldAgain !== null,
-      "stale hint should fall back to cold preparation");
-    coldAgain.discard();
-    const warmAgain = prepare(root, 3, nextPlan);
-    assert(warmAgain !== null,
-      "accepted successor should prepare the next candidate");
+    const warmAgain = prepare(root, 3, plan);
+    assert(warmAgain?.storeScalarPlans?.[0] === plan,
+      "accepted mounted binding did not survive the next frame");
     warmAgain.discard();
   } finally { root.dispose(); }
 });
@@ -185,7 +181,7 @@ Deno.test("prepared warm scalar still rejects a stale mounted target", () => {
     const warm = prepare(root, 2, hint);
     assert(warm, "warm candidate declined");
     root.commit(jsx("main", {}, copyRuntimeElement("group", {
-      key: "motion", name: "marker", "rotation-y": 4,
+      key: "motion", name: "revised", "rotation-y": 4,
       children: jsx("mesh", { key: "child", x: 1 }),
     }, 7)));
     assert(!warm.validate(), "prepared candidate survived generic reconciliation");
@@ -194,6 +190,11 @@ Deno.test("prepared warm scalar still rejects a stale mounted target", () => {
       "discarded stale candidate retained its successor");
     const rebound = prepare(root, 5, hint);
     assert(rebound, "generic reconciliation blocked cold successor rebind");
+    assert(rebound.storeScalarPlans?.[0] !== hint,
+      "generic prop refresh reused stale mounted constants");
+    accept(root, rebound);
+    assert(container.children[0].children[0].props.name === "revised",
+      "rebound scalar writer restored a stale constant");
     rebound.discard();
   } finally { root.dispose(); }
 });
@@ -391,15 +392,17 @@ Deno.test("wrong-owner scalar hint cannot redirect a current target", () => {
   } finally { root.dispose(); }
 });
 
-Deno.test("same-key peer churn invalidates prepared footprint and rebinds cold", () => {
+Deno.test("same-key peer churn revokes prepared cuts but preserves unaffected geometry", () => {
   const host = new MemoryVDOMHost();
   const container = host.createContainer();
   const root = new VDOMSnapshotRoot(host, container);
-  const tree = (owners: readonly number[]) => jsx("main", {}, owners.map((owner) =>
+  const peer = (owner: number, marker = owner) =>
     jsx("section", { key: `slot-${owner}` },
       copyRuntimeElement("group", { key: "motion", "rotation-y": 0,
-        children: jsx("mesh", { key: `child-${owner}`, x: owner }),
-      }, owner))));
+        children: jsx("mesh", { key: `child-${owner}`, x: marker }),
+      }, owner));
+  const tree = (owners: readonly number[]) => jsx("main", { key: "app" },
+    keyedOwnerChildren("slots", owners.map((owner) => peer(owner))));
   try {
     root.commit(tree([1, 2]));
     const first = root.prepareScopedKeyedRetainedAndStoreDeltas([], [],
@@ -411,24 +414,53 @@ Deno.test("same-key peer churn invalidates prepared footprint and rebinds cold",
     const pending = root.prepareScopedKeyedRetainedAndStoreDeltas([], [],
       [ownerRegion(1, 2)], [], [plan]);
     assert(pending, "current same-key candidate declined");
-    root.commit(tree([1, 2, 3]));
+    assert(root.commitKeyedRegionDelta("app", "slots", [{ type: "insert",
+      key: "slot-3", beforeKey: null, tree: peer(3) }]),
+    "same-key peer insertion failed");
     assert(!pending.validate(),
       "same-key membership change retained a prepared candidate");
     pending.discard();
     const rebound = root.prepareScopedKeyedRetainedAndStoreDeltas([], [],
       [ownerRegion(1, 3)], [], [plan]);
     assert(rebound, "same-key peer insertion blocked current target resolution");
+    assert(rebound.storeScalarPlans?.[0] === plan,
+      "same-key peer insertion rebuilt unchanged target geometry");
     accept(root, rebound);
     assert(container.children[0].children[0].children[0].props["rotation-y"] === 3 &&
       container.children[0].children[1].children[0].props["rotation-y"] === 0 &&
       container.children[0].children[2].children[0].props["rotation-y"] === 0,
     "peer insertion wrote the wrong target");
     rebound.discard();
-    root.commit(tree([1, 3]));
+    assert(root.commitKeyedRegionDelta("app", "slots", [{ type: "replace",
+      key: "slot-2", tree: peer(2, 20) }]),
+    "same-key peer replacement failed");
+    const afterPeerChange = root.prepareScopedKeyedRetainedAndStoreDeltas([], [],
+      [ownerRegion(1, 4)], [], [plan]);
+    assert(afterPeerChange?.storeScalarPlans?.[0] === plan,
+      "peer generic prop revision rebuilt unchanged target geometry");
+    afterPeerChange.discard();
+    assert(root.commitKeyedRegionDelta("app", "slots", [{ type: "remove",
+      key: "slot-3" }]), "same-key peer removal failed");
     const afterRemoval = root.prepareScopedKeyedRetainedAndStoreDeltas([], [],
       [ownerRegion(1, 4)], [], [plan]);
     assert(afterRemoval, "same-key peer removal blocked current target resolution");
+    assert(afterRemoval.storeScalarPlans?.[0] === plan,
+      "same-key peer removal rebuilt unchanged target geometry");
     afterRemoval.discard();
+    assert(root.commitKeyedRegionDelta("app", "slots", [{ type: "insert",
+      key: "slot-4", beforeKey: null, tree: jsx("section", { key: "slot-4" },
+        copyRuntimeElement("group", { key: "motion", "rotation-y": 0 }, 1)) }]),
+    "duplicate-owner peer insertion failed");
+    assert(root.prepareScopedKeyedRetainedAndStoreDeltas([], [],
+      [ownerRegion(1, 5)], [], [plan]) === null,
+    "duplicate-owner insertion reused ambiguous target geometry");
+    assert(root.commitKeyedRegionDelta("app", "slots", [{ type: "remove",
+      key: "slot-4" }]), "duplicate-owner peer removal failed");
+    const restored = root.prepareScopedKeyedRetainedAndStoreDeltas([], [],
+      [ownerRegion(1, 5)], [], [plan]);
+    assert(restored?.storeScalarPlans?.[0] === plan,
+      "removed ambiguity rebuilt unchanged target geometry");
+    restored.discard();
   } finally { root.dispose(); }
 });
 

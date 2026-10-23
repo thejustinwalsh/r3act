@@ -10,6 +10,7 @@ export type HostPropertyCapability = Readonly<{
   targetResource: HostResourceDescription | null;
   valueResource: HostResourceDescription | null;
   mayThrow: true;
+  mayReenter: true;
 }>;
 
 export type HostCopyComparisonScalar = string | number | boolean | bigint |

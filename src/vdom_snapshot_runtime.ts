@@ -25,6 +25,7 @@ import { snapshotScopedHostProp } from "./scoped_host_values.ts";
 import {
   createOwnedScalarStorePropDelta,
   isOwnedScalarStorePropDelta,
+  OwnedClosedFrameCut,
 } from "./closed_store_execution.ts";
 import type { ClosedHostOutputValue } from "./closed_host_value.ts";
 import {
@@ -83,7 +84,8 @@ class OwnedScalarElement {
   readonly children: readonly MountedVNode[];
 
   private constructor(secret: symbol, old: VElement | OwnedScalarElement,
-    image: OwnedScalarImage, children: readonly MountedVNode[]) {
+    image: OwnedScalarImage, children: readonly MountedVNode[],
+    privateChildren: boolean) {
     if (secret !== ownedScalarElementSecret || !isOwnedScalarImage(image)) {
       throw new TypeError("Invalid owned scalar element");
     }
@@ -92,13 +94,14 @@ class OwnedScalarElement {
     this.key = old.key;
     this.componentOwner = old.componentOwner;
     this.keyedRegionId = old.keyedRegionId;
-    this.children = Object.freeze([...children]);
+    this.children = privateChildren ? children : Object.freeze([...children]);
     Object.freeze(this);
   }
 
   static create(old: VElement | OwnedScalarElement, image: OwnedScalarImage,
-    children: readonly MountedVNode[]): OwnedScalarElement {
-    return new OwnedScalarElement(ownedScalarElementSecret, old, image, children);
+    children: readonly MountedVNode[], privateChildren = false): OwnedScalarElement {
+    return new OwnedScalarElement(ownedScalarElementSecret, old, image,
+      children, privateChildren);
   }
   static image(value: OwnedScalarElement): OwnedScalarImage {
     return value.#image;
@@ -202,6 +205,7 @@ type MountedNode<H> = {
   /** Stable writer handles used for constant-time sparse structural detach. */
   scalarBindingGroups?: Map<string, BoundPropGroup<H>[]>;
   scalarIncompatibleBindingProps?: Set<string>;
+  mountedStorePlan?: MountedScalarStorePlan;
   keyedChildren?: KeyedRegionBuckets<MountedNode<H>>;
   parent: MountedNode<H> | null;
   parentIndex: number;
@@ -212,6 +216,7 @@ type MountedKeyIndex<H> = {
   detach?(node: MountedNode<H>): void;
   attachKey?(node: MountedNode<H>): void;
   detachKey?(node: MountedNode<H>): void;
+  refreshNode?(node: MountedNode<H>): void;
   refreshProp?(
     node: MountedNode<H>,
     name: string,
@@ -282,7 +287,7 @@ export interface PreparedStorePropDelta {
 
 const mountedScalarPlanBrand: unique symbol = Symbol();
 const mountedScalarRecipeSecret = Symbol();
-/** Opaque successor of one privately prepared mounted scalar target. */
+/** Opaque mounted scalar target geometry, reused across accepted Store cuts. */
 export interface MountedScalarStorePlan {
   readonly [mountedScalarPlanBrand]: never;
 }
@@ -312,11 +317,26 @@ type StoreTarget<H> = StoreTargetBase<H> & (
     priorRecipe?: ScalarPlanFields<H> }
 );
 
+type MountedFrameTarget<H> = Readonly<{
+  kind: "mounted";
+  geometry: ScalarPlanFields<H>;
+  binding: MountedScalarStorePlan;
+  vnode: MountedElement;
+  next: OwnedScalarElement;
+  oldImage: OwnedScalarImage;
+  image: OwnedScalarImage;
+}>;
+
+const storeTargetNode = <H>(target: StoreTarget<H> | MountedFrameTarget<H>) =>
+  target.kind === "mounted" ? target.geometry.node : target.node;
+
 type ScalarPlanTargetFields<H> = Readonly<{
   root: object;
   node: MountedNode<H>;
-  vnode: MountedElement;
   handle: H;
+  parent: MountedNode<H> | null;
+  parentIndex: number;
+  bucket: KeyedRegionBuckets<MountedNode<H>> | undefined;
   key: string;
   tag: string;
   componentOwner: number | undefined;
@@ -355,6 +375,46 @@ class MountedScalarStoreRecipe<H> implements MountedScalarStorePlan {
   }
 }
 
+class MountedStoreKeyBucket<H> extends Set<MountedNode<H>> {
+  #members: readonly (readonly [MountedNode<H>, number | undefined])[] | null = null;
+  #owners: ReadonlyMap<number, MountedNode<H> | null> | null = null;
+  override add(node: MountedNode<H>): this {
+    if (!this.has(node)) {
+      super.add(node);
+      this.#members = null;
+      this.#owners = null;
+    }
+    return this;
+  }
+  override delete(node: MountedNode<H>): boolean {
+    const removed = super.delete(node);
+    if (removed) {
+      this.#members = null;
+      this.#owners = null;
+    }
+    return removed;
+  }
+  mountedMembers(): { members: readonly (readonly [MountedNode<H>,
+    number | undefined])[]; rebuilt: boolean } {
+    if (this.#members) return { members: this.#members, rebuilt: false };
+    const members = Object.freeze([...this].map((node) =>
+      [node, node.vnode.componentOwner] as const));
+    this.#members = members;
+    return { members, rebuilt: true };
+  }
+  mountedOwners(): { owners: ReadonlyMap<number, MountedNode<H> | null>;
+    rebuilt: boolean } {
+    if (this.#owners) return { owners: this.#owners, rebuilt: false };
+    const owners = new Map<number, MountedNode<H> | null>();
+    for (const [node, owner] of this.mountedMembers().members) {
+      if (owner !== undefined) owners.set(owner,
+        owners.has(owner) ? null : node);
+    }
+    this.#owners = owners;
+    return { owners, rebuilt: true };
+  }
+}
+
 const mintMountedScalarRecipe = MountedScalarStoreRecipe.create.bind(
   MountedScalarStoreRecipe, mountedScalarRecipeSecret,
 ) as <H>(fields: ScalarPlanFields<H>) => MountedScalarStoreRecipe<H>;
@@ -365,11 +425,11 @@ const readMountedScalarRecipe = MountedScalarStoreRecipe.fields.bind(
 
 type StorePropDeltaRecord<H> = {
   readonly ownedScalar: boolean;
-  readonly buckets: readonly {
+  buckets: readonly {
     key: string;
     members: readonly (readonly [MountedNode<H>, number | undefined])[];
   }[];
-  readonly targets: readonly StoreTarget<H>[];
+  targets: readonly (StoreTarget<H> | MountedFrameTarget<H>)[];
   scalarPlans?: readonly (MountedScalarStorePlan | null)[];
   readonly texts: readonly {
     node: MountedNode<H>;
@@ -590,6 +650,7 @@ export interface VDOMHost<H, Parent = H> {
   ): H;
   createText(text: string): H;
   setText(node: H, text: string): void;
+  /** May throw or reenter; mounted cuts check the live writer before each owned write. */
   setProp(node: H, name: string, value: unknown, previous: unknown): void;
   /** Optional stable input and comparison history for a copied property write. */
   capturePropertyValue?(
@@ -774,6 +835,7 @@ export type PreparedKeyedVDOMProgram = {
 export type PreparedScopedKeyedRetainedProgram = PreparedKeyedVDOMProgram & {
   readonly readSources: readonly ScalarSource[];
   readonly storeScalarPlans?: readonly (MountedScalarStorePlan | null)[];
+  mountedBindingAt(index: number): MountedScalarStorePlan | null;
 };
 
 export type OwnedScalarPhases = Readonly<{
@@ -1654,7 +1716,9 @@ const updateMounted = <H, P>(
       children[index].parentIndex = index;
     }
     storeMountedChildren(old, next.keyedRegionId, children);
-    if (old.vnode.keyedRegionId !== next.keyedRegionId) {
+    if (old.vnode.keyedRegionId !== next.keyedRegionId ||
+      old.vnode.componentOwner !== next.componentOwner) {
+      keyIndex?.refreshNode?.(old);
       if (keyIndex?.detachKey) keyIndex.detachKey(old);
       else keyIndex?.detach?.(old);
       old.vnode = acceptedStructuredVNode(next, writtenStyle, acceptedCopies);
@@ -1662,6 +1726,7 @@ const updateMounted = <H, P>(
       else keyIndex?.attach?.(old);
       return old;
     }
+    keyIndex?.refreshNode?.(old);
     old.vnode = acceptedStructuredVNode(next, writtenStyle, acceptedCopies);
     return old;
   }
@@ -1798,7 +1863,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
   #acceptedVersion = 0;
   #acceptedSnapshot: readonly VNode[] | null = null;
   #keyedVNodeRetentionParents = new Set<MountedNode<H>>();
-  #nodesByKey = new Map<string, Set<MountedNode<H>>>();
+  #nodesByKey = new Map<string, MountedStoreKeyBucket<H>>();
   #nodesByKeyedRegion = new Map<string, Set<MountedNode<H>>>();
   // Set membership gives structural detach O(1) even when thousands of rows
   // share one scalar source. Compiled CSR indexes remain dense arrays/maps.
@@ -2035,6 +2100,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
   #releaseKeyedVNodeAncestorChildren(parent: MountedNode<H>) {
     for (let ancestor = parent.parent; ancestor; ancestor = ancestor.parent) {
       if (ancestor.vnode.kind === "element" && ancestor.vnode.children.length) {
+        this.#invalidateMountedStorePlan(ancestor);
         ancestor.vnode = cloneMountedElementVNode(ancestor.vnode, { children: [] },
           this.#profileCounter);
       }
@@ -2384,6 +2450,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         const keyIndex: MountedKeyIndex<H> | undefined =
           deltaKeys || deltaPlainBindings
             ? {
+              refreshNode: (node) => this.#invalidateMountedStorePlan(node),
               detachKey: (node) => {
                 if (!deltaKeys) return;
                 if (countIndexVisits) oldIndexVisits++;
@@ -2424,7 +2491,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
                 }
                 : {}),
             }
-            : undefined;
+            : { refreshNode: (node) => this.#invalidateMountedStorePlan(node) };
         try {
           this.#mounted = reconcileChildren(
             this.#renderHost,
@@ -2539,6 +2606,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     const keyIndex: MountedKeyIndex<H> | undefined =
       this.keyIndexMaintenance === "delta"
         ? {
+          refreshNode: (node) => this.#invalidateMountedStorePlan(node),
           detach: (node) => {
             if (countIndexVisits) oldIndexVisits++;
             this.#removeFromKeyIndex(node);
@@ -2548,7 +2616,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
             this.#addToKeyIndex(node);
           },
         }
-        : undefined;
+        : { refreshNode: (node) => this.#invalidateMountedStorePlan(node) };
     const parent = target.parent
       ? target.parent.handle as unknown as Parent
       : this.container;
@@ -2737,6 +2805,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     }
 
     const keyIndex: MountedKeyIndex<H> = {
+      refreshNode: (node) => this.#invalidateMountedStorePlan(node),
       detach: (node) => this.#removeFromKeyIndex(node),
       attach: (node) => this.#addToKeyIndex(node),
     };
@@ -2771,6 +2840,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           ? null
           : region.get(operation.beforeKey)!.handle;
         region.moveBefore(operation.key, operation.beforeKey);
+        this.#invalidateMountedStorePlan(child);
         this.#renderHost.place(hostParent, child.handle, anchor);
       } else if (operation.type === "insert") {
         const vnode = normalized.get(index)!;
@@ -2811,6 +2881,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     // ancestor child arrays after post-host validation.
     acceptedJournal?.capture(parent);
     const releasedChildVNodeCount = parent.vnode.children.length;
+    this.#invalidateMountedStorePlan(parent);
     parent.vnode = cloneMountedElementVNode(parent.vnode, { children: [] },
       this.#profileCounter);
     if (this.#publicationToken) this.#keyedVNodeRetentionParents.add(parent);
@@ -3250,7 +3321,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       overlapsStoreTargets: (delta) => {
         const record = this.#storePropDeltas.get(delta);
         return !record || record.targets.some((target) =>
-          replacedNodes.has(target.node)
+          replacedNodes.has(storeTargetNode(target))
         );
       },
       validatePreparedPrivate: () =>
@@ -3282,7 +3353,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
               node.parent === target.parent && node.vnode ===
                 (postHostStore
                   ? this.#storePropDeltas.get(postHostStore)?.targets.find(
-                    (candidate) => candidate.node === node,
+                    (candidate) => storeTargetNode(candidate) === node,
                   )?.next ?? vnode
                   : vnode) &&
               node.handle === handle && target.bucket.afterKey(key) === afterKey &&
@@ -3589,7 +3660,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       },
       overlapsStoreTargets: (delta) => {
         const record = this.#storePropDeltas.get(delta);
-        return !record || record.targets.some((target) => removedNodes.has(target.node));
+        return !record || record.targets.some((target) =>
+          removedNodes.has(storeTargetNode(target)));
       },
       validate: () => state === "prepared" && !this.#publicationToken &&
         admittedHost?.current() !== false && current(),
@@ -3626,10 +3698,12 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         const baseVersion = this.#version;
         for (const { node, acceptedVNode } of oldNodes) {
           this.#acceptedJournal?.capture(node, acceptedVNode);
+          this.#invalidateMountedStorePlan(node);
           node.vnode = acceptedVNode;
         }
         this.#acceptedSnapshot = null;
         const keyIndex: MountedKeyIndex<H> = {
+          refreshNode: (node) => this.#invalidateMountedStorePlan(node),
           detach: (node) => this.#removeFromKeyIndex(node),
           attach: (node) => this.#addToKeyIndex(node),
         };
@@ -3718,6 +3792,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
                 children[index] = applied;
                 parent.children = children;
                 if (parent.vnode.kind === "element") {
+                  this.#invalidateMountedStorePlan(parent);
                   parent.vnode = cloneMountedElementVNode(parent.vnode, {
                     children: children.map((child) => child.vnode),
                   }, this.#profileCounter);
@@ -3797,17 +3872,145 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     return program;
   }
 
+  #prepareMountedFrameStoreDelta(
+    cut: OwnedClosedFrameCut,
+    bindings?: readonly (MountedScalarStorePlan | null)[],
+  ): PreparedStorePropDelta | null {
+    try {
+      if (!OwnedClosedFrameCut.owns(cut) || !cut.mounted ||
+        this.#publicationToken || this.#publicationFailed ||
+        this.#compiledGraph !== null || this.#numericWriteInProgress ||
+        cut.rowCount === 0 || (bindings && bindings.length !== 0 &&
+          bindings.length !== cut.rowCount)) return null;
+    } catch { return null; }
+    const writer = hostPropWriter(this.host);
+    if (!writer) return null;
+    const targets: MountedFrameTarget<H>[] = [];
+    const buckets: StorePropDeltaRecord<H>["buckets"][number][] = [];
+    const seenBuckets = new Set<string>();
+    let coldRows = 0;
+    let warmRows = 0;
+    try {
+      for (let index = 0; index < cut.rowCount; index++) {
+        const key = cut.keyAt(index);
+        const tag = cut.tagAt(index);
+        const owner = cut.ownerAt(index);
+        const layout = cut.layoutAt(index);
+        const image = cut.imageAt(index);
+        if (!key || !tag || !Number.isSafeInteger(owner) ||
+          !cut.retainedChildrenAt(index) || !isOwnedScalarImage(image) ||
+          ownedScalarImageLayout(image) !== layout) return null;
+        const liveBucket = this.#nodesByKey.get(key);
+        if (!liveBucket?.size) return null;
+        if (!seenBuckets.has(key)) {
+          seenBuckets.add(key);
+          buckets.push({ key, members: liveBucket.mountedMembers().members });
+        }
+        const suppliedBinding = bindings?.[index] ?? null;
+        const hinted = readMountedScalarRecipe<H>(suppliedBinding);
+        const warm = hinted?.kind === "image" && hinted.root === this &&
+          hinted.key === key && hinted.tag === tag &&
+          hinted.componentOwner === owner && hinted.layout === layout &&
+          hinted.node.mountedStorePlan === suppliedBinding &&
+          liveBucket.has(hinted.node) && hinted.node.handle === hinted.handle &&
+          hinted.node.parent === hinted.parent &&
+          hinted.node.parentIndex === hinted.parentIndex &&
+          hinted.node.parent?.keyedChildren === hinted.bucket &&
+          Object.isFrozen(hinted.children) &&
+          Object.isFrozen(hinted.childVNodes) &&
+          hinted.node.children.length === hinted.children.length &&
+          hinted.node.vnode.kind === "element" &&
+          hinted.node.vnode.children.length === hinted.childVNodes.length &&
+          hinted.children.every((child, childIndex) =>
+            hinted.node.children[childIndex] === child && !child.hostDisposed &&
+            child.parent === hinted.node && child.parentIndex === childIndex &&
+            child.vnode === hinted.childVNodes[childIndex]);
+        const node = warm ? hinted!.node : liveBucket.mountedOwners().owners.get(owner);
+        if (!node || node.hostDisposed || node.vnode.kind !== "element" ||
+          node.vnode.key !== key || node.vnode.tag !== tag ||
+          node.vnode.componentOwner !== owner ||
+          node.vnode.keyedRegionId !== null || node.keyedChildren ||
+          node.scalarBindingGroups?.size ||
+          node.scalarIncompatibleBindingProps?.size) return null;
+        const vnode = node.vnode;
+        if (node.children.length !== vnode.children.length ||
+          node.children.some((child, childIndex) => child.hostDisposed ||
+            child.parent !== node || child.parentIndex !== childIndex)) return null;
+        let oldImage: OwnedScalarImage;
+        if (OwnedScalarElement.owns(vnode)) {
+          oldImage = OwnedScalarElement.image(vnode);
+          if (ownedScalarImageLayout(oldImage) !== layout) return null;
+        } else {
+          if (vnode.scopedSourceProps || vnode.acceptedCopyProps) return null;
+          const descriptors = Object.getOwnPropertyDescriptors(vnode.props);
+          if (Object.keys(descriptors).length !== layout.length) return null;
+          const prior: OwnedScalarValue[] = [];
+          for (let slot = 0; slot < layout.length; slot++) {
+            const name = layout.nameAt(slot);
+            if (name === "ref" || /^on[A-Z]/.test(name) ||
+              name === "__proto__" || name === "prototype" ||
+              name === "constructor") return null;
+            const descriptor = descriptors[name];
+            if (!descriptor || !("value" in descriptor)) return null;
+            const captured = snapshotScopedHostProp(tag, name, descriptor.value);
+            if (!captured.accepted || captured.value === undefined) return null;
+            prior.push(captured.value as OwnedScalarValue);
+          }
+          oldImage = Object.freeze({ kind: "frame" as const,
+            frame: OwnedScalarFrame.create(layout, prior) });
+        }
+        const geometry: ScalarPlanFields<H> = warm ? hinted! : Object.freeze({
+          kind: "image" as const, root: this, node, handle: node.handle,
+          parent: node.parent, parentIndex: node.parentIndex,
+          bucket: node.parent?.keyedChildren,
+          key, tag, componentOwner: owner, layout,
+          children: Object.freeze([...node.children]),
+          childVNodes: Object.freeze(node.children.map((child) => child.vnode)),
+        });
+        const binding = warm ? suppliedBinding! : mintMountedScalarRecipe(geometry);
+        if (warm) warmRows++;
+        else coldRows++;
+        const next = OwnedScalarElement.create(vnode, image,
+          geometry.childVNodes, true);
+        targets.push({ kind: "mounted", geometry, binding, vnode, next,
+          oldImage, image });
+      }
+    } catch { return null; }
+    const token = Object.freeze({}) as PreparedStorePropDelta;
+    this.#storePropDeltas.set(token, {
+      ownedScalar: true, buckets, targets, texts: [], writer, textWriter: null,
+      applied: false, publicationToken: null, appliedVersion: null,
+      preparedSweeps: 0, postHostSweeps: 0,
+    });
+    this.#profileCounter?.({
+      "store.mounted-frame.direct-cuts": 1,
+      "store.mounted-frame.mounted-targets": targets.length,
+      "store.mounted-scalar.warm-rows": warmRows,
+      "store.mounted-scalar.cold-rows": coldRows,
+    });
+    return token;
+  }
+
+  #mountedBindingAt(record: StorePropDeltaRecord<H> | undefined,
+    index: number): MountedScalarStorePlan | null {
+    if (!record || !Number.isSafeInteger(index) || index < 0 ||
+      index >= record.targets.length) return null;
+    const target = record.targets[index];
+    return target.kind === "mounted" ? target.binding :
+      record.scalarPlans?.[index] ?? null;
+  }
+
   /** Prepare the private immediate scalar route through the retained Store record. */
   prepareOwnedScalarStoreDeltas(
-    regions: readonly OwnedScalarStoreRegion[],
-    scalarPlans?: readonly (MountedScalarStorePlan | null)[],
+    cut: OwnedClosedFrameCut,
+    mountedBindings?: readonly (MountedScalarStorePlan | null)[],
   ): PreparedOwnedScalarStoreProgram | null {
-    const store = this.#prepareStorePropDelta(regions, scalarPlans, true);
+    const store = this.#prepareMountedFrameStoreDelta(cut, mountedBindings);
     if (!store) return null;
     const record = this.#storePropDeltas.get(store);
     if (!record?.ownedScalar || record.texts.length !== 0 ||
-      record.targets.length !== regions.length ||
-      record.targets.some((target) => target.kind !== "image")) {
+      record.targets.length !== cut.rowCount ||
+      record.targets.some((target) => target.kind !== "mounted")) {
       this.#storePropDeltas.delete(store);
       return null;
     }
@@ -3836,7 +4039,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       scoped: true,
       structuralVersionDelta: 0,
       readSources: [],
-      get storeScalarPlans() { return record.scalarPlans; },
+      mountedBindingAt: (index) => state === "discarded" ? null :
+        this.#mountedBindingAt(record, index),
       ownedScalarPhases,
       overlapsRetainedTargets: () => false,
       overlapsStoreTargets: () => false,
@@ -3866,9 +4070,10 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       },
       discard: () => {
         if (state === "discarded") return;
-        if (state === "prepared") state = "discarded";
-        record.scalarPlans = undefined;
+        state = "discarded";
         this.#storePropDeltas.delete(store);
+        record.targets = [];
+        record.buckets = [];
       },
     };
     return program;
@@ -3881,16 +4086,21 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     storeRegions: readonly (StorePropDelta | OwnedScalarStoreRegion)[],
     replacements: readonly { key: string; tree: RuntimeNode }[] = [],
     scalarPlans?: readonly (MountedScalarStorePlan | null)[],
+    ownedCut?: OwnedClosedFrameCut,
   ): PreparedScopedKeyedRetainedProgram | null {
     const hasDeltas = deltas.length > 0;
     const hasUpdates = updates.length > 0;
-    const hasStore = storeRegions.length > 0;
+    const hasStore = storeRegions.length > 0 || ownedCut !== undefined;
     const hasReplacements = replacements.length > 0;
+    if (ownedCut && storeRegions.length > 0) return null;
     if (!hasDeltas && !hasUpdates && !hasStore && !hasReplacements) return null;
     const retained = hasUpdates ? this.prepareRetainedSourceDelta(updates) : null;
     if (hasUpdates && !retained) return null;
-    const store = hasStore ? this.#prepareStorePropDelta(storeRegions,
-      !hasDeltas && !hasUpdates && !hasReplacements ? scalarPlans : undefined) : null;
+    const store = ownedCut
+      ? this.#prepareMountedFrameStoreDelta(ownedCut, scalarPlans)
+      : hasStore ? this.#prepareStorePropDelta(storeRegions,
+        !hasDeltas && !hasUpdates && !hasReplacements ? scalarPlans : undefined)
+      : null;
     if (hasStore && !store) return null;
     const ownedStoreOnly = !!store && !hasDeltas && !hasUpdates &&
       !hasReplacements && this.#storePropDeltas.get(store)?.ownedScalar === true;
@@ -3930,6 +4140,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       readSources: retained?.readSources ?? [],
       get storeScalarPlans() { return store
         ? thisRoot.#storePropDeltas.get(store)?.scalarPlans : undefined; },
+      mountedBindingAt: (index) => store
+        ? this.#mountedBindingAt(this.#storePropDeltas.get(store), index) : null,
       overlapsRetainedTargets: (delta) => structural.some((plan) =>
         plan.overlapsRetainedTargets(delta)),
       overlapsStoreTargets: (delta) => structural.some((plan) =>
@@ -4173,6 +4385,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         let oldIndexVisits = 0;
         let newIndexVisits = 0;
         const keyIndex: MountedKeyIndex<H> = {
+          refreshNode: (node) => this.#invalidateMountedStorePlan(node),
           detach: (node) => {
             if (countVisits) oldIndexVisits++;
             this.#removeFromKeyIndex(node);
@@ -4374,6 +4587,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     const keyIndex: MountedKeyIndex<H> | undefined =
       this.keyIndexMaintenance === "delta"
         ? {
+          refreshNode: (node) => this.#invalidateMountedStorePlan(node),
           detach: (node) => {
             if (countIndexVisits) oldIndexVisits++;
             this.#removeFromKeyIndex(node);
@@ -4383,7 +4597,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
             this.#addToKeyIndex(node);
           },
         }
-        : undefined;
+        : { refreshNode: (node) => this.#invalidateMountedStorePlan(node) };
     // All validation is complete. These host operations run in one JS task,
     // so the browser cannot paint an intermediate subset of the batch.
     for (const item of prepared) {
@@ -4446,18 +4660,9 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     return this.#prepareStorePropDelta(regions, scalarPlans);
   }
 
-  /** Prepare authentic scalar images through the existing Store-delta lifecycle. */
-  prepareOwnedScalarStorePropDelta(
-    regions: readonly OwnedScalarStoreRegion[],
-    scalarPlans?: readonly (MountedScalarStorePlan | null)[],
-  ): PreparedStorePropDelta | null {
-    return this.#prepareStorePropDelta(regions, scalarPlans);
-  }
-
   #prepareStorePropDelta(
     regions: readonly (StorePropDelta | OwnedScalarStoreRegion)[],
     scalarPlans?: readonly (MountedScalarStorePlan | null)[],
-    internalOwnedScalar = false,
   ): PreparedStorePropDelta | null {
     if (this.#publicationToken || this.#publicationFailed ||
       this.#compiledGraph !== null ||
@@ -4469,7 +4674,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       members: readonly (readonly [MountedNode<H>, number | undefined])[];
       owners?: ReadonlyMap<number, MountedNode<H> | null>;
     }>();
-    const targets: StorePropDeltaRecord<H>["targets"][number][] = [];
+    const targets: StoreTarget<H>[] = [];
     const texts: StorePropDeltaRecord<H>["texts"][number][] = [];
     let allOwnedScalar = true;
     let warmRows = 0;
@@ -4510,29 +4715,28 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         (region.retainedChildren === true && region.componentOwner === undefined) ||
         (region.retainedChildren === true && region.children !== undefined) ||
         (region.children === undefined && !compact && output!.length === 0)) return null;
+      const hinted = warmEligible
+        ? readMountedScalarRecipe<H>(scalarPlans?.[regionIndex]) : null;
       let bucket = buckets.get(region.key);
       if (!bucket) {
         const matches = this.#nodesByKey.get(region.key);
         if (!matches?.size) return null;
-        const members: (readonly [MountedNode<H>, number | undefined])[] = [];
-        for (const candidate of matches) {
-          members.push([candidate, candidate.vnode.componentOwner]);
-          if (countTargetWork) memberVisits++;
+        const snapshot = matches.mountedMembers();
+        if (countTargetWork && snapshot.rebuilt) {
+          bucketBuilds++;
+          memberVisits += snapshot.members.length;
         }
-        bucket = { members };
+        bucket = { members: snapshot.members };
         buckets.set(region.key, bucket);
-        if (countTargetWork) bucketBuilds++;
       }
       let owners = bucket.owners;
       if (region.componentOwner !== undefined && !owners) {
-        const indexed = new Map<number, MountedNode<H> | null>();
-        for (const [candidate, owner] of bucket.members) {
-          if (countTargetWork) ownerIndexVisits++;
-          if (owner !== undefined) indexed.set(owner,
-            indexed.has(owner) ? null : candidate);
+        const indexed = this.#nodesByKey.get(region.key)!.mountedOwners();
+        if (countTargetWork && indexed.rebuilt) {
+          ownerIndexVisits += bucket.members.length;
         }
-        bucket.owners = indexed;
-        owners = indexed;
+        bucket.owners = indexed.owners;
+        owners = indexed.owners;
       }
       if (countTargetWork && region.componentOwner !== undefined) ownerLookups++;
       const node: MountedNode<H> | null | undefined =
@@ -4550,13 +4754,12 @@ export class VDOMSnapshotRoot<H, Parent = H> {
           node.children.length !== 0) ||
         node.keyedChildren || node.scalarBindingGroups?.size ||
         node.scalarIncompatibleBindingProps?.size) return null;
-      const hinted = warmEligible
-        ? readMountedScalarRecipe<H>(scalarPlans?.[regionIndex]) : null;
       const earlyWarm = hinted &&
         hinted.node === node && hinted.root === this &&
         hinted.key === region.key && hinted.tag === region.tag &&
         hinted.componentOwner === region.componentOwner &&
-        hinted.vnode === vnode && hinted.handle === node.handle &&
+        node.mountedStorePlan === scalarPlans?.[regionIndex] &&
+        hinted.handle === node.handle &&
         hinted.children.length === node.children.length &&
         hinted.childVNodes.length === vnode.children.length &&
         hinted.children.every((child, index) =>
@@ -4766,7 +4969,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         }
       }
       const completed = new Map<MountedNode<H>, MountedElement>();
-      const nextVNode = (target: StorePropDeltaRecord<H>["targets"][number]): MountedElement => {
+      const nextVNode = (target: StoreTarget<H>): MountedElement => {
         const existing = completed.get(target.node);
         if (existing) return existing;
         const next = target.kind !== "generic" ? target.next : target.retainedChildren
@@ -4786,23 +4989,27 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     for (const target of targets) {
       if (target.children) target.nextChildVNodes = target.next.children;
     }
-    const successors: (MountedScalarStorePlan | null)[] = targets.map((target) => {
+    const successors: (MountedScalarStorePlan | null)[] = targets.map((target, index) => {
       if (!allOwnedScalar || texts.length || target.kind === "generic") return null;
+      if (target.priorRecipe && scalarPlans?.[index]) return scalarPlans[index];
       if (target.kind === "image") {
         const prior = target.priorRecipe?.kind === "image"
           ? target.priorRecipe : undefined;
         const image = target.image;
-        return mintMountedScalarRecipe<H>(Object.freeze({
+        const fields: ScalarPlanFields<H> = Object.freeze({
           kind: "image" as const,
-          root: this, node: target.node, vnode: target.next,
-          handle: target.handle, key: target.vnode.key!, tag: target.vnode.tag,
+          root: this, node: target.node,
+          handle: target.handle, parent: target.parent,
+          parentIndex: target.parentIndex, bucket: target.bucket,
+          key: target.vnode.key!, tag: target.vnode.tag,
           componentOwner: target.componentOwner,
           layout: ownedScalarImageLayout(image),
           children: prior?.children ??
             Object.freeze([...(target.retainedChildren ?? target.children ?? [])]),
           childVNodes: prior?.childVNodes ??
             Object.freeze([...(target.childVNodes ?? [])]),
-        }));
+        });
+        return mintMountedScalarRecipe<H>(fields);
       }
       if (target.kind !== "scalar") return null;
       const next = target.next;
@@ -4825,21 +5032,24 @@ export class VDOMSnapshotRoot<H, Parent = H> {
             typeof value !== "string" && typeof value !== "number" &&
             typeof value !== "boolean";
         }))) return null;
-      return mintMountedScalarRecipe<H>(Object.freeze({
+      const fields: ScalarPlanFields<H> = Object.freeze({
         kind: "legacy" as const,
-        root: this, node: target.node, vnode: next,
-        handle: target.handle, key: target.vnode.key!, tag: target.vnode.tag,
+        root: this, node: target.node,
+        handle: target.handle, parent: target.parent,
+        parentIndex: target.parentIndex, bucket: target.bucket,
+        key: target.vnode.key!, tag: target.vnode.tag,
         componentOwner: target.componentOwner, scopedSourceProps: undefined,
         propNames: names,
         outputNames,
         outputSlots: slots,
         constantValues: prior?.constantValues ?? Object.freeze(names.map((name) =>
-          next.props[name] as ClosedHostOutputValue)),
+          target.previousProps[name] as ClosedHostOutputValue)),
         children: prior?.children ??
           Object.freeze([...(target.retainedChildren ?? target.children ?? [])]),
         childVNodes: prior?.childVNodes ??
           Object.freeze([...(target.childVNodes ?? [])]),
-      }));
+      });
+      return mintMountedScalarRecipe<H>(fields);
     });
     const textWriter = texts.length ? hostTextWriter(this.host) : null;
     if (texts.length && !textWriter) return null;
@@ -4854,7 +5064,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       appliedVersion: null,
       preparedSweeps: 0, postHostSweeps: 0,
     });
-    if (!internalOwnedScalar && !this.isStorePropDeltaCurrent(token)) return null;
+    if (!this.isStorePropDeltaCurrent(token)) return null;
     if (allOwnedScalar && this.#profileCounter) {
       this.#profileCounter({
         "store.scalar-target.bucket-builds": bucketBuilds,
@@ -4907,6 +5117,31 @@ export class VDOMSnapshotRoot<H, Parent = H> {
         !live.has(node) || node.vnode.componentOwner !== owner)) return false;
     }
     for (const target of record.targets) {
+      if (target.kind === "mounted") {
+        const { geometry, vnode } = target;
+        const { node, parent, bucket } = geometry;
+        if (node.hostDisposed || node.handle !== geometry.handle ||
+          node.parent !== parent || node.parentIndex !== geometry.parentIndex ||
+          node.vnode !== (afterHost ? target.next : vnode) ||
+          vnode.componentOwner !== geometry.componentOwner ||
+          node.vnode.componentOwner !== geometry.componentOwner ||
+          node.scalarBindingGroups?.size ||
+          node.scalarIncompatibleBindingProps?.size) return false;
+        if (parent) {
+          if (parent.hostDisposed || parent.keyedChildren !== bucket ||
+            (bucket ? bucket.get(geometry.key) !== node :
+              parent.children[geometry.parentIndex] !== node)) return false;
+        } else if (this.#mounted[geometry.parentIndex] !== node) return false;
+        if (node.children.length !== geometry.children.length ||
+          node.vnode.children.length !== geometry.childVNodes.length) return false;
+        for (let index = 0; index < geometry.children.length; index++) {
+          const child = geometry.children[index];
+          if (node.children[index] !== child || child.hostDisposed ||
+            child.parent !== node || child.parentIndex !== index ||
+            child.vnode !== geometry.childVNodes[index]) return false;
+        }
+        continue;
+      }
       const { node, vnode, parent, bucket } = target;
       if (node.hostDisposed || node.handle !== target.handle ||
         node.parent !== parent || node.vnode !==
@@ -4973,8 +5208,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     const versionAtApply = this.#version;
     const publicationAtApply = this.#publicationToken;
     for (const target of record.targets) {
-      this.#acceptedJournal?.capture(target.node);
-      if (target.kind === "image") {
+      this.#acceptedJournal?.capture(storeTargetNode(target));
+      if (target.kind === "image" || target.kind === "mounted") {
         for (let index = 0; index < ownedScalarImageLength(target.image); index++) {
           const name = ownedScalarImageLayout(target.image).nameAt(index);
           const next = ownedScalarImageValueAt(target.image, index);
@@ -4984,7 +5219,8 @@ export class VDOMSnapshotRoot<H, Parent = H> {
             publicationAtApply)) {
             throw new Error("Prepared Store prop delta changed during host application");
           }
-          record.writer.call(this.host, target.handle, name, next, previous);
+          record.writer.call(this.host, target.kind === "mounted"
+            ? target.geometry.handle : target.handle, name, next, previous);
         }
       } else if (target.kind === "scalar") {
         for (const [name, next] of target.output) {
@@ -5012,11 +5248,18 @@ export class VDOMSnapshotRoot<H, Parent = H> {
       }
     }
     if (this.#version !== versionAtApply ||
-      record.targets.some((target) => target.node.vnode !== target.vnode) ||
+      record.targets.some((target) => storeTargetNode(target).vnode !== target.vnode) ||
       record.texts.some((target) => target.node.vnode !== target.vnode)) {
       throw new Error("Prepared Store prop delta changed during host application");
     }
-    for (const target of record.targets) target.node.vnode = target.next;
+    for (let index = 0; index < record.targets.length; index++) {
+      const target = record.targets[index];
+      const node = storeTargetNode(target);
+      node.vnode = target.next;
+      node.mountedStorePlan = target.kind === "mounted"
+        ? this.#mountedBindingAt(record, index) ?? undefined
+        : record.scalarPlans?.[index] ?? undefined;
+    }
     for (const target of record.texts) target.node.vnode = target.next;
     this.#snapshotDirty = true;
     record.publicationToken = this.#publicationToken;
@@ -5029,6 +5272,30 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     version: number,
     publication: object | null,
   ): boolean {
+    if (target.kind === "mounted") {
+      const { geometry, vnode } = target;
+      const { node, parent, bucket } = geometry;
+      if (hostPropWriter(this.host) !== writer || this.#version !== version ||
+        this.#publicationToken !== publication || this.#publicationFailed ||
+        node.hostDisposed || node.vnode !== vnode ||
+        node.handle !== geometry.handle || node.parent !== parent ||
+        node.parentIndex !== geometry.parentIndex ||
+        this.#nodesByKey.get(geometry.key)?.has(node) !== true) return false;
+      if (parent) {
+        if (parent.hostDisposed || parent.keyedChildren !== bucket ||
+          (bucket ? bucket.get(geometry.key) !== node :
+            parent.children[geometry.parentIndex] !== node)) return false;
+      } else if (this.#mounted[geometry.parentIndex] !== node) return false;
+      if (node.children.length !== geometry.children.length ||
+        vnode.children.length !== geometry.childVNodes.length) return false;
+      for (let index = 0; index < geometry.children.length; index++) {
+        const child = geometry.children[index];
+        if (node.children[index] !== child || child.hostDisposed ||
+          child.parent !== node || child.parentIndex !== index ||
+          child.vnode !== geometry.childVNodes[index]) return false;
+      }
+      return true;
+    }
     const { node, vnode, parent, bucket } = target;
     if (hostPropWriter(this.host) !== writer) return false;
     if (this.#version !== version || this.#publicationToken !== publication ||
@@ -8076,7 +8343,7 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     const key = node.vnode.key;
     if (key !== null) {
       let set = this.#nodesByKey.get(key);
-      if (!set) this.#nodesByKey.set(key, set = new Set());
+      if (!set) this.#nodesByKey.set(key, set = new MountedStoreKeyBucket<H>());
       set.add(node);
     }
     if (node.vnode.kind === "element" && node.vnode.keyedRegionId !== null) {
@@ -8088,7 +8355,12 @@ export class VDOMSnapshotRoot<H, Parent = H> {
     }
   }
 
+  #invalidateMountedStorePlan(node: MountedNode<H>) {
+    node.mountedStorePlan = undefined;
+  }
+
   #removeFromKeyIndex(node: MountedNode<H>) {
+    this.#invalidateMountedStorePlan(node);
     this.#removeKeyFromIndex(node.vnode.key, node);
     if (node.vnode.kind === "element" && node.vnode.keyedRegionId !== null) {
       const set = this.#nodesByKeyedRegion.get(node.vnode.keyedRegionId);
@@ -8451,6 +8723,7 @@ export class DOMVDOMHost implements VDOMHost<Node, Node> {
       targetResource: null,
       valueResource: null,
       mayThrow: true,
+      mayReenter: true,
     });
   }
 

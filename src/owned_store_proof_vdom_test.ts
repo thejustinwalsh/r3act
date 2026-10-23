@@ -1,31 +1,35 @@
 import { assert, assertEquals, assertStrictEquals } from "jsr:@std/assert";
-import { OwnedScalarFrame, OwnedScalarLayout } from "./closed_scalar_output.ts";
 import { copyRuntimeElement, jsx } from "./jsx_binding_runtime.ts";
+import { mountedFrameFixture } from "./vdom_mounted_frame_fixture.ts";
 import {
   MemoryVDOMHost, VDOMSnapshotRoot,
-  type MemoryNode, type OwnedScalarStoreRegion,
+  type MemoryNode,
 } from "./vdom_snapshot_runtime.ts";
 
-const layout = OwnedScalarLayout.create(["rotation-y"], [undefined]);
 const tree = (owners: readonly number[]) => jsx("main", {}, owners.map((owner) =>
   jsx("section", { key: `slot-${owner}` }, copyRuntimeElement("group", {
-    key: "motion", "rotation-y": 0,
+    key: "motion", "rotation-y": 0, "position-x": 0,
     children: jsx("mesh", { key: `child-${owner}` }),
   }, owner))));
-const regions = (owners: readonly number[], value: number): OwnedScalarStoreRegion[] =>
-  owners.map((owner) => Object.freeze({
-    key: "motion", tag: "group", componentOwner: owner,
-    retainedChildren: true as const,
-    kind: "frame" as const,
-    frame: OwnedScalarFrame.create(layout, [value + owner]),
-  }));
+const fixtures = new WeakMap<VDOMSnapshotRoot<MemoryNode>,
+  { owners: string; capture(value: number): import("./closed_store_execution.ts").OwnedClosedFrameCut }>();
+const prepare = (root: VDOMSnapshotRoot<MemoryNode>, owners: readonly number[],
+  value: number) => {
+  const key = owners.join(",");
+  let fixture = fixtures.get(root);
+  if (!fixture || fixture.owners !== key) {
+    fixture = { owners: key, ...mountedFrameFixture(owners) };
+    fixtures.set(root, fixture);
+  }
+  return root.prepareOwnedScalarStoreDeltas(fixture.capture(value));
+};
 
 Deno.test("owned VDOM receipt rejects removal and same-key reinsertion", () => {
   const host = new MemoryVDOMHost();
   const root = new VDOMSnapshotRoot(host, host.createContainer());
   try {
     root.commit(tree([1, 2]));
-    const prepared = root.prepareOwnedScalarStoreDeltas(regions([1, 2], 10));
+    const prepared = prepare(root, [1, 2], 10);
     assert(prepared);
     root.commit(tree([1]));
     root.commit(tree([1, 2]));
@@ -37,7 +41,7 @@ Deno.test("owned VDOM receipt rejects removal and same-key reinsertion", () => {
     assert(stale);
     root.cancelPublication();
     prepared.discard();
-    const fresh = root.prepareOwnedScalarStoreDeltas(regions([1, 2], 20));
+    const fresh = prepare(root, [1, 2], 20);
     assert(fresh);
     fresh.discard();
   } finally { root.dispose(); }
@@ -63,7 +67,7 @@ Deno.test("host reflection revocation is observed before a private target sweep"
   const root = new VDOMSnapshotRoot(host, host.createContainer());
   try {
     root.commit(tree([1]));
-    const prepared = root.prepareOwnedScalarStoreDeltas(regions([1], 10));
+    const prepared = prepare(root, [1], 10);
     assert(prepared);
     assert(prepared.ownedScalarPhases.preflightPrepared());
     armed = true;
@@ -94,7 +98,7 @@ Deno.test("second writer failure keeps old snapshots and retained handles", () =
     const old = root.snapshot;
     const oldText = JSON.stringify(old);
     const children = container.children[0].children.map((slot) => slot.children[0].children[0]);
-    const prepared = root.prepareOwnedScalarStoreDeltas(regions([1, 2], 10));
+    const prepared = prepare(root, [1, 2], 10);
     assert(prepared);
     assert(prepared.ownedScalarPhases.preflightPrepared());
     host.fail = true;
@@ -109,6 +113,6 @@ Deno.test("second writer failure keeps old snapshots and retained handles", () =
       assertStrictEquals(container.children[0].children[index].children[0].children[0], child));
     root.failPublication();
     prepared.discard();
-    assertEquals(prepared.storeScalarPlans, undefined);
+    assertEquals(prepared.mountedBindingAt(0), null);
   } finally { root.dispose(); }
 });
