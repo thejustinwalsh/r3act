@@ -10,6 +10,9 @@ import {
   Suspense,
   useAt,
   useEffectAt,
+  useFrameAt,
+  useFrameLoopAt,
+  type NativeFrameLoopBoundaryOptions,
   useStateAt,
   useStoreAt,
 } from "./component_state_runtime.ts";
@@ -36,6 +39,7 @@ export {
   Suspense,
   useAt,
   useEffectAt,
+  useFrameAt,
   useStateAt,
   useStoreAt,
 };
@@ -50,6 +54,22 @@ export { createNativeFrameLoop } from "./native_frame_loop.ts";
 export type {
   NativeFrameTime, NativeFrameResult, NativeFrameLoopOptions, NativeFrameLoop,
 } from "./native_frame_loop.ts";
+export type {
+  NativeFrameClock, NativeFrameCallback, NativeFrameCallbackOptions,
+} from "./native_frame_program.ts";
+import type {
+  NativeFrameClock, NativeFrameCallback, NativeFrameCallbackOptions,
+} from "./native_frame_program.ts";
+
+export type FrameLoopProps = NativeFrameLoopBoundaryOptions & {
+  readonly children?: RuntimeNode;
+};
+
+/** Own the native root's RAF driver for this mounted boundary's lifetime. */
+export const FrameLoop = defineComponent<FrameLoopProps>("r3act:FrameLoop", (props) => {
+  useFrameLoopAt("r3act:FrameLoop:driver", props);
+  return props.children ?? null;
+});
 export { createTaskExecution } from "./native_task_execution.ts";
 export { NativeTaskTransitionQueue } from "./native_task_transition.ts";
 export type {
@@ -120,6 +140,16 @@ export const useState = <T>(
   _initial: T | (() => T),
 ): readonly [T, (action: T | ((previous: T) => T)) => boolean] =>
   compileRequired("useState");
+
+/** Read the compiled frame clock, or register ordered mount-owned tick logic. */
+export function useFrame(): NativeFrameClock;
+export function useFrame(callback: NativeFrameCallback,
+  dependencies: readonly unknown[], options?: NativeFrameCallbackOptions): void;
+export function useFrame(_callback?: NativeFrameCallback,
+  _dependencies?: readonly unknown[], _options?: NativeFrameCallbackOptions,
+): NativeFrameClock | void {
+  return compileRequired("useFrame");
+}
 
 /**
  * Compiler-owned read. Stores return their value unchanged; resources and

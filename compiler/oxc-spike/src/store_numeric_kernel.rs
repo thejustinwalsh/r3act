@@ -57,21 +57,24 @@ fn emit_numeric_expression(node: &Value, input_count: usize, shared_count: usize
 
 pub(super) fn emit(program: &Value) -> Option<StoreDataExecution> {
     let schema = program.get("schemaVersion")?.as_u64()?;
-    if !matches!(schema, 1 | 2 | 3 | 5 | 6 | 7) { return None; }
+    if !matches!(schema, 1 | 2 | 3 | 5 | 6 | 7 | 8) { return None; }
     let component_id = program.get("componentProgramId")?.as_str()?;
     let revision = program.get("moduleRevision")?.as_str()?;
     let host = program.get("host")?;
-    let empty_primitive_group = schema == 5;
-    if empty_primitive_group {
-        if host.get("tag")?.as_str()? != "group" ||
+    let empty_primitive_host = schema == 5;
+    if empty_primitive_host {
+        if !matches!(host.get("tag")?.as_str()?, "mesh" | "group" | "div" | "span" | "output") ||
             !host.get("children")?.as_array()?.is_empty() { return None; }
     } else if !host.get("child")?.is_null() { return None; }
-    let shared_count = if schema == 1 { 1 } else if matches!(schema, 5 | 6 | 7) {
+    let shared_count = if schema == 1 { 1 } else if matches!(schema, 5 | 6 | 7 | 8) {
         program.get("inputs")?.as_array()?.iter().try_fold(0usize, |count, input| {
             count.checked_add(input.get("paths")?.as_array()?.len())
         })?
     } else { program.get("inputs")?.as_array()?.len() };
-    let varying_count = if schema == 7 { program.get("stateSites")?.as_array()?.len() } else { 0 };
+    let varying_count = if schema == 8 {
+        program.get("stateSites")?.as_array()?.len() +
+            program.get("propInputs")?.as_array()?.len()
+    } else if schema == 7 { program.get("stateSites")?.as_array()?.len() } else { 0 };
     let input_count = shared_count.checked_add(varying_count)?;
     if !(1..=32).contains(&input_count) { return None; }
     let props = host.get("props")?.as_array()?;
@@ -80,10 +83,14 @@ pub(super) fn emit(program: &Value) -> Option<StoreDataExecution> {
     for (index, prop) in props.iter().enumerate() {
         let pair = prop.as_array()?;
         if pair.len() != 2 { return None; }
-        pair[0].as_str()?;
+        let name = pair[0].as_str()?;
+        if name == "name" && matches!(schema, 5 | 6 | 7 | 8) &&
+            (!matches!(host.get("tag")?.as_str()?, "mesh" | "group") ||
+                pair[1].get("kind")?.as_str()? != "literal" ||
+                pair[1].get("value")?.as_str().is_none()) { return None; }
         if pair[1].get("kind")?.as_str()? == "literal" {
             let value = pair[1].get("value")?;
-            if empty_primitive_group && !value.is_null() && !value.is_boolean() && !value.is_string() &&
+            if empty_primitive_host && !value.is_null() && !value.is_boolean() && !value.is_string() &&
                 !value.as_f64().is_some_and(|number| number.is_finite()) { return None; }
             if value.is_number() {
                 expressions.push((index, emit_numeric_expression(&pair[1], input_count,
@@ -203,7 +210,7 @@ mod tests {
     }
 
     #[test]
-    fn selects_only_empty_child_primitive_group() {
+    fn selects_only_empty_child_primitive_host() {
         let mut input = serde_json::json!({
             "schemaVersion": 5, "componentProgramId": "marker", "moduleRevision": "rev",
             "inputs": [{"paths": [["epoch"]]}],
@@ -218,6 +225,16 @@ mod tests {
         assert!(marker.code.contains("rowOutput[2] = sharedInputs[0];"));
         assert!(!marker.code.contains("renamed-group"));
         assert!(!marker.code.contains("rowOutput[1]"));
+        for tag in ["mesh", "group"] {
+            input["host"]["tag"] = serde_json::json!(tag);
+            assert!(emit(&input).is_some(), "{tag}");
+        }
+        input["host"]["tag"] = serde_json::json!("div");
+        assert!(emit(&input).is_none(), "DOM name must not enter the numeric cut");
+        input["host"]["tag"] = serde_json::json!("group");
+        input["host"]["props"][0][1] = serde_json::json!({"kind":"input","index":0});
+        assert!(emit(&input).is_none(), "dynamic Three name must stay generic");
+        input["host"]["props"][0][1] = serde_json::json!({"kind":"literal","value":"renamed-group"});
         input["host"]["children"] = serde_json::json!([{"kind":"text","expression":{
             "kind":"input","index":0}}]);
         assert!(emit(&input).is_none());

@@ -1,0 +1,1653 @@
+{
+  "status": "FAIL",
+  "startedAt": "2026-10-23T22:50:27.621Z",
+  "sourceFreeze": "source-review-v2.json",
+  "sourceCount": 873,
+  "sourceAuditBefore": {
+    "status": "MATCH",
+    "count": 873
+  },
+  "toolchain": {
+    "node": "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+    "nodeVersion": "v24.18.0",
+    "nodePathFirst": "/Users/mini/.local/share/mise/installs/node/24.18.0/bin",
+    "cargoHome": "/Volumes/Depot/Developer/r3act/.cache/cargo",
+    "cargoBuildJobs": "1",
+    "ci": "true"
+  },
+  "compilerBinary": {
+    "path": "/Volumes/Depot/Developer/r3act/compiler/oxc-spike/target/debug/ui-graph-compiler-spike",
+    "initialSha256": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+    "expectedBuiltSha256": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+  },
+  "steps": [
+    {
+      "name": "deno-full",
+      "status": "FAIL",
+      "command": [
+        "deno",
+        "test",
+        "--config",
+        "deno.browser.json",
+        "--frozen",
+        "--lock=implementation/2026-10-16-publication/verification/deno-runtime.lock",
+        "src"
+      ],
+      "startedAt": "2026-10-23T22:50:27.624Z",
+      "durationMs": 31187,
+      "timeoutMs": 900000,
+      "exitCode": 1,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/deno-full.log",
+      "compilerSha256Before": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "compilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc"
+    },
+    {
+      "name": "cargo-test",
+      "status": "FAIL",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--manifest-path",
+        "compiler/oxc-spike/Cargo.toml"
+      ],
+      "startedAt": "2026-10-23T22:50:58.812Z",
+      "durationMs": 9881,
+      "timeoutMs": 900000,
+      "exitCode": 101,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/cargo-test.log",
+      "compilerSha256Before": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "compilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc"
+    },
+    {
+      "name": "cargo-build",
+      "status": "PASS",
+      "command": [
+        "cargo",
+        "build",
+        "--locked",
+        "--manifest-path",
+        "compiler/oxc-spike/Cargo.toml"
+      ],
+      "startedAt": "2026-10-23T22:51:08.693Z",
+      "durationMs": 8838,
+      "timeoutMs": 900000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/cargo-build.log",
+      "compilerSha256Before": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "native-tooling",
+      "status": "PASS",
+      "command": [
+        "pnpm",
+        "check:native-tooling"
+      ],
+      "startedAt": "2026-10-23T22:51:17.531Z",
+      "durationMs": 1765,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/native-tooling.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "package-build",
+      "status": "PASS",
+      "command": [
+        "pnpm",
+        "package:r3act"
+      ],
+      "startedAt": "2026-10-23T22:51:19.298Z",
+      "durationMs": 33282,
+      "timeoutMs": 900000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/package-build.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "package-consumer",
+      "status": "PASS",
+      "command": [
+        "pnpm",
+        "check:r3act-packages"
+      ],
+      "startedAt": "2026-10-23T22:51:52.580Z",
+      "durationMs": 7730,
+      "timeoutMs": 900000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/package-consumer.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-01",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_direct_intent_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:00.328Z",
+      "durationMs": 526,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-01.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-02",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_urgent_retained_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:00.855Z",
+      "durationMs": 618,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-02.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-03",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_urgent_retained_three_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:01.474Z",
+      "durationMs": 564,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-03.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-04",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_boundary_workset_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:02.039Z",
+      "durationMs": 483,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-04.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-05",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_boundary_reveal_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:02.522Z",
+      "durationMs": 2102,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-05.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-06",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_resource_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:04.627Z",
+      "durationMs": 1125,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-06.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-07",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_joint_transaction_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:05.753Z",
+      "durationMs": 471,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-07.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-08",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_scoped_collection_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:06.225Z",
+      "durationMs": 515,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-08.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-09",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_retained_transaction_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:06.745Z",
+      "durationMs": 2409,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-09.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-10",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_owner_row_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:09.156Z",
+      "durationMs": 744,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-10.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-11",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_owner_row_three_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:09.901Z",
+      "durationMs": 492,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-11.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-12",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_store_host_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:10.394Z",
+      "durationMs": 1291,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-12.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-13",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_joint_store_host_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:11.687Z",
+      "durationMs": 2080,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-13.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-14",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_joint_input_transaction_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:13.768Z",
+      "durationMs": 543,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-14.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-15",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_resource_subtree_reveal_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:14.311Z",
+      "durationMs": 582,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-15.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-16",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_resource_host_values_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:14.894Z",
+      "durationMs": 2672,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-16.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-17",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_store_host_values_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:17.567Z",
+      "durationMs": 517,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-17.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-18",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_store_host_subtree_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:18.084Z",
+      "durationMs": 456,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-18.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-19",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_store_projection_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:18.541Z",
+      "durationMs": 1935,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-19.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-20",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_joint_async_inputs_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:20.479Z",
+      "durationMs": 1366,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-20.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-21",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_component_forwarding_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:21.845Z",
+      "durationMs": 475,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-21.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-22",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_authored_lifecycle_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:22.321Z",
+      "durationMs": 3142,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-22.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-23",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_resource_transaction_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:25.464Z",
+      "durationMs": 555,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-23.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-24",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_async_recovery_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:26.020Z",
+      "durationMs": 464,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-24.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-25",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_forked_transition_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:26.484Z",
+      "durationMs": 2106,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-25.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-26",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_custom_host_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:28.593Z",
+      "durationMs": 1016,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-26.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-27",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_arrow_components_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:29.610Z",
+      "durationMs": 514,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-27.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-28",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_publication_callbacks_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:30.124Z",
+      "durationMs": 758,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-28.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-29",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_held_reader_progress_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:30.884Z",
+      "durationMs": 2391,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-29.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-30",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_closed_arrow_authoring_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:33.276Z",
+      "durationMs": 516,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-30.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-31",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_numeric_owner_effects_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:33.793Z",
+      "durationMs": 445,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-31.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-32",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_collection_owner_effects_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:34.238Z",
+      "durationMs": 1897,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-32.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-33",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_collection_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:36.141Z",
+      "durationMs": 1394,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-33.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-34",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_host_value_diff_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:37.535Z",
+      "durationMs": 438,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-34.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-35",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_reentrant_replacement_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:37.975Z",
+      "durationMs": 640,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-35.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-36",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_runtime_origin_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:38.616Z",
+      "durationMs": 2225,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-36.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-37",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_root_queue_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:40.849Z",
+      "durationMs": 1310,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-37.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-38",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_task_transition_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:42.167Z",
+      "durationMs": 5355,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-38.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-39",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_promise_store_race_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:47.527Z",
+      "durationMs": 5025,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-39.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-40",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/numeric_state_layout_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:52.558Z",
+      "durationMs": 1404,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-40.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-41",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_three_resource_lifetime_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:53.964Z",
+      "durationMs": 1811,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-41.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-42",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_host_publication_domain_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:55.775Z",
+      "durationMs": 2208,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-42.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-43",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_group_host_admission_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:57.986Z",
+      "durationMs": 997,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-43.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-44",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_closed_collection_rows_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:58.985Z",
+      "durationMs": 469,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-44.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-45",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_namespace_three_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:52:59.454Z",
+      "durationMs": 4172,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-45.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-46",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_numeric_expression_dag_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:53:03.628Z",
+      "durationMs": 2206,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-46.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-47",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_ranged_owner_kernel_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:53:05.835Z",
+      "durationMs": 2262,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-47.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-48",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_retained_store_clock_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:53:08.112Z",
+      "durationMs": 1049,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-48.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-49",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_structural_owner_scope_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:53:09.162Z",
+      "durationMs": 435,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-49.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-50",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_store_numeric_kernel_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:53:09.597Z",
+      "durationMs": 1110,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-50.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-51",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_mixed_numeric_inputs_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:53:10.712Z",
+      "durationMs": 2116,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-51.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-52",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_closed_store_contraction_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:53:12.829Z",
+      "durationMs": 475,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-52.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-53",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_owned_store_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:53:13.304Z",
+      "durationMs": 388,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-53.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-54",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "--expose-gc",
+        "compiler/compiled_mounted_scalar_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:53:13.693Z",
+      "durationMs": 2673,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-54.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-55",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_realtime_store_progress_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:53:16.370Z",
+      "durationMs": 608,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-55.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-56",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "--expose-gc",
+        "compiler/compiled_compact_scalar_output_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:53:16.979Z",
+      "durationMs": 526,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-56.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-57",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "--expose-gc",
+        "compiler/compiled_owned_scalar_capture_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:53:17.506Z",
+      "durationMs": 2194,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-57.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-58",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "--expose-gc",
+        "compiler/compiled_owned_frame_transaction_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:53:19.702Z",
+      "durationMs": 1542,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-58.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-59",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "--expose-gc",
+        "compiler/compiled_store_batch_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:53:21.244Z",
+      "durationMs": 672,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-59.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-60",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_native_frame_publication_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:53:21.919Z",
+      "durationMs": 2682,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-60.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-61",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_owned_store_proof_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:53:24.602Z",
+      "durationMs": 450,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-61.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-62",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_dependency_route_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:53:25.053Z",
+      "durationMs": 429,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-62.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-63",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_mounted_frame_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:53:25.482Z",
+      "durationMs": 3719,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-63.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-64",
+      "status": "FAIL",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_declarative_frame_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:53:29.201Z",
+      "durationMs": 399,
+      "timeoutMs": 300000,
+      "exitCode": 1,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-64.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-65",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_compiler_artifact_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:53:29.601Z",
+      "durationMs": 1807,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-65.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-66",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_hmr_revision_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:53:31.410Z",
+      "durationMs": 833,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-66.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-67",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_react_composition_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:53:32.245Z",
+      "durationMs": 364,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-67.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-68",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_runtime_origin_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:53:32.610Z",
+      "durationMs": 460,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-68.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-69",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_react_island_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:53:33.071Z",
+      "durationMs": 216,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-69.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-70",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_radix_dialog_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:53:33.287Z",
+      "durationMs": 216,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-70.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-71",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "--expose-gc",
+        "compiler/compiled_collection_owner_retention_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:53:33.503Z",
+      "durationMs": 1693,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-71.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-72",
+      "status": "FAIL",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/vite_native_module_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:53:35.199Z",
+      "durationMs": 1968,
+      "timeoutMs": 300000,
+      "exitCode": 1,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-72.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-73",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/vite_native_plugin_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:53:37.168Z",
+      "durationMs": 6714,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-73.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-74",
+      "status": "PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/vite_native_derived_local_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:53:43.883Z",
+      "durationMs": 861,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-74.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    },
+    {
+      "name": "fixture-75",
+      "status": "FAIL",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/vite_native_package_dev_resolution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:53:44.745Z",
+      "durationMs": 194,
+      "timeoutMs": 300000,
+      "exitCode": 1,
+      "signal": null,
+      "spawnError": null,
+      "log": "logs/fixture-75.log",
+      "compilerSha256Before": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "compilerSha256After": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be",
+      "debugCompilerSha256Expected": "56d666227d84e733ad33e65fcac8e714787d60802aaa5d1afc26196ff0b997be"
+    }
+  ],
+  "fixtureCount": 75,
+  "fixtureFiles": [
+    "compiler/compiled_direct_intent_test.mjs",
+    "compiler/compiled_urgent_retained_test.mjs",
+    "compiler/compiled_urgent_retained_three_test.mjs",
+    "compiler/compiled_boundary_workset_test.mjs",
+    "compiler/compiled_boundary_reveal_test.mjs",
+    "compiler/native_resource_execution_test.mjs",
+    "compiler/compiled_joint_transaction_test.mjs",
+    "compiler/compiled_scoped_collection_test.mjs",
+    "compiler/compiled_retained_transaction_test.mjs",
+    "compiler/compiled_owner_row_execution_test.mjs",
+    "compiler/compiled_owner_row_three_execution_test.mjs",
+    "compiler/compiled_store_host_test.mjs",
+    "compiler/compiled_joint_store_host_test.mjs",
+    "compiler/compiled_joint_input_transaction_test.mjs",
+    "compiler/compiled_resource_subtree_reveal_test.mjs",
+    "compiler/compiled_resource_host_values_test.mjs",
+    "compiler/compiled_store_host_values_test.mjs",
+    "compiler/compiled_store_host_subtree_test.mjs",
+    "compiler/compiled_store_projection_test.mjs",
+    "compiler/compiled_joint_async_inputs_test.mjs",
+    "compiler/compiled_component_forwarding_test.mjs",
+    "compiler/compiled_authored_lifecycle_test.mjs",
+    "compiler/compiled_resource_transaction_test.mjs",
+    "compiler/native_async_recovery_execution_test.mjs",
+    "compiler/native_forked_transition_execution_test.mjs",
+    "compiler/native_custom_host_execution_test.mjs",
+    "compiler/native_arrow_components_execution_test.mjs",
+    "compiler/compiled_publication_callbacks_execution_test.mjs",
+    "compiler/compiled_held_reader_progress_test.mjs",
+    "compiler/compiled_closed_arrow_authoring_test.mjs",
+    "compiler/compiled_numeric_owner_effects_test.mjs",
+    "compiler/compiled_collection_owner_effects_test.mjs",
+    "compiler/native_collection_execution_test.mjs",
+    "compiler/compiled_host_value_diff_test.mjs",
+    "compiler/compiled_reentrant_replacement_test.mjs",
+    "compiler/compiled_runtime_origin_test.mjs",
+    "compiler/native_root_queue_execution_test.mjs",
+    "compiler/native_task_transition_execution_test.mjs",
+    "compiler/native_promise_store_race_execution_test.mjs",
+    "compiler/numeric_state_layout_execution_test.mjs",
+    "compiler/compiled_three_resource_lifetime_test.mjs",
+    "compiler/compiled_host_publication_domain_test.mjs",
+    "compiler/compiled_group_host_admission_test.mjs",
+    "compiler/compiled_closed_collection_rows_test.mjs",
+    "compiler/native_namespace_three_execution_test.mjs",
+    "compiler/compiled_numeric_expression_dag_test.mjs",
+    "compiler/compiled_ranged_owner_kernel_test.mjs",
+    "compiler/compiled_retained_store_clock_test.mjs",
+    "compiler/compiled_structural_owner_scope_test.mjs",
+    "compiler/compiled_store_numeric_kernel_test.mjs",
+    "compiler/compiled_mixed_numeric_inputs_test.mjs",
+    "compiler/compiled_closed_store_contraction_test.mjs",
+    "compiler/compiled_owned_store_execution_test.mjs",
+    "compiler/compiled_mounted_scalar_execution_test.mjs",
+    "compiler/compiled_realtime_store_progress_test.mjs",
+    "compiler/compiled_compact_scalar_output_test.mjs",
+    "compiler/compiled_owned_scalar_capture_test.mjs",
+    "compiler/compiled_owned_frame_transaction_test.mjs",
+    "compiler/compiled_store_batch_execution_test.mjs",
+    "compiler/compiled_native_frame_publication_test.mjs",
+    "compiler/compiled_owned_store_proof_test.mjs",
+    "compiler/compiled_dependency_route_test.mjs",
+    "compiler/compiled_mounted_frame_execution_test.mjs",
+    "compiler/compiled_declarative_frame_test.mjs",
+    "compiler/native_compiler_artifact_test.mjs",
+    "compiler/native_hmr_revision_test.mjs",
+    "compiler/native_react_composition_test.mjs",
+    "compiler/native_runtime_origin_test.mjs",
+    "compiler/compiled_react_island_test.mjs",
+    "compiler/compiled_radix_dialog_test.mjs",
+    "compiler/compiled_collection_owner_retention_test.mjs",
+    "compiler/vite_native_module_test.mjs",
+    "compiler/vite_native_plugin_test.mjs",
+    "compiler/vite_native_derived_local_test.mjs",
+    "compiler/vite_native_package_dev_resolution_test.mjs"
+  ],
+  "sourceAuditAfter": {
+    "status": "MATCH",
+    "count": 873
+  },
+  "finishedAt": "2026-10-23T22:53:45.119Z",
+  "interruptedBy": null
+}

@@ -61,6 +61,37 @@ Deno.test("current data execution binds one host and preserves finite input orde
   equal(normalizeClosedStoreDataExecution({ ...marker(), extra: true }, host), null);
 });
 
+Deno.test("owned Store execution preserves a static Three name beside numeric props", () => {
+  for (const schemaVersion of [5, 6, 7, 8] as const) {
+    const host = normalizeClosedStoreHostProgram({
+      schemaVersion, componentProgramId: "named", moduleRevision: "rev",
+      inputs: [{ storeUseSiteId: "clock", storeProp: "store",
+        paths: [["phase"]] }],
+      ...(schemaVersion === 6 ? { retainedChildProp: "children" } : {}),
+      ...(schemaVersion === 7 ? { stateSites: ["offset"], effectSites: [],
+        retainedChildProp: null } : {}),
+      ...(schemaVersion === 8 ? { stateSites: [], effectSites: [],
+        propInputs: ["speed"], retainedChildProp: null } : {}),
+      host: schemaVersion === 5
+        ? { tag: "mesh", key: "named", children: [], props: [
+          ["name", { kind: "literal", value: "accepted-frame" }],
+          ["rotation-y", { kind: "input", index: 0 }],
+        ] }
+        : { tag: "mesh", key: "named", child: null, props: [
+          ["name", { kind: "literal", value: "accepted-frame" }],
+          ["rotation-y", { kind: "input", index: 0 }],
+        ] },
+    });
+    if (!host) throw new Error(`Schema ${schemaVersion} declined the named host`);
+    const execution = normalizeClosedStoreDataExecution(marker("named"), host);
+    if (!execution) throw new Error(`Schema ${schemaVersion} declined owned execution`);
+    const output = evaluateClosedStoreDataExecution(execution,
+      schemaVersion >= 7 ? [2, 3] : [2]);
+    equal(output?.[0][1], "accepted-frame");
+    equal(output?.[1][1], 2);
+  }
+});
+
 Deno.test("bound frame requests reuse layout while old accepted output stays immutable", () => {
   const world = new OwnerStateWorld();
   const owner = world.resolveOwner(null, "bound-execution");

@@ -3,7 +3,13 @@ import {
   type NativeRootWorkHandle,
   type NativeStoreRootWork,
 } from "./native_root_work_queue.ts";
-import { publishImmediateNativeFrameStores } from "./component_state_runtime.ts";
+import {
+  claimDeclarativeNativeFrame,
+  publishDeclarativeNativeFrame,
+  publishImmediateNativeFrameStores,
+  releaseDeclarativeNativeFrame,
+  tickDeclarativeNativeFrame,
+} from "./component_state_runtime.ts";
 import type { RootWorkResolution, RootWorkSettled } from "./root_work_queue.ts";
 
 export type NativeFrameTime = Readonly<{ timeMs: number; deltaMs: number }>;
@@ -17,12 +23,13 @@ export type NativeFrameResult = Readonly<{
 
 export type NativeFrameLoopOptions = {
   readonly roots: NativeStoreRootWork["roots"];
-  readonly update: (frame: NativeFrameTime) => void;
+  readonly update?: (frame: NativeFrameTime) => void;
   readonly draw: (frame: NativeFrameTime) => void;
   readonly requestFrame?: (callback: (timeMs: number) => void) => number;
   readonly cancelFrame?: (id: number) => void;
   readonly maxDeltaMs?: number;
   readonly onError?: (error: unknown) => void;
+  readonly declarative?: true;
 };
 
 export type NativeFrameLoop = {
@@ -48,11 +55,12 @@ function withCleanup(error: unknown, cleanup: readonly unknown[]): unknown {
 }
 
 class NativeFrameLoopController implements NativeFrameLoop {
-  readonly #queue: NativeRootWorkQueue;
+  readonly #queue?: NativeRootWorkQueue;
   readonly #roots: NativeStoreRootWork["roots"];
-  readonly #update: (frame: NativeFrameTime) => void;
+  readonly #update?: (frame: NativeFrameTime) => void;
   readonly #draw: (frame: NativeFrameTime) => void;
   readonly #onError?: (error: unknown) => void;
+  readonly #declarative: boolean;
   readonly #maxDeltaMs: number;
   readonly #requestOption?: NativeFrameLoopOptions["requestFrame"];
   readonly #cancelOption?: NativeFrameLoopOptions["cancelFrame"];
@@ -71,6 +79,7 @@ class NativeFrameLoopController implements NativeFrameLoop {
   #lastUpdateTime?: number;
   #active?: ActiveFrame;
   #nextWorkId = 0;
+  #claimedDeclarative = false;
 
   constructor(options: NativeFrameLoopOptions) {
     if ((options.requestFrame === undefined) !== (options.cancelFrame === undefined)) {
@@ -89,14 +98,27 @@ class NativeFrameLoopController implements NativeFrameLoop {
       rootIds.add(root.rootId);
       return Object.freeze({ root, stores: Object.freeze([...stores]) });
     }));
+    if (options.declarative && this.#roots.length !== 1) {
+      throw new Error("Declarative frame publication requires one root");
+    }
+    if (!options.declarative && !options.update) {
+      throw new Error("Imperative frame loop requires update");
+    }
     this.#update = options.update;
     this.#draw = options.draw;
     this.#onError = options.onError;
+    this.#declarative = options.declarative === true;
     this.#maxDeltaMs = maxDeltaMs;
     this.#requestOption = options.requestFrame;
     this.#cancelOption = options.cancelFrame;
-    this.#queue = new NativeRootWorkQueue({ onError: (error) => this.#failAsync(error) });
+    if (!this.#declarative) {
+      this.#queue = new NativeRootWorkQueue({ onError: (error) => this.#failAsync(error) });
+    }
     try {
+      if (this.#declarative) {
+        claimDeclarativeNativeFrame(this.#roots[0].root, this);
+        this.#claimedDeclarative = true;
+      }
       for (const { root } of this.#roots) {
         this.#retireUnsubscribes.push(root.onRetire(() => this.dispose()));
       }
@@ -156,7 +178,12 @@ class NativeFrameLoopController implements NativeFrameLoop {
     for (const unsubscribe of this.#retireUnsubscribes.splice(0)) {
       try { unsubscribe(); } catch (error) { errors.push(error); }
     }
-    try { this.#queue.dispose(); } catch (error) { errors.push(error); }
+    try { this.#queue?.dispose(); } catch (error) { errors.push(error); }
+    if (this.#claimedDeclarative) {
+      this.#claimedDeclarative = false;
+      try { releaseDeclarativeNativeFrame(this.#roots[0].root, this); }
+      catch (error) { errors.push(error); }
+    }
     if (errors.length) throw new AggregateError(errors, "Native frame disposal failed");
   }
 
@@ -188,7 +215,9 @@ class NativeFrameLoopController implements NativeFrameLoop {
         this.#lastUpdateTime = timeMs;
         const active: ActiveFrame = { frame };
         this.#active = active;
-        this.#update(frame);
+        if (this.#declarative) tickDeclarativeNativeFrame(this.#roots[0].root,
+          frame, this, () => this.#active === active && !this.#disposed);
+        this.#update?.(frame);
         if (this.#disposed) return { status: "disposed", frame };
         if (this.#active !== active) return { status: "cancelled", frame };
         this.#publish(active);
@@ -197,6 +226,9 @@ class NativeFrameLoopController implements NativeFrameLoop {
         if (this.#active !== active) return { status: "cancelled", frame };
       } else if (this.#active.handle?.status === "pending") {
         this.#active.handle.refresh();
+      } else if (this.#declarative &&
+        this.#active.resolution?.status === "pending") {
+        this.#publish(this.#active);
       }
       if (this.#disposed) return { status: "disposed", frame };
       const pendingFailure = this.#asyncFailure(frame);
@@ -246,6 +278,16 @@ class NativeFrameLoopController implements NativeFrameLoop {
 
   #publish(active: ActiveFrame): void {
     const id = `native-frame:${++this.#nextWorkId}`;
+    if (this.#declarative) {
+      const result = publishDeclarativeNativeFrame(this.#roots[0].root, this);
+      if (this.#active !== active || this.#disposed) return;
+      active.resolution = Object.freeze({ status: result.status,
+        transitionId: id, roots: Object.freeze(this.#roots.map(({ root }) => root.rootId)) });
+      if (result.status === "committed") {
+        active.acceptedVersions = Object.freeze([result.publicationVersion]);
+      }
+      return;
+    }
     if (this.#roots.length === 1) {
       const { root, stores } = this.#roots[0];
       let result: ReturnType<typeof publishImmediateNativeFrameStores>;
@@ -265,14 +307,15 @@ class NativeFrameLoopController implements NativeFrameLoop {
         return;
       }
     }
-    const handle = this.#queue.enqueueStores({
+    const queue = this.#queue!;
+    const handle = queue.enqueueStores({
       id,
       roots: this.#roots,
       onSettled: (resolution: RootWorkSettled) => {
         if (this.#active !== active || this.#disposed) return;
         active.resolution = resolution;
         if (resolution.status === "committed") {
-          active.acceptedVersions = this.#roots.map(({ root }) => this.#queue.getVersion(root));
+          active.acceptedVersions = this.#roots.map(({ root }) => queue.getVersion(root));
         }
       },
     });
@@ -280,7 +323,7 @@ class NativeFrameLoopController implements NativeFrameLoop {
       active.handle = handle;
       active.resolution ??= handle.resolution;
       if (active.resolution.status === "committed" && !active.acceptedVersions) {
-        active.acceptedVersions = this.#roots.map(({ root }) => this.#queue.getVersion(root));
+        active.acceptedVersions = this.#roots.map(({ root }) => queue.getVersion(root));
       }
     } else if (handle.status === "pending") {
       handle.cancel("Native frame loop stopped during preparation");

@@ -1,0 +1,611 @@
+{
+  "status": "FAIL",
+  "startedAt": "2026-10-24T00:01:43.533Z",
+  "sourceFreeze": "source-review-v8.json",
+  "sourceCount": 873,
+  "sourceAuditBefore": {
+    "status": "MATCH",
+    "count": 873
+  },
+  "sourceAuditAfter": {
+    "status": "MATCH",
+    "count": 873
+  },
+  "carryForward": {
+    "from": "verification-v7/receipt.json",
+    "reason": "The reviewed V7-to-V8 change is limited to one Rust test assertion in compiler/oxc-spike/src/main.rs; Deno runtime/test sources, TypeScript tooling/package inputs, and all75 fixture files are unchanged. V8 Rust tests passed118/118. Deno and native tooling are carried by exact unchanged source manifests and prior passing receipts.",
+    "deno": {
+      "status": "PASS",
+      "command": [
+        "deno",
+        "test",
+        "--config",
+        "deno.browser.json",
+        "--frozen",
+        "--lock=implementation/2026-10-16-publication/verification/deno-runtime.lock",
+        "src"
+      ],
+      "log": "logs/deno-full.log",
+      "durationMs": 21755
+    },
+    "nativeTooling": {
+      "status": "PASS",
+      "command": [
+        "pnpm",
+        "check:native-tooling"
+      ],
+      "log": "logs/native-tooling.log",
+      "durationMs": 2965
+    }
+  },
+  "toolchain": {
+    "node": "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+    "version": "v24.18.0",
+    "nodePathFirst": "/Users/mini/.local/share/mise/installs/node/24.18.0/bin",
+    "cargoHome": "/Volumes/Depot/Developer/r3act/.cache/cargo",
+    "cargoBuildJobs": "1",
+    "ci": "true"
+  },
+  "compiler": {
+    "path": "/Volumes/Depot/Developer/r3act/compiler/oxc-spike/target/debug/ui-graph-compiler-spike",
+    "expectedSha256": "23328faf507e3dc254b79fa4b0a46a0b449fa7981bc1e8b7b04c5b5867508624",
+    "initialSha256": "23328faf507e3dc254b79fa4b0a46a0b449fa7981bc1e8b7b04c5b5867508624",
+    "finalSha256": "23328faf507e3dc254b79fa4b0a46a0b449fa7981bc1e8b7b04c5b5867508624"
+  },
+  "steps": [
+    {
+      "name": "package-build",
+      "status": "PASS",
+      "command": [
+        "pnpm",
+        "package:r3act"
+      ],
+      "startedAt": "2026-10-24T00:01:43.545Z",
+      "durationMs": 32539,
+      "timeoutMs": 900000,
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "compilerSha256Before": "23328faf507e3dc254b79fa4b0a46a0b449fa7981bc1e8b7b04c5b5867508624",
+      "compilerSha256After": "23328faf507e3dc254b79fa4b0a46a0b449fa7981bc1e8b7b04c5b5867508624",
+      "log": "logs/delivery-package-build.log"
+    },
+    {
+      "name": "package-artifact-check",
+      "status": "FAIL",
+      "expectedSha256": "23328faf507e3dc254b79fa4b0a46a0b449fa7981bc1e8b7b04c5b5867508624",
+      "reportSha256": "a5a3b1e412892f3b8bde48a9f43d226b669c60ac9f7e752f7826139d3314678f",
+      "actualSha256": "23328faf507e3dc254b79fa4b0a46a0b449fa7981bc1e8b7b04c5b5867508624"
+    },
+    {
+      "name": "package-consumer",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "depends": [
+        "package-artifact-check"
+      ]
+    },
+    {
+      "name": "fixture-01",
+      "file": "compiler/compiled_direct_intent_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-02",
+      "file": "compiler/compiled_urgent_retained_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-03",
+      "file": "compiler/compiled_urgent_retained_three_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-04",
+      "file": "compiler/compiled_boundary_workset_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-05",
+      "file": "compiler/compiled_boundary_reveal_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-06",
+      "file": "compiler/native_resource_execution_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-07",
+      "file": "compiler/compiled_joint_transaction_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-08",
+      "file": "compiler/compiled_scoped_collection_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-09",
+      "file": "compiler/compiled_retained_transaction_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-10",
+      "file": "compiler/compiled_owner_row_execution_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-11",
+      "file": "compiler/compiled_owner_row_three_execution_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-12",
+      "file": "compiler/compiled_store_host_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-13",
+      "file": "compiler/compiled_joint_store_host_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-14",
+      "file": "compiler/compiled_joint_input_transaction_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-15",
+      "file": "compiler/compiled_resource_subtree_reveal_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-16",
+      "file": "compiler/compiled_resource_host_values_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-17",
+      "file": "compiler/compiled_store_host_values_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-18",
+      "file": "compiler/compiled_store_host_subtree_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-19",
+      "file": "compiler/compiled_store_projection_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-20",
+      "file": "compiler/compiled_joint_async_inputs_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-21",
+      "file": "compiler/compiled_component_forwarding_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-22",
+      "file": "compiler/compiled_authored_lifecycle_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-23",
+      "file": "compiler/compiled_resource_transaction_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-24",
+      "file": "compiler/native_async_recovery_execution_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-25",
+      "file": "compiler/native_forked_transition_execution_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-26",
+      "file": "compiler/native_custom_host_execution_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-27",
+      "file": "compiler/native_arrow_components_execution_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-28",
+      "file": "compiler/compiled_publication_callbacks_execution_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-29",
+      "file": "compiler/compiled_held_reader_progress_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-30",
+      "file": "compiler/compiled_closed_arrow_authoring_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-31",
+      "file": "compiler/compiled_numeric_owner_effects_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-32",
+      "file": "compiler/compiled_collection_owner_effects_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-33",
+      "file": "compiler/native_collection_execution_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-34",
+      "file": "compiler/compiled_host_value_diff_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-35",
+      "file": "compiler/compiled_reentrant_replacement_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-36",
+      "file": "compiler/compiled_runtime_origin_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-37",
+      "file": "compiler/native_root_queue_execution_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-38",
+      "file": "compiler/native_task_transition_execution_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-39",
+      "file": "compiler/native_promise_store_race_execution_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-40",
+      "file": "compiler/numeric_state_layout_execution_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-41",
+      "file": "compiler/compiled_three_resource_lifetime_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-42",
+      "file": "compiler/compiled_host_publication_domain_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-43",
+      "file": "compiler/compiled_group_host_admission_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-44",
+      "file": "compiler/compiled_closed_collection_rows_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-45",
+      "file": "compiler/native_namespace_three_execution_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-46",
+      "file": "compiler/compiled_numeric_expression_dag_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-47",
+      "file": "compiler/compiled_ranged_owner_kernel_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-48",
+      "file": "compiler/compiled_retained_store_clock_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-49",
+      "file": "compiler/compiled_structural_owner_scope_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-50",
+      "file": "compiler/compiled_store_numeric_kernel_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-51",
+      "file": "compiler/compiled_mixed_numeric_inputs_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-52",
+      "file": "compiler/compiled_closed_store_contraction_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-53",
+      "file": "compiler/compiled_owned_store_execution_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-54",
+      "file": "compiler/compiled_mounted_scalar_execution_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-55",
+      "file": "compiler/compiled_realtime_store_progress_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-56",
+      "file": "compiler/compiled_compact_scalar_output_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-57",
+      "file": "compiler/compiled_owned_scalar_capture_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-58",
+      "file": "compiler/compiled_owned_frame_transaction_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-59",
+      "file": "compiler/compiled_store_batch_execution_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-60",
+      "file": "compiler/compiled_native_frame_publication_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-61",
+      "file": "compiler/compiled_owned_store_proof_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-62",
+      "file": "compiler/compiled_dependency_route_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-63",
+      "file": "compiler/compiled_mounted_frame_execution_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-64",
+      "file": "compiler/compiled_declarative_frame_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-65",
+      "file": "compiler/native_compiler_artifact_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-66",
+      "file": "compiler/native_hmr_revision_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-67",
+      "file": "compiler/native_react_composition_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-68",
+      "file": "compiler/native_runtime_origin_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-69",
+      "file": "compiler/compiled_react_island_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-70",
+      "file": "compiler/compiled_radix_dialog_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-71",
+      "file": "compiler/compiled_collection_owner_retention_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-72",
+      "file": "compiler/vite_native_module_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-73",
+      "file": "compiler/vite_native_plugin_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-74",
+      "file": "compiler/vite_native_derived_local_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    },
+    {
+      "name": "fixture-75",
+      "file": "compiler/vite_native_package_dev_resolution_test.mjs",
+      "status": "SKIPPED_DEPENDENCY_FAILED"
+    }
+  ],
+  "fixtureFiles": [
+    "compiler/compiled_direct_intent_test.mjs",
+    "compiler/compiled_urgent_retained_test.mjs",
+    "compiler/compiled_urgent_retained_three_test.mjs",
+    "compiler/compiled_boundary_workset_test.mjs",
+    "compiler/compiled_boundary_reveal_test.mjs",
+    "compiler/native_resource_execution_test.mjs",
+    "compiler/compiled_joint_transaction_test.mjs",
+    "compiler/compiled_scoped_collection_test.mjs",
+    "compiler/compiled_retained_transaction_test.mjs",
+    "compiler/compiled_owner_row_execution_test.mjs",
+    "compiler/compiled_owner_row_three_execution_test.mjs",
+    "compiler/compiled_store_host_test.mjs",
+    "compiler/compiled_joint_store_host_test.mjs",
+    "compiler/compiled_joint_input_transaction_test.mjs",
+    "compiler/compiled_resource_subtree_reveal_test.mjs",
+    "compiler/compiled_resource_host_values_test.mjs",
+    "compiler/compiled_store_host_values_test.mjs",
+    "compiler/compiled_store_host_subtree_test.mjs",
+    "compiler/compiled_store_projection_test.mjs",
+    "compiler/compiled_joint_async_inputs_test.mjs",
+    "compiler/compiled_component_forwarding_test.mjs",
+    "compiler/compiled_authored_lifecycle_test.mjs",
+    "compiler/compiled_resource_transaction_test.mjs",
+    "compiler/native_async_recovery_execution_test.mjs",
+    "compiler/native_forked_transition_execution_test.mjs",
+    "compiler/native_custom_host_execution_test.mjs",
+    "compiler/native_arrow_components_execution_test.mjs",
+    "compiler/compiled_publication_callbacks_execution_test.mjs",
+    "compiler/compiled_held_reader_progress_test.mjs",
+    "compiler/compiled_closed_arrow_authoring_test.mjs",
+    "compiler/compiled_numeric_owner_effects_test.mjs",
+    "compiler/compiled_collection_owner_effects_test.mjs",
+    "compiler/native_collection_execution_test.mjs",
+    "compiler/compiled_host_value_diff_test.mjs",
+    "compiler/compiled_reentrant_replacement_test.mjs",
+    "compiler/compiled_runtime_origin_test.mjs",
+    "compiler/native_root_queue_execution_test.mjs",
+    "compiler/native_task_transition_execution_test.mjs",
+    "compiler/native_promise_store_race_execution_test.mjs",
+    "compiler/numeric_state_layout_execution_test.mjs",
+    "compiler/compiled_three_resource_lifetime_test.mjs",
+    "compiler/compiled_host_publication_domain_test.mjs",
+    "compiler/compiled_group_host_admission_test.mjs",
+    "compiler/compiled_closed_collection_rows_test.mjs",
+    "compiler/native_namespace_three_execution_test.mjs",
+    "compiler/compiled_numeric_expression_dag_test.mjs",
+    "compiler/compiled_ranged_owner_kernel_test.mjs",
+    "compiler/compiled_retained_store_clock_test.mjs",
+    "compiler/compiled_structural_owner_scope_test.mjs",
+    "compiler/compiled_store_numeric_kernel_test.mjs",
+    "compiler/compiled_mixed_numeric_inputs_test.mjs",
+    "compiler/compiled_closed_store_contraction_test.mjs",
+    "compiler/compiled_owned_store_execution_test.mjs",
+    "compiler/compiled_mounted_scalar_execution_test.mjs",
+    "compiler/compiled_realtime_store_progress_test.mjs",
+    "compiler/compiled_compact_scalar_output_test.mjs",
+    "compiler/compiled_owned_scalar_capture_test.mjs",
+    "compiler/compiled_owned_frame_transaction_test.mjs",
+    "compiler/compiled_store_batch_execution_test.mjs",
+    "compiler/compiled_native_frame_publication_test.mjs",
+    "compiler/compiled_owned_store_proof_test.mjs",
+    "compiler/compiled_dependency_route_test.mjs",
+    "compiler/compiled_mounted_frame_execution_test.mjs",
+    "compiler/compiled_declarative_frame_test.mjs",
+    "compiler/native_compiler_artifact_test.mjs",
+    "compiler/native_hmr_revision_test.mjs",
+    "compiler/native_react_composition_test.mjs",
+    "compiler/native_runtime_origin_test.mjs",
+    "compiler/compiled_react_island_test.mjs",
+    "compiler/compiled_radix_dialog_test.mjs",
+    "compiler/compiled_collection_owner_retention_test.mjs",
+    "compiler/vite_native_module_test.mjs",
+    "compiler/vite_native_plugin_test.mjs",
+    "compiler/vite_native_derived_local_test.mjs",
+    "compiler/vite_native_package_dev_resolution_test.mjs"
+  ],
+  "packageReport": {
+    "path": "/Volumes/Depot/Developer/r3act/.cache/r3act-package-build/report.json",
+    "sha256": "4733d6d7385a5cf594ccd03719a99e6e9916c52d9554ef6c20c706b256d23b48",
+    "compilerBinary": {
+      "target": "darwin-arm64",
+      "path": "dist/compiler/bin/aarch64-apple-darwin/ui-graph-compiler-spike",
+      "rustTarget": "aarch64-apple-darwin",
+      "compilerInfo": {
+        "arch": "arm64",
+        "platform": "darwin",
+        "protocolVersion": 1,
+        "schemaVersion": 1,
+        "target": "aarch64-apple-darwin",
+        "version": "0.1.0"
+      },
+      "sha256": "a5a3b1e412892f3b8bde48a9f43d226b669c60ac9f7e752f7826139d3314678f",
+      "bytes": 4026096,
+      "manifest": "dist/compiler/bin/manifest.json",
+      "rustSource": {
+        "sha256": "46598eb7956367831fc61cfd9f29994dd270cde84ecc1347c4d5835a6f21f478",
+        "files": [
+          {
+            "path": "compiler/oxc-spike/Cargo.lock",
+            "sha256": "a17f9726fff8c140b72e451361d793a3fcade85c1929dda7955ef12df487e69f",
+            "bytes": 20712
+          },
+          {
+            "path": "compiler/oxc-spike/Cargo.toml",
+            "sha256": "e1c76d44cc35e61828ffaadd473189334fe61f49aa5e3b28fdfaae1f58fd604c",
+            "bytes": 321
+          },
+          {
+            "path": "compiler/oxc-spike/build.rs",
+            "sha256": "ebe69bc2895d3bab888dda3581a463e58dbd172a8b6b9cdd6500f81b163fe3ee",
+            "bytes": 175
+          },
+          {
+            "path": "compiler/oxc-spike/src/main.rs",
+            "sha256": "0c6d04076bef19dd6bb6b27514858c8ae8ded6d8fa6294b6c92d303c676b19d1",
+            "bytes": 594087
+          },
+          {
+            "path": "compiler/oxc-spike/src/mixed_store_numeric_program.rs",
+            "sha256": "db75b976bd2a96d3cab2cfd8f86f90167ae9e6f40ff859275b8edba5d6272f03",
+            "bytes": 13064
+          },
+          {
+            "path": "compiler/oxc-spike/src/numeric_expression_dag.rs",
+            "sha256": "72627b042865933683c385078b3d14fd9c53a89ce0ec4b7faabc4fd0835ac3e5",
+            "bytes": 21514
+          },
+          {
+            "path": "compiler/oxc-spike/src/owner_update_program.rs",
+            "sha256": "4ac95426a13d0e4294dec8e6c749bef9e580a9482538262734236cdaceea6edf",
+            "bytes": 16084
+          },
+          {
+            "path": "compiler/oxc-spike/src/semantic_plan.rs",
+            "sha256": "c49db801db6786c2849d1292fb8511af4eb690eb484ceac91c945eda418bc767",
+            "bytes": 6015
+          },
+          {
+            "path": "compiler/oxc-spike/src/store_numeric_kernel.rs",
+            "sha256": "bf87c32ca22c6181168e52de87ef526baf6889f4015be2aab00bfbab019bd3d2",
+            "bytes": 16283
+          }
+        ]
+      }
+    }
+  },
+  "finishedAt": "2026-10-24T00:02:16.254Z"
+}

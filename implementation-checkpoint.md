@@ -1,5 +1,75 @@
 # Implementation checkpoint
 
+## Declarative frame boundary evaluated; realtime result and CPU limit — 23 October 2026
+
+[Results](implementation/2026-10-23-declarative-frame-program/results.md) close this integrated frame execution boundary: V9 passes1333 Deno tests (one ignored),118 Rust tests carried on unchanged compiler sources, tooling, fresh packages and75 actual compiler/Vite fixtures. Installed minified/rebundled Native executes72 cuts/72 batches/18,504 owned rows with zero component executions; callback state, one publication per tick, mixed structural fallback, old snapshots, exact acknowledgement and HMR/resource teardown pass. Replaced warm allocation/cache/queue/fallback work is recorded in the retirement table; maintained production is1,790 added/320 deleted lines, excluding tests/evidence/dependencies.
+
+The sole balanced20-context CPU comparison observes publication median/p90 prechange1.90/2.10ms, current1.95/2.20, React0.60/0.70. Three bounds pass; publication p90 is inconclusive, so no overall non-regression or parity claim. The sole12-context shared-RAF comparison observes Native through-draw1.80/2.00ms median/p90 and240/240 fresh draws, R3F frame/ref2.80/2.95 and240/240 fresh, React declarative0.50/0.60 but0/240 fresh at requested draw (all requests subsequently accepted). React submission excludes later commits. This is a scoped realtime result; CPU readback endpoints differ and physical presentation is unproven. No favorable reruns. All failures/raw p95/max remain preserved.
+
+Full master-plan obligations remain open: canonical nonreentrant writers, builtin coherent frame cuts across Roots, safe mergeable same-root deltas/broader dependencies, cold/setup/memory, host/resource/platform and independent-device qualification, human maintenance evidence. No partial source was pushed while the boundary remained open.
+
+## Installed clock plus callback-only state admission gap — 23 October 2026
+
+V8 Rust118, fresh package consumer and all75 compiler/Vite fixtures pass; Deno1333 and tooling carry by unchanged inputs. Fresh installed CPUv4 and HMRv3 pass, with processes/routes/source/TLS cleaned. RAFv5 output remains correct but its stronger oracle fails: one direct cut across72 ticks. No timing runs. Source review identifies the flush scanner rejecting compiler-proven callback-only local state before the already existing joint retained-source/mounted-Store candidate can run. The repair reuses that candidate and existing compiled prop proof, rather than adding a clock read to the fixture or a second publisher. Final installed no-traversal verification remains required; no commit/push.
+
+## Declarative frame V7 results and test-only V8 successor — 23 October 2026
+
+V7 passes1333 Deno tests (one ignored), production compiler build, tooling, fresh packages and all75 compiler/Vite fixtures, including exact zero-argument clock/local-state callback mixed execution. All873 frozen inputs match before/after. Rust test compilation fails on a new assertion referring to a field absent from public compiler metadata. The V8 successor corrects only that assertion to the exact emitted callback site; production source is unchanged. Luna reruns Rust and verifies identical production compiler bytes before carrying unchanged passing checks and proceeding to fresh installed CPU/RAF/HMR proofs. No timing, commit or push has occurred. Retirement remains part of completion; source accounting is a net addition, not a large deletion claim.
+
+## Declarative frame V7 integrated boundary — 23 October 2026
+
+V6 consolidated verification passes1333 Deno tests (one ignored),115 Rust tests, fresh packages and all75 compiler/Vite fixtures. Fresh installed CPU and HMR pass; the strengthened RAF build rejects the exact zero-argument Marker because its compiler metadata was absent. No timing ran. That failure and all earlier attempts remain preserved.
+
+The reviewed V7 source repairs zero-argument clock components and bounded clock/local-state callbacks through existing numeric proof/effect ownership. Mixed structural candidates retain canonical World cuts for the finally applied overlays, validate before and after host application and preserve newer reentrant actions. No second publisher or dirty/version registry is introduced. Consolidated successor verification follows; current source remains uncommitted/unpushed until retirement, delivery and the declared comparison close this boundary. Full product obligations remain open.
+
+## Final source audit holds timing: named scalar consumers — 23 October 2026
+
+V5 installed correctness passes: CPU [untimed proof](implementation/2026-10-23-declarative-frame-program/proof-canvas-v2/canvas-proof-one-shot.json), four-arm [RAF/rebundled proof](implementation/2026-10-23-declarative-frame-program/proof-raf-v3/browser-proof.json), and owned Portless [HMR](implementation/2026-10-23-declarative-frame-program/proof-hmr-v1/attempt-receipt.json). All873 source hashes remain matched; HMR source, owned routes/listeners/TLS/processes are restored/closed. RAF native clock and state callback execute correctly and all four arms dispose512 resources once. Earlier RAF harness typing/idle-disposal failures remain preserved. No timing occurred.
+
+Primary then inspects the actual installed transform and finds Marker’s static Three name prevents closed numeric metadata. This observer therefore forces generic rendering in otherwise scalar frames, violating the intended execution path despite output correctness. Two Sol owners extend the existing Store proof to literal string Three names, with dynamic names/other props falling back; no second execution mechanism. The installed oracle is strengthened to require zero component executions after mount. V5 evidence retains its exact source scope; the successor requires fresh consolidated/package/installed verification before the sole timing episode. The human's completed-slice and retirement instruction remains in force; no partial commit/push.
+
+
+## Declarative frame correctness boundary passes; installed delivery next — 23 October 2026
+
+[V5 correctness](implementation/2026-10-23-declarative-frame-program/verification-v5/receipt.json) passes all81 steps in2m39s:1331 Deno tests (one ignored),114 Rust tests, compiler build, native tooling, fresh package build/consumer and75 actual compiler/Vite fixtures. All873 frozen inputs match before/after; primary independently rechecks them. The compiler artifact remains74262bc6ddf39a146833f7fa61bd2ab46442bdc797c8bd32223c03543d819ef1. Actual compiled mixed batching, optional empty children, changed props/new Suspense/removal, callback direct state execution and revision retirement now pass; prior failures stay preserved.
+
+Luna is released for fresh installed production WebGL/resource/CSP/rebundled delivery and owned Portless HMR checks, including a proof-only actual stateful frame callback on the installed Three host. Timing remains held. The [retirement review](implementation/2026-10-23-declarative-frame-program/retirement.md) distinguishes removed allocation/transport from genuine generic/coordination fallbacks. No new speed result, commit or push exists. Full master-plan obligations remain open.
+
+
+## Declarative frame V5 integrated successor — 23 October 2026
+
+[V4](implementation/2026-10-23-declarative-frame-program/verification-v4/receipt.json) finishes FAIL in158.7seconds with873/873 frozen source hashes matching. Rust114, compiler build, tooling and fresh package build/consumer pass. All63 previous compiled fixtures pass; the new mixed frame fixture exposes empty optional retained children declining numeric admission. Deno passes1330 with one parked-fixture counter assertion failure. Two Vite failures are stale proof/origin expectations: object-field inline collection rows currently require owner render, and a resolver-confirmed alias to the genuine core entry is intentionally trusted. No browser/timing run occurred.
+
+The reviewed [V5 freeze](implementation/2026-10-23-declarative-frame-program/source-review-v5.json) adds empty optional child admission through existing templates/zero-child VDOM geometry, preserving exact raw sentinels/property presence and rejecting accessors/unowned nonempty values. No force-render guard is broadened. The actual fixture now checks absent/null/false numeric owners avoid execution, changed child props, new Suspense scope and removal. The parked regression now has a real ancestor cache witness and verifies old accepted output plus later resource reveal; an assertion outside profiling was removed. Vite checks retain a separate closed-row positive and distinguish a genuine resolver alias from a distinct lookalike package. Consolidated V5 is released to Luna; no partial commit/push.
+
+
+## Declarative frame V3 boundary preserved; successor repair — 23 October 2026
+
+[V3](implementation/2026-10-23-declarative-frame-program/verification-v3/receipt.json) finishes FAIL in122.6seconds, with873/873 source hashes matching before/after. Rust114 and fresh compiler build pass;72/75 actual compiler/Vite fixtures pass, including all63 previous compiled executions. Mixed owned batching now passes its actual compiled assertion. Deno/tooling/package compilation is blocked by TypeScript control-flow narrowing of closure-assigned template proposals. Primary repairs the new fixture's clock oracle: timeMs+deltaMs after the long gap is2050, while structural timeMs is2000. Two Vite source-origin assertions are under source review. Package consumer was dependency-skipped; no browser or performance run occurred.
+
+Runtime's typed accessor repair preserves the existing template invariant without casts/storage. The mixed candidate keeps immutable input shape and accepted props identity while discarding host writer plans after generic reconciliation. The [retirement review](implementation/2026-10-23-declarative-frame-program/retirement.md) records removed work and required fallbacks; current source is a net addition, not a large deletion claim. The completed-boundary rule remains: finish integration, retirement, correctness/delivery/HMR and the declared performance episode before calling this wave complete or pushing it.
+
+
+## Declarative frame wave: mixed execution and retirement repair — 23 October 2026
+
+The second consolidated [boundary](implementation/2026-10-23-declarative-frame-program/verification-v2/receipt.json) remains FAIL with all873 frozen inputs matching. Deno passes1329 with two fixture/retained-plan failures; Rust passes112 with two expectation/proof failures. Tooling, fresh package build/consumer and all63 previous actual-compiled fixtures pass. The new combined compiled frame fixture exposes an execution gap: an opaque clock consumer disables otherwise eligible numeric batching. No browser or timing run occurred.
+
+The current Sol repair composes eligible cut images and structural execution in one full candidate, one Store transaction and one host/publication pass. It must preserve pinned reads, single opaque execution, changed props/children, exact reader retirement and whole-root guards. Compiler empty-host proof, nested mounted-child reuse and parked-resource fixture repairs are source-only until the next reviewed consolidated freeze. The human requires retirement of replaced mechanisms and completed integrated slices; this wave remains uncommitted/unpushed. Full task inventory and full master-plan obligations remain in force.
+
+
+## Declarative frame wave: integrated repair, retirement required — 23 October 2026
+
+The human reconfirms the entire tail-of-discussion scope and requires completed slices with retirement/cleanup, not partial implementation pushes. [Full task inventory](implementation/2026-10-23-declarative-frame-program/design.md#tail-of-discussion-task-inventory) remains in force. Current source is uncommitted/unpushed. The first consolidated [gate](implementation/2026-10-23-declarative-frame-program/verification/receipt.json) is FAIL with all872source hashes MATCH: Rust import-format/collector-initializer errors and TypeScript/runtime-helper/test typing errors block execution. Old-binary fixtures mistakenly launched by the runner are preserved as diagnostic/unqualified; subsequent dependent phases are skipped. No browser or performance episode occurred.
+
+Three Sol-medium owners are repairing the whole compiler/Root/VDOM boundary and reviewing retirement/costs before a new freeze. No per-helper workloads. Luna remains idle until the reviewed successor is released. Ordinary cache reuse remains conditional on absence of aliases; active coordination keeps the real clone fallback. Writer capability and built-in coherent multi-root clock/local-state cuts remain explicitly open, alongside the complete master-plan finish line.
+
+## Declarative realtime wave authorized — 23 October 2026
+
+The human approves the complete frame discussion and requests Sol-medium implementation. [Locked requirements and disjoint ownership](implementation/2026-10-23-declarative-frame-program/design.md) include compiler-owned clock/callback hooks, declarative loop lifecycle, retained dependency ordering, dirty region selection, emitted cross-instance batching, direct prop writes, accepted-value allocation reduction, safe writer capabilities, inactive-transition cost, loader DAG preservation and natural RAF freshness comparisons. This extends the full product plan; none of those recommendations is dropped merely because a public hook can be added first. Existing publication/history/lifetime/fallback contracts remain. Source implementation is beginning; no new correctness or speed result exists.
+
+The previous mounted wave is committed and pushed at 4d8b80a7250ee6744f5f463a5d6a75738ddddb29; older dated “uncommitted” text below is historical. Primary reviews and integrates; Luna remains idle until the integrated boundary.
+
+
 ## Declarative frame components and dirty execution — 23 October 2026
 
 The human further clarifies that frame logic belongs in components and users should express host changes through props, without parallel per-frame ref mutation. Existing dirty tracking should deduplicate affected mounted computations and schedule them before the loop draw; extra flags or a second dirty registry are not the goal. The execution target is one loop-owned tick: frame logic/state changes, dirty compiled-region evaluation, batched host writes, accepted-value publication and draw.

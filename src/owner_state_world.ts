@@ -643,7 +643,7 @@ export class OwnerStateWorld {
         if (!request) return null;
         if (scheduledInput && (!OwnedClosedFrameInput.owns(scheduledInput) ||
           !Number.isSafeInteger(scheduledGroupRow) || scheduledGroupRow < 0 ||
-          scheduledInput.varyingCount !== request.sites.length)) return null;
+          scheduledInput.varyingCount < request.sites.length)) return null;
         const owner = request.owner;
         if (!Number.isSafeInteger(owner) || !world.#owners.has(owner) ||
           world.#stagedOwners.has(owner)) return null;
@@ -664,7 +664,7 @@ export class OwnerStateWorld {
           if (typeof value !== "number" || !Number.isFinite(value) ||
             sourceValue === null || !Object.is(value, sourceValue)) return null;
           if (scheduledInput) scheduledInput.setVarying(
-            scheduledGroupRow * request.sites.length + siteIndex, value,
+            scheduledGroupRow * scheduledInput.varyingCount + siteIndex, value,
           );
           const handle = world.#handleForCell(owner, site, cell);
           if (byOwner) {

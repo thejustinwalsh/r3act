@@ -57,6 +57,7 @@ type ExecutionFacts = Readonly<{
   host: ClosedStoreHostProgram;
   paths: readonly (readonly (readonly string[])[])[];
   stateSites: readonly string[];
+  propInputs: readonly string[];
   inputCount: number;
   valueCount: number;
   retainedChildren: boolean;
@@ -95,14 +96,17 @@ const numericExpression = (value: ClosedNumericExpression): boolean => {
 const supportedHost = (host: ClosedStoreHostProgram): boolean => {
   if (host.schemaVersion === 4) return false;
   if (host.schemaVersion === 5) {
-    if (host.host.tag !== "group" || host.host.children.length !== 0) return false;
+    if (host.host.children.length !== 0) return false;
     return host.host.props.some(([, value]) => numericExpression(value as ClosedNumericExpression)) &&
       host.host.props.every(([, value]) => value.kind === "literal"
         ? isClosedHostPrimitive(value.value)
         : numericExpression(value as ClosedNumericExpression));
   }
-  return host.host.props.length > 0 && host.host.props.every(([, value]) =>
-    numericExpression(value as ClosedNumericExpression));
+  return host.host.props.length > 0 && host.host.props.every(([name, value]) =>
+    name === "name"
+      ? (host.host.tag === "group" || host.host.tag === "mesh") &&
+        value.kind === "literal" && typeof value.value === "string"
+      : numericExpression(value as ClosedNumericExpression));
 };
 
 /** Copy an explicit data marker and bind it privately to a normalized host program. */
@@ -143,11 +147,14 @@ export const normalizeClosedStoreDataExecution = (
     associations.set(normalized, Object.freeze({
       host, layout,
       paths: Object.freeze(inputs.map((input) => closedStoreHostInputPaths(input))),
-      stateSites: host.schemaVersion === 7 ? host.stateSites : Object.freeze([]),
+      stateSites: host.schemaVersion === 7 || host.schemaVersion === 8
+        ? host.stateSites : Object.freeze([]),
+      propInputs: host.schemaVersion === 8 ? host.propInputs : Object.freeze([]),
       inputCount: inputs.length,
       valueCount: closedStoreHostValueCount(host),
       retainedChildren: host.schemaVersion === 5 || host.schemaVersion === 6 ||
-        host.schemaVersion === 7,
+        host.schemaVersion === 7 || host.schemaVersion === 8 &&
+        host.retainedChildProp === "children",
       batchProof, diagnostic,
     }));
     return normalized as NormalizedClosedStoreDataExecution;
@@ -325,6 +332,7 @@ export type OwnedClosedStoreOutputRequest = Readonly<{
   owner: number;
   hostKey: string;
   inputs: readonly Readonly<{ store: AnyAsyncStore; readerId: string }>[];
+  propValues?: readonly number[];
 }>;
 
 type NormalizedRequest = Readonly<{
@@ -333,18 +341,27 @@ type NormalizedRequest = Readonly<{
   owner: number;
   hostKey: string;
   inputs: readonly Readonly<{ store: AnyAsyncStore; readerId: string }>[];
+  propValues: readonly number[];
   worldRequest?: OwnedClosedWorldInputRequest;
   projectionRequests?: readonly BoundClosedProjectionRequest[];
 }>;
 
 const normalizeOwnedOutputRequest = (raw: unknown): NormalizedRequest | null => {
   const request = closedDataRecord(raw);
-  if (!request || !exactClosedFields(request,
-    ["execution", "owner", "hostKey", "inputs"])) return null;
+  if (!request) return null;
   const facts = typeof request.execution === "object" && request.execution !== null
     ? associations.get(request.execution) : undefined;
   if (!facts || !Number.isSafeInteger(request.owner) ||
     typeof request.hostKey !== "string" || !request.hostKey) return null;
+  if (!exactClosedFields(request, facts.propInputs.length
+    ? ["execution", "owner", "hostKey", "inputs", "propValues"]
+    : ["execution", "owner", "hostKey", "inputs"])) return null;
+  const propValues = facts.propInputs.length
+    ? closedDataArray(request.propValues, 8) : [];
+  if (!propValues || propValues.length !== facts.propInputs.length ||
+    propValues.some(value => typeof value !== "number" || !Number.isFinite(value))) {
+    return null;
+  }
   const rawInputs = closedDataArray(request.inputs, 8);
   if (!rawInputs || rawInputs.length !== facts.inputCount) return null;
   const inputs: { store: AnyAsyncStore; readerId: string }[] = [];
@@ -357,7 +374,7 @@ const normalizeOwnedOutputRequest = (raw: unknown): NormalizedRequest | null => 
   }
   return { execution: request.execution as NormalizedClosedStoreDataExecution,
     facts, owner: request.owner as number,
-    hostKey: request.hostKey, inputs };
+    hostKey: request.hostKey, inputs, propValues: Object.freeze([...propValues]) as readonly number[] };
 };
 
 const closedOutputBindingKey = Symbol("closed-output-binding");
@@ -669,6 +686,22 @@ export class OwnedClosedFrameCut {
     if (!worldBatch) return { kind: "public-required" };
     if (!readOwnedClosedProjectionFill(transaction, fill))
       return { kind: "public-required" };
+    for (const group of groups) {
+      const input = groupInputs[group.index];
+      const first = scheduled[group.rows[0]]?.request;
+      if (!input || !first) return null;
+      const stateWidth = first.facts.stateSites.length;
+      const propWidth = first.facts.propInputs.length;
+      if (propWidth === 0) continue;
+      for (let groupRow = 0; groupRow < group.rows.length; groupRow++) {
+        const row = scheduled[group.rows[groupRow]]?.request;
+        if (!row || row.propValues.length !== propWidth) return null;
+        for (let offset = 0; offset < propWidth; offset++) {
+          input.setVarying(groupRow * input.varyingCount + stateWidth + offset,
+            row.propValues[offset]);
+        }
+      }
+    }
     const pages: OwnedScalarBatchPage[] = [];
     for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
       const group = groups[groupIndex];
@@ -707,6 +740,10 @@ export class OwnedClosedFrameCut {
       for (const cell of worldRow.cells) {
         if (typeof cell.value !== "number" || !Number.isFinite(cell.value)) return null;
         scratch[cursor++] = cell.value;
+      }
+      for (const value of row.request.propValues) {
+        if (typeof value !== "number" || !Number.isFinite(value)) return null;
+        scratch[cursor++] = value;
       }
       if (cursor !== facts.valueCount) return null;
       const frame = evaluateOwnedFrame(facts, scratch, counts);

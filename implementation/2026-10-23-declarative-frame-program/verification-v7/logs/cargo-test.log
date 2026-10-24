@@ -1,0 +1,15 @@
+   Compiling ui-graph-compiler-spike v0.1.0 (/Volumes/Depot/Developer/r3act/compiler/oxc-spike)
+error[E0609]: no field `frame_sites` on type `&NativeComponentMetadata`
+    --> src/main.rs:9582:73
+     |
+9582 |         assert_eq!(program["effectSites"], serde_json::json!([component.frame_sites[1].site_id]));
+     |                                                                         ^^^^^^^^^^^ unknown field
+     |
+help: a field with a similar name exists
+     |
+9582 -         assert_eq!(program["effectSites"], serde_json::json!([component.frame_sites[1].site_id]));
+9582 +         assert_eq!(program["effectSites"], serde_json::json!([component.state_sites[1].site_id]));
+     |
+
+For more information about this error, try `rustc --explain E0609`.
+error: could not compile `ui-graph-compiler-spike` (bin "ui-graph-compiler-spike" test) due to 1 previous error

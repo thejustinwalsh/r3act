@@ -76,6 +76,41 @@ Deno.test("Store schema 6 retains only a declared child slot and flattened numer
     host: { ...raw.host, child: "unsafe" } }), null);
 });
 
+Deno.test("Store schemas 5–8 admit only a literal string Three name", () => {
+  const source = (schemaVersion: 5 | 6 | 7 | 8, value: unknown,
+    tag: "group" | "mesh" | "div" = "group") => ({
+    schemaVersion, componentProgramId: "module#component:Named",
+    moduleRevision: "revision",
+    inputs: [{ storeUseSiteId: "site:0", storeProp: "clock",
+      paths: [["elapsed"]] }],
+    ...(schemaVersion === 6 ? { retainedChildProp: "children" } : {}),
+    ...(schemaVersion === 7 ? { stateSites: ["offset"], effectSites: [],
+      retainedChildProp: null } : {}),
+    ...(schemaVersion === 8 ? { stateSites: [], effectSites: [],
+      propInputs: ["speed"], retainedChildProp: null } : {}),
+    host: schemaVersion === 5
+      ? { tag, key: "named", children: [], props: [
+        ["name", value], ["rotation-y", { kind: "input", index: 0 }],
+      ] }
+      : { tag, key: "named", child: null, props: [
+        ["name", value], ["rotation-y", { kind: "input", index: 0 }],
+      ] },
+  });
+  for (const schema of [5, 6, 7, 8] as const) {
+    for (const name of ["accepted-frame", ""]) {
+      const program = normalizeClosedStoreHostProgram(source(schema,
+        { kind: "literal", value: name }));
+      equal(program?.host.props[0][1].kind, "literal");
+    }
+    equal(normalizeClosedStoreHostProgram(source(schema,
+      { kind: "input", index: 0 })), null);
+    equal(normalizeClosedStoreHostProgram(source(schema,
+      { kind: "literal", value: 3 })), null);
+    equal(normalizeClosedStoreHostProgram(source(schema,
+      { kind: "literal", value: "named" }, "div")), null);
+  }
+});
+
 Deno.test("legacy direct Store path carries owned projection provenance", () => {
   const program = normalizeClosedStoreHostProgram(data())!;
   const paths = closedStoreHostInputPaths(closedStoreHostInputs(program)[0]);

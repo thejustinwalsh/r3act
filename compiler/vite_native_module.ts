@@ -200,7 +200,7 @@ const componentModuleFromSource = (source: string, trusted: ReadonlySet<string>)
   for (const declaration of namedImportsFromSource(source)) {
     if (!trusted.has(declaration.module)) continue;
     const hasHook = declaration.names.some((name) =>
-      name.imported === "useState" || name.imported === "useEffect" || name.imported === "use" || name.imported === "useStore"
+      name.imported === "useState" || name.imported === "useEffect" || name.imported === "use" || name.imported === "useStore" || name.imported === "useFrame"
     );
     // Rust diagnoses type-only hook imports; other native imports must be runtime values.
     const hasRuntimeNativeApi = declaration.names.some((name) =>

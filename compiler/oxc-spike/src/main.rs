@@ -779,6 +779,8 @@ struct ComponentStateSiteIr {
     host_leaf_output: bool,
     state_sites: Vec<StateSiteIr>,
     effect_sites: Vec<EffectSiteIr>,
+    #[serde(skip)]
+    frame_sites: Vec<FrameSiteIr>,
     store_sites: Vec<StoreSiteIr>,
     collection_sites: Vec<CollectionSiteIr>,
 }
@@ -797,6 +799,16 @@ struct EffectSiteIr {
     ordinal: usize,
     site_id: String,
     argument_count: usize,
+    call: SourceSpan,
+    callee: SourceSpan,
+    argument_insert_at: u32,
+}
+
+#[derive(Debug, Serialize)]
+struct FrameSiteIr {
+    ordinal: usize,
+    site_id: String,
+    callback: bool,
     call: SourceSpan,
     callee: SourceSpan,
     argument_insert_at: u32,
@@ -942,6 +954,7 @@ struct ComponentStateSiteCollector<'s, 'a> {
     unscoped_hook_calls: Vec<SourceSpan>,
     unsupported_effect_arity: bool,
     unsupported_store_arity: bool,
+    unsupported_frame_arity: bool,
     invalid_store_hook_name: Option<String>,
     function_depth: usize,
     loop_depth: usize,
@@ -2053,9 +2066,9 @@ impl<'a> Visit<'a> for ComponentStateSiteCollector<'_, 'a> {
                     let local = specifier.local.name.as_str();
                     let imported = matches!(
                         &specifier.imported,
-                        ModuleExportName::IdentifierName(name) if name.name == "useState" || name.name == "useEffect" || name.name == "useStore" || name.name == "use"
+                        ModuleExportName::IdentifierName(name) if name.name == "useState" || name.name == "useEffect" || name.name == "useStore" || name.name == "use" || name.name == "useFrame"
                     );
-                    imported || local == "useState" || local == "useEffect" || local == "useStore" || local == "use"
+                    imported || local == "useState" || local == "useEffect" || local == "useStore" || local == "use" || local == "useFrame"
                 }
                 _ => false,
             });
@@ -2079,15 +2092,17 @@ impl<'a> Visit<'a> for ComponentStateSiteCollector<'_, 'a> {
                         && imported_name != "useEffect"
                         && imported_name != "useStore"
                         && imported_name != "use"
+                        && imported_name != "useFrame"
                         && local != "useState"
                         && local != "useEffect"
                         && local != "useStore"
                         && local != "use"
+                        && local != "useFrame"
                     {
                         continue;
                     }
                     if specifier.import_kind == ImportOrExportKind::Type
-                        || !matches!(imported_name, "useState" | "useEffect" | "useStore" | "use")
+                        || !matches!(imported_name, "useState" | "useEffect" | "useStore" | "use" | "useFrame")
                         || local != imported_name
                         || !hooks.insert(imported_name.to_owned())
                     {
@@ -2210,6 +2225,7 @@ impl<'a> Visit<'a> for ComponentStateSiteCollector<'_, 'a> {
                     host_leaf_output,
                     state_sites: Vec::new(),
                     effect_sites: Vec::new(),
+                    frame_sites: Vec::new(),
                     store_sites: Vec::new(),
                     collection_sites: Vec::new(),
                 });
@@ -2334,6 +2350,41 @@ impl<'a> Visit<'a> for ComponentStateSiteCollector<'_, 'a> {
                             });
                             if node.arguments.len() != 1 {
                                 self.unsupported_effect_arity = true;
+                            }
+                        } else if identifier.name == "useFrame" {
+                            let ordinal = component.frame_sites.len();
+                            let site_id = format!(
+                                "{}#component:{}#frame:{}",
+                                self.source_file, component_name, ordinal
+                            );
+                            let callback = !node.arguments.is_empty();
+                            component.frame_sites.push(FrameSiteIr {
+                                ordinal,
+                                site_id: site_id.clone(),
+                                callback,
+                                call: span(node.span.start, node.span.end),
+                                callee: span(identifier.span.start, identifier.span.end),
+                                argument_insert_at: node.arguments.first()
+                                    .map(|argument| argument.span().start)
+                                    .unwrap_or(node.span.end.saturating_sub(1)),
+                            });
+                            if callback {
+                                if !(2..=3).contains(&node.arguments.len()) ||
+                                    !node.arguments.first().is_some_and(|argument|
+                                        argument.as_expression().is_some()) ||
+                                    !matches!(node.arguments.get(1), Some(Argument::ArrayExpression(_))) {
+                                    self.unsupported_frame_arity = true;
+                                }
+                            } else {
+                                component.store_sites.push(StoreSiteIr {
+                                    ordinal: component.store_sites.len(),
+                                    site_id,
+                                    hook_name: "useFrame".to_owned(),
+                                    source_expression: "$frameClock".to_owned(),
+                                    call: span(node.span.start, node.span.end),
+                                    callee: span(identifier.span.start, identifier.span.end),
+                                    argument_insert_at: node.span.end.saturating_sub(1),
+                                });
                             }
                         } else {
                             let ordinal = component.store_sites.len();
@@ -2543,6 +2594,7 @@ impl<'a> Visit<'a> for ComponentStateSiteCollector<'_, 'a> {
                     host_leaf_output: false,
                     state_sites: Vec::new(),
                     effect_sites: Vec::new(),
+                    frame_sites: Vec::new(),
                     store_sites: Vec::new(),
                     collection_sites: Vec::new(),
                 });
@@ -3600,6 +3652,7 @@ fn compile_native_component_module(
         unscoped_hook_calls: Vec::new(),
         unsupported_effect_arity: false,
         unsupported_store_arity: false,
+        unsupported_frame_arity: false,
         invalid_store_hook_name: None,
         function_depth: 0,
         loop_depth: 0,
@@ -3802,7 +3855,7 @@ fn compile_native_component_module(
     }
     if collector.unsupported_import_shape {
         return Err(format!(
-            "{path}:1:1: native hooks require direct named `useState`/`useEffect`/`use`/`useStore` imports from a trusted native runtime module; aliases, type-only imports, and mixed helper declarations are unsupported"
+            "{path}:1:1: native hooks require direct named `useState`/`useEffect`/`use`/`useStore`/`useFrame` imports from a trusted native runtime module; aliases, type-only imports, and mixed helper declarations are unsupported"
         ));
     }
     if let Some(at) = collector.reserved_boundary_attributes.first() {
@@ -3864,6 +3917,11 @@ fn compile_native_component_module(
     if collector.unsupported_effect_arity {
         return Err(format!(
             "{path}:1:1: `useEffect` requires exactly one setup callback"
+        ));
+    }
+    if collector.unsupported_frame_arity {
+        return Err(format!(
+            "{path}:1:1: `useFrame` requires no arguments or a callback with an explicit dependency array and optional ordering options"
         ));
     }
     if collector.unsupported_store_arity {
@@ -4820,6 +4878,98 @@ fn closed_numeric_jsx(
     })
 }
 
+fn literal_frame_options(expression: &Expression<'_>) -> bool {
+    let Expression::ObjectExpression(object) = expression else { return false; };
+    if object.properties.len() > 5 { return false; }
+    let mut seen = BTreeSet::new();
+    for item in &object.properties {
+        let oxc_ast::ast::ObjectPropertyKind::ObjectProperty(property) = item else { return false; };
+        if property.computed || property.method || property.shorthand ||
+            property.kind != oxc_ast::ast::PropertyKind::Init { return false; }
+        let Some(name) = type_property_name(&property.key) else { return false; };
+        if !seen.insert(name) { return false; }
+        match name {
+            "id" => if !matches!(&property.value,
+                Expression::StringLiteral(value) if !value.value.is_empty()) { return false; },
+            "phase" => if !matches!(&property.value,
+                Expression::StringLiteral(value) if matches!(value.value.as_str(),
+                    "early" | "update" | "late")) { return false; },
+            "priority" => if !match &property.value {
+                Expression::NumericLiteral(value) => value.value.is_finite(),
+                Expression::UnaryExpression(value) if matches!(value.operator,
+                    UnaryOperator::UnaryPlus | UnaryOperator::UnaryNegation) =>
+                    matches!(&value.argument, Expression::NumericLiteral(number)
+                        if number.value.is_finite()),
+                _ => false,
+            } { return false; },
+            "before" | "after" => {
+                let Expression::ArrayExpression(array) = &property.value else { return false; };
+                if array.elements.len() > 32 || array.elements.iter().any(|item|
+                    !matches!(item.as_expression(), Some(Expression::StringLiteral(value))
+                        if !value.value.is_empty())) { return false; }
+            }
+            _ => return false,
+        }
+    }
+    true
+}
+
+fn closed_numeric_frame_callback<'a>(
+    call: &CallExpression<'a>, semantic: &Semantic<'a>,
+    setters: &BTreeSet<SymbolId>, props_symbol: Option<SymbolId>,
+    stable_refs: &BTreeSet<SymbolId>, required_props: &mut BTreeSet<String>,
+) -> bool {
+    if call.optional || !(2..=3).contains(&call.arguments.len()) { return false; }
+    if call.arguments.get(2).is_some_and(|options|
+        !options.as_expression().is_some_and(literal_frame_options)) { return false; }
+    let Some(callback) = call.arguments[0].as_expression() else { return false; };
+    if !matches!(callback, Expression::ArrowFunctionExpression(_) |
+        Expression::FunctionExpression(_)) { return false; }
+    let Argument::ArrayExpression(dependencies) = &call.arguments[1] else { return false; };
+    if dependencies.elements.len() > 32 { return false; }
+    for item in &dependencies.elements {
+        let Some(expression) = item.as_expression() else { return false; };
+        if closed_resource_literal(expression).is_some() { continue; }
+        if let Expression::Identifier(identifier) = expression {
+            if reference_symbol(identifier, semantic).is_some_and(|symbol|
+                setters.contains(&symbol) || stable_refs.contains(&symbol)) { continue; }
+        }
+        let Some(props) = props_symbol else { return false; };
+        let Expression::StaticMemberExpression(member) = expression else { return false; };
+        let Expression::Identifier(object) = &member.object else { return false; };
+        if member.optional || reference_symbol(object, semantic) != Some(props) ||
+            matches!(member.property.name.as_str(), "key" | "ref" | "children" |
+                "__proto__" | "prototype" | "constructor") { return false; }
+        required_props.insert(member.property.name.to_string());
+    }
+    let mut references = ExpressionReferenceCollector { semantic, references: Vec::new() };
+    references.visit_expression(callback);
+    let callback_span = callback.span();
+    let mut captured_props = BTreeSet::new();
+    if let Some(props) = props_symbol {
+        let mut usage = RetainedChildEffectUse {
+            semantic, props_symbol: props, references: BTreeSet::new(),
+            direct_fields: BTreeSet::new(), field_names: BTreeSet::new(),
+            reads_children: false,
+        };
+        usage.visit_expression(callback);
+        if usage.reads_children || !usage.references.is_subset(&usage.direct_fields) ||
+            usage.field_names.iter().any(|name| matches!(name.as_str(),
+                "key" | "ref" | "__proto__" | "prototype" | "constructor")) {
+            return false;
+        }
+        captured_props.extend(usage.field_names);
+    }
+    if references.references.iter().any(|(_, _, symbol)| symbol.is_some_and(|symbol| {
+        let declaration = semantic.scoping().symbol_span(symbol);
+        !(declaration.start >= callback_span.start && declaration.end <= callback_span.end ||
+            setters.contains(&symbol) || stable_refs.contains(&symbol) ||
+            Some(symbol) == props_symbol)
+    })) { return false; }
+    required_props.extend(captured_props);
+    true
+}
+
 fn closed_numeric_owner_body(
     callable: &ClosedCallable<'_, '_>, component: &ComponentStateSiteIr,
     semantic: &Semantic<'_>, stable_refs: &BTreeSet<SymbolId>,
@@ -4859,6 +5009,7 @@ fn closed_numeric_owner_body(
     let mut setters = BTreeSet::new();
     let mut state_calls = BTreeSet::new();
     let mut effect_calls = BTreeSet::new();
+    let mut frame_calls = BTreeSet::new();
     let mut effect_uses_props_unsafely = false;
     let mut effect_fields = BTreeSet::new();
     let preceding = callable.statements.len().saturating_sub(1);
@@ -4896,6 +5047,12 @@ fn closed_numeric_owner_body(
             values.insert(symbol);
         } else if let Statement::ExpressionStatement(statement) = statement {
             let Expression::CallExpression(call) = &statement.expression else { return false; };
+            if let Some((index, _)) = component.frame_sites.iter().enumerate().find(|(_, site)|
+                site.callback && site.call.start == call.span.start && site.call.end == call.span.end) {
+                if !frame_calls.insert(index) || !closed_numeric_frame_callback(call, semantic,
+                    &setters, props_symbol, stable_refs, required_props) { return false; }
+                continue;
+            }
             let Some((index, _)) = component.effect_sites.iter().enumerate().find(|(_, site)|
                 site.call.start == call.span.start && site.call.end == call.span.end)
                 else { return false; };
@@ -4920,7 +5077,9 @@ fn closed_numeric_owner_body(
         } else { return false; }
     }
     if state_calls.len() != component.state_sites.len() ||
-        effect_calls.len() != component.effect_sites.len() { return false; }
+        effect_calls.len() != component.effect_sites.len() ||
+        frame_calls.len() != component.frame_sites.iter().filter(|site| site.callback).count() ||
+        component.frame_sites.iter().any(|site| !site.callback) { return false; }
     let Some(mut result) = callable.return_expression(preceding) else { return false; };
     while let Expression::ParenthesizedExpression(parenthesized) = result {
         result = &parenthesized.expression;
@@ -5404,6 +5563,7 @@ fn closed_subtree_host<'a>(
     element: &JSXElement<'a>, read: &mut dyn FnMut(&Expression<'a>) -> Option<serde_json::Value>,
     keys: &mut BTreeSet<String>, count: &mut usize, depth: usize,
     has_aggregate: &mut bool, tuple_spans: &mut Vec<SourceSpan>, allow_unkeyed_root: bool,
+    allow_static_three_name: bool,
 ) -> Option<serde_json::Value> {
     *count += 1;
     if *count > 256 || depth > 32 || element.opening_element.attributes.len() > 33 { return None; }
@@ -5423,12 +5583,17 @@ fn closed_subtree_host<'a>(
             if value.value.is_empty() || value.value.chars().any(|ch| matches!(ch, '&' | '\n' | '\r' | '\t')) { return None; }
             key = Some(value.value.to_string());
         } else {
+            let static_three_name = allow_static_three_name &&
+                matches!(tag, "mesh" | "group") && name == "name";
             let aggregate = (matches!(tag, "mesh" | "group") &&
                 matches!(name, "position" | "rotation" | "scale")) ||
                 (matches!(tag, "div" | "span" | "output") && name == "style");
-            if (!aggregate && !closed_resource_subtree_property_name(tag, name)) ||
+            if (!aggregate && !static_three_name && !closed_resource_subtree_property_name(tag, name)) ||
                 !seen.insert(name.to_owned()) { return None; }
-            let expression = if aggregate {
+            let expression = if static_three_name {
+                let Some(JSXAttributeValue::StringLiteral(value)) = attribute.value.as_ref() else { return None; };
+                serde_json::json!({"kind":"literal","value":value.value.as_str()})
+            } else if aggregate {
                 let JSXAttributeValue::ExpressionContainer(container) = attribute.value.as_ref()? else { return None; };
                 let expression = closed_host_aggregate_expression(
                     container.expression.as_expression()?, tag, name, read)?;
@@ -5461,7 +5626,7 @@ fn closed_subtree_host<'a>(
         match child {
             JSXChild::Element(nested) => {
                 let host = closed_subtree_host(nested, read, keys, count, depth + 1,
-                    has_aggregate, tuple_spans, false)?;
+                    has_aggregate, tuple_spans, false, allow_static_three_name)?;
                 children.push(serde_json::json!({"kind":"host","host":host}));
             }
             JSXChild::ExpressionContainer(container) => {
@@ -5552,7 +5717,7 @@ fn closed_collection_row_host<'a>(
     let mut count = 0;
     let mut aggregate = false;
     let host = closed_subtree_host(element, &mut read, &mut keys, &mut count, 0,
-        &mut aggregate, &mut Vec::new(), true)?;
+        &mut aggregate, &mut Vec::new(), true, false)?;
     if aggregate || inputs.is_empty() { return None; }
     Some(ClosedCollectionRowProof {
         component_site_id: component.component_site_id.clone(),
@@ -5723,7 +5888,7 @@ fn closed_resource_subtree_program<'a>(
         &source_sites, semantic, source);
     let host = closed_subtree_host(element, &mut read,
         &mut keys, &mut count, 0, &mut has_aggregate,
-        &mut Vec::new(), false)?;
+        &mut Vec::new(), false, false)?;
     Some(serde_json::json!({
         "schemaVersion": if has_aggregate { 3 } else { 2 },
         "componentProgramId": component.component_site_id,
@@ -5784,15 +5949,40 @@ fn closed_store_host_expression<'a>(
 struct StoreProjectionProof<'s, 'a> {
     semantic: &'s Semantic<'a>,
     bindings: BTreeMap<SymbolId, usize>,
+    binding_paths: BTreeMap<SymbolId, Vec<String>>,
     derived: BTreeMap<SymbolId, serde_json::Value>,
     paths: Vec<Vec<Vec<String>>>,
     slots: Vec<(usize, usize)>,
+    prop_symbol: Option<SymbolId>,
+    prop_inputs: Vec<String>,
     member_seen: bool,
 }
 
 impl<'s, 'a> StoreProjectionProof<'s, 'a> {
-    fn input(&mut self, symbol: SymbolId, path: Vec<String>) -> Option<serde_json::Value> {
+    fn input(&mut self, symbol: SymbolId, mut path: Vec<String>) -> Option<serde_json::Value> {
+        if Some(symbol) == self.prop_symbol {
+            if path.len() != 1 || matches!(path[0].as_str(),
+                "key" | "ref" | "children" | "__proto__" | "prototype" | "constructor") {
+                return None;
+            }
+            let prop_index = if let Some(index) = self.prop_inputs.iter().position(|prior|
+                prior == &path[0]) { index } else {
+                if self.prop_inputs.len() == 8 { return None; }
+                self.prop_inputs.push(path[0].clone());
+                self.prop_inputs.len() - 1
+            };
+            let slot = (self.paths.len() + prop_index, 0);
+            let index = if let Some(index) = self.slots.iter().position(|prior| *prior == slot) {
+                index
+            } else { self.slots.push(slot); self.slots.len() - 1 };
+            return Some(serde_json::json!({"kind":"input","index":index}));
+        }
         let input = *self.bindings.get(&symbol)?;
+        if let Some(prefix) = self.binding_paths.get(&symbol) {
+            let mut full_path = prefix.clone();
+            full_path.append(&mut path);
+            path = full_path;
+        }
         if !path.is_empty() { self.member_seen = true; }
         let paths = &mut self.paths[input];
         let path_index = if let Some(index) = paths.iter().position(|prior| *prior == path) {
@@ -5909,18 +6099,19 @@ impl<'s, 'a> StoreProjectionProof<'s, 'a> {
     }
 
     fn finish_mixed(self, host: &mut serde_json::Value,
-        inputs: &mut [serde_json::Value]) -> Option<()> {
+        inputs: &mut [serde_json::Value]) -> Option<Vec<String>> {
         if self.paths.iter().skip(inputs.len()).any(|paths|
             paths.len() != 1 || !paths[0].is_empty()) { return None; }
+        let prop_inputs = self.prop_inputs.clone();
         let paths = self.finish_paths(host, false)?;
-        if paths.len() <= inputs.len() { return None; }
+        if paths.len() < inputs.len() { return None; }
         for (input, path) in inputs.iter_mut().zip(paths) {
             input["paths"] = serde_json::json!(path);
         }
-        Some(())
+        Some(prop_inputs)
     }
 
-    fn finish_paths(mut self, host: &mut serde_json::Value,
+    fn finish_paths(self, host: &mut serde_json::Value,
         require_member: bool) -> Option<Vec<Vec<Vec<String>>>> {
         if (require_member && !self.member_seen) || self.paths.iter().any(Vec::is_empty) {
             return None;
@@ -5930,6 +6121,10 @@ impl<'s, 'a> StoreProjectionProof<'s, 'a> {
         for paths in &self.paths {
             offsets.push(offset);
             offset += paths.len();
+        }
+        for _ in &self.prop_inputs {
+            offsets.push(offset);
+            offset += 1;
         }
         fn remap(value: &mut serde_json::Value, slots: &[(usize, usize)], offsets: &[usize]) {
             if value.get("kind").and_then(serde_json::Value::as_str) == Some("input") {
@@ -5951,10 +6146,58 @@ fn closed_store_host_program<'a>(
     callable: &ClosedCallable<'a, '_>, component: &ComponentStateSiteIr,
     semantic: &Semantic<'a>, source: &str, revision: &str,
 ) -> Option<(serde_json::Value, Vec<SourceSpan>)> {
-    closed_store_host_program_inner(callable, component, semantic, source, revision, false, true)
-        .or_else(|| closed_store_host_program_inner(callable, component, semantic, source, revision, true, true))
-        .or_else(|| closed_store_host_program_inner(callable, component, semantic, source, revision, false, false))
-        .or_else(|| closed_store_host_program_inner(callable, component, semantic, source, revision, true, false))
+    let frame_clock = component.store_sites.iter().any(|site| site.hook_name == "useFrame");
+    if frame_clock {
+        closed_store_host_program_inner(callable, component, semantic, source, revision, true, true)
+            .or_else(|| closed_store_host_program_inner(callable, component, semantic, source, revision, true, false))
+    } else {
+        closed_store_host_program_inner(callable, component, semantic, source, revision, false, true)
+            .or_else(|| closed_store_host_program_inner(callable, component, semantic, source, revision, true, true))
+            .or_else(|| closed_store_host_program_inner(callable, component, semantic, source, revision, false, false))
+            .or_else(|| closed_store_host_program_inner(callable, component, semantic, source, revision, true, false))
+    }
+}
+
+fn proven_frame_clock_paths(inputs: &[serde_json::Value]) -> bool {
+    inputs.iter().all(|input| input.get("sourceKind").is_none_or(|kind| {
+        kind.as_str() == Some("frameClock") &&
+            input.get("paths").and_then(serde_json::Value::as_array).is_some_and(|paths| {
+                !paths.is_empty() && paths.iter().all(|path| {
+                    let Some(parts) = path.as_array() else { return false; };
+                    parts.len() == 1 && matches!(parts[0].as_str(),
+                        Some("elapsed" | "delta" | "timeMs" | "deltaMs"))
+                })
+            })
+    }))
+}
+
+fn frame_only_zero_parameter(
+    callable: &ClosedCallable<'_, '_>, component: &ComponentStateSiteIr,
+) -> bool {
+    callable.params.items.is_empty() && !component.store_sites.is_empty() &&
+        component.store_sites.iter().all(|site| site.hook_name == "useFrame")
+}
+
+fn frame_clock_binding_paths(pattern: &BindingPattern<'_>) -> Option<Vec<(SymbolId, Vec<String>)>> {
+    match pattern {
+        BindingPattern::BindingIdentifier(binding) =>
+            Some(vec![(binding.symbol_id.get()?, Vec::new())]),
+        BindingPattern::ObjectPattern(object) if object.rest.is_none() &&
+            !object.properties.is_empty() && object.properties.len() <= 4 => {
+            let mut result = Vec::with_capacity(object.properties.len());
+            let mut fields = BTreeSet::new();
+            for property in &object.properties {
+                if property.computed { return None; }
+                let name = type_property_name(&property.key)?;
+                if !matches!(name, "elapsed" | "delta" | "timeMs" | "deltaMs") ||
+                    !fields.insert(name) { return None; }
+                let BindingPattern::BindingIdentifier(binding) = &property.value else { return None; };
+                result.push((binding.symbol_id.get()?, vec![name.to_owned()]));
+            }
+            Some(result)
+        }
+        _ => None,
+    }
 }
 
 fn closed_store_host_program_inner<'a>(
@@ -5963,31 +6206,40 @@ fn closed_store_host_program_inner<'a>(
     retained_child: bool,
 ) -> Option<(serde_json::Value, Vec<SourceSpan>)> {
     let input_count = component.store_sites.len();
-    if callable.params.items.len() != 1 ||
+    let frame_without_props = projected && !retained_child &&
+        frame_only_zero_parameter(callable, component);
+    if (!frame_without_props && callable.params.items.len() != 1) ||
         callable.params.rest.is_some() || !component.state_sites.is_empty() ||
         !component.effect_sites.is_empty() || !component.collection_sites.is_empty() ||
-        !(1..=8).contains(&input_count) || component.store_sites.iter().any(|site| site.hook_name != "use")
+        component.frame_sites.iter().any(|site| site.callback) ||
+        !(1..=8).contains(&input_count) || component.store_sites.iter().any(|site|
+            !matches!(site.hook_name.as_str(), "use" | "useFrame"))
     { return None; }
-    let parameter = &callable.params.items[0];
-    if parameter.optional || parameter.initializer.is_some() { return None; }
-    let (props_symbol, destructured) = match &parameter.pattern {
-        BindingPattern::BindingIdentifier(identifier) => (identifier.symbol_id.get(), BTreeMap::new()),
-        BindingPattern::ObjectPattern(pattern) if pattern.rest.is_none() &&
-            !pattern.properties.is_empty() && pattern.properties.len() <= input_count => {
-            let mut names = BTreeMap::new();
-            for property in &pattern.properties {
-                let BindingPattern::BindingIdentifier(local) = &property.value else { return None; };
-                if property.computed { return None; }
-                names.insert(local.symbol_id.get()?, type_property_name(&property.key)?.to_owned());
+    let (props_symbol, destructured) = if frame_without_props {
+        (None, BTreeMap::new())
+    } else {
+        let parameter = &callable.params.items[0];
+        if parameter.optional || parameter.initializer.is_some() { return None; }
+        match &parameter.pattern {
+            BindingPattern::BindingIdentifier(identifier) => (identifier.symbol_id.get(), BTreeMap::new()),
+            BindingPattern::ObjectPattern(pattern) if pattern.rest.is_none() &&
+                !pattern.properties.is_empty() && pattern.properties.len() <= input_count => {
+                let mut names = BTreeMap::new();
+                for property in &pattern.properties {
+                    let BindingPattern::BindingIdentifier(local) = &property.value else { return None; };
+                    if property.computed { return None; }
+                    names.insert(local.symbol_id.get()?, type_property_name(&property.key)?.to_owned());
+                }
+                (None, names)
             }
-            (None, names)
+            _ => return None,
         }
-        _ => return None,
     };
     if retained_child && props_symbol.is_none() { return None; }
     if callable.statements.len() != input_count + 1 { return None; }
     let mut value_sites = BTreeMap::new();
     let mut projected_bindings = BTreeMap::new();
+    let mut projected_binding_paths = BTreeMap::new();
     let mut source_sites = Vec::new();
     let mut inputs = Vec::<serde_json::Value>::new();
     let mut used_destructured = BTreeSet::new();
@@ -5999,18 +6251,24 @@ fn closed_store_host_program_inner<'a>(
             _ => return None,
         };
         let declarator = &declaration.declarations[0];
-        let BindingPattern::BindingIdentifier(value_binding) = &declarator.id else { return None; };
-        let value_symbol = value_binding.symbol_id.get()?;
         let Expression::CallExpression(call) = declarator.init.as_ref()? else { return None; };
         let store_site = &component.store_sites[index];
-        if call.arguments.len() != 1 || store_site.call.start != call.span.start ||
+        let bound = if store_site.hook_name == "useFrame" && projected {
+            frame_clock_binding_paths(&declarator.id)?
+        } else {
+            let BindingPattern::BindingIdentifier(binding) = &declarator.id else { return None; };
+            vec![(binding.symbol_id.get()?, Vec::new())]
+        };
+        if call.arguments.len() != (if store_site.hook_name == "use" { 1 } else { 0 }) ||
+            store_site.call.start != call.span.start ||
             store_site.call.end != call.span.end { return None; }
-        let argument = call.arguments.first()?.as_expression()?;
-        let store_prop = if let Expression::StaticMemberExpression(member) = argument {
+        let store_prop = if store_site.hook_name == "useFrame" {
+            "$frameClock".to_owned()
+        } else if let Expression::StaticMemberExpression(member) = call.arguments.first()?.as_expression()? {
             let Expression::Identifier(object) = &member.object else { return None; };
             if props_symbol.is_none() || reference_symbol(object, semantic) != props_symbol { return None; }
             member.property.name.to_string()
-        } else if let Expression::Identifier(identifier) = argument {
+        } else if let Expression::Identifier(identifier) = call.arguments.first()?.as_expression()? {
             let symbol = reference_symbol(identifier, semantic)?;
             let name = destructured.get(&symbol)?;
             used_destructured.insert(symbol);
@@ -6020,11 +6278,18 @@ fn closed_store_host_program_inner<'a>(
         if !store_prop.bytes().next().is_some_and(|byte| byte.is_ascii_alphabetic() || byte == b'_' || byte == b'$') ||
             !store_prop.bytes().all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'$') { return None; }
         source_sites.push(store_site.site_id.clone());
-        value_sites.insert(value_symbol, store_site.site_id.clone());
-        projected_bindings.insert(value_symbol, index);
-        inputs.push(serde_json::json!({
+        for (symbol, path) in bound {
+            if path.is_empty() { value_sites.insert(symbol, store_site.site_id.clone()); }
+            if projected_bindings.insert(symbol, index).is_some() { return None; }
+            if !path.is_empty() { projected_binding_paths.insert(symbol, path); }
+        }
+        let mut input = serde_json::json!({
             "storeUseSiteId": store_site.site_id, "storeProp": store_prop,
-        }));
+        });
+        if store_site.hook_name == "useFrame" {
+            input["sourceKind"] = serde_json::json!("frameClock");
+        }
+        inputs.push(input);
     }
     if props_symbol.is_none() && used_destructured.len() != destructured.len() { return None; }
     let mut return_expression = callable.return_expression(input_count)?;
@@ -6045,16 +6310,18 @@ fn closed_store_host_program_inner<'a>(
     }
     if projected && !retained_child {
         let mut proof = StoreProjectionProof { semantic, bindings: projected_bindings,
-            derived: BTreeMap::new(),
-            paths: vec![Vec::new(); input_count], slots: Vec::new(), member_seen: false };
+            binding_paths: projected_binding_paths,
+            derived: BTreeMap::new(), paths: vec![Vec::new(); input_count],
+            slots: Vec::new(), prop_symbol: None, prop_inputs: Vec::new(), member_seen: false };
         let mut keys = BTreeSet::new();
         let mut count = 0;
         let mut aggregate = false;
         let mut tuple_spans = Vec::new();
         let mut read = |expression: &Expression<'a>| proof.expression(expression);
         let mut host = closed_subtree_host(element, &mut read, &mut keys, &mut count,
-            0, &mut aggregate, &mut tuple_spans, false)?;
+            0, &mut aggregate, &mut tuple_spans, false, true)?;
         proof.finish(&mut host, &mut inputs)?;
+        if !proven_frame_clock_paths(&inputs) { return None; }
         return Some((serde_json::json!({
             "schemaVersion": 5,
             "componentProgramId": component.component_site_id,
@@ -6065,8 +6332,9 @@ fn closed_store_host_program_inner<'a>(
     }
     let mut retained_projection = if retained_child && projected {
         Some(StoreProjectionProof { semantic, bindings: projected_bindings,
-            derived: BTreeMap::new(),
-            paths: vec![Vec::new(); input_count], slots: Vec::new(), member_seen: false })
+            binding_paths: projected_binding_paths,
+            derived: BTreeMap::new(), paths: vec![Vec::new(); input_count],
+            slots: Vec::new(), prop_symbol: None, prop_inputs: Vec::new(), member_seen: false })
     } else { None };
     let legacy_leaf = (|| {
         let JSXElementName::Identifier(tag) = &element.opening_element.name else { return None; };
@@ -6090,14 +6358,19 @@ fn closed_store_host_program_inner<'a>(
                 if value.value.is_empty() || value.value.chars().any(|ch| matches!(ch, '&' | '\n' | '\r' | '\t')) { return None; }
                 key = Some(value.value.to_string());
             } else {
+                let static_three_name = retained_child && matches!(tag, "mesh" | "group") &&
+                    name == "name";
                 let aggregate = (matches!(tag, "mesh" | "group") &&
                     matches!(name, "position" | "rotation" | "scale")) ||
                     (matches!(tag, "div" | "span" | "output") && name == "style");
-                if (!aggregate && !closed_store_host_property_name(tag, name)) ||
+                if (!aggregate && !static_three_name && !closed_store_host_property_name(tag, name)) ||
                     !seen.insert(name.to_owned()) { return None; }
-                let JSXAttributeValue::ExpressionContainer(container) = attribute.value.as_ref()? else { return None; };
-                let expression = container.expression.as_expression()?;
-                let program = if aggregate {
+                let program = if static_three_name {
+                    let Some(JSXAttributeValue::StringLiteral(value)) = attribute.value.as_ref() else { return None; };
+                    serde_json::json!({"kind":"literal","value":value.value.as_str()})
+                } else if aggregate {
+                    let JSXAttributeValue::ExpressionContainer(container) = attribute.value.as_ref()? else { return None; };
+                    let expression = container.expression.as_expression()?;
                     let mut read = |expression: &Expression<'a>| match retained_projection.as_mut() {
                         Some(proof) => proof.expression(expression),
                         None => closed_store_host_expression(expression,
@@ -6112,6 +6385,8 @@ fn closed_store_host_program_inner<'a>(
                     }
                     program
                 } else {
+                    let JSXAttributeValue::ExpressionContainer(container) = attribute.value.as_ref()? else { return None; };
+                    let expression = container.expression.as_expression()?;
                     match retained_projection.as_mut() {
                         Some(proof) => proof.expression(expression)?,
                         None => closed_store_host_expression(expression, &value_sites,
@@ -6127,6 +6402,7 @@ fn closed_store_host_program_inner<'a>(
         if retained_child {
             if let Some(proof) = retained_projection.take() {
                 proof.finish(&mut host, &mut inputs)?;
+                if !proven_frame_clock_paths(&inputs) { return None; }
             } else {
                 for input in &mut inputs { input["paths"] = serde_json::json!([[]]); }
             }
@@ -6167,7 +6443,7 @@ fn closed_store_host_program_inner<'a>(
             &source_sites, semantic, source);
         let host = closed_subtree_host(element, &mut read,
             &mut keys, &mut count, 0, &mut has_aggregate,
-            &mut tuple_spans, false)?;
+            &mut tuple_spans, false, false)?;
         Some((serde_json::json!({
             "schemaVersion": 4,
             "componentProgramId": component.component_site_id,
@@ -6554,6 +6830,7 @@ fn transform_native_component_source(
         "__nativeNumericPrograms".to_owned(),
         "__nativeOwnerCutKernels".to_owned(),
         "__nativeStabilizeHostTuple".to_owned(),
+        "__nativeUseFrameAt".to_owned(),
     ];
     for alias in &mut aliases {
         while source.contains(alias.as_str()) {
@@ -6572,16 +6849,20 @@ fn transform_native_component_source(
     } else {
         format!(", stabilizeHostTuple as {}", aliases[10])
     };
+    let frame_helper_import = if plan.components.iter().any(|component|
+        !component.frame_sites.is_empty()) {
+        format!(", useFrameAt as {}", aliases[11])
+    } else { String::new() };
     let helper_import = format!(
-        "\nimport {{ defineComponent as {}, useStateAt as {}, useEffectAt as {}, useStoreAt as {}, bindStatePropsAt as {}, renderCollectionAt as {}, useAt as {}, bindStatePropAt as {}{} }} from {module};",
+        "\nimport {{ defineComponent as {}, useStateAt as {}, useEffectAt as {}, useStoreAt as {}, bindStatePropsAt as {}{}{}{} }} from {module};",
         aliases[0],
         aliases[1],
         aliases[2],
         aliases[3],
         aliases[4],
-        aliases[5],
-        aliases[6],
-        aliases[7],
+        format!(", renderCollectionAt as {}, useAt as {}, bindStatePropAt as {}",
+            aliases[5], aliases[6], aliases[7]),
+        frame_helper_import,
         tuple_helper_import
     );
     let numeric_program_table = if numeric_programs.is_empty() {
@@ -6779,6 +7060,7 @@ fn transform_native_component_source(
             });
         }
         for store in &component.store_sites {
+            if store.hook_name == "useFrame" { continue; }
             let site = serde_json::to_string(&store.site_id).map_err(|error| error.to_string())?;
             let helper_alias = if store.hook_name == "use" {
                 &aliases[6]
@@ -6794,6 +7076,19 @@ fn transform_native_component_source(
                 start: store.argument_insert_at as usize,
                 end: store.argument_insert_at as usize,
                 replacement: format!("{site}, "),
+            });
+        }
+        for frame in &component.frame_sites {
+            let site = serde_json::to_string(&frame.site_id).map_err(|error| error.to_string())?;
+            edits.push(TextEdit {
+                start: frame.callee.start as usize,
+                end: frame.callee.end as usize,
+                replacement: aliases[11].clone(),
+            });
+            edits.push(TextEdit {
+                start: frame.argument_insert_at as usize,
+                end: frame.argument_insert_at as usize,
+                replacement: if frame.callback { format!("{site}, ") } else { site },
             });
         }
         for collection in &component.collection_sites {
@@ -8355,6 +8650,7 @@ fn run() -> Result<(), String> {
             unsupported_import_shape: false,
             unscoped_hook_calls: Vec::new(),
             unsupported_effect_arity: false,
+            unsupported_frame_arity: false,
             unsupported_store_arity: false,
             invalid_store_hook_name: None,
             function_depth: 0,
@@ -9138,6 +9434,287 @@ export { tuple, checked };
             applied.replace_range(start..end, &edit.replacement);
         }
         assert_eq!(code, applied);
+    }
+
+    #[test]
+    fn proves_frame_clock_and_numeric_props_without_fusing_callbacks() {
+        let source = r#"import { useFrame, useState } from 'native_runtime_api.ts';
+export function Motion(props) {
+  const frame = useFrame();
+  const [count] = useState(1);
+  return <div key="motion" data-x={frame.elapsed * props.speed + count} />;
+}
+export function Callback(props) {
+  useFrame(frame => props.onFrame(frame.timeMs), [props.onFrame]);
+  return <div key="callback" data-id={props.id} />;
+}"#;
+        let response = compile_state("frame-clock.tsx", source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let plan = response.plan.expect("component plan");
+        let motion = plan.components.as_ref().unwrap().iter()
+            .find(|component| component.name == "Motion").unwrap();
+        let program = motion.closed_store_host_program.as_ref().unwrap();
+        assert_eq!(program["schemaVersion"], 8);
+        assert_eq!(program["inputs"][0]["sourceKind"], "frameClock");
+        assert_eq!(program["inputs"][0]["paths"], serde_json::json!([["elapsed"]]));
+        assert_eq!(program["propInputs"], serde_json::json!(["speed"]));
+        assert!(motion.closed_store_execution.is_some());
+        let callback = plan.components.as_ref().unwrap().iter()
+            .find(|component| component.name == "Callback").unwrap();
+        assert!(callback.closed_store_host_program.is_none());
+        let code = plan.component_module.unwrap();
+        assert!(code.contains("__nativeUseFrameAt(\"frame-clock.tsx#component:Motion#frame:0\")"));
+        assert!(code.contains("__nativeUseFrameAt(\"frame-clock.tsx#component:Callback#frame:0\", frame =>"));
+        assert!(code.contains("varyingInputs[row * 2 + 1]"));
+    }
+
+    #[test]
+    fn retains_static_three_name_with_frame_clock_in_projected_and_varying_programs() {
+        let source = r#"import { useFrame, useState } from 'native_runtime_api.ts';
+export function Marker() {
+  const frame = useFrame();
+  return <group key="marker" name="accepted-frame" position-x={frame.timeMs}/>;
+}
+export function ChildShell(props) {
+  const frame = useFrame();
+  return <mesh key="shell" name="" position-x={frame.timeMs}>{props.children}</mesh>;
+}
+export function StateMarker() {
+  const frame = useFrame();
+  const [offset] = useState(0);
+  return <group key="state" name="state-marker" position-x={frame.timeMs + offset}/>;
+}
+export function SpeedMarker(props) {
+  const frame = useFrame();
+  const [offset] = useState(0);
+  return <mesh key="speed" name="speed-marker" position-x={frame.timeMs * props.speed + offset}/>;
+}"#;
+        let response = compile_state("named-frame-host.tsx", source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let components = response.plan.unwrap().components.unwrap();
+        for (name, schema, literal) in [
+            ("Marker", 5, "accepted-frame"), ("ChildShell", 6, ""),
+            ("StateMarker", 7, "state-marker"), ("SpeedMarker", 8, "speed-marker"),
+        ] {
+            let component = components.iter().find(|component| component.name == name).unwrap();
+            let program = component.closed_store_host_program.as_ref().unwrap();
+            assert_eq!(program["schemaVersion"], schema, "{name}");
+            assert_eq!(program["host"]["props"][0],
+                serde_json::json!(["name", {"kind":"literal","value":literal}]), "{name}");
+            let execution = component.closed_store_execution.as_ref().unwrap();
+            assert_eq!(execution["kind"], "owned-data", "{name}");
+        }
+        let marker = components.iter().find(|component| component.name == "Marker").unwrap();
+        let marker_program = marker.closed_store_host_program.as_ref().unwrap();
+        assert_eq!(marker_program["inputs"][0]["sourceKind"], "frameClock");
+        assert_eq!(marker_program["inputs"][0]["paths"], serde_json::json!([["timeMs"]]));
+        for (name, prop) in [
+            ("dynamic", "name={props.name}"),
+            ("numeric", "name={frame.timeMs}"),
+            ("call", "name={readName()}"),
+        ] {
+            let source = format!("import {{ useFrame }} from 'native_runtime_api.ts'; export function Marker(props) {{ const frame = useFrame(); return <group key=\"marker\" {prop} position-x={{frame.timeMs}}/>; }}");
+            let response = compile_state(&format!("named-frame-{name}.tsx"), &source);
+            assert!(response.error.is_none(), "{name}: {:?}", response.error);
+            assert!(response.plan.unwrap().components.unwrap()[0].closed_store_host_program.is_none(),
+                "{name} unexpectedly closed");
+        }
+        for (name, body) in [
+            ("retained", "return <group key=\"marker\" name={props.name} position-x={frame.timeMs}>{props.children}</group>;"),
+            ("state", "const [offset] = useState(0); return <group key=\"marker\" name={frame.timeMs} position-x={frame.timeMs + offset}/>;"),
+            ("varying", "const [offset] = useState(0); return <group key=\"marker\" name={props.name} position-x={frame.timeMs * props.speed + offset}/>;"),
+            ("dom", "return <div key=\"marker\" name=\"not-three\" data-x={frame.timeMs}/>;"),
+        ] {
+            let source = format!("import {{ useFrame, useState }} from 'native_runtime_api.ts'; export function Marker(props) {{ const frame = useFrame(); {body} }}");
+            let response = compile_state(&format!("named-frame-{name}.tsx"), &source);
+            assert!(response.error.is_none(), "{name}: {:?}", response.error);
+            assert!(response.plan.unwrap().components.unwrap()[0].closed_store_host_program.is_none(),
+                "{name} unexpectedly closed");
+        }
+    }
+
+    #[test]
+    fn zero_argument_frame_proof_does_not_own_external_store_reads() {
+        let source = r#"import { createStore, use, useFrame, useState } from 'native_runtime_api.ts';
+const external = createStore({ position: 0 });
+export function Unowned() {
+  const value = use(external);
+  return <group key="unowned" position-x={value.position}/>;
+}
+export function Mixed() {
+  const frame = useFrame();
+  const value = use(external);
+  return <group key="mixed" position-x={frame.timeMs + value.position}/>;
+}
+export function MixedState() {
+  const frame = useFrame();
+  const value = use(external);
+  const [offset] = useState(0);
+  return <group key="mixed-state" position-x={frame.timeMs + value.position + offset}/>;
+}"#;
+        let response = compile_state("zero-arg-unowned-store.tsx", source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let components = response.plan.unwrap().components.unwrap();
+        for component in components {
+            assert!(component.closed_store_host_program.is_none(),
+                "{} unexpectedly owns an external Store", component.name);
+        }
+    }
+
+    #[test]
+    fn zero_argument_frame_state_callback_retains_owned_numeric_batch() {
+        let source = r#"import { useFrame, useState } from 'native_runtime_api.ts';
+export function FrameState() {
+  const frame = useFrame();
+  const [position, setPosition] = useState(0);
+  useFrame(tick => setPosition(previous => previous + tick.delta), [], { phase: 'late' });
+  return <group key="frame-state" name="frame-state" position-x={frame.elapsed + position}/>;
+}"#;
+        let response = compile_state("frame-state.tsx", source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let plan = response.plan.unwrap();
+        let component = &plan.components.as_ref().unwrap()[0];
+        let program = component.closed_store_host_program.as_ref().expect("closed frame state");
+        assert_eq!(program["schemaVersion"], 7);
+        assert_eq!(program["inputs"][0]["sourceKind"], "frameClock");
+        assert_eq!(program["inputs"][0]["paths"], serde_json::json!([["elapsed"]]));
+        assert_eq!(program["stateSites"], serde_json::json!([component.state_sites[0].site_id]));
+        assert_eq!(program["effectSites"], serde_json::json!(["frame-state.tsx#component:FrameState#frame:1"]));
+        assert_eq!(component.closed_store_execution.as_ref().unwrap()["kind"], "owned-data");
+        let code = plan.component_module.unwrap();
+        assert!(code.contains("__nativeUseFrameAt(\"frame-state.tsx#component:FrameState#frame:1\", tick =>"));
+    }
+
+    #[test]
+    fn frame_state_callback_capturing_live_state_keeps_generic_owner() {
+        for callback in [
+            "tick => setPosition(position + tick.delta)",
+            "tick => setPosition(previous => previous + tick.delta + position)",
+        ] {
+            let source = format!("import {{ useFrame, useState }} from 'native_runtime_api.ts';
+export function FrameState() {{
+  const frame = useFrame();
+  const [position, setPosition] = useState(0);
+  useFrame({callback}, [position], {{ phase: 'late' }});
+  return <group key=\"frame-state\" position-x={{frame.elapsed + position}}/>;
+}}");
+            let response = compile_state("frame-state-capture.tsx", &source);
+            assert!(response.error.is_none(), "{:?}", response.error);
+            assert!(response.plan.unwrap().components.unwrap()[0].closed_store_host_program.is_none(),
+                "{callback} unexpectedly closed");
+        }
+    }
+
+    #[test]
+    fn proves_destructured_frame_fields_and_aliases_through_store_paths() {
+        let source = r#"import { useFrame } from 'native_runtime_api.ts';
+export function Direct(props) {
+  const {elapsed, delta: step} = useFrame();
+  return <div key="direct" data-phase={elapsed + step} />;
+}
+export function Mixed(props) {
+  const {elapsed: seconds, timeMs} = useFrame();
+  return <div key="mixed" data-phase={seconds * props.speed + timeMs} />;
+}"#;
+        let response = compile_state("destructured-frame.tsx", source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let plan = response.plan.unwrap();
+        let components = plan.components.unwrap();
+        let direct = components.iter().find(|component| component.name == "Direct").unwrap();
+        let direct_program = direct.closed_store_host_program.as_ref().unwrap();
+        assert_eq!(direct_program["schemaVersion"], 5);
+        assert_eq!(direct_program["inputs"][0]["paths"],
+            serde_json::json!([["elapsed"], ["delta"]]));
+        assert!(direct.closed_store_execution.is_some());
+        let mixed = components.iter().find(|component| component.name == "Mixed").unwrap();
+        let mixed_program = mixed.closed_store_host_program.as_ref().unwrap();
+        assert_eq!(mixed_program["schemaVersion"], 8);
+        assert_eq!(mixed_program["inputs"][0]["paths"],
+            serde_json::json!([["elapsed"], ["timeMs"]]));
+        assert_eq!(mixed_program["propInputs"], serde_json::json!(["speed"]));
+        assert!(mixed.closed_store_execution.is_some());
+        let code = plan.component_module.unwrap();
+        assert!(code.contains("__nativeUseFrameAt(\"destructured-frame.tsx#component:Direct#frame:0\")"));
+    }
+
+    #[test]
+    fn callback_owned_state_keeps_compiled_direct_numeric_prop_writes() {
+        let source = r#"import { useFrame, useState } from 'native_runtime_api.ts';
+export function Mover(props) {
+  const [position, setPosition] = useState(0);
+  useFrame(frame => setPosition(previous => previous + frame.delta * props.velocity),
+    [props.velocity], { id: 'mover', phase: 'update', priority: 3,
+      before: [], after: [] });
+  return <div key="mover" data-position={position} />;
+}"#;
+        let response = compile_state("frame-mover.tsx", source);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let plan = response.plan.unwrap();
+        let mover = &plan.components.as_ref().unwrap()[0];
+        assert_eq!(mover.prop_only_sites.len(), 1);
+        assert_eq!(mover.numeric_primitive_props, vec!["velocity"]);
+        assert!(mover.state_layout.is_some());
+        assert!(mover.closed_store_host_program.is_none());
+        let code = plan.component_module.unwrap();
+        assert!(code.contains("__nativeUseFrameAt(\"frame-mover.tsx#component:Mover#frame:0\", frame =>"));
+        assert!(code.contains("__nativeBindStatePropAt(\"frame-mover.tsx#component:Mover#state:0\""));
+    }
+
+    #[test]
+    fn callback_state_captures_and_dynamic_options_keep_generic_state_updates() {
+        for (callback, dependencies, suffix) in [
+            ("frame => setPosition(position + frame.delta)", "[position]", ""),
+            ("frame => setPosition(previous => previous + frame.delta)", "[position]", ""),
+            ("frame => setPosition(previous => previous + frame.delta)", "[]",
+                ", { priority: props.priority }"),
+        ] {
+            let source = format!("import {{ useFrame, useState }} from 'native_runtime_api.ts';
+export function Mover(props) {{
+const [position, setPosition] = useState(0);
+useFrame({callback}, {dependencies}{suffix});
+return <div key=\"mover\" data-position={{position}} />;
+}}");
+            let response = compile_state("frame-fallback.tsx", &source);
+            assert!(response.error.is_none(), "{:?}", response.error);
+            let mover = &response.plan.unwrap().components.unwrap()[0];
+            assert!(mover.prop_only_sites.is_empty(), "{source}");
+            assert!(mover.state_layout.is_none(), "{source}");
+        }
+    }
+
+    #[test]
+    fn unsupported_frame_destructuring_preserves_generic_owner() {
+        for (binding, value) in [
+            ("{elapsed, ...rest}", "elapsed"),
+            ("{['elapsed']: elapsed}", "elapsed"),
+            ("{elapsed = 0}", "elapsed"),
+            ("{elapsed: {nested}}", "nested"),
+        ] {
+            let source = format!("import {{ useFrame }} from 'native_runtime_api.ts';
+export function F(props) {{ const {} = useFrame();
+return <div key=\"f\" data-phase={{{}}} />; }}", binding, value);
+            let response = compile_state("unsupported-frame.tsx", &source);
+            assert!(response.error.is_none(), "{:?}", response.error);
+            let component = &response.plan.unwrap().components.unwrap()[0];
+            assert!(component.closed_store_host_program.is_none(), "{binding}");
+        }
+    }
+
+    #[test]
+    fn frame_hook_import_and_ownership_follow_native_hook_diagnostics() {
+        for source in [
+            "import { useFrame as frame } from 'native_runtime_api.ts'; export function Motion(props) { return <div>{frame()}</div>; }",
+            "import type { useFrame } from 'native_runtime_api.ts'; export function Motion(props) { useFrame(); return <div/>; }",
+        ] {
+            assert!(compile_state("bad-frame.tsx", source).error.as_deref()
+                .unwrap_or_default().contains("native hooks require direct named"));
+        }
+        let nested = compile_state("nested-frame.tsx",
+            "import { useFrame } from 'native_runtime_api.ts'; export function Motion(props) { const callback = () => useFrame(); return <div/>; }");
+        assert!(nested.error.as_deref().unwrap_or_default().contains("nested callbacks"));
+        let arity = compile_state("arity-frame.tsx",
+            "import { useFrame } from 'native_runtime_api.ts'; export function Motion(props) { useFrame(() => {}); return <div/>; }");
+        assert!(arity.error.as_deref().unwrap_or_default().contains("explicit dependency array"));
     }
 
     #[test]
@@ -9946,7 +10523,7 @@ export function ExistingTree(props) { const x = use(props.store); return <div ke
             "value[position]", "value?.position", "value.position?.x",
             "value.__proto__", "value.constructor", "value.prototype",
             "value.position + callback(() => value.other)",
-            "value.position + props.other", "value.position + other",
+            "value.position + other",
             "value.a.b.c.d.e.f.g.h.i",
         ] {
             let source = format!("import {{ use }} from \"native_runtime_api.ts\"; export function Candidate(props) {{ const value = use(props.store); return <output key=\"out\" data-value={{{expression}}}/>; }}");
@@ -9955,6 +10532,14 @@ export function ExistingTree(props) { const x = use(props.store); return <div ke
             assert!(response.plan.unwrap().components.as_ref().unwrap()[0]
                 .closed_store_host_program.is_none(), "{expression} unexpectedly closed");
         }
+        let numeric_prop = "import { use } from \"native_runtime_api.ts\"; export function Candidate(props) { const value = use(props.store); return <output key=\"out\" data-value={value.position + props.other}/>; }";
+        let response = compile_state("projected-own-prop.tsx", numeric_prop);
+        assert!(response.error.is_none(), "{:?}", response.error);
+        let program = response.plan.unwrap().components.unwrap()[0]
+            .closed_store_host_program.clone().expect("closed finite own prop");
+        assert_eq!(program["schemaVersion"], 8);
+        assert_eq!(program["propInputs"], serde_json::json!(["other"]));
+        assert_eq!(program["inputs"][0]["paths"], serde_json::json!([["position"]]));
         let unused = "import { use } from \"native_runtime_api.ts\"; export function Candidate(props) { const x = use(props.first); const y = use(props.second); return <output key=\"out\" data-x={x.value}/>; }";
         let response = compile_state("unused-projection.tsx", unused);
         assert!(response.error.is_none());

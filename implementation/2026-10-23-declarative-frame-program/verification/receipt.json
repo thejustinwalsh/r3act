@@ -1,0 +1,1134 @@
+{
+  "status": "FAIL",
+  "startedAt": "2026-10-23T22:43:14.980Z",
+  "sourceFreeze": "source-review-v1.json",
+  "sourceCount": 872,
+  "sourceAuditBefore": "MATCH",
+  "toolchain": {
+    "node": "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+    "nodeVersion": "v24.18.0",
+    "nodePathFirst": "/Users/mini/.local/share/mise/installs/node/24.18.0/bin",
+    "cargoHome": "/Volumes/Depot/Developer/r3act/.cache/cargo",
+    "cargoBuildJobs": "1",
+    "ci": "true"
+  },
+  "steps": [
+    {
+      "name": "deno-full",
+      "status": "FAIL",
+      "command": [
+        "deno",
+        "test",
+        "--config",
+        "deno.browser.json",
+        "--frozen",
+        "--lock=implementation/2026-10-16-publication/verification/deno-runtime.lock",
+        "src"
+      ],
+      "startedAt": "2026-10-23T22:43:14.987Z",
+      "durationMs": 3147,
+      "timeoutMs": 900000,
+      "exitCode": 1,
+      "signal": null,
+      "log": "logs/deno-full.log"
+    },
+    {
+      "name": "cargo-test",
+      "status": "FAIL",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--manifest-path",
+        "compiler/oxc-spike/Cargo.toml"
+      ],
+      "startedAt": "2026-10-23T22:43:18.135Z",
+      "durationMs": 4597,
+      "timeoutMs": 900000,
+      "exitCode": 101,
+      "signal": null,
+      "log": "logs/cargo-test.log"
+    },
+    {
+      "name": "cargo-build",
+      "status": "FAIL",
+      "command": [
+        "cargo",
+        "build",
+        "--locked",
+        "--manifest-path",
+        "compiler/oxc-spike/Cargo.toml"
+      ],
+      "startedAt": "2026-10-23T22:43:22.732Z",
+      "durationMs": 2153,
+      "timeoutMs": 900000,
+      "exitCode": 101,
+      "signal": null,
+      "log": "logs/cargo-build.log"
+    },
+    {
+      "name": "native-tooling",
+      "status": "FAIL",
+      "command": [
+        "pnpm",
+        "check:native-tooling"
+      ],
+      "startedAt": "2026-10-23T22:43:24.887Z",
+      "durationMs": 5388,
+      "timeoutMs": 300000,
+      "exitCode": 1,
+      "signal": null,
+      "log": "logs/native-tooling.log"
+    },
+    {
+      "name": "compiled-01",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL_COMPILER_CHANGED",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_direct_intent_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:43:30.275Z",
+      "durationMs": 441,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-01.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL_COMPILER_CHANGED",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-02",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL_COMPILER_CHANGED",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_urgent_retained_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:43:30.733Z",
+      "durationMs": 355,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-02.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL_COMPILER_CHANGED",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-03",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL_COMPILER_CHANGED",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_urgent_retained_three_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:43:31.100Z",
+      "durationMs": 386,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-03.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL_COMPILER_CHANGED",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-04",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL_COMPILER_CHANGED",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_boundary_workset_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:43:31.499Z",
+      "durationMs": 394,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-04.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL_COMPILER_CHANGED",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-05",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL_COMPILER_CHANGED",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_boundary_reveal_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:43:31.903Z",
+      "durationMs": 388,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-05.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL_COMPILER_CHANGED",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "fixture-06",
+      "status": "DIAGNOSTIC_UNQUALIFIED_PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_resource_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:43:32.302Z",
+      "durationMs": 395,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/fixture-06.log",
+      "originalRunStatus": "PASS",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-07",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL_COMPILER_CHANGED",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_joint_transaction_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:43:32.699Z",
+      "durationMs": 1878,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-07.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL_COMPILER_CHANGED",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-08",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL_COMPILER_CHANGED",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_scoped_collection_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:43:34.624Z",
+      "durationMs": 937,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-08.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL_COMPILER_CHANGED",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-09",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL_COMPILER_CHANGED",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_retained_transaction_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:43:35.579Z",
+      "durationMs": 418,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-09.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL_COMPILER_CHANGED",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-10",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL_COMPILER_CHANGED",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_owner_row_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:43:36.010Z",
+      "durationMs": 347,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-10.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL_COMPILER_CHANGED",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-11",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL_COMPILER_CHANGED",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_owner_row_three_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:43:36.371Z",
+      "durationMs": 1421,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-11.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL_COMPILER_CHANGED",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-12",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_store_host_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:43:37.827Z",
+      "durationMs": 1442,
+      "timeoutMs": 300000,
+      "exitCode": 1,
+      "signal": null,
+      "log": "logs/compiled-12.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-13",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_joint_store_host_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:43:39.287Z",
+      "durationMs": 3392,
+      "timeoutMs": 300000,
+      "exitCode": 1,
+      "signal": null,
+      "log": "logs/compiled-13.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-14",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_joint_input_transaction_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:43:42.723Z",
+      "durationMs": 2481,
+      "timeoutMs": 300000,
+      "exitCode": 1,
+      "signal": null,
+      "log": "logs/compiled-14.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-15",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL_COMPILER_CHANGED",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_resource_subtree_reveal_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:43:45.225Z",
+      "durationMs": 468,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-15.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL_COMPILER_CHANGED",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-16",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL_COMPILER_CHANGED",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_resource_host_values_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:43:45.707Z",
+      "durationMs": 1567,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-16.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL_COMPILER_CHANGED",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-17",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_store_host_values_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:43:47.306Z",
+      "durationMs": 1727,
+      "timeoutMs": 300000,
+      "exitCode": 1,
+      "signal": null,
+      "log": "logs/compiled-17.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-18",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_store_host_subtree_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:43:49.047Z",
+      "durationMs": 490,
+      "timeoutMs": 300000,
+      "exitCode": 1,
+      "signal": null,
+      "log": "logs/compiled-18.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-19",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_store_projection_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:43:49.552Z",
+      "durationMs": 495,
+      "timeoutMs": 300000,
+      "exitCode": 1,
+      "signal": null,
+      "log": "logs/compiled-19.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-20",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_joint_async_inputs_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:43:50.061Z",
+      "durationMs": 2383,
+      "timeoutMs": 300000,
+      "exitCode": 1,
+      "signal": null,
+      "log": "logs/compiled-20.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-21",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_component_forwarding_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:43:52.501Z",
+      "durationMs": 893,
+      "timeoutMs": 300000,
+      "exitCode": 1,
+      "signal": null,
+      "log": "logs/compiled-21.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-22",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL_COMPILER_CHANGED",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_authored_lifecycle_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:43:53.406Z",
+      "durationMs": 777,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-22.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL_COMPILER_CHANGED",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-23",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL_COMPILER_CHANGED",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_resource_transaction_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:43:54.197Z",
+      "durationMs": 2232,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-23.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL_COMPILER_CHANGED",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "fixture-24",
+      "status": "DIAGNOSTIC_UNQUALIFIED_PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_async_recovery_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:43:56.460Z",
+      "durationMs": 2057,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/fixture-24.log",
+      "originalRunStatus": "PASS",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "fixture-25",
+      "status": "DIAGNOSTIC_UNQUALIFIED_PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_forked_transition_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:43:58.519Z",
+      "durationMs": 1554,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/fixture-25.log",
+      "originalRunStatus": "PASS",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "fixture-26",
+      "status": "DIAGNOSTIC_UNQUALIFIED_PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_custom_host_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:44:00.073Z",
+      "durationMs": 384,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/fixture-26.log",
+      "originalRunStatus": "PASS",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "fixture-27",
+      "status": "DIAGNOSTIC_UNQUALIFIED_PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_arrow_components_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:44:00.457Z",
+      "durationMs": 1597,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/fixture-27.log",
+      "originalRunStatus": "PASS",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-28",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL_COMPILER_CHANGED",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_publication_callbacks_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:44:02.055Z",
+      "durationMs": 1785,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-28.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL_COMPILER_CHANGED",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-29",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL_COMPILER_CHANGED",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_held_reader_progress_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:44:03.853Z",
+      "durationMs": 713,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-29.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL_COMPILER_CHANGED",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-30",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL_COMPILER_CHANGED",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_closed_arrow_authoring_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:44:04.582Z",
+      "durationMs": 499,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-30.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL_COMPILER_CHANGED",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-31",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL_COMPILER_CHANGED",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_numeric_owner_effects_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:44:05.093Z",
+      "durationMs": 2536,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-31.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL_COMPILER_CHANGED",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-32",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL_COMPILER_CHANGED",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_collection_owner_effects_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:44:07.656Z",
+      "durationMs": 926,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-32.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL_COMPILER_CHANGED",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "fixture-33",
+      "status": "DIAGNOSTIC_UNQUALIFIED_PASS",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_collection_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:44:08.598Z",
+      "durationMs": 591,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/fixture-33.log",
+      "originalRunStatus": "PASS",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-34",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL_COMPILER_CHANGED",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_host_value_diff_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:44:09.189Z",
+      "durationMs": 452,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-34.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL_COMPILER_CHANGED",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-35",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL_COMPILER_CHANGED",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_reentrant_replacement_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:44:09.653Z",
+      "durationMs": 2313,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-35.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL_COMPILER_CHANGED",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-36",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL_COMPILER_CHANGED",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_runtime_origin_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:44:11.984Z",
+      "durationMs": 913,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-36.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL_COMPILER_CHANGED",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "fixture-37",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_root_queue_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:44:12.914Z",
+      "durationMs": 4818,
+      "timeoutMs": 300000,
+      "exitCode": 1,
+      "signal": null,
+      "log": "logs/fixture-37.log",
+      "originalRunStatus": "FAIL",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "fixture-38",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_task_transition_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:44:17.735Z",
+      "durationMs": 6998,
+      "timeoutMs": 300000,
+      "exitCode": 1,
+      "signal": null,
+      "log": "logs/fixture-38.log",
+      "originalRunStatus": "FAIL",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "fixture-39",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/native_promise_store_race_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:44:24.734Z",
+      "durationMs": 1716,
+      "timeoutMs": 300000,
+      "exitCode": 1,
+      "signal": null,
+      "log": "logs/fixture-39.log",
+      "originalRunStatus": "FAIL",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "fixture-40",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/numeric_state_layout_execution_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:44:26.450Z",
+      "durationMs": 1614,
+      "timeoutMs": 300000,
+      "exitCode": 1,
+      "signal": null,
+      "log": "logs/fixture-40.log",
+      "originalRunStatus": "FAIL",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-41",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL_COMPILER_CHANGED",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_three_resource_lifetime_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:44:28.064Z",
+      "durationMs": 400,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-41.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL_COMPILER_CHANGED",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-42",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL_COMPILER_CHANGED",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_host_publication_domain_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:44:28.483Z",
+      "durationMs": 342,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-42.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL_COMPILER_CHANGED",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-43",
+      "status": "DIAGNOSTIC_UNQUALIFIED_FAIL_COMPILER_CHANGED",
+      "command": [
+        "/Users/mini/.local/share/mise/installs/node/24.18.0/bin/node",
+        "--experimental-transform-types",
+        "compiler/compiled_group_host_admission_test.mjs"
+      ],
+      "startedAt": "2026-10-23T22:44:28.838Z",
+      "durationMs": 336,
+      "timeoutMs": 300000,
+      "exitCode": 0,
+      "signal": null,
+      "log": "logs/compiled-43.log",
+      "debugCompilerSha256Before": null,
+      "debugCompilerSha256After": "5ecf2d3ab4e9083f2f8bf5b86fd4eebdb9e154d454990b7d1b79e68dbac0e9fc",
+      "originalRunStatus": "FAIL_COMPILER_CHANGED",
+      "qualification": "Invoked while cargo build failed; compiler identity was unavailable or stale, so this outcome does not qualify the frozen source."
+    },
+    {
+      "name": "compiled-48",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/compiled_closed_collection_rows_test.mjs"
+    },
+    {
+      "name": "fixture-49",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/native_namespace_three_execution_test.mjs"
+    },
+    {
+      "name": "compiled-50",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/compiled_numeric_expression_dag_test.mjs"
+    },
+    {
+      "name": "compiled-51",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/compiled_ranged_owner_kernel_test.mjs"
+    },
+    {
+      "name": "compiled-52",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/compiled_retained_store_clock_test.mjs"
+    },
+    {
+      "name": "compiled-53",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/compiled_structural_owner_scope_test.mjs"
+    },
+    {
+      "name": "compiled-54",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/compiled_store_numeric_kernel_test.mjs"
+    },
+    {
+      "name": "compiled-55",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/compiled_mixed_numeric_inputs_test.mjs"
+    },
+    {
+      "name": "compiled-56",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/compiled_closed_store_contraction_test.mjs"
+    },
+    {
+      "name": "compiled-57",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/compiled_owned_store_execution_test.mjs"
+    },
+    {
+      "name": "compiled-58",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/compiled_mounted_scalar_execution_test.mjs"
+    },
+    {
+      "name": "compiled-59",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/compiled_realtime_store_progress_test.mjs"
+    },
+    {
+      "name": "compiled-60",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/compiled_compact_scalar_output_test.mjs"
+    },
+    {
+      "name": "compiled-61",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/compiled_owned_scalar_capture_test.mjs"
+    },
+    {
+      "name": "compiled-62",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/compiled_owned_frame_transaction_test.mjs"
+    },
+    {
+      "name": "compiled-63",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/compiled_store_batch_execution_test.mjs"
+    },
+    {
+      "name": "compiled-64",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/compiled_native_frame_publication_test.mjs"
+    },
+    {
+      "name": "compiled-65",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/compiled_owned_store_proof_test.mjs"
+    },
+    {
+      "name": "compiled-66",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/compiled_dependency_route_test.mjs"
+    },
+    {
+      "name": "compiled-67",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/compiled_mounted_frame_execution_test.mjs"
+    },
+    {
+      "name": "compiled-68",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/compiled_declarative_frame_test.mjs"
+    },
+    {
+      "name": "fixture-69",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/native_compiler_artifact_test.mjs"
+    },
+    {
+      "name": "fixture-70",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/native_hmr_revision_test.mjs"
+    },
+    {
+      "name": "fixture-71",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/native_react_composition_test.mjs"
+    },
+    {
+      "name": "fixture-72",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/native_runtime_origin_test.mjs"
+    },
+    {
+      "name": "compiled-73",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/compiled_react_island_test.mjs"
+    },
+    {
+      "name": "compiled-74",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/compiled_radix_dialog_test.mjs"
+    },
+    {
+      "name": "compiled-75",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/compiled_collection_owner_retention_test.mjs"
+    },
+    {
+      "name": "fixture-76",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/vite_native_module_test.mjs"
+    },
+    {
+      "name": "fixture-77",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/vite_native_plugin_test.mjs"
+    },
+    {
+      "name": "fixture-78",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/vite_native_derived_local_test.mjs"
+    },
+    {
+      "name": "fixture-79",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "dependency": "cargo-build",
+      "reason": "Compiler build failed; stale prechange binary is not eligible for this source freeze.",
+      "file": "compiler/vite_native_package_dev_resolution_test.mjs"
+    },
+    {
+      "name": "package-build",
+      "status": "FAIL",
+      "command": [
+        "pnpm",
+        "package:r3act"
+      ],
+      "startedAt": "2026-10-23T22:44:48.185Z",
+      "durationMs": 1360,
+      "timeoutMs": 900000,
+      "exitCode": 1,
+      "signal": null,
+      "log": "logs/package-build.log"
+    },
+    {
+      "name": "package-consumer",
+      "status": "SKIPPED_DEPENDENCY_FAILED",
+      "depends": [
+        "package-build"
+      ]
+    }
+  ],
+  "sourceAuditAfter": {
+    "status": "MATCH",
+    "count": 872
+  },
+  "fixtureCount": 75,
+  "finishedAt": "2026-10-23T22:44:49.710Z",
+  "finalNote": "Interrupted after compiler cargo-test/build failures by primary direction; early fixture invocations against the stale compiler binary are diagnostic and do not qualify.",
+  "runnerDiagnostic": "The initial runner compared fixture compiler hashes to null after cargo-build failure, mislabeling zero-exit fixtures FAIL_COMPILER_CHANGED. Those outcomes are preserved as DIAGNOSTIC_UNQUALIFIED; all remaining fixtures were skipped."
+}

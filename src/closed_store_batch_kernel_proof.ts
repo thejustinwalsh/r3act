@@ -274,10 +274,12 @@ export function proveClosedStoreBatchKernel(
       fail("candidate");
     }
     if (host.schemaVersion === 4 || host.schemaVersion === 5 &&
-      (host.host.tag !== "group" || host.host.children.length !== 0)) fail("host-shape");
+      host.host.children.length !== 0) fail("host-shape");
     const shared = closedStoreHostInputs(host).reduce((count, input) =>
       count + closedStoreHostInputPaths(input).length, 0);
-    const varying = host.schemaVersion === 7 ? host.stateSites.length : 0;
+    const varying = host.schemaVersion === 8
+      ? host.stateSites.length + host.propInputs.length
+      : host.schemaVersion === 7 ? host.stateSites.length : 0;
     if (shared < 1 || shared + varying > MAX_SLOTS) fail("slots");
     const expressions: ClosedNumericExpression[] = [];
     const numericPropIndices: number[] = [];

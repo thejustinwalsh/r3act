@@ -153,7 +153,7 @@ try {
   assert.match(component.code, /prop_only_sites/);
   assert.match(
     component.code,
-    /"prop_only_sites":\["src\/browser\/native_state_props\.tsx#component:MovingDot#state:0","src\/browser\/native_state_props\.tsx#component:MovingDot#state:1","src\/browser\/native_state_props\.tsx#component:MovingDot#state:2"\]/,
+    /"name":"MovingDot","component_site_id":"src\/browser\/native_state_props\.tsx#component:MovingDot","prop_only_sites":\[\]/,
   );
   assert.match(component.code, /compiledNativeComponentPlan\s*=\s*\{/);
   assert.match(component.code, /keyed/);
@@ -189,7 +189,9 @@ try {
   assertComponentMap("function MovingDot");
   assertComponentMap("const animate = () =>");
   assertComponentMap("=> (x)", "data-x={x}", 4, 8);
-  const storeSource = await readFile(storeModulePath, "utf8");
+  // Rust owns the historical fixture; Vite needs a real import from its fixture directory.
+  const storeSource = (await readFile(storeModulePath, "utf8"))
+    .replace('"../native_runtime_api.ts"', '"../../src/native_runtime_api.ts"');
   const store = await transform.call(context, storeSource, storeModulePath);
   assert.ok(store?.code.includes("__nativeUseAt(\"compiler/fixtures/native-store-positive.tsx#component:StorePanel#store:0\", source)"));
   assert.ok(store.code.includes("useAt as __nativeUseAt"));
@@ -226,7 +228,7 @@ try {
     { source: storeModulePath, line: originalStoreCalleeLocation.line, column: originalStoreCalleeLocation.column, name: null },
   );
   const genericUseSource = `// @native-ui
-import { use } from "../native_runtime_api.ts";
+import { use } from "../../src/native_runtime_api.ts";
 export function GenericReader({ promise, resource, key, store }) {
   const promiseValue = use(promise);
   const resourceValue = use(resource);
@@ -243,7 +245,7 @@ export function GenericReader({ promise, resource, key, store }) {
   assert.ok(genericUse.code.includes("__nativeUseAt(\"compiler/fixtures/native-use-generic.tsx#component:GenericReader#store:3\", __nativeUseAt(\"compiler/fixtures/native-use-generic.tsx#component:GenericReader#store:4\", store))"));
   assert.ok(!genericUse.code.includes("__nativeUseStoreAt("));
   const explicitStoreSource = `// @native-ui
-import { useStore } from "../native_runtime_api.ts";
+import { useStore } from "../../src/native_runtime_api.ts";
 export function MigrationReader({ source }) {
   return <output>{String(useStore(source))}</output>;
 }`;
@@ -255,7 +257,7 @@ export function MigrationReader({ source }) {
   assert.ok(explicitStore.code.includes("useStoreAt as __nativeUseStoreAt"));
   assert.ok(explicitStore.code.includes("__nativeUseStoreAt(\"compiler/fixtures/native-use-store-migration.tsx#component:MigrationReader#store:0\", source)"));
   const shadowedUseSource = `// @native-ui
-import { use } from "../native_runtime_api.ts";
+import { use } from "../../src/native_runtime_api.ts";
 export function ShadowedReader(use) {
   return <output>{String(use("local"))}</output>;
 }`;
@@ -268,8 +270,8 @@ export function ShadowedReader(use) {
   assert.ok(!shadowedUse.code.includes("__nativeUseAt("));
   assert.ok(shadowedUse.code.includes('"store_sites":[]'));
   for (const ownershipSource of [
-    `// @native-ui\nimport { use } from "../native_runtime_api.ts";\nexport function LoopReader({ values }) { for (const value of values) use(value); return <output />; }`,
-    `// @native-ui\nimport { use } from "../native_runtime_api.ts";\nexport function CallbackReader({ value }) { [value].map((item) => use(item)); return <output />; }`,
+    `// @native-ui\nimport { use } from "../../src/native_runtime_api.ts";\nexport function LoopReader({ values }) { for (const value of values) use(value); return <output />; }`,
+    `// @native-ui\nimport { use } from "../../src/native_runtime_api.ts";\nexport function CallbackReader({ value }) { [value].map((item) => use(item)); return <output />; }`,
   ]) {
     await assert.rejects(
       transform.call(context, ownershipSource, genericUsePath),
@@ -277,7 +279,7 @@ export function ShadowedReader(use) {
     );
   }
   const suspenseSource = `// @native-ui
-import { Suspense as Boundary, jsx } from "../native_runtime_api.ts";
+import { Suspense as Boundary, jsx } from "../../src/native_runtime_api.ts";
 export function SuspenseShell({ fallback, children, props }) {
   return <>
     <Boundary fallback={fallback} {...props}><span>{children}</span></Boundary>
@@ -289,7 +291,7 @@ export function ShadowedBoundary({ Boundary }) { return <Boundary />; }
 `;
   const suspensePath = path.join(root, "compiler/fixtures/native-suspense-boundaries.tsx");
   const suspenseOnly = await transform.call(context,
-    `// @native-ui\nimport { Suspense } from "../native_runtime_api.ts";\nexport function OnlyBoundary({children}) { return <Suspense fallback={null}>{children}</Suspense>; }`,
+    `// @native-ui\nimport { Suspense } from "../../src/native_runtime_api.ts";\nexport function OnlyBoundary({children}) { return <Suspense fallback={null}>{children}</Suspense>; }`,
     suspensePath);
   assert.ok(suspenseOnly.code.includes('__nativeBoundarySite="compiler/fixtures/native-suspense-boundaries.tsx#boundary:0"'),
     "Suspense-only imports must activate native component compilation");
@@ -315,11 +317,11 @@ export function ShadowedBoundary({ Boundary }) { return <Boundary />; }
     { source: suspensePath, ...suspenseTagLocation(suspenseInput, originalSuspenseTag), name: null },
   );
   await assert.rejects(
-    transform.call(context, `// @native-ui\nimport { Suspense, jsx } from "../native_runtime_api.ts";\nexport function Forged() { return <Suspense __nativeBoundarySite="forged" />; }`, suspensePath),
+    transform.call(context, `// @native-ui\nimport { Suspense, jsx } from "../../src/native_runtime_api.ts";\nexport function Forged() { return <Suspense __nativeBoundarySite="forged" />; }`, suspensePath),
     /Native UI compilation failed.*`__nativeBoundarySite` is reserved/,
   );
   await assert.rejects(
-    transform.call(context, `// @native-ui\nimport * as Runtime from "../native_runtime_api.ts";\nimport { jsx } from "../native_runtime_api.ts";\nexport function Qualified() { return <Runtime.Suspense fallback={null} />; }`, suspensePath),
+    transform.call(context, `// @native-ui\nimport * as Runtime from "../../src/native_runtime_api.ts";\nimport { jsx } from "../../src/native_runtime_api.ts";\nexport function Qualified() { return <Runtime.Suspense fallback={null} />; }`, suspensePath),
     /Native UI compilation failed.*qualified native Suspense imports are unsupported/,
   );
   await assert.rejects(
@@ -330,10 +332,10 @@ export function ShadowedBoundary({ Boundary }) { return <Boundary />; }
     /Native UI compilation failed.*type-only|Native UI compilation failed.*type only|Native UI compilation failed.*direct named/i,
   );
   for (const [hook, typeOnlySource] of [
-    ["use", `// @native-ui\nimport type { use } from "../native_runtime_api.ts";\nexport function Reader() { return <output>{String(use("key"))}</output>; }`],
-    ["useStore", `// @native-ui\nimport type { useStore } from "../native_runtime_api.ts";\nexport function Reader() { return <output>{String(useStore("key"))}</output>; }`],
-    ["use alias", `// @native-ui\nimport { use as read } from "../native_runtime_api.ts";\nexport function Reader() { return <output>{String(read("key"))}</output>; }`],
-    ["useStore alias", `// @native-ui\nimport { useStore as read } from "../native_runtime_api.ts";\nexport function Reader() { return <output>{String(read("key"))}</output>; }`],
+    ["use", `// @native-ui\nimport type { use } from "../../src/native_runtime_api.ts";\nexport function Reader() { return <output>{String(use("key"))}</output>; }`],
+    ["useStore", `// @native-ui\nimport type { useStore } from "../../src/native_runtime_api.ts";\nexport function Reader() { return <output>{String(useStore("key"))}</output>; }`],
+    ["use alias", `// @native-ui\nimport { use as read } from "../../src/native_runtime_api.ts";\nexport function Reader() { return <output>{String(read("key"))}</output>; }`],
+    ["useStore alias", `// @native-ui\nimport { useStore as read } from "../../src/native_runtime_api.ts";\nexport function Reader() { return <output>{String(read("key"))}</output>; }`],
   ]) {
     await assert.rejects(
       transform.call(context, typeOnlySource, storeModulePath),
@@ -405,9 +407,8 @@ createDOMRoot(document.querySelector("#app")!).mount(jsx(StaticBadge, {}));
   assert.match(collection.result.code, /__nativeRenderCollectionAt\("compiler\/fixtures\/native-collection-positive\.tsx#component:CollectionList#collection:0", items, \(\(item\) =>/);
   assert.match(collection.result.code, /__nativeRenderCollectionAt\("compiler\/fixtures\/native-collection-positive\.tsx#component:CollectionLabels#collection:0", items, \(\(entry\) =>/);
   assert.match(collection.result.code, /__nativeRenderCollectionAt\("compiler\/fixtures\/native-collection-positive\.tsx#component:CollectionList#collection:1", items, \(\(item\) =>/);
-  assert.match(collection.result.code, /"collection_sites":\[\{"site_id":"compiler\/fixtures\/native-collection-positive\.tsx#component:CollectionList#collection:0","source_expression":"items","row_parameter":"item","requires_owner_render":false\}/);
-  assert.match(collection.result.code, /"requires_owner_render":false/);
-  assert.doesNotMatch(collection.result.code, /requiresOwnerRender: true/);
+  assert.match(collection.result.code, /"collection_sites":\[\{"site_id":"compiler\/fixtures\/native-collection-positive\.tsx#component:CollectionList#collection:0","source_expression":"items","row_parameter":"item","requires_owner_render":true\}/);
+  assert.match(collection.result.code, /requiresOwnerRender: true/);
   assert.ok(collection.result.map);
   assert.deepEqual(collection.result.map.sourcesContent, [collection.fixtureSource]);
   const collectionCallback = "(item) => <li key={item.id}>{item.label}</li>";
@@ -423,6 +424,20 @@ createDOMRoot(document.querySelector("#app")!).mount(jsx(StaticBadge, {}));
     originalPositionFor(new TraceMap(collection.result.map), callbackLocation(collection.result.code, generatedCallbackOffset)),
     { source: collection.fixturePath, ...callbackLocation(collection.fixtureSource, originalCallbackOffset), name: null },
   );
+  const closedCollectionPath = path.join(root, "compiler/fixtures/native-collection-closed-vite.tsx");
+  const closedCollectionSource = `// @native-ui
+import { jsx } from "../../src/native_runtime_api.ts";
+import type { KeyedCollection } from "../../src/native_runtime_api.ts";
+type RowData = { id: number };
+function Row({ row }: { row: RowData }) { return <output>{row.id}</output>; }
+export function ClosedRows({ rows }: { rows: KeyedCollection<RowData> }) {
+  return <div>{rows.map(row => <Row row={row} />)}</div>;
+}`;
+  const closedCollection = await transform.call(context, closedCollectionSource, closedCollectionPath);
+  assert.match(closedCollection.code, /"requires_owner_render":false/);
+  assert.doesNotMatch(closedCollection.code, /requiresOwnerRender: true/);
+  assert.match(closedCollection.code, /closedCollectionSites: \[/);
+  assert.deepEqual(closedCollection.map.sourcesContent, [closedCollectionSource]);
   const fallback = await compileFixture("native-collection-fallback.tsx");
   assert.doesNotMatch(fallback.result.code, /__nativeRenderCollectionAt\(/);
   assert.match(fallback.result.code, /arrayItems\.map\(/);
@@ -442,8 +457,8 @@ createDOMRoot(document.querySelector("#app")!).mount(jsx(StaticBadge, {}));
   assert.match(ownerRender.result.code, /__nativeRenderCollectionAt\("compiler\/fixtures\/native-collection-owner-render\.tsx#component:CollectionRows#collection:0", items, \(\(item\) =>[\s\S]*?, \{ requiresOwnerRender: true \}\)/);
   assert.match(ownerRender.result.code, /"requires_owner_render":true/);
   const eventRead = await compileFixture("native-collection-event-read.tsx");
-  assert.match(eventRead.result.code, /"requires_owner_render":false/);
-  assert.doesNotMatch(eventRead.result.code, /requiresOwnerRender: true/);
+  assert.match(eventRead.result.code, /"requires_owner_render":true/);
+  assert.match(eventRead.result.code, /requiresOwnerRender: true/);
   const aliasedFactoryPath = path.join(root, "compiler/fixtures/native-collection-alias-factory.tsx");
   const aliasedFactorySource = `// @native-ui\nimport { createKeyedCollection as makeCollection, jsx } from "../../src/native_runtime_api.ts";\nconst rows = makeCollection([{ id: "x" }], (row) => row.id);\nexport function Rows() { return <ul>{rows.map((row) => <li>{row.id}</li>)}</ul>; }`;
   await assert.rejects(

@@ -335,6 +335,53 @@ The [joint-input boundary](../implementation/2026-10-18-joint-inputs/results.md)
 
 A named self-closing Three Store leaf such as a keyed mesh with literal name and a closed position tuple can reuse the schema-4 subtree proof when the legacy leaf grammar declines it. Successful legacy schemas retain their earlier output. Dynamic names, calls, spreads and untracked prop reads remain generic. The [installed multi-host example](../examples/installed-scene/README.md) verifies the resulting post-reveal grouped Store cut beside pending health; this is finite compiler coverage, not a general syntax or speed claim.
 
+### Native frame hooks
+
+The current development source provides `useFrame` and `FrameLoop` from `@r3act/core`. Their integrated correctness, installed delivery and scoped performance results are recorded in the [declarative frame boundary](../implementation/2026-10-23-declarative-frame-program/results.md). These results do not establish universal speed or physical presentation.
+
+```tsx
+import { FrameLoop, useFrame, useState } from '@r3act/core';
+
+function Motion({ speed }: { speed: number }) {
+  const frame = useFrame();
+  return <group rotation-y={frame.elapsed * speed} />;
+}
+
+function Player({ velocity }: { velocity: number }) {
+  const [position, setPosition] = useState(0);
+  useFrame(frame => setPosition(previous => previous + frame.delta * velocity),
+    [velocity], { phase: 'update' });
+  return <group position-x={position} />;
+}
+
+function Game() {
+  return <FrameLoop draw={() => renderer.render(scene, camera)}>
+    <Motion speed={2} /><Player velocity={3} />
+  </FrameLoop>;
+}
+```
+
+`renderer`, `scene` and `camera` are application-owned Three objects in this example. A native root supplies the host; the loop does not create a renderer.
+
+| Signature / field | Contract |
+| --- | --- |
+| `useFrame()` | Read this root's canonical frame clock. The compiler assigns its hook site. |
+| `elapsed` | Seconds since the first frame tick. |
+| `delta` | Seconds since the preceding update, clamped by the driver; the first tick is zero. |
+| `timeMs` | Requested RAF/manual timestamp in milliseconds. |
+| `deltaMs` | Clamped update delta in milliseconds; default maximum is50ms. |
+| `useFrame(callback, dependencies, options?)` | Register a mount-owned callback, once per new tick before dirty prop execution/publication/draw. Explicit dependencies refresh captured values after acceptance. |
+| `options.phase` | `early`, `update` (default), or `late`. |
+| `options.priority` | Finite number, ascending order among ready callbacks; default0. Registration order resolves ties. |
+| `options.id`, `before`, `after` | Unique callback ID and named ordering edges. Edges take precedence over phase/priority. Unknown IDs and cycles fail before callback execution. |
+| `FrameLoop` | Mount starts the root-owned existing RAF controller; unmount stops/disposes it. `draw` is required. Optional `onError`, paired `requestFrame`/`cancelFrame`, and `maxDeltaMs` match the controller. Driver options must remain stable at a retained boundary; draw/error callbacks can refresh. |
+
+Callbacks are actual JavaScript calls. Include every captured changing value in `dependencies`; functional state updates avoid capturing the prior state value. Compiler-proven clock arithmetic and bounded stateful callbacks feed retained prop computations without component execution on eligible ordinary frames. Unsupported expressions, changing structure and opaque render work use generic reconciliation. Simple clock destructuring and finite own numeric props can participate in the same batch proof; this is not arbitrary JavaScript memoization.
+
+Frame callbacks retain owner/site lifetime. Removing an owner or retiring its compiler revision releases its callbacks; stopping/disposal during a tick prevents later callbacks and drawing. Render preparation does not speculatively execute callbacks. A failure after host mutation retains the existing quarantine contract; the loop cannot roll back arbitrary host writes.
+
+One declarative driver owns one root, and multiple active drivers on that root are rejected. Use `createNativeFrameLoop({ declarative: true, roots: [{ root, stores: [] }], draw })` for explicit ownership/manual stepping. Built-in coherent frame-clock/local-state cuts spanning multiple roots remain unimplemented; explicit multi-root Store publication is described below. An unrelated resource can retain accepted UI while frame consumers progress. Sharing state with DOM does not automatically impose a canvas draw barrier or guarantee cross-renderer visual atomicity.
+
 ### Frame publication
 
 `createNativeFrameLoop` coordinates explicit root/Store groups before invoking a draw callback. It uses the same Store history, root versions and publication lifecycle as ordinary native work; sharing a Store alone does not enlist other roots. Eligible compiled one-root frames publish immediately through that lifecycle. Busy, deferred and explicit multi-root work retain queue coordination. Unsupported scoped readers decline, and roots remain caller-owned. See [frame ownership](three-host-reference.md#frame-ownership) for lifecycle, manual stepping and draw-boundary limits. Components keep ordinary JSX and `use(store)`; no per-frame host refs are required by this API.
